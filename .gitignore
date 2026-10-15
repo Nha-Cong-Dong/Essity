@@ -1,0 +1,48 @@
+# --- Tài liệu nội bộ: chỉ giữ cục bộ, không đẩy lên repo công khai ---
+/docs/
+/PLAN.md
+
+# --- Secrets & môi trường ---
+.env
+.env.*
+!.env.example
+
+# --- Dữ liệu cá nhân (seed, eval, ảnh vở) ---
+/data/seed/*
+!/data/seed/example.yaml
+/data/eval/
+*.eval.jsonl
+/services/ai-service/spikes/**/images/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# --- Node ---
+node_modules/
+.next/
+.turbo/
+out/
+*.tsbuildinfo
+
+# --- Hạ tầng local ---
+infra/**/data/
+*.dump
+
+# --- Editor / OS ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+.claude/settings.local.json
