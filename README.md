@@ -1,53 +1,50 @@
 # Essity
 
-> Ôn tập thông minh cho người hay mất năng lượng trước khi bắt đầu học.
-> *A spaced-repetition study app that decides what to review so you never have to.*
+AI-graded spaced repetition. Answer a daily set of questions drawn from your own notes and textbooks; the schedule adapts to what you actually remember.
 
-## Vấn đề
+> **Status:** pre-alpha. Under active development; interfaces and schemas will change.
 
-Ngồi vào bàn học mà không biết hôm nay nên ôn gì sẽ ngốn hết năng lượng trước khi học thật. Essity bỏ bước đó: mỗi ngày app đưa ra **một phiên câu hỏi cụ thể**, bạn trả lời tự do, AI chấm dựa trên chính ghi chú và giáo trình của bạn, và lịch ôn tự điều chỉnh theo mức nhớ thực tế. Không nhập liệu có cấu trúc, không tự chấm "mình thuộc tới đâu".
+## Features
 
-## Cách hoạt động
+- **Daily session.** A prioritized queue of questions, ranked by forgetting risk and exam proximity.
+- **Free-text answers.** No self-rating. Answers are graded against source passages from your own material.
+- **Per-concept scheduling.** [FSRS](https://github.com/open-spaced-repetition/py-fsrs) tracks memory state for each knowledge unit.
+- **Source-anchored.** Every question and grade links back to the exact page it came from.
+- **Reproducible.** Raw data is immutable; every AI output is versioned by prompt and model and can be re-run.
 
-1. Ghi lại buổi học bằng một câu tự nhiên, kèm ảnh vở nếu có.
-2. AI tách nội dung thành các **mảnh kiến thức** (mỗi mảnh một ý, có neo về trang gốc) và sinh câu hỏi.
-3. Mỗi ngày, **Phiên hôm nay** chọn các câu có nguy cơ quên cao nhất, ưu tiên môn sắp thi.
-4. Bạn trả lời, AI chấm theo nguồn của bạn, lịch [FSRS](https://github.com/open-spaced-repetition/py-fsrs) cập nhật theo từng mảnh.
+## Architecture
 
-## Kiến trúc
-
-Ba dịch vụ trong một monorepo:
-
-| Dịch vụ | Công nghệ | Vai trò |
+| Service | Stack | Responsibility |
 |---|---|---|
-| `apps/web` | Next.js, TypeScript, Tailwind, shadcn/ui | Giao diện và BFF mỏng |
-| `services/core-api` | Python, FastAPI, SQLAlchemy, py-fsrs | Tài khoản, nghiệp vụ ôn tập, lịch FSRS; nguồn sự thật của dữ liệu |
-| `services/ai-service` | Python, FastAPI, worker | LLM, xử lý PDF/ảnh, eval |
+| `apps/web` | Next.js, TypeScript, Tailwind, shadcn/ui | UI and thin BFF |
+| `services/core-api` | FastAPI, SQLAlchemy, py-fsrs | Auth, review logic, scheduling; source of truth |
+| `services/ai-service` | FastAPI, worker | LLM calls, PDF/image processing, evals |
 
-Hạ tầng: PostgreSQL (mỗi dịch vụ một database), Redis Streams, S3-compatible storage (MinIO/R2), OpenTelemetry.
+**Infrastructure:** PostgreSQL (one database per service), Redis Streams, S3-compatible object storage, OpenTelemetry.
+
+**Communication:** synchronous HTTP for user-facing calls (grading); Redis Streams with a transactional outbox for long-running jobs.
+
+## Project layout
 
 ```
-apps/web/              Next.js
-services/core-api/     FastAPI
-services/ai-service/   FastAPI + worker
-packages/api-client/   client TypeScript sinh từ OpenAPI
-contracts/events/      JSON Schema cho sự kiện giữa dịch vụ
-infra/                 Docker Compose, sao lưu
+apps/web/              Next.js frontend
+services/core-api/     Core API
+services/ai-service/   AI service and worker
+packages/api-client/   TypeScript client generated from OpenAPI
+contracts/events/      JSON Schemas for inter-service events
+infra/                 Docker Compose, backup scripts
 ```
 
-## Bắt đầu
+## Getting started
 
-Yêu cầu: Docker, Node.js 24+ với pnpm, Python 3.13 với [uv](https://docs.astral.sh/uv/), [just](https://github.com/casey/just).
+**Prerequisites:** Docker, Node.js 24+, pnpm, Python 3.13, [uv](https://docs.astral.sh/uv/), [just](https://github.com/casey/just)
 
 ```sh
-just env   # tạo .env từ .env.example
-just up    # dựng môi trường local (có từ giai đoạn 0)
+just env    # create .env from .env.example
+just up     # start the local stack
+just logs   # tail service logs
 ```
 
-## Trạng thái
+## License
 
-Đang ở **giai đoạn 0: khung xương** — dựng một đường chạy mỏng xuyên ba dịch vụ trước khi viết tính năng. Dự án đang được xây dựng công khai, thay đổi thường xuyên.
-
-## Giấy phép
-
-Chưa chọn giấy phép. Mặc định bảo lưu mọi quyền cho đến khi có `LICENSE`.
+Not yet specified. All rights reserved until a `LICENSE` file is added.
