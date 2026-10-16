@@ -125,9 +125,12 @@ jobs:
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
           echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+      # Only history reachable from HEAD: fetch-depth 0 also fetches other branches,
+      # and a leak on one PR's branch must not fail every other PR.
       - name: Scan git history
         run: |
-          "$RUNNER_TEMP/gitleaks" git . --config .gitleaks.toml --redact --no-banner --exit-code 1
+          "$RUNNER_TEMP/gitleaks" git . --log-opts=HEAD --config .gitleaks.toml \
+            --redact --verbose --no-banner --exit-code 1
 
   ci-ok:
     name: CI ok
