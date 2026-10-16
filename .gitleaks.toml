@@ -1,0 +1,18 @@
+# Secret scanning config for CI (T0.7). Built on gitleaks' default rules.
+title = "Essity gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Lockfiles hold package hashes, not secrets"
+paths = [
+    '''(^|/)uv\.lock$''',
+    '''(^|/)pnpm-lock\.yaml$''',
+]
+
+[[allowlists]]
+description = "Local placeholders in .env.example"
+regexes = [
+    '''change-me[a-z0-9-]*''',
+]
