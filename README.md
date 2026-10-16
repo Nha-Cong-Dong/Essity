@@ -33,6 +33,7 @@ services/ai-service/   AI service and worker
 packages/api-client/   TypeScript client generated from OpenAPI
 contracts/events/      JSON Schemas for inter-service events
 infra/                 Docker Compose, backup scripts
+scripts/               Repo checks run by CI
 ```
 
 ## Getting started
