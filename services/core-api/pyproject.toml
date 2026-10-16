@@ -15,6 +15,12 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http>=1.45.1",
     "opentelemetry-instrumentation-fastapi>=0.66b1",
     "opentelemetry-instrumentation-httpx>=0.66b1",
+    "alembic>=1.20",
+    "psycopg[binary]>=3.3.6",
+    "opentelemetry-instrumentation-sqlalchemy>=0.66b1",
+    # <2.1: opentelemetry-instrumentation-sqlalchemy 0.66b1 supports < 2.1 only and silently
+    # instruments nothing on 2.1. Raise when it supports 2.1.
+    "sqlalchemy>=2.0.54,<2.1",
 ]
 
 [dependency-groups]
@@ -22,6 +28,7 @@ dev = [
     "hypothesis>=6.170.0",
     "pyright>=1.1.390",
     "pytest>=8.3",
+    "pytest-randomly>=5",
     "ruff>=0.8",
 ]
 
@@ -37,13 +44,13 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
-src = ["src", "tests"]
+src = ["src", "tests", "migrations"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
 
 [tool.pyright]
-include = ["src", "tests"]
+include = ["src", "tests", "migrations"]
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"

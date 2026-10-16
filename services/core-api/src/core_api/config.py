@@ -4,9 +4,17 @@ from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
+class DatabaseSettings(BaseSettings):
+    """What migrations need, and nothing more: `alembic upgrade` must not need API secrets."""
+
     model_config = SettingsConfigDict(env_prefix="CORE_", env_file=".env", extra="ignore")
 
+    # postgresql+psycopg://user:password@host:5432/core. Secret because it holds the password;
+    # no default, so a missing database is a startup error rather than a surprise later.
+    database_url: SecretStr
+
+
+class Settings(DatabaseSettings):
     environment: str = "local"
     log_level: str = "INFO"
 
