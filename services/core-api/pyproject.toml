@@ -24,6 +24,7 @@ dependencies = [
     "redis>=8.1",
     "opentelemetry-instrumentation-redis>=0.66b1",
     "argon2-cffi>=25.1",
+    "procrastinate>=3.10,<4",
 ]
 
 [dependency-groups]
