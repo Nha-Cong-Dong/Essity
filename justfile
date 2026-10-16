@@ -33,3 +33,9 @@ logs *args:
 # Kiểm tra import chéo giữa các dịch vụ (CI cũng chạy)
 check-imports:
     uv run --no-project python scripts/check_cross_imports.py
+
+# Kiểm tra giấy phép dependency: chặn GPL/AGPL (ADR-0011, CI cũng chạy)
+check-licenses:
+    uv run --directory services/core-api --no-sync python ../../scripts/check_licenses.py python
+    uv run --directory services/ai-service --no-sync python ../../scripts/check_licenses.py python
+    pnpm --dir apps/web licenses list --json | uv run --no-project python scripts/check_licenses.py pnpm -

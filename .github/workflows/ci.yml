@@ -32,15 +32,18 @@ jobs:
           filters: |
             core-api:
               - services/core-api/**
+              - scripts/check_licenses.py
               - .github/workflows/ci.yml
             ai-service:
               - services/ai-service/**
+              - scripts/check_licenses.py
               - .github/workflows/ci.yml
             web:
               - apps/web/**
               - packages/**
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
+              - scripts/check_licenses.py
               - .github/workflows/ci.yml
       - id: python
         env:
@@ -71,6 +74,8 @@ jobs:
           enable-cache: true
           cache-dependency-glob: services/${{ matrix.service }}/uv.lock
       - run: uv sync --locked
+      - name: Licenses (ADR-0011)
+        run: uv run --no-sync python ../../scripts/check_licenses.py python
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run pyright
@@ -94,18 +99,25 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --filter web
+      - name: Licenses (ADR-0011)
+        working-directory: apps/web
+        run: |
+          pnpm licenses list --json > "$RUNNER_TEMP/licenses.json"
+          python3 ../../scripts/check_licenses.py pnpm "$RUNNER_TEMP/licenses.json"
       - run: pnpm --filter web lint
       - run: pnpm --filter web typecheck
       - run: pnpm --filter web build
 
   boundaries:
-    name: Cross-service imports
+    name: Repo checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - run: python3 scripts/check_cross_imports.py
+      - name: Test repo scripts
+        run: python3 -m unittest discover -s scripts -p "test_*.py" -v
 
   secrets:
     name: Secret scan
