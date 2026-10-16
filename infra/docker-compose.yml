@@ -119,6 +119,7 @@ services:
       CORE_AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?set in .env}
       CORE_SMTP_HOST: ${SMTP_HOST}
       CORE_SMTP_PORT: ${SMTP_PORT}
+      CORE_EMAIL_FROM: ${EMAIL_FROM}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     ports:
       - "127.0.0.1:8000:8000"
