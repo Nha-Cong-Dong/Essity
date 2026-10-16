@@ -1,4 +1,5 @@
 import httpx2
+from opentelemetry.instrumentation.httpx import HTTPX2ClientInstrumentor
 
 from core_api.config import Settings
 from core_api.logging import REQUEST_ID_HEADER, request_id_var
@@ -27,6 +28,9 @@ class AiServiceClient:
             transport=transport,
             event_hooks={"request": [_forward_request_id]},
         )
+        # Client span + W3C traceparent header, so ai-service continues the same trace.
+        # Its signature names the original httpx package, which is not installed here.
+        HTTPX2ClientInstrumentor.instrument_client(http)  # pyright: ignore[reportUnknownMemberType]
         return cls(http)
 
     def ping(self) -> None:

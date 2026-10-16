@@ -1,0 +1,37 @@
+# OpenTelemetry Collector for local development (ADR-0013).
+# Services send OTLP over HTTP to :4318; traces go on to Jaeger. Production swaps the exporter
+# (T0.14) without touching service code.
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+  # Second line of defence after the services' own redaction: query strings can carry tokens
+  # (ADR-0014), and not every SDK strips them (web's Node SDK does not).
+  transform/redact-urls:
+    error_mode: ignore
+    trace_statements:
+      - replace_pattern(span.attributes["url.full"], "[?].*", "")
+      - replace_pattern(span.attributes["http.url"], "[?].*", "")
+      - replace_pattern(span.attributes["http.target"], "[?].*", "")
+      - set(span.attributes["url.query"], "[redacted]") where span.attributes["url.query"] != nil
+  batch:
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/redact-urls, batch]
+      exporters: [otlp/jaeger]

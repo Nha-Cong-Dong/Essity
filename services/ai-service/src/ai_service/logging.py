@@ -14,7 +14,8 @@ Personal data stays out of the logs by construction, not by care at each call si
   "HTTP Request: GET <url>" lines are silenced for the same reason.
 
 `request_id` and `user_id` come from context variables, so every line inside a request carries
-them without being passed around.
+them without being passed around. Inside a traced request, `trace_id` and `span_id` link the line
+to its trace in Jaeger.
 """
 
 import json
@@ -30,6 +31,7 @@ from datetime import UTC, datetime
 from typing import Any, TextIO
 
 from fastapi import Request, Response
+from opentelemetry import trace
 
 REQUEST_ID_HEADER = "X-Request-ID"
 
@@ -82,6 +84,10 @@ class JsonFormatter(logging.Formatter):
             "request_id": request_id_var.get(),
             "user_id": user_id_var.get(),
         }
+        span = trace.get_current_span().get_span_context()
+        if span.is_valid:
+            line["trace_id"] = format(span.trace_id, "032x")
+            line["span_id"] = format(span.span_id, "016x")
         dropped: list[str] = []
         for key, value in record.__dict__.items():
             if key in _STANDARD_ATTRS or key in _IGNORED_EXTRAS:

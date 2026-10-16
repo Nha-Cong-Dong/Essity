@@ -91,6 +91,22 @@ services:
       timeout: 3s
       retries: 10
 
+  # Traces (ADR-0013): services -> Collector (OTLP/HTTP :4318) -> Jaeger.
+  # Neither image ships a shell, so no healthcheck; services keep retrying the export.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.162.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel/collector.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      - jaeger
+
+  # Trace UI on http://localhost:16686
+  jaeger:
+    image: jaegertracing/jaeger:2.21.0
+    ports:
+      - "127.0.0.1:16686:16686"
+
   core-api:
     build: ../services/core-api
     environment:
@@ -101,6 +117,7 @@ services:
       CORE_AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?set in .env}
       CORE_SMTP_HOST: ${SMTP_HOST}
       CORE_SMTP_PORT: ${SMTP_PORT}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
@@ -121,6 +138,7 @@ services:
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?set in .env}
       AI_DATABASE_URL: postgresql+psycopg://${AI_DB_USER}:${AI_DB_PASSWORD}@postgres:5432/${AI_DB_NAME}
       AI_REDIS_URL: ${REDIS_URL}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     ports:
       - "127.0.0.1:8001:8001"
     healthcheck:
