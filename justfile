@@ -39,3 +39,7 @@ check-licenses:
     uv run --directory services/core-api --no-sync python ../../scripts/check_licenses.py python
     uv run --directory services/ai-service --no-sync python ../../scripts/check_licenses.py python
     pnpm --dir apps/web licenses list --json | uv run --no-project python scripts/check_licenses.py pnpm -
+
+# Chạy migration của core-api lên database local (cần `just up` trước)
+migrate:
+    {{compose}} run --rm --no-deps core-api uv run --no-sync alembic upgrade head

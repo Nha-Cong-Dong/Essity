@@ -13,10 +13,12 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status
+from sqlalchemy import Engine, text
 
 from core_api.api.ping import get_ai_client
 from core_api.clients.ai_client import AiServiceClient
 from core_api.config import get_settings
+from core_api.db.engine import create_db_engine
 from core_api.logging import configure_logging
 from core_api.main import app
 from core_api.telemetry import REDACTED, RedactingSpanExporter, redact_span
@@ -180,3 +182,17 @@ def test_redact_span_strips_queries_and_keeps_everything_else() -> None:
 def test_redact_span_returns_clean_spans_unchanged() -> None:
     span = ReadableSpan(name="GET /v1/ping", attributes={"url.full": "http://x/v1/ping"})
     assert redact_span(span) is span
+
+
+def test_database_queries_are_traced(
+    spans: InMemorySpanExporter, engine: Engine, test_database_url: str
+) -> None:
+    # Guards the SQLAlchemy pin: on an unsupported version the instrumentation does nothing.
+    traced = create_db_engine(test_database_url)
+    with traced.connect() as connection:
+        connection.execute(text("SELECT 1"))
+    traced.dispose()
+    statements = [
+        str((s.attributes or {}).get("db.statement")) for s in by_kind(spans, SpanKind.CLIENT)
+    ]
+    assert "SELECT 1" in statements
