@@ -19,3 +19,7 @@ down:
 # Xem log
 logs *args:
     docker compose -f infra/docker-compose.yml logs -f {{args}}
+
+# Kiểm tra import chéo giữa các dịch vụ (CI cũng chạy)
+check-imports:
+    uv run --no-project python scripts/check_cross_imports.py
