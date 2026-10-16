@@ -58,6 +58,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "fsrs" },
+    { name = "httpx2" },
     { name = "pydantic-settings" },
     { name = "tzdata" },
     { name = "uvicorn", extra = ["standard"] },
@@ -65,7 +66,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx2" },
     { name = "hypothesis" },
     { name = "pyright" },
     { name = "pytest" },
@@ -76,6 +76,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "fsrs", specifier = ">=6,<7" },
+    { name = "httpx2", specifier = ">=2.13.1" },
     { name = "pydantic-settings", specifier = ">=2.6" },
     { name = "tzdata", specifier = ">=2026.5" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
@@ -83,7 +84,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx2", specifier = ">=2.13.1" },
     { name = "hypothesis", specifier = ">=6.170.0" },
     { name = "pyright", specifier = ">=1.1.390" },
     { name = "pytest", specifier = ">=8.3" },

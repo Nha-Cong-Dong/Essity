@@ -29,7 +29,6 @@ ps:
 # Xem log
 logs *args:
     {{compose}} logs -f {{args}}
-    docker compose -f infra/docker-compose.yml logs -f {{args}}
 
 # Kiểm tra import chéo giữa các dịch vụ (CI cũng chạy)
 check-imports:

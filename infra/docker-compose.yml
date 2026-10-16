@@ -98,7 +98,7 @@ services:
       CORE_DATABASE_URL: postgresql+psycopg://${CORE_DB_USER}:${CORE_DB_PASSWORD}@postgres:5432/${CORE_DB_NAME}
       CORE_REDIS_URL: ${REDIS_URL}
       CORE_AI_SERVICE_URL: ${AI_SERVICE_URL}
-      CORE_AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN}
+      CORE_AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?set in .env}
       CORE_SMTP_HOST: ${SMTP_HOST}
       CORE_SMTP_PORT: ${SMTP_PORT}
     ports:
@@ -110,6 +110,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      ai-service:
         condition: service_healthy
 
   ai-service:

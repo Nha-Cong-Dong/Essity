@@ -25,7 +25,7 @@ src/core_api/
 
 ## Configuration
 
-Environment variables prefixed with `CORE_` (see `config.py`).
+Environment variables prefixed with `CORE_` (see `config.py`). `CORE_AI_SERVICE_TOKEN` (at least 32 characters, same value as `AI_SERVICE_TOKEN` in ai-service) is required: core-api does not start without it.
 
 ## Sync vs async convention (ADR-0005)
 

@@ -15,4 +15,4 @@ def test_healthz_returns_ok() -> None:
 
 def test_settings_read_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CORE_ENVIRONMENT", "test")
-    assert Settings().environment == "test"
+    assert Settings().environment == "test"  # pyright: ignore[reportCallIssue]
