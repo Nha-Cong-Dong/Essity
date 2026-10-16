@@ -21,6 +21,8 @@ dependencies = [
     # <2.1: opentelemetry-instrumentation-sqlalchemy 0.66b1 supports < 2.1 only and silently
     # instruments nothing on 2.1. Raise when it supports 2.1.
     "sqlalchemy>=2.0.54,<2.1",
+    "redis>=8.1",
+    "opentelemetry-instrumentation-redis>=0.66b1",
     "argon2-cffi>=25.1",
 ]
 

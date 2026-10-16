@@ -18,6 +18,12 @@ class Settings(DatabaseSettings):
     environment: str = "local"
     log_level: str = "INFO"
 
+    # redis://[:password@]host:6379/0. Rate limits (T1.6); a secret if it holds a password.
+    redis_url: SecretStr
+    # Token web sends in X-Service-Token. Only a request carrying it may say which IP the user
+    # has (security.client_ip). Unset: core-api never trusts a client IP header.
+    web_token: SecretStr | None = Field(default=None, min_length=32)
+
     # Email (T1.5). Locally Mailpit: no TLS, no login, web UI on http://localhost:8025.
     smtp_host: str = "127.0.0.1"
     smtp_port: int = 1025
