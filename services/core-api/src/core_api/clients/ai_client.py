@@ -1,6 +1,7 @@
 import httpx2
 
 from core_api.config import Settings
+from core_api.logging import REQUEST_ID_HEADER, request_id_var
 
 SERVICE_TOKEN_HEADER = "X-Service-Token"
 
@@ -24,6 +25,7 @@ class AiServiceClient:
             headers={SERVICE_TOKEN_HEADER: settings.ai_service_token.get_secret_value()},
             timeout=settings.ai_service_timeout_seconds,
             transport=transport,
+            event_hooks={"request": [_forward_request_id]},
         )
         return cls(http)
 
@@ -36,3 +38,10 @@ class AiServiceClient:
 
     def close(self) -> None:
         self._http.close()
+
+
+def _forward_request_id(request: httpx2.Request) -> None:
+    # Same id on both sides, so one user request can be followed across services.
+    request_id = request_id_var.get()
+    if request_id is not None:
+        request.headers[REQUEST_ID_HEADER] = request_id
