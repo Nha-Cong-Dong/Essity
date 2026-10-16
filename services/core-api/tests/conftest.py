@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 
 from core_api.config import get_settings
 from core_api.db.engine import create_db_engine, get_engine
+from core_api.db.models import User
+from core_api.repositories.user import UserRepository
 
 TEST_AI_SERVICE_TOKEN = "test-ai-service-token-0123456789abcdef"
 # Tests run on a real PostgreSQL, in a database of their own (`core_test`), never on local data.
@@ -78,3 +80,13 @@ def db_session(engine: Engine) -> Iterator[Session]:
         finally:
             session.close()
             transaction.rollback()
+
+
+@pytest.fixture
+def two_users(db_session: Session) -> tuple[User, User]:
+    """Alice and Bob, for isolation tests: B must never reach A's data (see isolation.py)."""
+    users = UserRepository(db_session)
+    alice = users.create("alice@example.com")
+    bob = users.create("bob@example.com")
+    db_session.flush()
+    return alice, bob

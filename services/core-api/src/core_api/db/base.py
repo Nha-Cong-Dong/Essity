@@ -1,9 +1,10 @@
 """Declarative base for every core-api table (ADR-0008)."""
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import MetaData
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import DateTime, ForeignKey, MetaData, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 
 # Every constraint gets a predictable name, so Alembic migrations can drop or alter it later.
 NAMING_CONVENTION = {
@@ -19,12 +20,19 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
-class UserOwned:
+class CreatedAt:
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class UserOwned(CreatedAt):
     """Columns of every table that holds a user's data.
 
     Read and write these tables only through a `UserScopedRepository`, which always filters by
-    `user_id`. The foreign key to `user` is added with the `user` table (T1.3).
+    `user_id`. Deleting a user deletes their rows.
     """
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(index=True)
+
+    @declared_attr
+    def user_id(cls) -> Mapped[uuid.UUID]:
+        return mapped_column(ForeignKey("user.id", ondelete="CASCADE"), index=True)
