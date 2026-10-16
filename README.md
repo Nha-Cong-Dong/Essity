@@ -41,9 +41,24 @@ infra/                 Docker Compose, backup scripts
 
 ```sh
 just env    # create .env from .env.example
-just up     # start the local stack
-just logs   # tail service logs
+just up     # build and start the local stack
+just ps     # container status and health
+just logs   # tail service logs (optionally: just logs core-api)
+just down   # stop, keep data
+just reset  # stop and delete all local data
 ```
+
+Local endpoints (bound to `127.0.0.1` only):
+
+| Service | URL |
+|---|---|
+| Web | http://localhost:3000 |
+| core-api | http://localhost:8000 |
+| ai-service | http://localhost:8001 (requires `X-Service-Token`) |
+| Mailpit (captured email) | http://localhost:8025 |
+| Object storage console (RustFS) | http://localhost:9001/rustfs/console/ |
+| PostgreSQL | `localhost:5432`, databases `core` and `ai`, one user each |
+| Redis | `localhost:6379` |
 
 ## License
 

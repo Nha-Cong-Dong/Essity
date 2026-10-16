@@ -8,14 +8,24 @@ default:
 env:
     @if (-not (Test-Path .env)) { Copy-Item .env.example .env; "Đã tạo .env" } else { ".env đã tồn tại" }
 
-# Dựng toàn bộ môi trường local (có từ T0.5)
-up:
-    docker compose -f infra/docker-compose.yml up -d --build
+compose := "docker compose --env-file .env -f infra/docker-compose.yml"
 
-# Tắt môi trường local
+# Dựng toàn bộ môi trường local
+up:
+    {{compose}} up -d --build
+
+# Tắt môi trường local (giữ dữ liệu)
 down:
-    docker compose -f infra/docker-compose.yml down
+    {{compose}} down
+
+# Xóa sạch dữ liệu local (database, Redis, file) — không khôi phục được
+reset:
+    {{compose}} down --volumes
+
+# Trạng thái các container
+ps:
+    {{compose}} ps
 
 # Xem log
 logs *args:
-    docker compose -f infra/docker-compose.yml logs -f {{args}}
+    {{compose}} logs -f {{args}}
