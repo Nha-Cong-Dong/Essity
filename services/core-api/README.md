@@ -32,8 +32,11 @@ Environment variables prefixed with `CORE_` (see `config.py`). Required, or core
 
 - `CORE_DATABASE_URL`: `postgresql+psycopg://user:password@host:5432/core`. Migrations need only this one.
 - `CORE_AI_SERVICE_TOKEN`: at least 32 characters, same value as `AI_SERVICE_TOKEN` in ai-service.
+- `CORE_REDIS_URL`: `redis://host:6379/0` (rate limits).
 
-Tests use `CORE_TEST_DATABASE_URL` (default: the Compose Postgres, database `core_test`). Each test runs in a transaction that is rolled back, and tests run in random order (`pytest-randomly`).
+Optional: `CORE_WEB_TOKEN` (at least 32 characters), the token web sends in `X-Service-Token`. Only requests carrying it may pass the user's IP in `X-Client-IP`; without it set, that header is ignored and `X-Forwarded-For` is never trusted.
+
+Tests use `CORE_TEST_DATABASE_URL` (default: the Compose Postgres, database `core_test`) and `CORE_TEST_REDIS_URL` (default: the Compose Redis, database 15). Each test runs in a transaction that is rolled back, and tests run in random order (`pytest-randomly`).
 
 ## Database
 
@@ -41,6 +44,10 @@ Tests use `CORE_TEST_DATABASE_URL` (default: the Compose Postgres, database `cor
 - Routes take a session as `session: DbSession` (`core_api.db.session`). It commits when the route returns and rolls back when it raises, before the response is sent.
 - Tables holding a user's data use the `UserOwned` mixin and are queried only through a `UserScopedRepository`, which cannot be built without a `user_id` and filters every query on it.
 - New models are imported in `core_api/db/models/__init__.py`, or Alembic autogenerate does not see them.
+
+## Rate limits
+
+`core_api.security.rate_limit`: a `RateLimit(name, limit, window)` rule and a `RateLimiter` (dependency `get_rate_limiter`). `limiter.enforce(rule, key)` counts an attempt and answers 429 with `Retry-After` when over the limit; `check` looks without counting. Keys (emails, IPs) are hashed before reaching Redis. If Redis is unreachable the limiter answers 503 instead of letting requests through. Per-IP keys come from `security.client_ip.client_ip`.
 
 ## Sync vs async convention (ADR-0005)
 

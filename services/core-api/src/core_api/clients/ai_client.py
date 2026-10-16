@@ -3,8 +3,9 @@ from opentelemetry.instrumentation.httpx import HTTPX2ClientInstrumentor
 
 from core_api.config import Settings
 from core_api.logging import REQUEST_ID_HEADER, request_id_var
+from core_api.security.service_token import SERVICE_TOKEN_HEADER
 
-SERVICE_TOKEN_HEADER = "X-Service-Token"
+__all__ = ["SERVICE_TOKEN_HEADER", "AiServiceClient", "AiServiceUnavailableError"]
 
 
 class AiServiceUnavailableError(Exception):

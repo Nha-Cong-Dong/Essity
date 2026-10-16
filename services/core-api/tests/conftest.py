@@ -5,9 +5,11 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from redis import Redis
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
+from core_api.clients.redis import get_redis, redis_from_url
 from core_api.config import get_settings
 from core_api.db.engine import create_db_engine, get_engine
 from core_api.db.models import User
@@ -20,6 +22,8 @@ TEST_DATABASE_URL = os.environ.get(
     "CORE_TEST_DATABASE_URL",
     "postgresql+psycopg://core:change-me-local@127.0.0.1:5432/core_test",
 )
+# Redis database 15 is for tests only; local data lives in database 0.
+TEST_REDIS_URL = os.environ.get("CORE_TEST_REDIS_URL", "redis://127.0.0.1:6379/15")
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -32,11 +36,14 @@ def ai_service_token() -> str:
 def test_settings_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setenv("CORE_AI_SERVICE_TOKEN", TEST_AI_SERVICE_TOKEN)
     monkeypatch.setenv("CORE_DATABASE_URL", TEST_DATABASE_URL)
+    monkeypatch.setenv("CORE_REDIS_URL", TEST_REDIS_URL)
     get_settings.cache_clear()
     get_engine.cache_clear()
+    get_redis.cache_clear()
     yield
     get_settings.cache_clear()
     get_engine.cache_clear()
+    get_redis.cache_clear()
 
 
 def alembic_config(url: str = TEST_DATABASE_URL) -> Config:
@@ -90,3 +97,10 @@ def two_users(db_session: Session) -> tuple[User, User]:
     bob = users.create("bob@example.com")
     db_session.flush()
     return alice, bob
+
+
+@pytest.fixture
+def redis_client() -> Iterator[Redis]:
+    client = redis_from_url(TEST_REDIS_URL)
+    yield client
+    client.close()

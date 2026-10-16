@@ -18,6 +18,12 @@ class Settings(DatabaseSettings):
     environment: str = "local"
     log_level: str = "INFO"
 
+    # redis://[:password@]host:6379/0. Rate limits (T1.6); a secret if it holds a password.
+    redis_url: SecretStr
+    # Token web sends in X-Service-Token. Only a request carrying it may say which IP the user
+    # has (security.client_ip). Unset: core-api never trusts a client IP header.
+    web_token: SecretStr | None = Field(default=None, min_length=32)
+
     ai_service_url: str = "http://127.0.0.1:8001"
     # Sent to ai-service in X-Service-Token. No default: core-api refuses to start without one,
     # the same rule ai-service applies on its side.
