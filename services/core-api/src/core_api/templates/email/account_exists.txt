@@ -1,0 +1,13 @@
+Subject: Bạn đã có tài khoản Essity
+
+Chào bạn,
+
+Vừa có người dùng email này để đăng ký Essity, nhưng email này đã có tài khoản rồi.
+
+Nếu đó là bạn, hãy đăng nhập ở đây:
+$login_link
+
+Quên mật khẩu? Đặt lại ở đây:
+$reset_link
+
+Nếu không phải bạn, cứ bỏ qua email này nhé. Tài khoản của bạn vẫn an toàn.

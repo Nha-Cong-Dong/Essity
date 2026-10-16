@@ -24,6 +24,14 @@ class Settings(DatabaseSettings):
     # has (security.client_ip). Unset: core-api never trusts a client IP header.
     web_token: SecretStr | None = Field(default=None, min_length=32)
 
+    # Email (T1.5). Locally Mailpit: no TLS, no login, web UI on http://localhost:8025.
+    smtp_host: str = "127.0.0.1"
+    smtp_port: int = 1025
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_starttls: bool = False
+    email_from: str = "no-reply@localhost"
+
     ai_service_url: str = "http://127.0.0.1:8001"
     # Sent to ai-service in X-Service-Token. No default: core-api refuses to start without one,
     # the same rule ai-service applies on its side.

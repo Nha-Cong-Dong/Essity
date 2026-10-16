@@ -90,6 +90,17 @@ jobs:
           --health-interval 2s
           --health-timeout 3s
           --health-retries 15
+      # Email tests (T1.5) send through a real SMTP server and read it back over its API.
+      mailpit:
+        image: axllent/mailpit:v1.31
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
     env:
       CORE_TEST_DATABASE_URL: postgresql+psycopg://core:ci-only-password@localhost:5432/core_test
       CORE_TEST_REDIS_URL: redis://localhost:6379/15
