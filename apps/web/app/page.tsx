@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { Shell } from "@/components/shell";
 import { coreFetch } from "@/lib/core";
 
 type ServiceStatus = "ok" | "unavailable";
@@ -26,16 +27,16 @@ async function ServiceChain() {
     aiService === undefined
       ? `web → core-api: ${coreApi}`
       : `web → core-api → ai-service: ${aiService}`;
-  return <p className="font-mono text-sm">{text}</p>;
+  return <p className="font-mono text-sm text-muted-foreground">{text}</p>;
 }
 
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
+    <Shell className="justify-center">
       <h1 className="text-2xl font-semibold">Essity</h1>
-      <Suspense fallback={<p className="font-mono text-sm">web → …</p>}>
+      <Suspense fallback={<p className="font-mono text-sm text-muted-foreground">web → …</p>}>
         <ServiceChain />
       </Suspense>
-    </main>
+    </Shell>
   );
 }
