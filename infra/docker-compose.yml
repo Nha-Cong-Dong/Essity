@@ -98,6 +98,8 @@ services:
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./otel/collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "127.0.0.1:4318:4318"  # for services run outside Docker (pnpm dev, uvicorn --reload)
     depends_on:
       - jaeger
 
@@ -156,6 +158,7 @@ services:
       dockerfile: apps/web/Dockerfile
     environment:
       CORE_API_URL: ${CORE_API_URL}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
