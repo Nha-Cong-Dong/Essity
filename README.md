@@ -57,6 +57,7 @@ Local endpoints (bound to `127.0.0.1` only):
 | core-api | http://localhost:8000 |
 | ai-service | http://localhost:8001 (requires `X-Service-Token`) |
 | Mailpit (captured email) | http://localhost:8025 |
+| Jaeger (traces) | http://localhost:16686 |
 | Object storage console (RustFS) | http://localhost:9001/rustfs/console/ |
 | PostgreSQL | `localhost:5432`, databases `core` and `ai`, one user each |
 | Redis | `localhost:6379` |
