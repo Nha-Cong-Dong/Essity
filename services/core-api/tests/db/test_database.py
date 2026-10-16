@@ -9,40 +9,13 @@ from alembic.config import Config
 from alembic.util.exc import CommandError
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, MetaData, String, func, select, text
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from sqlalchemy import Engine, func, select, text
+from sqlalchemy.orm import Session
 
-from core_api.db.base import NAMING_CONVENTION, Base, UserOwned
+from core_api.db.base import NAMING_CONVENTION, Base
+from core_api.db.models import Subject, User
 from core_api.db.session import DbSession
-from core_api.repositories.base import UserScopedRepository
-
-# --- Test-only models, on their own metadata so `alembic check` never sees them -------------
-
-
-class ProbeBase(DeclarativeBase):
-    metadata = MetaData(naming_convention=NAMING_CONVENTION)
-
-
-class Note(UserOwned, ProbeBase):
-    __tablename__ = "probe_note"
-
-    body: Mapped[str] = mapped_column(String(200))
-
-
-class NoteRepository(UserScopedRepository[Note]):
-    model = Note
-
-
-@pytest.fixture
-def notes(db_session: Session) -> Session:
-    """`probe_note` exists for this test only: DDL is transactional in PostgreSQL."""
-    ProbeBase.metadata.create_all(db_session.connection())
-    return db_session
-
-
-ALICE = uuid.uuid4()
-BOB = uuid.uuid4()
-
+from core_api.repositories.subject import SubjectRepository
 
 # --- Migrations ------------------------------------------------------------------------------
 
@@ -150,44 +123,30 @@ def test_failed_commit_is_an_error_response_not_a_200(
 
 
 # --- Repository scoped to one user -----------------------------------------------------------
+# Isolation of each real table is tested with tests/isolation.py; these cover the base class.
 
 
-def test_repository_refuses_to_exist_without_a_user_id(notes: Session) -> None:
-    for missing in (None, "", str(ALICE)):
+def test_repository_refuses_to_exist_without_a_user_id(db_session: Session) -> None:
+    for missing in (None, "", str(uuid.uuid4())):
         with pytest.raises(TypeError):
-            NoteRepository(notes, missing)  # pyright: ignore[reportArgumentType]
+            SubjectRepository(db_session, missing)  # pyright: ignore[reportArgumentType]
 
 
-def test_repository_only_sees_its_own_users_rows(notes: Session) -> None:
-    alice, bob = NoteRepository(notes, ALICE), NoteRepository(notes, BOB)
-    mine = alice.add(Note(body="ghi chú của Alice"))
-    bob.add(Note(body="ghi chú của Bob"))
-    notes.flush()
-
-    assert [n.body for n in alice.list()] == ["ghi chú của Alice"]
-    assert alice.get(mine.id) is mine
-    assert bob.get(mine.id) is None
-
-
-def test_repository_sets_the_owner_whatever_the_caller_passes(notes: Session) -> None:
-    note = NoteRepository(notes, ALICE).add(Note(body="x", user_id=BOB))
-    assert note.user_id == ALICE
-
-
-def test_repository_delete_cannot_touch_another_users_row(notes: Session) -> None:
-    mine = NoteRepository(notes, ALICE).add(Note(body="x"))
-    notes.flush()
-    assert NoteRepository(notes, BOB).delete(mine.id) is False
-    assert NoteRepository(notes, ALICE).delete(mine.id) is True
-    notes.flush()
-    assert notes.scalar(select(func.count()).select_from(Note)) == 0
+def test_repository_sets_the_owner_whatever_the_caller_passes(
+    db_session: Session, two_users: tuple[User, User]
+) -> None:
+    alice, bob = two_users
+    subject = SubjectRepository(db_session, alice.id).add(Subject(name="x", user_id=bob.id))
+    assert subject.user_id == alice.id
 
 
 # --- Each test leaves the database as it found it (run in random order) ----------------------
 
 
 @pytest.mark.parametrize("attempt", [1, 2])
-def test_rows_from_other_tests_are_never_visible(notes: Session, attempt: int) -> None:
-    NoteRepository(notes, ALICE).add(Note(body=f"attempt {attempt}"))
-    notes.commit()  # a commit inside a test is still rolled back afterwards
-    assert notes.scalar(select(func.count()).select_from(Note)) == 1
+def test_rows_from_other_tests_are_never_visible(
+    db_session: Session, two_users: tuple[User, User], attempt: int
+) -> None:
+    SubjectRepository(db_session, two_users[0].id).create(f"attempt {attempt}")
+    db_session.commit()  # a commit inside a test is still rolled back afterwards
+    assert db_session.scalar(select(func.count()).select_from(Subject)) == 1
