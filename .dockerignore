@@ -1,0 +1,11 @@
+# Applies to images built with the repo root as context (apps/web).
+**/node_modules
+**/.next
+**/.venv
+.git
+.env
+.env.*
+docs
+data
+PLAN.md
+PROGRESS.md
