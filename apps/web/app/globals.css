@@ -3,144 +3,213 @@
 @import "shadcn/tailwind.css";
 
 /*
- * Design tokens (T1.1, ADR-0004). Built for evenings, when tired: soft warm background instead
- * of pure white, deep blue-grey instead of black in dark mode, one calm blue for actions.
+ * Design tokens from docs/DESIGN.md (§3), visual direction "vở ô li, bút hồng và bút dạ quang cam".
+ * Type sizes follow the canvas (Type artboard) where it differs from DESIGN.md §3.2.
  *
- * Rules:
- * - Nothing "not done yet" is ever red (PRD §3, principle 5). Use `pending`, which is neutral.
- * - `destructive` is only for actions that cannot be undone (deleting an account or a subject),
- *   never for a state, a score or a backlog.
- * - Dark mode follows the operating system; there is no toggle (PRD §3, principle 3).
+ * Rules (DESIGN.md §2, §3.1):
+ * - No red anywhere, form errors included. Errors and warnings use `--partial` (vàng nghệ).
+ * - One accent for action: `--hong`. Links are `--ink` + underline.
+ * - Hồng stays near 330°, cam near 27°: never drift towards red.
+ * - A status colour never stands alone: always with words and a distinct shape.
+ * - Components use these tokens, never raw hex. shadcn's tokens are mapped onto them below.
  *
- * Every text/background pair below has a WCAG contrast ratio of at least 4.5:1 in both modes.
+ * Dark mode is designed first (evenings). It follows the OS unless <html data-theme> says
+ * otherwise; the account menu will set it (DESIGN.md §3.6, T1.12).
  */
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
 
 @theme inline {
-  --font-sans: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-lexend), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-display);
+  --font-hand: var(--font-patrick-hand), cursive;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, monospace;
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-pending: var(--pending);
-  --color-pending-foreground: var(--pending-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+  /* Essity tokens (DESIGN.md §3.1). */
+  --color-paper: var(--paper);
+  --color-sheet: var(--sheet);
+  --color-subtle: var(--subtle);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-hong: var(--hong);
+  --color-on-hong: var(--on-hong);
+  --color-cam: var(--cam);
+  --color-cover: var(--cover);
+  --color-right: var(--right);
+  --color-partial: var(--partial);
+  --color-miss: var(--miss);
+  --color-hl: var(--hl);
+  --shadow-elev: var(--elev);
+  --shadow-panel: var(--panel);
+  --shadow-book: var(--book);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* shadcn/ui tokens, mapped onto the ones above: no new colours. */
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-card: var(--sheet);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--sheet);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--hong);
+  --color-primary-foreground: var(--on-hong);
+  --color-secondary: var(--sheet);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--subtle);
+  --color-muted-foreground: var(--ink-soft);
+  --color-accent: var(--subtle);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--partial); /* invalid fields: vàng nghệ, never red */
+  --color-border: var(--line);
+  --color-input: var(--ink-soft); /* input and secondary-button borders reach 3:1 */
+  --color-ring: var(--hong);
+
+  /* Type scale (canvas Type artboard). Vietnamese diacritics need ~0.1 more line height. */
+  --text-caption: 13px;
+  --text-caption--line-height: 1.5;
+  --text-small: 14px;
+  --text-small--line-height: 1.55;
+  --text-body: 16px;
+  --text-body--line-height: 1.6;
+  --text-source: 18px;
+  --text-source--line-height: 1.75;
+  --text-answer: 18px;
+  --text-answer--line-height: 32px; /* sits on the 32px ruled lines (§3.4) */
+  --text-hand: 27px;
+  --text-hand--line-height: 1.1;
+  --text-section: 22px;
+  --text-section--line-height: 1.35;
+  --text-section--font-weight: 600;
+  --text-question: 26px;
+  --text-question--line-height: 1.45;
+  --text-question--font-weight: 500;
+  --text-verdict: 40px; /* canvas Controls artboard and DESIGN.md agree */
+  --text-verdict--line-height: 1.25;
+  --text-verdict--font-weight: 800;
+  --text-verdict--letter-spacing: -0.03em;
+  --text-title: 52px;
+  --text-title--line-height: 1.15;
+  --text-title--font-weight: 700;
+  --text-title--letter-spacing: -0.02em;
+  --text-display: 64px;
+  --text-display--line-height: 1;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.02em;
+
+  /* Radius by level (§3.3): buttons and inputs, images and groups, cards and panels. */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 }
 
 :root {
-  --radius: 0.75rem;
-
-  --background: oklch(0.985 0.006 85);
-  --foreground: oklch(0.24 0.015 260);
-  --card: oklch(0.997 0.003 85);
-  --card-foreground: var(--foreground);
-  --popover: var(--card);
-  --popover-foreground: var(--foreground);
-
-  --primary: oklch(0.48 0.09 235);
-  --primary-foreground: oklch(0.985 0.005 235);
-  --secondary: oklch(0.95 0.012 235);
-  --secondary-foreground: oklch(0.3 0.03 235);
-  --muted: oklch(0.955 0.008 85);
-  --muted-foreground: oklch(0.5 0.015 260);
-  --accent: oklch(0.94 0.02 235);
-  --accent-foreground: oklch(0.28 0.03 235);
-
-  /* Done, correct. */
-  --success: oklch(0.5 0.09 155);
-  --success-foreground: oklch(0.985 0.005 155);
-  /* Not done yet, not reviewed yet: neutral on purpose. */
-  --pending: var(--muted);
-  --pending-foreground: var(--muted-foreground);
-  /* Irreversible actions only. */
-  --destructive: oklch(0.53 0.15 25);
-  --destructive-foreground: oklch(0.985 0.005 25);
-
-  --border: oklch(0.9 0.008 85);
-  --input: oklch(0.9 0.008 85);
-  --ring: oklch(0.6 0.08 235);
-
-  /* Charts (US-10): blue, green, ochre, violet, teal. No red. */
-  --chart-1: oklch(0.55 0.09 235);
-  --chart-2: oklch(0.58 0.09 155);
-  --chart-3: oklch(0.68 0.1 75);
-  --chart-4: oklch(0.55 0.09 300);
-  --chart-5: oklch(0.6 0.07 195);
+  --paper: #ffffff;
+  --sheet: #ffffff;
+  --subtle: #faf5f3;
+  --ink: #2a2120;
+  --ink-soft: #6b5f5c;
+  --line: #eadfdb;
+  --hong: #b42e6e;
+  --on-hong: #ffffff;
+  --cam: #a84f0c;
+  --cover: #f9d9e6;
+  --right: #2c7a57;
+  --partial: #7d6500;
+  --miss: #66605e;
+  --hl: color-mix(in srgb, var(--cam) 30%, transparent);
+  --elev: 0 6px 16px rgb(42 33 32 / 0.12);
+  --panel: 0 16px 40px rgb(42 33 32 / 0.18);
+  --book: 0 18px 40px rgb(42 33 32 / 0.16);
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: oklch(0.2 0.015 260);
-    --foreground: oklch(0.92 0.01 85);
-    --card: oklch(0.24 0.016 260);
-
-    --primary: oklch(0.76 0.08 235);
-    --primary-foreground: oklch(0.2 0.02 260);
-    --secondary: oklch(0.29 0.02 260);
-    --secondary-foreground: oklch(0.9 0.01 85);
-    --muted: oklch(0.27 0.015 260);
-    --muted-foreground: oklch(0.72 0.015 260);
-    --accent: oklch(0.3 0.03 235);
-    --accent-foreground: oklch(0.92 0.01 85);
-
-    --success: oklch(0.74 0.1 155);
-    --success-foreground: oklch(0.2 0.02 260);
-    --destructive: oklch(0.7 0.13 25);
-    --destructive-foreground: oklch(0.2 0.02 260);
-
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 14%);
-    --ring: oklch(0.6 0.07 235);
-
-    --chart-1: oklch(0.72 0.09 235);
-    --chart-2: oklch(0.74 0.1 155);
-    --chart-3: oklch(0.78 0.1 75);
-    --chart-4: oklch(0.72 0.09 300);
-    --chart-5: oklch(0.75 0.07 195);
+  :root:not([data-theme="light"]) {
+    --paper: #211c1c;
+    --sheet: #2b2524;
+    --subtle: #2b2524;
+    --ink: #f4edea;
+    --ink-soft: #bdb0ac;
+    --line: #453b39;
+    --hong: #f48fbf;
+    --on-hong: #211c1c;
+    --cam: #f7a35c;
+    --cover: #44283a;
+    --right: #6ccb9f;
+    --partial: #e6c350;
+    --miss: #ada8a6;
+    --hl: color-mix(in srgb, var(--cam) 24%, transparent);
+    --elev: 0 0 0 1px #453b39;
+    --panel: 0 16px 40px rgb(0 0 0 / 0.5);
+    --book: 0 18px 40px rgb(0 0 0 / 0.4);
+    color-scheme: dark;
   }
+}
+
+/* Same values as the block above, for an explicit choice in the account menu. */
+:root[data-theme="dark"] {
+  --paper: #211c1c;
+  --sheet: #2b2524;
+  --subtle: #2b2524;
+  --ink: #f4edea;
+  --ink-soft: #bdb0ac;
+  --line: #453b39;
+  --hong: #f48fbf;
+  --on-hong: #211c1c;
+  --cam: #f7a35c;
+  --cover: #44283a;
+  --right: #6ccb9f;
+  --partial: #e6c350;
+  --miss: #ada8a6;
+  --hl: color-mix(in srgb, var(--cam) 24%, transparent);
+  --elev: 0 0 0 1px #453b39;
+  --panel: 0 16px 40px rgb(0 0 0 / 0.5);
+  --book: 0 18px 40px rgb(0 0 0 / 0.4);
+  color-scheme: dark;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
   html {
     @apply font-sans;
-    color-scheme: light dark;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-paper text-ink text-body;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+  /* Focus is always visible (§8): 2px hồng ring, 2px away. */
+  :focus-visible {
+    outline: 2px solid var(--hong);
+    outline-offset: 2px;
+  }
+  a {
+    @apply text-ink underline decoration-line underline-offset-4 hover:decoration-ink;
+  }
+  /* The one active motion is the grade result opening; everything respects reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
