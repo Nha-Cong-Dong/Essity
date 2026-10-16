@@ -9,11 +9,11 @@ dependencies = [
     "pydantic-settings>=2.6",
     "fsrs>=6,<7",
     "tzdata>=2026.5",
+    "httpx2>=2.13.1",
 ]
 
 [dependency-groups]
 dev = [
-    "httpx2>=2.13.1",
     "hypothesis>=6.170.0",
     "pyright>=1.1.390",
     "pytest>=8.3",
