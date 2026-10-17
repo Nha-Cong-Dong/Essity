@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     rules: {
       "*.css": {
+        // CSS Modules (components/**/*.module.css) are plain CSS: leave them to Next, which
+        // scopes their class names. Run through Tailwind they lose their exports.
+        condition: { not: { path: "*.module.css" } },
         loaders: ["@tailwindcss/turbopack"],
         as: "*.css",
       },
