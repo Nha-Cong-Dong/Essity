@@ -31,6 +31,8 @@ class Settings(DatabaseSettings):
     smtp_password: SecretStr | None = None
     smtp_starttls: bool = False
     email_from: str = "no-reply@localhost"
+    # Where links in emails point: the web app, the only service on the internet (ARCH §3).
+    web_base_url: str = "http://localhost:3000"
 
     ai_service_url: str = "http://127.0.0.1:8001"
     # Sent to ai-service in X-Service-Token. No default: core-api refuses to start without one,
