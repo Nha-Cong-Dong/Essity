@@ -31,6 +31,8 @@ MAILPIT_SMTP_PORT = os.environ.get("CORE_TEST_SMTP_PORT", "1025")
 MAILPIT_API = os.environ.get("CORE_TEST_MAILPIT_API", "http://127.0.0.1:8025")
 WEB_BASE_URL = "https://essity.example"
 
+pytestmark = pytest.mark.usefixtures("clean_jobs")
+
 
 @pytest.fixture(autouse=True)
 def email_settings(monkeypatch: pytest.MonkeyPatch) -> None:

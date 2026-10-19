@@ -27,6 +27,8 @@ from core_api.telemetry import configure_tracing
 
 EMAIL = "someone@example.com"
 
+pytestmark = pytest.mark.usefixtures("clean_jobs")
+
 _lock = threading.Lock()
 handled: list[dict[str, Any]] = []
 failed: list[dict[str, Any]] = []

@@ -6,7 +6,6 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-import core_api.jobs.registry  # noqa: F401  # pyright: ignore[reportUnusedImport]  # registers kinds
 from core_api.jobs.app import deferrer
 from core_api.jobs.handler import check_kind
 
@@ -21,6 +20,10 @@ def enqueue_job(session: Session, kind: str, payload: dict[str, Any]) -> None:
     connection is opened. Raises `UnknownJobKind` for a kind without a handler and `TypeError`
     for a payload that is not JSON-serialisable, before anything is written.
     """
+    # Imported here, not at the top: handler modules import this one to offer helpers such as
+    # `enqueue_email`, so a top-level import would make a cycle (tests/jobs/test_boundary.py).
+    import core_api.jobs.registry  # noqa: F401  # pyright: ignore[reportUnusedImport]
+
     check_kind(kind)
     json.dumps(payload)
     # The psycopg connection under the session, in the transaction the session has begun.

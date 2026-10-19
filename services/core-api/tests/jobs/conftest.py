@@ -9,9 +9,12 @@ from core_api.jobs.app import libpq_conninfo
 from core_api.jobs.worker import run, run_workers
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def clean_jobs(engine: Engine) -> Iterator[None]:
-    """Empty the job tables around each test: workers only see committed jobs."""
+    """Empty the job tables around each test: workers only see committed jobs.
+
+    Test modules that run jobs use it with `pytestmark = pytest.mark.usefixtures("clean_jobs")`.
+    """
 
     def clean() -> None:
         with engine.begin() as connection:
