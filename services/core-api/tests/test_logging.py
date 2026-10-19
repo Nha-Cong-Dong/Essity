@@ -106,6 +106,19 @@ def test_exception_message_is_not_logged(log_lines: Lines, raw_output: Callable[
     assert SECRETS["password"] not in raw_output()
 
 
+def test_library_messages_with_data_keep_only_the_event_name(
+    log_lines: Lines, raw_output: Callable[[], str]
+) -> None:
+    logging.getLogger("procrastinate.worker.w-0").info(
+        f"Starting job send_email[7](payload={{'token': '{SECRETS['token']}'}})",
+        extra={"action": "start_job", "job": {"task_kwargs": SECRETS}},
+    )
+    [line] = log_lines()
+    assert line["message"] == "start_job"
+    assert "dropped_fields" not in line
+    assert SECRETS["token"] not in raw_output()
+
+
 def test_uvicorn_access_log_is_disabled(log_lines: Lines) -> None:
     logging.getLogger("uvicorn.access").info('127.0.0.1 - "GET /verify?token=x HTTP/1.1" 200')
     assert log_lines() == []

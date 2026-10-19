@@ -9,6 +9,9 @@ Personal data stays out of the logs by construction, not by care at each call si
 - Exceptions are logged as type and stack, without the message: messages often embed input
   values (pydantic's ValidationError prints `input_value=...`).
 - The message itself is free text, so keep it constant and put data in allowed fields.
+- Libraries that format data into their messages are in `_DATA_IN_MESSAGE_LOGGERS`: their
+  lines keep only the constant event name they pass as `action`, and none of their extras.
+  Procrastinate, for one, writes every job's arguments (email addresses) into its messages.
 - uvicorn's access log is replaced by `log_requests`, which logs the path without the query
   string (email verification links will carry tokens there, ADR-0014). httpx2's own
   "HTTP Request: GET <url>" lines are silenced for the same reason.
@@ -49,8 +52,14 @@ ALLOWED_FIELDS = frozenset(
         "email",  # masked by the formatter
         "upstream",
         "upstream_status",
+        "job_kind",
+        "job_id",
+        "attempt",
+        "outcome",
     }
 )
+# Top-level logger names; see the module docstring.
+_DATA_IN_MESSAGE_LOGGERS = frozenset({"procrastinate"})
 
 _STANDARD_ATTRS = frozenset(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
 # Not personal data, just noise: uvicorn repeats the message with ANSI colors.
@@ -75,12 +84,14 @@ class JsonFormatter(logging.Formatter):
         self._service = service
 
     def format(self, record: logging.LogRecord) -> str:
+        data_in_message = record.name.partition(".")[0] in _DATA_IN_MESSAGE_LOGGERS
+        message = str(record.__dict__.get("action") or "-") if data_in_message else None
         line: dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(record.created, UTC).isoformat(),
             "level": record.levelname,
             "service": self._service,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": record.getMessage() if message is None else message,
             "request_id": request_id_var.get(),
             "user_id": user_id_var.get(),
         }
@@ -90,7 +101,7 @@ class JsonFormatter(logging.Formatter):
             line["span_id"] = format(span.span_id, "016x")
         dropped: list[str] = []
         for key, value in record.__dict__.items():
-            if key in _STANDARD_ATTRS or key in _IGNORED_EXTRAS:
+            if key in _STANDARD_ATTRS or key in _IGNORED_EXTRAS or data_in_message:
                 continue
             if key in ALLOWED_FIELDS:
                 line[key] = mask_email(str(value)) if key == "email" else value

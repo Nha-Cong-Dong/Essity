@@ -11,8 +11,9 @@ uv run ruff check .      # lint
 uv run ruff format .     # format
 uv run pyright           # type check (strict)
 uv run uvicorn core_api.main:app --reload
+uv run python -m core_api.jobs.worker                         # background job worker
 uv run alembic upgrade head                                   # apply migrations
-uv run alembic revision --autogenerate --rev-id 0002 -m "..."  # new migration
+uv run alembic revision --autogenerate --rev-id 0003 -m "..."  # new migration
 uv run alembic check                                          # models match migrations
 ```
 
@@ -24,6 +25,7 @@ src/core_api/
   domain/         business rules; no HTTP, no SQL
   repositories/   database access; every function takes user_id
   clients/        external services (ai-service, email, storage)
+  jobs/           background jobs (Procrastinate); the only package importing it
 ```
 
 ## Configuration
@@ -48,6 +50,17 @@ Tests use `CORE_TEST_DATABASE_URL` (default: the Compose Postgres, database `cor
 ## Rate limits
 
 `core_api.security.rate_limit`: a `RateLimit(name, limit, window)` rule and a `RateLimiter` (dependency `get_rate_limiter`). `limiter.enforce(rule, key)` counts an attempt and answers 429 with `Retry-After` when over the limit; `check` looks without counting. Keys (emails, IPs) are hashed before reaching Redis. If Redis is unreachable the limiter answers 503 instead of letting requests through. Per-IP keys come from `security.client_ip.client_ip`.
+
+## Background jobs (ADR-0014)
+
+Jobs run in the `core-worker` process (`python -m core_api.jobs.worker`), on Procrastinate with PostgreSQL as the queue.
+
+- `enqueue_job(session, kind, payload)` (`core_api.jobs.queue`) writes the job in the session's transaction: no job if the route rolls back, visible to workers once it commits. Unknown kinds and non-JSON payloads are refused at once.
+- Handlers are synchronous functions declared in `core_api/jobs/registry.py` with `@job_handler("<kind>")`. They receive the payload as a dict and may run more than once for the same job, so they must be idempotent.
+- A failing handler is retried after 10 s, 30 s, 90 s and 270 s; after the fifth failure the job stays in `procrastinate_jobs` with status `failed`.
+- On SIGTERM the worker takes no new job and waits up to 20 s for the running one.
+- Payloads may hold personal data: they are never logged, and Procrastinate's own log lines keep only their event name.
+- Procrastinate's schema comes from migration `0002` (SQL frozen in `migrations/sql/`). Upgrading Procrastinate means a new migration with its migration SQL, never `procrastinate schema --apply`.
 
 ## Sync vs async convention (ADR-0005)
 
