@@ -12,10 +12,6 @@
   max-width: 620px;
 }
 
-.tilted {
-  transform: rotate(-1deg);
-}
-
 /* The sheet of paper behind the cover. */
 .under {
   position: absolute;
@@ -109,9 +105,9 @@
   margin: 0;
   font-family: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
   font-size: 64px;
-  font-weight: 800;
+  font-weight: 650;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
 }
 
 /* Two pink stripes across the cover, bleeding to its edges. */
@@ -184,13 +180,15 @@
   color: var(--ink-soft);
 }
 
-/* Handwritten value on a dotted line. */
+/* Written value on a dotted line: italic, in the pink of the user's own writing. */
 .rowValue {
   border-bottom: 2px dotted color-mix(in srgb, var(--ink-soft) 55%, transparent);
   padding: 0 4px 2px;
-  font-family: var(--font-patrick-hand), cursive;
-  font-size: 27px;
-  line-height: 1.1;
+  font-family: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--hong);
 }
 
@@ -216,12 +214,12 @@
 
 .pencil {
   display: inline-block;
-  font-family: var(--font-patrick-hand), cursive;
-  font-size: 27px;
-  line-height: 1.1;
+  font-family: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--miss);
-  transform: rotate(-1.2deg);
-  transform-origin: left;
 }
 
 @media (max-width: 640px) {

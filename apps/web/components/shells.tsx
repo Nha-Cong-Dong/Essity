@@ -14,7 +14,7 @@ export type NavItem = (typeof NAV)[number]["href"];
 
 function Logo() {
   return (
-    <span className="font-display text-[24px] font-extrabold tracking-[-0.03em] text-hong">
+    <span className="font-display text-[24px] font-bold tracking-[-0.03em] text-hong">
       Essity
     </span>
   );

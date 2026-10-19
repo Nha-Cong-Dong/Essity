@@ -1,23 +1,21 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, JetBrains_Mono, Lexend, Patrick_Hand } from "next/font/google";
+import { Be_Vietnam_Pro, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 
 import "./globals.css";
 
-// DESIGN.md §3.2. All four have a Vietnamese subset; next/font self-hosts them, so browsers
+// DESIGN.md §3.2. All three have a Vietnamese subset; next/font self-hosts them, so browsers
 // never call Google and text never waits on a font request.
-const lexend = Lexend({
+const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
-  variable: "--font-lexend", // interface, body text, answers, document excerpts
+  // Not a variable font: list the weights in use. Italic is the "written" voice (font-hand).
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-be-vietnam-pro", // interface, body text, answers, written values
 });
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin", "vietnamese"],
   axes: ["opsz"],
   variable: "--font-bricolage", // titles, numbers, questions, logo
-});
-const patrickHand = Patrick_Hand({
-  subsets: ["latin", "vietnamese"],
-  weight: "400",
-  variable: "--font-patrick-hand", // short handwritten values, pencil grading notes
 });
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin", "vietnamese"],
@@ -30,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  const fonts = [lexend, bricolage, patrickHand, jetbrainsMono].map((f) => f.variable).join(" ");
+  const fonts = [beVietnamPro, bricolage, jetbrainsMono].map((f) => f.variable).join(" ");
   return (
     <html lang="vi" className={`${fonts} h-full antialiased`}>
       <body className="flex min-h-full flex-col">{children}</body>
