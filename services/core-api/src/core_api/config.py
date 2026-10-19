@@ -1,7 +1,11 @@
 from functools import lru_cache
+from typing import Self
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Environments where defaults pointing at localhost are fine.
+DEV_ENVIRONMENTS = frozenset({"local", "test"})
 
 
 class DatabaseSettings(BaseSettings):
@@ -32,6 +36,7 @@ class Settings(DatabaseSettings):
     smtp_starttls: bool = False
     email_from: str = "no-reply@localhost"
     # Where links in emails point: the web app, the only service on the internet (ARCH §3).
+    # Outside local and test it must be set, and https: the links carry one-time tokens.
     web_base_url: str = "http://localhost:3000"
 
     ai_service_url: str = "http://127.0.0.1:8001"
@@ -41,6 +46,15 @@ class Settings(DatabaseSettings):
     # Below web's 3 s timeout for core-api, so a hung ai-service is reported as such
     # instead of web timing out and blaming core-api.
     ai_service_timeout_seconds: float = Field(default=2.0, gt=0)
+
+    @model_validator(mode="after")
+    def _web_url_fits_environment(self) -> Self:
+        if self.environment not in DEV_ENVIRONMENTS and (
+            "web_base_url" not in self.model_fields_set
+            or not self.web_base_url.startswith("https://")
+        ):
+            raise ValueError("web_base_url must be set to an https:// URL outside local and test")
+        return self
 
 
 @lru_cache

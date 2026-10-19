@@ -7,11 +7,13 @@ import pkgutil
 import core_api.repositories
 from core_api.db.base import Base
 from core_api.repositories.base import UserScopedRepository
+from core_api.repositories.email_token import EmailTokenRepository
 from core_api.repositories.user import UserRepository
 
 # Repositories allowed to query without a user_id, and why.
 UNSCOPED = {
     UserRepository: "finds the user in the first place (sign-up, login)",
+    EmailTokenRepository: "finds the user from the token in an email link (nobody is signed in)",
 }
 
 
