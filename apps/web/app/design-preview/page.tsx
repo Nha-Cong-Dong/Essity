@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { FieldError, FieldHint } from "@/components/field-error";
+import { NhanVo, NhanVoRow, NotebookCover, PencilNote } from "@/components/notebook";
 import { AppShell } from "@/components/shells";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,8 @@ import { ThemeSwitch } from "./theme-switch";
 
 export const metadata: Metadata = { title: "Design preview · Essity" };
 
-// Every token and base control of docs/DESIGN.md §3 and §7 on one page (T1.1). The notebook
-// objects (NotebookCover, NhanVo, NotebookPage...) are added here as they are built.
+// Every token, base control and notebook object of docs/DESIGN.md §3 and §7 on one page (T1.1).
+// NotebookPage (trang vở) is added with the review screens.
 
 const SURFACES = [
   ["paper", "bg-paper text-ink"],
@@ -133,6 +134,28 @@ export default function DesignPreviewPage() {
             <Badge>Vận dụng</Badge>
             <Badge>Vận dụng cao</Badge>
           </div>
+        </section>
+
+        <section className="flex flex-col gap-8">
+          <h2 className="text-section">Đồ vật: bìa vở, nhãn vở, bút dạ, bút chì</h2>
+          <div className="flex justify-center px-6 pt-8 pb-12">
+            <NotebookCover
+              tilt
+              title="Hôm nay"
+              aside={<span className="font-hand text-[24px] text-cam">thứ Sáu, 16/10</span>}
+            >
+              <NhanVo>
+                <p className="m-0 mb-3.5 text-center font-display text-[18px] font-bold text-hong">
+                  Phiên ôn
+                </p>
+                <NhanVoRow label="Số câu">14 câu</NhanVoRow>
+                <NhanVoRow label="Thời gian">khoảng 25 phút</NhanVoRow>
+                <NhanVoRow label="Môn">Mạng máy tính, Hệ điều hành</NhanVoRow>
+              </NhanVo>
+              <Button className="h-15 w-full rounded-[10px] text-[18px]">Bắt đầu</Button>
+            </NotebookCover>
+          </div>
+          <PencilNote>còn thiếu · hiểu được vì sao</PencilNote>
         </section>
       </div>
     </AppShell>
