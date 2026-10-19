@@ -1,7 +1,5 @@
 # --- Tài liệu nội bộ: chỉ giữ cục bộ, không đẩy lên repo công khai ---
 /docs/
-/PLAN.md
-/PROGRESS.md
 
 # --- Secrets & môi trường ---
 .env
