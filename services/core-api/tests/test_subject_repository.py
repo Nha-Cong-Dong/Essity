@@ -5,6 +5,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from core_api.db.base import OwnerChangeError
 from core_api.db.models import Exam, Subject, User
 from core_api.repositories.subject import ExamRepository, SubjectNotFoundError, SubjectRepository
 from isolation import assert_isolated
@@ -54,6 +55,35 @@ def test_database_refuses_an_exam_whose_owner_differs_from_its_subjects(
             ),
             {"user_id": alice.id, "subject_id": bobs_subject.id, "day": EXAM_DAY},
         )
+
+
+def test_flush_refuses_a_row_whose_owner_was_changed(
+    db_session: Session, two_users: tuple[User, User]
+) -> None:
+    # Any code path, not only the repository: assigning user_id on a saved row is refused when
+    # the session writes it.
+    alice, bob = two_users
+    subject = SubjectRepository(db_session, alice.id).create("Mạng máy tính")
+    db_session.flush()
+    subject.user_id = bob.id
+    with pytest.raises(OwnerChangeError):
+        db_session.flush()
+    with db_session.no_autoflush:
+        owner = db_session.scalar(
+            text("SELECT user_id FROM subject WHERE id = :id"), {"id": subject.id}
+        )
+    assert owner == alice.id
+
+
+def test_flush_allows_setting_the_same_owner_again(
+    db_session: Session, two_users: tuple[User, User]
+) -> None:
+    alice, _ = two_users
+    subject = SubjectRepository(db_session, alice.id).create("Mạng máy tính")
+    db_session.flush()
+    subject.user_id = alice.id
+    subject.name = "Hệ điều hành"
+    db_session.flush()
 
 
 def test_subject_name_is_trimmed_and_cannot_be_blank(

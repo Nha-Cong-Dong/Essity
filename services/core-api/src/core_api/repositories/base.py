@@ -10,8 +10,9 @@ from collections.abc import Sequence
 
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import instance_state
 
-from core_api.db.base import UserOwned
+from core_api.db.base import OwnerChangeError, UserOwned
 
 
 class UserScopedRepository[M: UserOwned]:
@@ -34,6 +35,12 @@ class UserScopedRepository[M: UserOwned]:
         return self.session.scalars(self._select()).all()
 
     def add(self, obj: M) -> M:
+        """Save a new object as this user's. An object the session already holds keeps its owner:
+        another user's raises `OwnerChangeError` instead of moving to this one."""
+        if not instance_state(obj).transient:
+            if obj.user_id != self.user_id:
+                raise OwnerChangeError(f"{type(obj).__name__} {obj.id} belongs to another user")
+            return obj
         obj.user_id = self.user_id  # the owner is the repository's user, never the caller's
         self.session.add(obj)
         return obj
