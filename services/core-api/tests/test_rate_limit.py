@@ -2,6 +2,8 @@
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 """T1.6: rate limiting on Redis. Runs on a real Redis (database 15, see conftest)."""
 
+import hashlib
+import time
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -12,7 +14,9 @@ from redis import Redis
 
 from core_api.clients.redis import redis_from_url
 from core_api.security.rate_limit import (
+    Cooldown,
     RateLimit,
+    RateLimitedError,
     RateLimiter,
     RateLimiterUnavailableError,
     install_rate_limit_handlers,
@@ -93,6 +97,41 @@ def test_unreachable_redis_refuses_instead_of_allowing() -> None:
     dead = redis_from_url("redis://127.0.0.1:1/0", timeout=0.2)
     with pytest.raises(RateLimiterUnavailableError):
         RateLimiter(dead, now=Clock()).hit(rule(), "k")
+
+
+# --- Cooldown --------------------------------------------------------------------------------
+
+
+def cooldown(seconds: int = 60) -> Cooldown:
+    return Cooldown(name=f"test-{uuid.uuid4().hex}", period=timedelta(seconds=seconds))
+
+
+def test_cooldown_refuses_a_second_attempt_within_its_period(redis_client: Redis) -> None:
+    limiter, rule_ = RateLimiter(redis_client), cooldown(60)
+    limiter.enforce_cooldown(rule_, "alice@example.com")
+    with pytest.raises(RateLimitedError) as refused:
+        limiter.enforce_cooldown(rule_, "alice@example.com")
+    assert 0 < refused.value.retry_after_seconds <= 60
+    limiter.enforce_cooldown(rule_, "bob@example.com")  # per key
+
+
+def test_cooldown_is_measured_from_the_last_attempt_not_a_window(redis_client: Redis) -> None:
+    # A fixed window would allow 23:59:59 and 00:00:01. The cooldown key lives exactly as
+    # long as the period, so it ends on its own after it, and not before.
+    limiter, rule_ = RateLimiter(redis_client), cooldown(60)
+    limiter.enforce_cooldown(rule_, "k")
+    [key] = list(redis_client.scan_iter(f"ratelimit:{rule_.name}:*"))
+    assert 55 < redis_client.ttl(key) <= 60
+    assert key.decode() == f"ratelimit:{rule_.name}:{hashlib.sha256(b'k').hexdigest()}"
+    redis_client.pexpire(key, 1)  # the period has passed
+    time.sleep(0.05)
+    limiter.enforce_cooldown(rule_, "k")
+
+
+def test_cooldown_with_unreachable_redis_refuses() -> None:
+    dead = redis_from_url("redis://127.0.0.1:1/0", timeout=0.2)
+    with pytest.raises(RateLimiterUnavailableError):
+        RateLimiter(dead).enforce_cooldown(cooldown(), "k")
 
 
 # --- HTTP ------------------------------------------------------------------------------------

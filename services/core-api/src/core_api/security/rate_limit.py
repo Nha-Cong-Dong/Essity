@@ -31,6 +31,12 @@ class RateLimit:
 
 
 @dataclass(frozen=True)
+class Cooldown:
+    name: str
+    period: timedelta
+
+
+@dataclass(frozen=True)
 class RateLimitResult:
     allowed: bool
     retry_after_seconds: int  # until the current window ends
@@ -85,6 +91,23 @@ class RateLimiter:
             raise RateLimiterUnavailableError from exc
         count = int(raw) if raw is not None else 0  # pyright: ignore[reportArgumentType]
         return RateLimitResult(allowed=count < rule.limit, retry_after_seconds=remaining)
+
+    def enforce_cooldown(self, rule: Cooldown, key: str) -> None:
+        """At most one attempt per `period` for each key, counted from the last allowed one.
+
+        Unlike `enforce`, no window boundary lets two attempts through a second apart: the
+        key lives exactly `period` and is only set when absent. Raise RateLimitedError (HTTP
+        429) with the time left.
+        """
+        digest = hashlib.sha256(key.encode()).hexdigest()
+        redis_key = f"{KEY_PREFIX}:{rule.name}:{digest}"
+        try:
+            if self.redis.set(redis_key, 1, nx=True, ex=int(rule.period.total_seconds())):
+                return
+            remaining = int(self.redis.ttl(redis_key))  # pyright: ignore[reportArgumentType]
+        except RedisError as exc:
+            raise RateLimiterUnavailableError from exc
+        raise RateLimitedError(max(remaining, 1))
 
     def enforce(self, rule: RateLimit, key: str) -> None:
         """Count one attempt; raise RateLimitedError (HTTP 429) when over the limit."""

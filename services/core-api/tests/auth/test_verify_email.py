@@ -8,7 +8,6 @@ email is verified, then none does).
 import hashlib
 import threading
 import uuid
-from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -17,26 +16,11 @@ from sqlalchemy import Engine, select, text
 from sqlalchemy.orm import Session
 
 from core_api.db.models import EmailToken, User
-from core_api.db.session import get_session
-from core_api.domain.auth.tokens import VERIFY_EMAIL_TTL, TokenPurpose
-from core_api.main import app
+from core_api.domain.auth.tokens import TokenPurpose
 from core_api.repositories.email_token import EmailTokenRepository
 from core_api.repositories.user import UserRepository
 
 VERIFY = "/v1/auth/verify-email"
-
-
-@pytest.fixture
-def client(db_session: Session) -> Iterator[TestClient]:
-    """The real app, its requests running in the test's rolled-back session."""
-
-    def session_override() -> Iterator[Session]:
-        yield db_session
-        db_session.flush()
-
-    app.dependency_overrides[get_session] = session_override
-    yield TestClient(app)
-    app.dependency_overrides.pop(get_session)
 
 
 @pytest.fixture
@@ -73,10 +57,15 @@ def test_ac2_a_link_works_only_once(
 def test_ac2_a_link_expires_after_24_hours(
     client: TestClient, user: User, tokens: EmailTokenRepository
 ) -> None:
-    issued = datetime.now(UTC) - VERIFY_EMAIL_TTL - timedelta(seconds=1)
-    raw = tokens.issue(user.id, TokenPurpose.VERIFY_EMAIL, now=issued)
-    assert verify(client, raw) == 400
-    assert VERIFY_EMAIL_TTL == timedelta(hours=24)
+    now = datetime.now(UTC)
+    still_valid = tokens.issue(
+        user.id, TokenPurpose.VERIFY_EMAIL, now=now - timedelta(hours=23, minutes=59)
+    )
+    expired = tokens.issue(
+        user.id, TokenPurpose.VERIFY_EMAIL, now=now - timedelta(hours=24, seconds=1)
+    )
+    assert verify(client, expired) == 400
+    assert verify(client, still_valid) == 200
 
 
 def test_unknown_used_and_expired_links_get_the_same_answer(
