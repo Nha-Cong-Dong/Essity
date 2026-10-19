@@ -24,10 +24,10 @@ from core_api.security.rate_limit import Cooldown, RateLimit, RateLimiter, get_r
 
 router = APIRouter(prefix="/v1/auth")
 
-# ADR-0014 limits sign-ups per IP without a number; 10 an hour leaves room for a shared
-# network (a dormitory) and stops a script. Tune from real traffic.
+# ADR-0014 limits sign-ups and resends per IP without a number. 10 an hour (owner's choice,
+# 2026-10-20) leaves room for a shared network (a dormitory) and stops a script; revisit with
+# the email provider's sending limits (T1.15).
 REGISTER_PER_IP = RateLimit("register_ip", 10, timedelta(hours=1))
-# Not in ADR-0014 either; same reasoning and number, pending the owner's choice.
 RESEND_PER_IP = RateLimit("resend_ip", 10, timedelta(hours=1))
 # ADR-0014: emails to one address at least 60 s apart, whichever endpoint sends them.
 EMAIL_COOLDOWN = Cooldown("email_address", timedelta(seconds=60))
