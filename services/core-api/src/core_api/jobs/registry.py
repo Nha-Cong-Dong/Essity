@@ -4,6 +4,6 @@ The API and the worker both import this module, so a kind is known on both sides
 refuses kinds missing here, and the worker would fail jobs whose kind it does not know.
 """
 
+# Modules that declare handlers; importing them registers their kinds.
+from core_api.jobs import send_email  # noqa: F401, E402  # pyright: ignore[reportUnusedImport]
 from core_api.jobs.handler import job_handler  # noqa: F401  # pyright: ignore[reportUnusedImport]
-
-# send_email (T1.5) goes here.

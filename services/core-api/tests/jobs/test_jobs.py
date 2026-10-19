@@ -19,14 +19,15 @@ from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
 from core_api.db.session import DbSession
-from core_api.jobs.app import MAX_ATTEMPTS, libpq_conninfo
+from core_api.jobs.app import MAX_ATTEMPTS
 from core_api.jobs.handler import UnknownJobKind, job_handler
 from core_api.jobs.queue import enqueue_job
-from core_api.jobs.worker import run, run_workers
 from core_api.logging import configure_logging
 from core_api.telemetry import configure_tracing
 
 EMAIL = "someone@example.com"
+
+pytestmark = pytest.mark.usefixtures("clean_jobs")
 
 _lock = threading.Lock()
 handled: list[dict[str, Any]] = []
@@ -53,32 +54,13 @@ def fail(payload: dict[str, Any]) -> None:
 
 
 @pytest.fixture(autouse=True)
-def clean_jobs(engine: Engine) -> Iterator[None]:
-    def clean() -> None:
-        with engine.begin() as connection:
-            connection.execute(text("DELETE FROM procrastinate_jobs"))
-            connection.execute(text("DELETE FROM procrastinate_workers"))
-        handled.clear()
-        failed.clear()
-
-    clean()
+def clean_handled() -> Iterator[None]:
+    # The job tables are emptied by `clean_jobs` (conftest.py).
+    handled.clear()
+    failed.clear()
     yield
-    clean()
-
-
-@pytest.fixture
-def work(test_database_url: str) -> Callable[..., None]:
-    """Run workers until no job is due, then return."""
-    conninfo = libpq_conninfo(test_database_url)
-
-    def work(count: int = 1) -> None:
-        run(
-            run_workers(
-                conninfo, count, wait=False, install_signal_handlers=False, listen_notify=False
-            )
-        )
-
-    return work
+    handled.clear()
+    failed.clear()
 
 
 def enqueue_committed(engine: Engine, kind: str, payload: dict[str, Any]) -> None:
