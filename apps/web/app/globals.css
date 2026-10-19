@@ -6,6 +6,9 @@
  * Design tokens from docs/DESIGN.md (§3), visual direction "vở ô li, bút hồng và bút dạ quang cam".
  * Type sizes follow the canvas (Type artboard) where it differs from DESIGN.md §3.2.
  *
+ * Option A of the 19/10 type and colour review ("vở chỉnh tề"): calmer pink, ash-pink cover,
+ * Be Vietnam Pro instead of Lexend, italic instead of a handwriting face, lighter display weights.
+ *
  * Rules (DESIGN.md §2, §3.1):
  * - No red anywhere, form errors included. Errors and warnings use `--partial` (vàng nghệ).
  * - One accent for action: `--hong`. Links are `--ink` + underline.
@@ -29,10 +32,9 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-lexend), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-display);
-  --font-hand: var(--font-patrick-hand), cursive;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, monospace;
 
   /* Essity tokens (DESIGN.md §3.1). */
@@ -85,8 +87,9 @@
   --text-source--line-height: 1.75;
   --text-answer: 18px;
   --text-answer--line-height: 32px; /* sits on the 32px ruled lines (§3.4) */
-  --text-hand: 27px;
-  --text-hand--line-height: 1.1;
+  --text-hand: 18px;
+  --text-hand--line-height: 1.4;
+  --text-hand--font-weight: 500;
   --text-section: 22px;
   --text-section--line-height: 1.35;
   --text-section--font-weight: 600;
@@ -95,11 +98,11 @@
   --text-question--font-weight: 500;
   --text-verdict: 40px; /* canvas Controls artboard and DESIGN.md agree */
   --text-verdict--line-height: 1.25;
-  --text-verdict--font-weight: 800;
+  --text-verdict--font-weight: 650;
   --text-verdict--letter-spacing: -0.03em;
   --text-title: 52px;
   --text-title--line-height: 1.15;
-  --text-title--font-weight: 700;
+  --text-title--font-weight: 650;
   --text-title--letter-spacing: -0.02em;
   --text-display: 64px;
   --text-display--line-height: 1;
@@ -115,14 +118,14 @@
 :root {
   --paper: #ffffff;
   --sheet: #ffffff;
-  --subtle: #faf5f3;
+  --subtle: #f8f4f2;
   --ink: #2a2120;
   --ink-soft: #6b5f5c;
-  --line: #eadfdb;
-  --hong: #b42e6e;
+  --line: #e7dedb;
+  --hong: #9e3a66;
   --on-hong: #ffffff;
-  --cam: #a84f0c;
-  --cover: #f9d9e6;
+  --cam: #985a26;
+  --cover: #f1e6e9;
   --right: #2c7a57;
   --partial: #7d6500;
   --miss: #66605e;
@@ -135,21 +138,21 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #211c1c;
-    --sheet: #2b2524;
-    --subtle: #2b2524;
-    --ink: #f4edea;
-    --ink-soft: #bdb0ac;
-    --line: #453b39;
-    --hong: #f48fbf;
-    --on-hong: #211c1c;
-    --cam: #f7a35c;
-    --cover: #44283a;
+    --paper: #201b1c;
+    --sheet: #2a2425;
+    --subtle: #2a2425;
+    --ink: #f2ecea;
+    --ink-soft: #b9aeab;
+    --line: #423a3a;
+    --hong: #e79bbe;
+    --on-hong: #201b1c;
+    --cam: #e0a36a;
+    --cover: #3a2a31;
     --right: #6ccb9f;
     --partial: #e6c350;
     --miss: #ada8a6;
     --hl: color-mix(in srgb, var(--cam) 24%, transparent);
-    --elev: 0 0 0 1px #453b39;
+    --elev: 0 0 0 1px #423a3a;
     --panel: 0 16px 40px rgb(0 0 0 / 0.5);
     --book: 0 18px 40px rgb(0 0 0 / 0.4);
     color-scheme: dark;
@@ -158,24 +161,31 @@
 
 /* Same values as the block above, for an explicit choice in the account menu. */
 :root[data-theme="dark"] {
-  --paper: #211c1c;
-  --sheet: #2b2524;
-  --subtle: #2b2524;
-  --ink: #f4edea;
-  --ink-soft: #bdb0ac;
-  --line: #453b39;
-  --hong: #f48fbf;
-  --on-hong: #211c1c;
-  --cam: #f7a35c;
-  --cover: #44283a;
+  --paper: #201b1c;
+  --sheet: #2a2425;
+  --subtle: #2a2425;
+  --ink: #f2ecea;
+  --ink-soft: #b9aeab;
+  --line: #423a3a;
+  --hong: #e79bbe;
+  --on-hong: #201b1c;
+  --cam: #e0a36a;
+  --cover: #3a2a31;
   --right: #6ccb9f;
   --partial: #e6c350;
   --miss: #ada8a6;
   --hl: color-mix(in srgb, var(--cam) 24%, transparent);
-  --elev: 0 0 0 1px #453b39;
+  --elev: 0 0 0 1px #423a3a;
   --panel: 0 16px 40px rgb(0 0 0 / 0.5);
   --book: 0 18px 40px rgb(0 0 0 / 0.4);
   color-scheme: dark;
+}
+
+/* Written values (label values, pencil notes, dates): the body face in italic, not a
+   handwriting font, which made the app look childish (type and colour review, 19/10). */
+@utility font-hand {
+  font-family: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
+  font-style: italic;
 }
 
 @layer base {

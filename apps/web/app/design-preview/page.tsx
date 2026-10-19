@@ -34,14 +34,14 @@ const INKS = [
 ] as const;
 
 const TYPE = [
-  ["title · Bricolage 52/700", "font-display text-title", "Xong phiên hôm nay"],
+  ["title · Bricolage 52/650", "font-display text-title", "Xong phiên hôm nay"],
   ["display · Bricolage 64/600", "font-display text-display", "14"],
-  ["verdict · 40/800", "font-display text-verdict", "Đúng một phần"],
+  ["verdict · 40/650", "font-display text-verdict", "Đúng một phần"],
   ["question · Bricolage 26/500", "font-display text-question", "Gói SYN-ACK bị mất. Client và server sẽ làm gì tiếp theo?"],
   ["section · 22/600", "font-display text-section", "Đáp án tham chiếu"],
   ["answer · 18/32px, hồng", "text-answer text-hong", "Client hết timeout và gửi lại SYN."],
   ["source · 18/1.75", "text-source", "Khi rwnd = 0, bên gửi bật persist timer."],
-  ["hand · Patrick Hand 27, chì", "font-hand text-hand text-miss -rotate-[1.2deg] origin-left", "còn thiếu · hiểu được vì sao"],
+  ["hand · Be Vietnam Pro nghiêng 18, chì", "font-hand text-hand text-miss", "còn thiếu · hiểu được vì sao"],
   ["body · 16/1.6", "text-body", "Vở ghi khác giáo trình ở điểm này."],
   ["small · 14 / caption · 13", "text-small text-ink-soft", "Giáo trình MMT · tr. 47 (trang file 55)"],
 ] as const;
@@ -140,9 +140,8 @@ export default function DesignPreviewPage() {
           <h2 className="text-section">Đồ vật: bìa vở, nhãn vở, bút dạ, bút chì</h2>
           <div className="flex justify-center px-6 pt-8 pb-12">
             <NotebookCover
-              tilt
               title="Hôm nay"
-              aside={<span className="font-hand text-[24px] text-cam">thứ Sáu, 16/10</span>}
+              aside={<span className="font-hand text-hand text-cam">thứ Sáu, 16/10</span>}
             >
               <NhanVo>
                 <p className="m-0 mb-3.5 text-center font-display text-[18px] font-bold text-hong">

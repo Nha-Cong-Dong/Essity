@@ -47,3 +47,6 @@ infra/**/data/
 .DS_Store
 Thumbs.db
 .claude/settings.local.json
+
+# Working files of design skills (taste-skill)
+.taste-skill/

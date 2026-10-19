@@ -12,31 +12,29 @@ export function Marker({ children }: { children: ReactNode }) {
   return <span className={styles.marker}>{children}</span>;
 }
 
-/** Lời chấm bút chì: short handwritten note in pencil grey ("còn thiếu", "hiểu được vì sao"). */
+/** Lời chấm bút chì: short italic note in pencil grey ("còn thiếu", "hiểu được vì sao"). */
 export function PencilNote({ children }: { children: ReactNode }) {
   return <span className={styles.pencil}>{children}</span>;
 }
 
 /**
- * Bìa vở: a pink notebook cover with an orange stapled spine, two stripes, squared texture,
- * corner protectors and a sheet of paper behind. Tilt it 1° on Hôm nay and Tạo môn; keep it
- * straight on account screens, which have inputs (DESIGN.md §3, §6.1).
+ * Bìa vở: an ash-pink notebook cover with an orange stapled spine, two stripes, squared texture,
+ * corner protectors and a sheet of paper behind (DESIGN.md §3, §6.1). Always straight: the
+ * tilt went with the type and colour review of 19/10.
  */
 export function NotebookCover({
   title,
   aside,
-  tilt = false,
   children,
 }: {
   /** The screen title; drawn with a highlighter stroke. */
   title: ReactNode;
   /** Right of the title, e.g. the date in handwriting. */
   aside?: ReactNode;
-  tilt?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className={cn(styles.cover, tilt && styles.tilted)}>
+    <div className={styles.cover}>
       <div className={styles.under} aria-hidden="true" />
       <div className={styles.board}>
         <div className={styles.spine} aria-hidden="true" />
@@ -61,7 +59,7 @@ export function NhanVo({ className, children }: { className?: string; children: 
   return <div className={cn(styles.label, className)}>{children}</div>;
 }
 
-/** One line of a label: printed key, handwritten pink value on a dotted line. */
+/** One line of a label: printed key, written pink value on a dotted line. */
 export function NhanVoRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className={styles.row}>
