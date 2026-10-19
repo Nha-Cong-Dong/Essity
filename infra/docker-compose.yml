@@ -111,7 +111,7 @@ services:
 
   core-api:
     build: ../services/core-api
-    environment:
+    environment: &core-environment
       CORE_ENVIRONMENT: local
       CORE_DATABASE_URL: postgresql+psycopg://${CORE_DB_USER}:${CORE_DB_PASSWORD}@postgres:5432/${CORE_DB_NAME}
       CORE_REDIS_URL: ${REDIS_URL}
@@ -132,6 +132,17 @@ services:
       redis:
         condition: service_healthy
       ai-service:
+        condition: service_healthy
+
+  # Background jobs of core-api (ADR-0014): same image and settings, no port.
+  core-worker:
+    build: ../services/core-api
+    command: ["uv", "run", "--no-sync", "python", "-m", "core_api.jobs.worker"]
+    environment: *core-environment
+    # Above the worker's 20 s wait for a running job (core_api/jobs/worker.py).
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
         condition: service_healthy
 
   ai-service:
