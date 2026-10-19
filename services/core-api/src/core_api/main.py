@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from core_api.api import auth, health, ping
+from core_api.api.errors import install_validation_handler
 from core_api.clients.ai_client import AiServiceClient
 from core_api.config import get_settings
 from core_api.logging import configure_logging, log_requests
@@ -33,6 +34,7 @@ configure_tracing("core-api")
 app = FastAPI(title="core-api", lifespan=lifespan)
 app.middleware("http")(log_requests)
 install_rate_limit_handlers(app)
+install_validation_handler(app)
 app.include_router(health.router)
 app.include_router(ping.router)
 app.include_router(auth.router)

@@ -223,3 +223,36 @@ def test_ac8_neither_the_password_nor_the_address_reaches_the_logs(
     output = log_output()
     assert PASSWORD not in output
     assert email.split("@")[0] not in output
+
+
+# --- Review of PR #7 --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"password": "SECRET-PASSWORD-xyz"},  # no email
+        {"email": "not-an-address", "password": "SECRET-PASSWORD-xyz"},
+        {"email": "a@example.com", "password": "SECRET-PASSWORD-xyz" * 60},  # over 1024
+    ],
+)
+def test_a_malformed_request_never_echoes_the_password(
+    client: TestClient, body: dict[str, str]
+) -> None:
+    # FastAPI's default 422 sends the caller's input back; web or a proxy may log it.
+    response = client.post(REGISTER, json=body)
+    assert response.status_code == 422
+    assert "SECRET-PASSWORD" not in response.text
+
+
+def test_ac6_resend_is_limited_per_ip(client: TestClient) -> None:
+    for _ in range(auth.RESEND_PER_IP.limit):
+        assert resend(client, new_email())[0] == 202
+    assert resend(client, new_email())[0] == 429
+
+
+def test_ac6_weak_passwords_do_not_use_up_the_sign_up_quota(client: TestClient) -> None:
+    # Only sign-ups that pass the password rules count: a typo should not lock a dormitory out.
+    for _ in range(auth.REGISTER_PER_IP.limit + 2):
+        assert register(client, new_email(), "ngắn")[0] == 422
+    assert register(client, new_email())[0] == 202

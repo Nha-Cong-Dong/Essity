@@ -27,6 +27,8 @@ router = APIRouter(prefix="/v1/auth")
 # ADR-0014 limits sign-ups per IP without a number; 10 an hour leaves room for a shared
 # network (a dormitory) and stops a script. Tune from real traffic.
 REGISTER_PER_IP = RateLimit("register_ip", 10, timedelta(hours=1))
+# Not in ADR-0014 either; same reasoning and number, pending the owner's choice.
+RESEND_PER_IP = RateLimit("resend_ip", 10, timedelta(hours=1))
 # ADR-0014: emails to one address at least 60 s apart, whichever endpoint sends them.
 EMAIL_COOLDOWN = Cooldown("email_address", timedelta(seconds=60))
 
@@ -54,13 +56,14 @@ class RegisterBody(EmailBody):
 def register(
     body: RegisterBody, request: Request, session: DbSession, limiter: Limiter
 ) -> dict[str, str]:
-    limiter.enforce(REGISTER_PER_IP, client_ip(request, get_settings().web_token))
     email = normalize_email(body.email)
     # Password rules first, for every address: a refusal never depends on the address existing.
+    # They cost nothing, so a refused password does not count against the IP's quota.
     try:
         validate_password(body.password, email=email)
     except PasswordRejectedError as exc:
         raise HTTPException(status_code=422, detail=exc.problem.value) from None
+    limiter.enforce(REGISTER_PER_IP, client_ip(request, get_settings().web_token))
     limiter.enforce_cooldown(EMAIL_COOLDOWN, email)
     password_hash = hash_password(body.password)  # hashed either way: same response time
     users = UserRepository(session)
@@ -77,7 +80,12 @@ def register(
 
 
 @router.post("/verify-email/resend", status_code=202)
-def resend_verification(body: EmailBody, session: DbSession, limiter: Limiter) -> dict[str, str]:
+def resend_verification(
+    body: EmailBody, request: Request, session: DbSession, limiter: Limiter
+) -> dict[str, str]:
+    # Per IP as well as per address: otherwise one script could mail every unverified
+    # address it knows once a minute.
+    limiter.enforce(RESEND_PER_IP, client_ip(request, get_settings().web_token))
     email = normalize_email(body.email)
     limiter.enforce_cooldown(EMAIL_COOLDOWN, email)
     user = UserRepository(session).get_by_email(email)
