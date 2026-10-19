@@ -23,8 +23,8 @@ def verify_email(body: TokenBody, session: DbSession) -> dict[str, str]:
     now = datetime.now(UTC)
     user_id = EmailTokenRepository(session).consume(body.token, TokenPurpose.VERIFY_EMAIL, now)
     user = UserRepository(session).get(user_id) if user_id else None
-    if user is None:
-        # Unknown, used and expired links get the same answer (US-12 AC2).
+    if user is None or user.deleted_at is not None:
+        # Unknown, used, expired and deleted-account links get the same answer (US-12 AC2).
         raise HTTPException(status_code=400, detail="invalid_or_expired_token")
     if user.email_verified_at is None:
         user.email_verified_at = now

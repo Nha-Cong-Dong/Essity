@@ -6,12 +6,14 @@ email is verified, then none does).
 """
 
 import hashlib
+import threading
+import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import Engine, select, text
 from sqlalchemy.orm import Session
 
 from core_api.db.models import EmailToken, User
@@ -19,6 +21,7 @@ from core_api.db.session import get_session
 from core_api.domain.auth.tokens import VERIFY_EMAIL_TTL, TokenPurpose
 from core_api.main import app
 from core_api.repositories.email_token import EmailTokenRepository
+from core_api.repositories.user import UserRepository
 
 VERIFY = "/v1/auth/verify-email"
 
@@ -84,10 +87,12 @@ def test_unknown_used_and_expired_links_get_the_same_answer(
     expired = tokens.issue(
         user.id, TokenPurpose.VERIFY_EMAIL, now=datetime.now(UTC) - timedelta(days=2)
     )
+    reset = tokens.issue(user.id, TokenPurpose.RESET_PASSWORD)
     answers = {
         (response.status_code, response.text)
         for response in (
-            client.post(VERIFY, json={"token": raw}) for raw in (used, expired, "no-such-token")
+            client.post(VERIFY, json={"token": raw})
+            for raw in (used, expired, reset, "no-such-token")
         )
     }
     assert len(answers) == 1  # nothing tells which case it was
@@ -146,3 +151,45 @@ def test_the_token_travels_in_the_body_and_a_malformed_body_is_refused(
 ) -> None:
     assert client.post(VERIFY).status_code == 422
     assert client.post(VERIFY, json={"token": "x" * 500}).status_code == 422
+
+
+def test_a_deleted_account_cannot_be_verified(
+    client: TestClient, user: User, tokens: EmailTokenRepository, db_session: Session
+) -> None:
+    raw = tokens.issue(user.id, TokenPurpose.VERIFY_EMAIL)
+    user.deleted_at = datetime.now(UTC)
+    db_session.flush()
+    assert verify(client, raw) == 400
+    db_session.refresh(user)
+    assert user.email_verified_at is None
+
+
+def test_the_same_link_clicked_twice_at_once_verifies_once(engine: Engine) -> None:
+    # Real commits on two connections: the second click must wait for the first, then find
+    # the token used.
+    with Session(engine, expire_on_commit=False) as setup:
+        owner = UserRepository(setup).create(f"race-{uuid.uuid4().hex[:12]}@example.com")
+        setup.flush()
+        raw = EmailTokenRepository(setup).issue(owner.id, TokenPurpose.VERIFY_EMAIL)
+        setup.commit()
+    try:
+        first = Session(engine)
+        assert EmailTokenRepository(first).consume(raw, TokenPurpose.VERIFY_EMAIL) == owner.id
+        results: list[uuid.UUID | None] = []
+
+        def second_click() -> None:
+            with Session(engine) as second:
+                results.append(EmailTokenRepository(second).consume(raw, TokenPurpose.VERIFY_EMAIL))
+                second.commit()
+
+        thread = threading.Thread(target=second_click)
+        thread.start()
+        thread.join(timeout=0.5)
+        assert thread.is_alive(), "the second click did not wait for the first"
+        first.commit()
+        first.close()
+        thread.join(timeout=5)
+        assert results == [None]
+    finally:
+        with engine.begin() as connection:
+            connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": owner.id})

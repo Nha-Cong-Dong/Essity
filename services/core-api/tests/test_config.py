@@ -30,3 +30,17 @@ def test_outside_local_the_web_url_must_be_set_and_https(values: dict[str, str])
 
 def test_outside_local_an_https_web_url_is_accepted() -> None:
     assert settings(environment="production", web_base_url="https://essity.example/").web_base_url
+
+
+def test_a_settings_error_never_shows_a_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The startup traceback goes to stderr, past the log formatter (ADR-0013).
+    monkeypatch.setenv("CORE_AI_SERVICE_TOKEN", "ai-token-that-must-never-be-printed-anywhere")
+    monkeypatch.setenv("CORE_DATABASE_URL", "postgresql+psycopg://core:db-password-secret@db/core")
+    with pytest.raises(ValidationError) as error:
+        settings(environment="production")
+    message = str(error.value)
+    # Pydantic shows the start and end of the input; which secret lands there depends on field
+    # order, so no dump of the whole input may appear at all.
+    assert "input_value={" not in message
+    assert "printed-anywhere" not in message
+    assert "db-password-secret" not in message
