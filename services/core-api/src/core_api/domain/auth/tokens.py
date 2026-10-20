@@ -7,8 +7,23 @@ is 32 random bytes, far too many to guess, unlike a password.
 
 import hashlib
 import secrets
+from datetime import timedelta
+from enum import StrEnum
 
 TOKEN_BYTES = 32
+
+
+class TokenPurpose(StrEnum):
+    VERIFY_EMAIL = "verify_email"
+    RESET_PASSWORD = "reset_password"
+
+
+VERIFY_EMAIL_TTL = timedelta(hours=24)  # US-12 AC2
+RESET_PASSWORD_TTL = timedelta(hours=1)  # US-12 AC4 (T1.10)
+TOKEN_TTL = {
+    TokenPurpose.VERIFY_EMAIL: VERIFY_EMAIL_TTL,
+    TokenPurpose.RESET_PASSWORD: RESET_PASSWORD_TTL,
+}
 
 
 def hash_token(raw: str) -> str:

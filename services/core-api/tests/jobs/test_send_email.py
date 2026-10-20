@@ -21,9 +21,11 @@ from sqlalchemy.orm import Session
 
 from core_api.clients.email.sender import EmailMessage
 from core_api.db.models import User
+from core_api.domain.auth.tokens import TokenPurpose
 from core_api.jobs import send_email
 from core_api.jobs.send_email import EmailKind, enqueue_email
 from core_api.logging import configure_logging
+from core_api.repositories.email_token import EmailTokenRepository
 from core_api.repositories.user import UserRepository
 
 MAILPIT_SMTP_HOST = os.environ.get("CORE_TEST_SMTP_HOST", "127.0.0.1")
@@ -154,3 +156,55 @@ def test_logs_carry_the_masked_address_and_never_the_body(
     assert WEB_BASE_URL not in output
     sent = next(json.loads(line) for line in output.splitlines() if '"email sent"' in line)
     assert sent["email"] == f"{local_part[0]}***@example.com"
+
+
+# --- Verification email (T1.7) ----------------------------------------------------------------
+
+
+def verification_link(text_body: str) -> str:
+    [link] = [word for word in text_body.split() if word.startswith(f"{WEB_BASE_URL}/verify-email")]
+    return link
+
+
+def test_ac2_verification_email_carries_a_link_that_verifies(
+    engine: Engine, work: Callable[..., None], user: User
+) -> None:
+    enqueue_committed(engine, user.id, EmailKind.VERIFY_EMAIL)
+    work()
+
+    [message] = mailpit_messages(user.email)
+    assert message["Subject"] == "Xác minh email của bạn"
+    assert "24 giờ" in message["Text"]
+    raw = verification_link(message["Text"]).split("token=", 1)[1]
+    with Session(engine) as session:
+        assert EmailTokenRepository(session).consume(raw, TokenPurpose.VERIFY_EMAIL) == user.id
+        session.rollback()
+
+
+def test_adr0018_verification_payload_carries_no_token(engine: Engine, user: User) -> None:
+    enqueue_committed(engine, user.id, EmailKind.VERIFY_EMAIL)
+    [row] = job_rows(engine)
+    assert row["args"] == {"payload": {"user_id": str(user.id), "email": "verify_email"}}
+
+
+def test_no_verification_email_once_the_email_is_verified(
+    engine: Engine, work: Callable[..., None], user: User
+) -> None:
+    enqueue_committed(engine, user.id, EmailKind.VERIFY_EMAIL)
+    with engine.begin() as connection:
+        connection.execute(
+            text('UPDATE "user" SET email_verified_at = now() WHERE id = :id'), {"id": user.id}
+        )
+    work()
+    assert mailpit_messages(user.email) == []
+
+
+def test_ac8_verification_link_never_reaches_the_logs(
+    engine: Engine, work: Callable[..., None], user: User, log_output: Callable[[], str]
+) -> None:
+    enqueue_committed(engine, user.id, EmailKind.VERIFY_EMAIL)
+    work()
+    [message] = mailpit_messages(user.email)
+    raw = verification_link(message["Text"]).split("token=", 1)[1]
+    assert raw not in log_output()
+    assert "/verify-email" not in log_output()
