@@ -13,6 +13,7 @@ from core_api.clients.redis import get_redis, redis_from_url
 from core_api.config import get_settings
 from core_api.db.engine import create_db_engine, get_engine
 from core_api.db.models import User
+from core_api.domain.auth.passwords import hash_password
 from core_api.repositories.user import UserRepository
 
 TEST_AI_SERVICE_TOKEN = "test-ai-service-token-0123456789abcdef"
@@ -97,6 +98,16 @@ def two_users(db_session: Session) -> tuple[User, User]:
     bob = users.create("bob@example.com")
     db_session.flush()
     return alice, bob
+
+
+@pytest.fixture
+def unverified_user(db_session: Session) -> User:
+    """Signed up, email never verified, password "ngựa vằn ăn cỏ buổi sáng" (T1.9, A11)."""
+    user = UserRepository(db_session).create(
+        "unverified@example.com", hash_password("ngựa vằn ăn cỏ buổi sáng")
+    )
+    db_session.flush()
+    return user
 
 
 @pytest.fixture

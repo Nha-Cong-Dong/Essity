@@ -53,3 +53,10 @@ def current_user(signed: CurrentSession) -> User:
 
 
 CurrentUser = Annotated[User, Depends(current_user)]
+
+
+def verified_user(signed: CurrentSession) -> User:
+    return signed.user
+
+
+VerifiedUser = Annotated[User, Depends(verified_user)]
