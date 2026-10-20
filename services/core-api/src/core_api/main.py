@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from core_api.api import auth, health, ping
+from core_api.api import auth, health, me, ping
 from core_api.api.errors import install_validation_handler
 from core_api.clients.ai_client import AiServiceClient
 from core_api.config import get_settings
@@ -38,5 +38,6 @@ install_validation_handler(app)
 app.include_router(health.router)
 app.include_router(ping.router)
 app.include_router(auth.router)
+app.include_router(me.router)
 # Outermost middleware: the request span is open while log_requests writes its line.
 FastAPIInstrumentor.instrument_app(app, excluded_urls="healthz", exclude_spans=["receive", "send"])

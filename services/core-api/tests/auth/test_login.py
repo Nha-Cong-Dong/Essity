@@ -12,6 +12,7 @@ import json
 import random
 import uuid
 from collections.abc import Callable
+from datetime import datetime
 
 import pytest
 from argon2 import PasswordHasher
@@ -23,6 +24,7 @@ from core_api.api import auth
 from core_api.clients.redis import get_redis, redis_from_url
 from core_api.db.models import AuthSession, User
 from core_api.domain.auth.passwords import hash_password, needs_rehash, verify_password
+from core_api.domain.auth.sessions import SESSION_MAX
 from core_api.domain.auth.tokens import TOKEN_BYTES, hash_token
 from core_api.repositories.user import UserRepository
 from core_api.security import rate_limit
@@ -72,6 +74,20 @@ def test_login_returns_a_token_its_expiry_and_whether_the_email_is_verified(
     assert body["email_verified"] is True
 
 
+def test_login_expires_at_is_the_absolute_end_so_the_cookie_never_outlives_the_session(
+    client: TestClient, db_session: Session
+) -> None:
+    """ADR-0020 §1: web sets the cookie to end at `expires_at`; the sliding 30 days is renewed
+    server-side, so the cookie must last until the 90-day cap, not the first idle deadline."""
+    user = make_user(db_session)
+    status, body = login(client, user.email)
+    assert status == 200
+    row = db_session.scalars(
+        select(AuthSession).where(AuthSession.token_hash == hash_token(str(body["token"])))
+    ).one()
+    assert datetime.fromisoformat(str(body["expires_at"])) == row.created_at + SESSION_MAX
+
+
 def test_ac5_login_wrong_password_and_unknown_email_get_the_same_answer(
     client: TestClient, db_session: Session
 ) -> None:
@@ -107,7 +123,12 @@ def test_ac5_login_deleted_or_passwordless_account_gets_the_same_answer_and_work
         user.password_hash = None
     db_session.flush()
     calls: list[str] = []
-    monkeypatch.setattr(auth, "dummy_verify", lambda password: calls.append(password) or False)
+
+    def counting(password: str) -> bool:
+        calls.append(password)
+        return False
+
+    monkeypatch.setattr(auth, "dummy_verify", counting)
 
     assert login(client, user.email) == (401, {"detail": "invalid_credentials"})
     assert calls == [PASSWORD]
@@ -151,15 +172,17 @@ def test_ac7_every_login_issues_a_new_token(client: TestClient, db_session: Sess
 def test_rehash_on_login_when_params_old(client: TestClient, db_session: Session) -> None:
     password = "an old ascii passphrase here"
     user = make_user(db_session, password=password)
-    user.password_hash = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1).hash(password)
+    old_hash = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1).hash(password)
+    user.password_hash = old_hash
     db_session.flush()
-    assert needs_rehash(user.password_hash)
+    assert needs_rehash(old_hash)
 
     assert login(client, user.email, password)[0] == 200
     db_session.refresh(user)
-    assert user.password_hash is not None
-    assert not needs_rehash(user.password_hash)
-    assert verify_password(user.password_hash, password)
+    new_hash = user.password_hash
+    assert new_hash is not None
+    assert not needs_rehash(new_hash)
+    assert verify_password(new_hash, password)
 
 
 # --- Lock after failures (ADR-0020 §2) ---------------------------------------------------------

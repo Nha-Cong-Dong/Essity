@@ -56,6 +56,8 @@ ALLOWED_FIELDS = frozenset(
         "job_id",
         "attempt",
         "outcome",
+        "event",  # security events (security/audit.py)
+        "ip_hash",  # keyed hash, never the IP itself
     }
 )
 # Top-level logger names; see the module docstring.
