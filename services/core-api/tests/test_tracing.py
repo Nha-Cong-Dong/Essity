@@ -206,6 +206,9 @@ def test_database_queries_are_traced(
         "http.request.header.x_service_token",
         "http.request.header.x-service-token",
         "http.response.header.set_cookie",
+        "http.request.header.x_client_ip",  # the user's real IP, sent by web
+        "http.request.header.proxy_authorization",
+        "http.request.header.Authorization",  # whatever case an instrumentation keeps
     ],
 )
 def test_redact_span_drops_secret_headers(name: str) -> None:

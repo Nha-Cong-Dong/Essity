@@ -27,9 +27,19 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter, Spa
 _URL_ATTRIBUTES = ("url.full", "http.url", "http.target")
 _QUERY_ATTRIBUTES = ("url.query",)
 # Captured headers (only if an OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_* variable asks for
-# them) that carry secrets: session tokens, cookies, service tokens.
+# them) that carry secrets or personal data: session tokens, cookies, service tokens, and the
+# user's real IP that web passes on.
 _HEADER_PREFIXES = ("http.request.header.", "http.response.header.")
-_SECRET_HEADERS = frozenset({"authorization", "cookie", "set_cookie", "x_service_token"})
+_SECRET_HEADERS = frozenset(
+    {
+        "authorization",
+        "proxy_authorization",
+        "cookie",
+        "set_cookie",
+        "x_service_token",
+        "x_client_ip",
+    }
+)
 REDACTED = "[redacted]"
 
 
@@ -48,7 +58,7 @@ def redact_span(span: ReadableSpan) -> ReadableSpan:
             changed = True
     for key in list(attributes):
         if key.startswith(_HEADER_PREFIXES):
-            header = key.rsplit(".", 1)[1].replace("-", "_")
+            header = key.rsplit(".", 1)[1].replace("-", "_").lower()
             if header in _SECRET_HEADERS:
                 attributes[key] = (REDACTED,)
                 changed = True
