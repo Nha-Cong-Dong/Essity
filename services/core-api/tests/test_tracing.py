@@ -196,3 +196,29 @@ def test_database_queries_are_traced(
         str((s.attributes or {}).get("db.statement")) for s in by_kind(spans, SpanKind.CLIENT)
     ]
     assert "SELECT 1" in statements
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "http.request.header.authorization",
+        "http.request.header.cookie",
+        "http.request.header.x_service_token",
+        "http.request.header.x-service-token",
+        "http.response.header.set_cookie",
+    ],
+)
+def test_redact_span_drops_secret_headers(name: str) -> None:
+    # Off by default, but one OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_* variable turns header
+    # capture on: session tokens (Authorization) must still never leave the process (T1.8).
+    span = ReadableSpan(
+        name="GET /v1/me",
+        attributes={name: (f"Bearer {SECRET}",), "http.request.header.accept": ("*/*",)},
+        kind=SpanKind.SERVER,
+        status=Status(),
+        start_time=1,
+        end_time=2,
+    )
+    attributes = dict(redact_span(span).attributes or {})
+    assert attributes[name] == (REDACTED,)
+    assert attributes["http.request.header.accept"] == ("*/*",)

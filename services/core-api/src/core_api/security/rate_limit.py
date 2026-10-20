@@ -22,6 +22,13 @@ from core_api.clients.redis import get_redis
 
 KEY_PREFIX = "ratelimit"
 
+# DECR, but never below zero, and never on a counter that has already expired.
+_REFUND = """
+local count = tonumber(redis.call('GET', KEYS[1]) or '0')
+if count > 0 then return redis.call('DECR', KEYS[1]) end
+return 0
+"""
+
 
 @dataclass(frozen=True)
 class RateLimit:
@@ -40,6 +47,7 @@ class Cooldown:
 class RateLimitResult:
     allowed: bool
     retry_after_seconds: int  # until the current window ends
+    redis_key: str = ""  # the window's counter that was hit, for `refund`
 
 
 class RateLimitedError(Exception):
@@ -80,7 +88,22 @@ class RateLimiter:
             count = int(pipe.execute()[0])
         except RedisError as exc:
             raise RateLimiterUnavailableError from exc
-        return RateLimitResult(allowed=count <= rule.limit, retry_after_seconds=remaining)
+        return RateLimitResult(
+            allowed=count <= rule.limit, retry_after_seconds=remaining, redis_key=redis_key
+        )
+
+    def refund(self, hit: RateLimitResult) -> None:
+        """Give back one hit: the attempt turned out not to count (a correct password).
+
+        Decrements the counter of the window the hit went into, not the current one: the
+        window may have changed while the password was being hashed.
+        """
+        if not hit.redis_key:
+            return
+        try:
+            self.redis.eval(_REFUND, 1, hit.redis_key)  # pyright: ignore[reportUnknownMemberType]
+        except RedisError as exc:
+            raise RateLimiterUnavailableError from exc
 
     def check(self, rule: RateLimit, key: str) -> RateLimitResult:
         """Whether one more attempt would be allowed, without counting it."""

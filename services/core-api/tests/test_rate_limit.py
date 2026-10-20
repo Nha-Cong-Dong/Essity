@@ -162,3 +162,30 @@ def test_unreachable_redis_is_a_503() -> None:
     dead = redis_from_url("redis://127.0.0.1:1/0", timeout=0.2)
     client = TestClient(make_app(RateLimiter(dead, now=Clock()), rule()))
     assert client.post("/login").status_code == 503
+
+
+# --- Refund (T1.8, ADR-0020 §2: only failed logins count) -------------------------------------
+
+
+def test_a_refund_gives_back_the_hit_it_was_given(redis_client: Redis) -> None:
+    limiter, limit = RateLimiter(redis_client, now=Clock()), rule(limit=1)
+    limiter.refund(limiter.hit(limit, "k"))
+    assert limiter.hit(limit, "k").allowed
+
+
+def test_refund_uses_the_window_of_the_hit_and_never_goes_below_zero(
+    redis_client: Redis,
+) -> None:
+    # Hashing a password takes ~100 ms: the window may change between the hit and the refund.
+    clock = Clock()
+    clock.now = T0 + timedelta(minutes=15) - timedelta(milliseconds=50)  # end of a window
+    limiter, limit = RateLimiter(redis_client, now=clock), rule(limit=1)
+    old = limiter.hit(limit, "k")
+    clock.now = T0 + timedelta(minutes=15)  # the next window
+    assert limiter.hit(limit, "k").allowed
+    limiter.refund(old)
+    limiter.refund(old)
+    assert not limiter.hit(limit, "k").allowed, "the refund freed a hit of the new window"
+    clock.now = T0 + timedelta(minutes=15) - timedelta(milliseconds=50)
+    assert limiter.hit(limit, "k").allowed, "the old window's counter went below zero"
+    assert not limiter.hit(limit, "k").allowed

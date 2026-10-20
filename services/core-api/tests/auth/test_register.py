@@ -7,11 +7,9 @@ work done), AC6 (sign-ups limited per IP), AC8 (no password or address in the lo
 "account exists" and keeps its password).
 """
 
-import io
-import logging
 import random
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,7 +19,6 @@ from sqlalchemy.orm import Session
 from core_api.api import auth
 from core_api.db.models import User
 from core_api.domain.auth.passwords import hash_password, verify_password
-from core_api.logging import configure_logging
 from core_api.repositories.user import UserRepository
 
 REGISTER = "/v1/auth/register"
@@ -202,16 +199,6 @@ def test_adr0014_emails_to_one_address_are_at_least_60_seconds_apart(
 
 
 # --- Logs -------------------------------------------------------------------------------------
-
-
-@pytest.fixture
-def log_output() -> Iterator[Callable[[], str]]:
-    root = logging.getLogger()
-    saved = (root.handlers[:], root.level)
-    buffer = io.StringIO()
-    configure_logging("core-api", "DEBUG", stream=buffer)
-    yield buffer.getvalue
-    root.handlers, root.level = saved
 
 
 def test_ac8_neither_the_password_nor_the_address_reaches_the_logs(
