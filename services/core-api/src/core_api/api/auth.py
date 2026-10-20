@@ -26,7 +26,7 @@ from core_api.domain.auth.sessions import SESSION_MAX
 from core_api.domain.auth.tokens import TokenPurpose
 from core_api.domain.email import normalize_email
 from core_api.jobs.send_email import EmailKind, enqueue_email
-from core_api.logging import user_id_var
+from core_api.logging import set_user_id
 from core_api.repositories.auth_session import AuthSessionRepository
 from core_api.repositories.email_token import EmailTokenRepository
 from core_api.repositories.user import EmailTakenError, UserRepository
@@ -180,7 +180,7 @@ def login(body: LoginBody, request: Request, session: DbSession, limiter: Limite
     token, row = AuthSessionRepository(session).create(
         user.id, now, request.headers.get("User-Agent")
     )
-    user_id_var.set(str(user.id))
+    set_user_id(str(user.id))
     security_event("login_success", ip=ip)
     return LoginResult(
         token=token,
@@ -190,15 +190,15 @@ def login(body: LoginBody, request: Request, session: DbSession, limiter: Limite
 
 
 @router.post("/logout", status_code=204)
-def logout(signed: CurrentSession, session: DbSession) -> Response:
+def logout(signed: CurrentSession, request: Request, session: DbSession) -> Response:
     AuthSessionRepository(session).revoke(signed.session, datetime.now(UTC))
-    security_event("session_revoked")
+    security_event("session_revoked", ip=client_ip(request, get_settings().web_token))
     return Response(status_code=204)
 
 
 @router.post("/logout-all", status_code=204)
-def logout_all(signed: CurrentSession, session: DbSession) -> Response:
+def logout_all(signed: CurrentSession, request: Request, session: DbSession) -> Response:
     """End every session of the user, this one included (ADR-0020 §3)."""
     AuthSessionRepository(session).revoke_all(signed.user.id, datetime.now(UTC))
-    security_event("logout_all")
+    security_event("logout_all", ip=client_ip(request, get_settings().web_token))
     return Response(status_code=204)

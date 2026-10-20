@@ -12,7 +12,7 @@ from fastapi import Depends, HTTPException, Request
 
 from core_api.db.models import AuthSession, User
 from core_api.db.session import DbSession
-from core_api.logging import user_id_var
+from core_api.logging import set_user_id
 from core_api.repositories.auth_session import AuthSessionRepository
 from core_api.repositories.user import UserRepository
 
@@ -41,7 +41,7 @@ def signed_in(request: Request, session: DbSession) -> SignedIn:
     if row is None or user is None or user.deleted_at is not None:
         raise HTTPException(status_code=401, detail="not_authenticated")
     sessions.touch(row, now)
-    user_id_var.set(str(user.id))
+    set_user_id(str(user.id))
     return SignedIn(user=user, session=row)
 
 

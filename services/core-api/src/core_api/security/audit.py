@@ -37,7 +37,7 @@ def hash_ip(ip: str, key: bytes | None = None) -> str:
 
 
 def security_event(event: str, *, email: str | None = None, ip: str | None = None) -> None:
-    """Log one security event. The user, when known, comes from `user_id_var`."""
+    """Log one security event. The user, when known, comes from `set_user_id`."""
     extra: dict[str, str] = {"event": event}
     if email is not None:
         extra["email"] = email

@@ -41,6 +41,35 @@ REQUEST_ID_HEADER = "X-Request-ID"
 request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 user_id_var: ContextVar[str | None] = ContextVar("user_id", default=None)
 
+
+class _RequestUser:
+    """The signed-in user of one request, shared by every context copy the request makes.
+
+    FastAPI runs each sync dependency and the endpoint in their own copy of the context, so a
+    `user_id_var.set` in the auth dependency is gone by the time the endpoint logs, and the
+    access line is written outside both. The middleware puts one of these in the context first;
+    every copy then holds the same object, and `set_user_id` fills it in.
+    """
+
+    user_id: str | None = None
+
+
+_request_user_var: ContextVar[_RequestUser | None] = ContextVar("request_user", default=None)
+
+
+def set_user_id(user_id: str) -> None:
+    """Name the user for every log line of the current request (or job) from here on."""
+    user_id_var.set(user_id)
+    request_user = _request_user_var.get()
+    if request_user is not None:
+        request_user.user_id = user_id
+
+
+def current_user_id() -> str | None:
+    request_user = _request_user_var.get()
+    return user_id_var.get() or (request_user.user_id if request_user else None)
+
+
 # Fields a call site may add with `extra=`. Add to this list deliberately, never a free-text
 # field written by the user.
 ALLOWED_FIELDS = frozenset(
@@ -95,7 +124,7 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage() if message is None else message,
             "request_id": request_id_var.get(),
-            "user_id": user_id_var.get(),
+            "user_id": current_user_id(),
         }
         span = trace.get_current_span().get_span_context()
         if span.is_valid:
@@ -143,6 +172,7 @@ async def log_requests(
     incoming = request.headers.get(REQUEST_ID_HEADER)
     request_id = incoming if incoming and _VALID_REQUEST_ID.match(incoming) else uuid.uuid4().hex
     token = request_id_var.set(request_id)
+    user_token = _request_user_var.set(_RequestUser())
     started = time.perf_counter()
     fields: dict[str, Any] = {"method": request.method, "path": request.url.path}
     try:
@@ -158,6 +188,7 @@ async def log_requests(
         response.headers[REQUEST_ID_HEADER] = request_id
         return response
     finally:
+        _request_user_var.reset(user_token)
         request_id_var.reset(token)
 
 

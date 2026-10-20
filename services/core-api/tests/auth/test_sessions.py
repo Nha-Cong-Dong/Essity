@@ -6,7 +6,9 @@ current one too), AC10 (a token only ever reaches its own user), A1 (the token t
 `Authorization: Bearer`), A15 (no secret header reaches a span).
 """
 
+import json
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -19,6 +21,7 @@ from core_api.domain.auth.passwords import hash_password
 from core_api.domain.auth.sessions import SESSION_IDLE, SESSION_MAX, session_expiry
 from core_api.domain.auth.tokens import hash_token
 from core_api.repositories.user import UserRepository
+from core_api.security.audit import hash_ip
 
 PASSWORD = "ngựa vằn ăn cỏ buổi sáng"
 ME = "/v1/me"
@@ -196,3 +199,41 @@ def test_logout_all_leaves_other_users_sessions(client: TestClient, db_session: 
     alice_token, bob_token = sign_in(client, alice), sign_in(client, bob)
     client.post(LOGOUT_ALL, headers=bearer(alice_token))
     assert client.get(ME, headers=bearer(bob_token)).status_code == 200
+
+
+# --- Who did it, in the logs (ADR-0013, ADR-0014) ---------------------------------------------
+
+
+def log_lines(output: str) -> list[dict[str, object]]:
+    return [json.loads(line) for line in output.splitlines() if line.startswith("{")]
+
+
+@pytest.mark.parametrize(
+    ("path", "event"), [(LOGOUT, "session_revoked"), (LOGOUT_ALL, "logout_all")]
+)
+def test_revocation_events_name_the_user_and_the_ip_hash(
+    client: TestClient,
+    db_session: Session,
+    client_ip: str,
+    log_output: Callable[[], str],
+    path: str,
+    event: str,
+) -> None:
+    user = make_user(db_session)
+    client.post(path, headers=bearer(sign_in(client, user)))
+    [line] = [line for line in log_lines(log_output()) if line.get("event") == event]
+    assert line["user_id"] == str(user.id)
+    assert line["ip_hash"] == hash_ip(client_ip)
+
+
+def test_access_log_of_a_signed_in_request_names_the_user(
+    client: TestClient, db_session: Session, log_output: Callable[[], str]
+) -> None:
+    user = make_user(db_session)
+    client.get(ME, headers=bearer(sign_in(client, user)))
+    [line] = [
+        line
+        for line in log_lines(log_output())
+        if line["logger"] == "core_api.access" and line.get("path") == ME
+    ]
+    assert line["user_id"] == str(user.id)
