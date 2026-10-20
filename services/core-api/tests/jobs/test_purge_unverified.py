@@ -58,11 +58,12 @@ def test_purge_deletes_unverified_older_than_7_days_and_cascades(db_session: Ses
     EmailTokenRepository(db_session).issue(user.id, TokenPurpose.VERIFY_EMAIL, NOW)
     AuthSessionRepository(db_session).create(user.id, NOW)
     db_session.flush()
+    user_id = user.id
 
     assert purge_unverified(db_session, NOW) >= 1
-    assert not exists(db_session, user.id)
+    assert not exists(db_session, user_id)
     for table in (EmailToken, AuthSession):
-        assert db_session.scalars(select(table).where(table.user_id == user.id)).all() == []
+        assert db_session.scalars(select(table).where(table.user_id == user_id)).all() == []
 
 
 def test_purge_keeps_unverified_younger_than_7_days(db_session: Session) -> None:

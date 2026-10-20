@@ -85,6 +85,7 @@ ALLOWED_FIELDS = frozenset(
         "job_id",
         "attempt",
         "outcome",
+        "deleted_count",  # purge_unverified
         "event",  # security events (security/audit.py)
         "ip_hash",  # keyed hash, never the IP itself
     }

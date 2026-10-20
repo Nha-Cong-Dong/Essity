@@ -15,6 +15,7 @@ Payload = dict[str, Any]
 Handler = Callable[[Payload], None]
 
 _handlers: dict[str, Handler] = {}
+_periodic: set[str] = set()
 _log = logging.getLogger("core_api.jobs")
 _tracer = trace.get_tracer("core_api.jobs")
 
@@ -47,6 +48,29 @@ def job_handler(kind: str) -> Callable[[Handler], Handler]:
 
         app.task(name=kind, pass_context=True, retry=RETRY)(run)
         _handlers[kind] = handler
+        return handler
+
+    return register
+
+
+def periodic_job(kind: str, cron: str) -> Callable[[Handler], Handler]:
+    """Run the decorated function on a schedule (`cron`, UTC), like a `job_handler` job.
+
+    It receives an empty payload. Procrastinate defers one job per scheduled time, even with
+    several workers, and only for a time missed by less than 10 minutes, so a worker that was
+    down does not catch up on a backlog. The kind is not enqueueable: `enqueue_job` refuses it.
+    """
+
+    def register(handler: Handler) -> Handler:
+        if kind in _handlers or kind in _periodic:
+            raise ValueError(f"job kind {kind!r} is already registered")
+
+        def run(context: JobContext, timestamp: int) -> None:
+            _run(kind, handler, context, {})
+
+        task = app.task(name=kind, pass_context=True, retry=RETRY)(run)
+        app.periodic(cron=cron, periodic_id=kind)(task)
+        _periodic.add(kind)
         return handler
 
     return register

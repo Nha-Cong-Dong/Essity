@@ -56,6 +56,15 @@ CurrentUser = Annotated[User, Depends(current_user)]
 
 
 def verified_user(signed: CurrentSession) -> User:
+    """The caller, if their email is verified (US-12 AC2); 403 otherwise, 401 if not signed in.
+
+    Every business router declares it: `APIRouter(dependencies=[Depends(verified_user)])`, or
+    `VerifiedUser` on a route that needs the user. Only `/v1/me` and `/v1/auth/*` go without, so
+    an unverified account can still see its state and log out (tests/auth/test_verified_user.py
+    fails for any other route that forgets it).
+    """
+    if signed.user.email_verified_at is None:
+        raise HTTPException(status_code=403, detail="email_not_verified")
     return signed.user
 
 
