@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { type ComponentProps, type ReactNode, useState } from "react";
 
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 // Fields of the account screens. Forms are boxes, writing is ruled lines (design system v3.1
 // §4.2, plan V4): each field is the shared Input, with its focus ring and its `--partial` border
@@ -36,8 +37,12 @@ export function AuthField({ id, label, describedBy, invalid, className, children
   );
 }
 
-/** A password field with a show/hide button, which replaces "type it again" (DESIGN.md §6.1). */
-export function PasswordField({ id, label, describedBy, invalid, children, ...props }: Omit<FieldProps, "type">) {
+/**
+ * A password field with a show button, which replaces "type it again" (DESIGN.md §6.1). Its name
+ * stays "Hiện mật khẩu" and aria-pressed says whether the password shows, so a screen reader
+ * never hears "Ẩn mật khẩu, pressed".
+ */
+export function PasswordField({ id, label, describedBy, invalid, className, children, ...props }: Omit<FieldProps, "type">) {
   const [shown, setShown] = useState(false);
   const Icon = shown ? EyeOff : Eye;
   return (
@@ -52,13 +57,13 @@ export function PasswordField({ id, label, describedBy, invalid, children, ...pr
           type={shown ? "text" : "password"}
           aria-describedby={describedBy}
           aria-invalid={invalid || undefined}
-          className="pr-13"
+          className={cn("pr-13", className)}
           {...props}
         />
         <button
           type="button"
           onClick={() => setShown(!shown)}
-          aria-label={shown ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+          aria-label="Hiện mật khẩu"
           aria-pressed={shown}
           className="absolute inset-y-0 right-1 my-auto inline-flex size-11 items-center justify-center rounded-full text-ink-soft hover:text-ink"
         >

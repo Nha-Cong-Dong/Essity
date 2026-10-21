@@ -43,6 +43,38 @@ describe("account fields (V4)", () => {
   });
 });
 
+describe("password field (review of 7bcc5d7)", () => {
+  const markup = () =>
+    renderToStaticMarkup(
+      h(PasswordField, {
+        id: "password",
+        label: "Mật khẩu",
+        name: "password",
+        describedBy: "password-error",
+        invalid: true,
+        autoComplete: "new-password",
+        className: "tracking-wide",
+      }),
+    );
+
+  it("keeps its label, description, invalid state, autocomplete and type", () => {
+    expect(markup()).toMatch(/<label[^>]*for="password"/);
+    expect(markup()).toContain('aria-describedby="password-error"');
+    expect(markup()).toContain('aria-invalid="true"');
+    expect(markup()).toContain('autoComplete="new-password"');
+    expect(markup()).toContain('type="password"');
+  });
+
+  it("a caller's class does not drop the room kept for the eye", () => {
+    expect(markup()).toMatch(/<input[^>]*class="[^"]*\bpr-13\b[^"]*\btracking-wide\b/);
+  });
+
+  it("the eye has one fixed name and says its state with aria-pressed", () => {
+    expect(markup()).toContain('aria-label="Hiện mật khẩu"');
+    expect(markup()).toContain('aria-pressed="false"');
+  });
+});
+
 describe("notebook cover at level b (§4.4, §4.5)", () => {
   const cover = () => renderToStaticMarkup(h(NotebookCover, { title: "Đăng nhập", children: h(NhanVo, { children: "x" }) }));
 

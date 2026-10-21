@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-// The three frames of DESIGN.md §5 (canvas Shells artboard).
+// The three frames of design system v3.1 §5. Header and content share one container, so the
+// logo and the page start at the same left edge.
+
+const CONTAINER = "mx-auto w-full max-w-(--page-max) px-(--page-gutter)";
 
 const NAV = [
   { href: "/today", label: "Hôm nay" },
@@ -13,16 +16,12 @@ const NAV = [
 export type NavItem = (typeof NAV)[number]["href"];
 
 function Logo() {
-  return (
-    <span className="font-display text-[24px] font-bold tracking-[-0.03em] text-hong">
-      Essity
-    </span>
-  );
+  return <span className="font-display text-logo text-hong">Essity</span>;
 }
 
 /**
- * Regular frame: logo, three pill links (the current one on a faint `--line`), the account
- * button (T1.12), and a left-aligned column of at most 1120px with 80px margins.
+ * Regular frame: a 64px header with the logo, the pill nav right after it (the current item in
+ * inverted ink) and the account button at the right edge; then the page.
  */
 export function AppShell({
   current,
@@ -35,35 +34,35 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex h-20 items-center justify-between border-b border-line px-6 md:px-20">
-        <Logo />
-        <nav aria-label="Chính" className="flex gap-2">
-          {NAV.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              aria-current={item.href === current ? "page" : undefined}
-              className={cn(
-                "flex h-11 items-center rounded-full px-[18px] text-[15px] font-medium text-ink-soft no-underline",
-                "aria-[current=page]:bg-[color-mix(in_srgb,var(--line)_55%,transparent)] aria-[current=page]:font-semibold aria-[current=page]:text-ink",
-              )}
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
-        <div className="flex min-w-11 justify-end">{account}</div>
+      <header className="sticky top-0 z-(--z-header) border-b border-line bg-bg">
+        <div className={cn(CONTAINER, "flex h-(--header-h) items-center gap-4 min-[901px]:gap-10")}>
+          <Logo />
+          <nav aria-label="Chính" className="flex gap-1">
+            {NAV.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                aria-current={item.href === current ? "page" : undefined}
+                className={cn(
+                  "flex h-10 items-center rounded-full px-3 text-body font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink min-[901px]:px-4",
+                  "aria-[current=page]:bg-ink aria-[current=page]:font-semibold aria-[current=page]:text-bg",
+                )}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+          <div className="ml-auto flex min-w-10 justify-end">{account}</div>
+        </div>
       </header>
-      <main className="mx-auto flex w-full max-w-[1120px] flex-1 flex-col px-6 py-12 md:px-0">
-        {children}
-      </main>
+      <main className={cn(CONTAINER, "flex flex-1 flex-col pt-10 pb-24")}>{children}</main>
     </div>
   );
 }
 
 /**
  * Focus frame for a review session (/review/*): no navigation, only progress and the way out
- * ("Dừng tại đây"). The 4px bar is not split per question, so it hints at nothing ahead.
+ * ("Dừng tại đây"). The 3px bar is not split per question, so it hints at nothing ahead.
  */
 export function FocusShell({
   position,
@@ -79,10 +78,10 @@ export function FocusShell({
   const percent = total > 0 ? Math.round((position / total) * 100) : 0;
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex h-18 items-center justify-between border-b border-line px-6 md:px-20">
-        <div className="flex items-center gap-5">
-          <span className="font-semibold">
-            Câu {position}/{total}
+      <header className="border-b border-line">
+        <div className={cn(CONTAINER, "flex h-(--header-focus-h) items-center gap-4")}>
+          <span className="text-meta whitespace-nowrap text-ink-soft tabular-nums">
+            Câu {position} / {total}
           </span>
           <div
             role="progressbar"
@@ -90,28 +89,32 @@ export function FocusShell({
             aria-valuemax={total}
             aria-valuenow={position}
             aria-label={`Câu ${position} trên ${total}`}
-            className="h-1 w-60 overflow-hidden rounded-full bg-line"
+            className="h-[3px] w-40 overflow-hidden rounded-full bg-line"
           >
-            <div className="h-1 rounded-full bg-hong" style={{ width: `${percent}%` }} />
+            <div className="h-[3px] rounded-full bg-hong" style={{ width: `${percent}%` }} />
           </div>
+          <div className="ml-auto text-meta whitespace-nowrap text-ink-soft">{exit}</div>
         </div>
-        {exit}
       </header>
-      <main className="mx-auto flex w-full max-w-[900px] flex-1 flex-col px-6 py-12">
-        {children}
+      <main className={cn(CONTAINER, "flex flex-1 flex-col pt-14 pb-24")}>
+        <div className="mx-auto w-full max-w-(--col-focus)">{children}</div>
       </main>
     </div>
   );
 }
 
-/** Account frame (/login, /register...): only the logo, content centred on the page. */
+/** Account frame (/login, /register...): only the logo, one sheet centred on the page. */
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex h-20 items-center px-6 md:px-20">
-        <Logo />
+      <header>
+        <div className={cn(CONTAINER, "flex h-(--header-h) items-center")}>
+          <Logo />
+        </div>
       </header>
-      <main className="flex flex-1 items-start justify-center px-6 py-12">{children}</main>
+      <main className={cn(CONTAINER, "relative flex flex-1 items-start justify-center overflow-x-clip pt-12 pb-24")}>
+        {children}
+      </main>
     </div>
   );
 }
