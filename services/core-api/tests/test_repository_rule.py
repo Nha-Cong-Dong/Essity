@@ -50,4 +50,4 @@ def test_every_user_id_column_references_the_user_table() -> None:
 
 def test_the_rule_actually_finds_repositories() -> None:
     names = {cls.__name__ for cls in repository_classes()}
-    assert {"UserRepository", "SubjectRepository", "ExamRepository"} <= names
+    assert {"UserRepository", "SubjectRepository", "ExamRepository", "BaselineRepository"} <= names
