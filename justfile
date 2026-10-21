@@ -40,6 +40,10 @@ check-licenses:
     uv run --directory services/ai-service --no-sync python ../../scripts/check_licenses.py python
     pnpm --dir apps/web licenses list --json | uv run --no-project python scripts/check_licenses.py pnpm -
 
+# Sinh lại packages/api-client từ OpenAPI của core-api (T1.11; CI báo lỗi khi lệch)
+gen-api:
+    bash scripts/gen_api_client.sh
+
 # Chạy migration của core-api lên database local (cần `just up` trước)
 migrate:
     {{compose}} run --rm --no-deps core-api uv run --no-sync alembic upgrade head

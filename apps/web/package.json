@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
+    "@essity/api-client": "workspace:*",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
     "@opentelemetry/resources": "^2.12.0",

@@ -32,6 +32,7 @@ jobs:
           filters: |
             core-api:
               - services/core-api/**
+              - packages/api-client/openapi.json
               - scripts/check_licenses.py
               - .github/workflows/ci.yml
             ai-service:
@@ -145,7 +146,13 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile --filter web
+      - run: pnpm install --frozen-lockfile --filter web...
+      # T1.11: the committed types must match the committed openapi.json (core-api's pytest
+      # checks openapi.json against the app).
+      - name: API client is up to date
+        run: |
+          pnpm --dir packages/api-client generate
+          git diff --exit-code packages/api-client
       - name: Licenses (ADR-0011)
         working-directory: apps/web
         run: |
