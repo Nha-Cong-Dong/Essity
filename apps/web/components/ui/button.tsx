@@ -22,7 +22,7 @@ const buttonVariants = cva(
         quiet:
           "h-11 rounded-control px-3 font-medium text-ink underline decoration-line-strong decoration-[1.5px] underline-offset-[5px] hover:decoration-ink disabled:text-ink-soft disabled:no-underline",
         "primary-inverse":
-          "rounded-full bg-on-hong px-6 text-hong hover:-translate-y-px hover:shadow-[0_12px_28px_-12px_rgb(0_0_0/0.45)] disabled:bg-sunken disabled:text-ink-soft",
+          "rounded-full bg-(--inverse-bg) px-6 text-(--inverse-fg) hover:-translate-y-px hover:shadow-[0_12px_28px_-12px_rgb(0_0_0/0.45)] disabled:bg-sunken disabled:text-ink-soft",
       },
       size: {
         md: "",

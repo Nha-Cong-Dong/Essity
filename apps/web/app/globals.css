@@ -221,6 +221,8 @@
   --hong-glow: radial-gradient(120% 110% at 0% 0%, #b3265f 0%, #a8255f 45%, #8e1e50 100%);
   --on-surface-hong: var(--on-hong); /* text on the pink tile */
   --focus-on-hong: var(--on-hong);
+  --inverse-bg: var(--on-hong); /* the primary-inverse button on the pink tile */
+  --inverse-fg: var(--hong);
   --hl: #ff9ec6; /* pink highlighter: a background under ink only (8.83) */
   --hl-band: var(--hl); /* thin band at the foot of the letters */
   --hl-edge: #c2286c; /* underline of a highlight, page-image boxes */
@@ -262,6 +264,8 @@
     --hong-glow: radial-gradient(120% 110% at 0% 0%, #4a2a3c 0%, #3a2432 50%, #2c1d27 100%);
     --on-surface-hong: var(--ink);
     --focus-on-hong: var(--hong);
+    --inverse-bg: var(--hong);
+    --inverse-fg: var(--on-hong);
     --hl: color-mix(in srgb, #ff9ec6 30%, transparent);
     --hl-band: color-mix(in srgb, #ff9ec6 45%, transparent);
     --hl-edge: #ff9ec6;
@@ -305,6 +309,8 @@
   --hong-glow: radial-gradient(120% 110% at 0% 0%, #4a2a3c 0%, #3a2432 50%, #2c1d27 100%);
   --on-surface-hong: var(--ink);
   --focus-on-hong: var(--hong);
+  --inverse-bg: var(--hong); /* the evening tile is muted: its button stays bright */
+  --inverse-fg: var(--on-hong);
   --hl: color-mix(in srgb, #ff9ec6 30%, transparent); /* full highlight: ≥ 5.61 on every dark surface */
   --hl-band: color-mix(in srgb, #ff9ec6 45%, transparent); /* the thin band needs more: 5.55 on bg */
   --hl-edge: #ff9ec6;

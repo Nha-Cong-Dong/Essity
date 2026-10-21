@@ -111,11 +111,18 @@ describe.each(["light", "dark"] as const)("%s pink tile", (mode) => {
     ["--on-surface-hong", 4.5],
     ["--hong-soft-text", 4.5],
     ["--focus-on-hong", 3],
+    ["--inverse-bg", 3], // the primary-inverse fill is the button's only edge (review of cf1c9a0)
   ] as const)("%s on every stop of --hong-glow", (fg, limit) => {
     const tokens = palette(mode);
     const found = stops(tokens, "--hong-glow");
     expect(found).toHaveLength(3);
     for (const stop of found) expect(contrastOn(tokens, fg, stop)).toBeGreaterThanOrEqual(limit);
+  });
+});
+
+describe.each(["light", "dark"] as const)("%s primary-inverse", (mode) => {
+  it("its label reads on its fill (≥ 4.5)", () => {
+    expect(contrast(palette(mode), "--inverse-fg", "--inverse-bg")).toBeGreaterThanOrEqual(4.5);
   });
 });
 

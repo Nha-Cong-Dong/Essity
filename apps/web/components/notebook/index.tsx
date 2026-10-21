@@ -7,7 +7,7 @@ import styles from "./notebook.module.css";
 // The shared notebook objects of docs/DESIGN.md §3 and §7 (canvas Today artboard).
 // NotebookPage (trang vở) comes with the review screens.
 
-/** Vệt bút dạ quang: an orange highlighter stroke under a title. */
+/** Vệt bút dạ quang: a pink highlighter stroke under a title. */
 export function Marker({ children }: { children: ReactNode }) {
   return <span className={styles.marker}>{children}</span>;
 }
@@ -18,9 +18,8 @@ export function PencilNote({ children }: { children: ReactNode }) {
 }
 
 /**
- * Bìa vở: an ash-pink notebook cover with an orange stapled spine, two stripes, squared texture,
- * corner protectors and a sheet of paper behind (DESIGN.md §3, §6.1). Always straight: the
- * tilt went with the type and colour review of 19/10.
+ * Bìa vở at level b (design system v3.1 §4.4): a rose cover with three details only, the deep
+ * pink spine, one stripe and the highlighter under the title. Always straight.
  */
 export function NotebookCover({
   title,
@@ -35,7 +34,6 @@ export function NotebookCover({
 }) {
   return (
     <div className={styles.cover}>
-      <div className={styles.under} aria-hidden="true" />
       <div className={styles.board}>
         <div className={styles.spine} aria-hidden="true" />
         <div className={styles.titleRow}>
@@ -46,7 +44,6 @@ export function NotebookCover({
         </div>
         <div className={styles.stripes} aria-hidden="true">
           <i />
-          <i />
         </div>
         {children}
       </div>
@@ -54,12 +51,12 @@ export function NotebookCover({
   );
 }
 
-/** Nhãn vở: the label stuck on the cover, with a dashed frame and a strip of tape. */
+/** Nhãn vở: a sheet on the cover (§4.5), no dashed frame and no tape. */
 export function NhanVo({ className, children }: { className?: string; children: ReactNode }) {
   return <div className={cn(styles.label, className)}>{children}</div>;
 }
 
-/** One line of a label: printed key, written pink value on a dotted line. */
+/** One line of a label: the key in soft ink, the value in upright ink; a hairline between rows. */
 export function NhanVoRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className={styles.row}>
