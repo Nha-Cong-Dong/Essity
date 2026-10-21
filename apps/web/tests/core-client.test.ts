@@ -6,7 +6,7 @@ import { coreClient, coreClientFor } from "@/lib/core-client";
 const SERVICE_TOKEN = "web-token-for-tests-only-0123456789";
 
 function stubFetch() {
-  const fetchMock = vi.fn(async (_url: URL, _init: RequestInit) =>
+  const fetchMock = vi.fn<(url: URL, init: RequestInit) => Promise<Response>>(async () =>
     Response.json({ id: "u1", email: "a@example.com", email_verified: true }),
   );
   vi.stubGlobal("fetch", fetchMock);
@@ -92,4 +92,20 @@ describe("coreClient (BFF → core-api)", () => {
 
     expect(sent(fetchMock).headers.get("x-client-ip")).toBe("203.0.113.7");
   });
+
+  it.each(["0", "1"])(
+    "AC6: never forwards an X-Client-IP the browser sent itself (hops = %s, review 987ad20 #1)",
+    async (hops) => {
+      vi.stubEnv("WEB_TRUSTED_PROXY_HOPS", hops);
+      const fetchMock = stubFetch();
+      const request = new NextRequest("http://localhost:3000/api/auth/login", {
+        method: "POST",
+        headers: { "x-client-ip": "9.9.9.9", "x-forwarded-for": "203.0.113.7" },
+      });
+
+      await coreClientFor(request).GET("/v1/me");
+
+      expect(sent(fetchMock).headers.get("x-client-ip")).toBe(hops === "0" ? null : "203.0.113.7");
+    },
+  );
 });

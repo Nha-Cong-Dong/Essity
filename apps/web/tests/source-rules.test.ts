@@ -33,6 +33,16 @@ describe("source rules", () => {
     expect(unwrapped).toEqual([]);
   });
 
+  it("ADR-0014 CSRF: no route exports an unsafe method by re-export, which the scan above misses (review 987ad20 #2)", () => {
+    const routes = sourceFiles("app/api").filter((file) => path.basename(file) === "route.ts");
+    const reexports = routes.filter((file) =>
+      [...read(file).matchAll(/export\s*(\*|\{[^}]*\})/g)].some(
+        (match) => match[1] === "*" || /(POST|PUT|PATCH|DELETE)/.test(match[1]),
+      ),
+    );
+    expect(reexports).toEqual([]);
+  });
+
   it("review plan #2: no Server Actions, which bypass the origin check of /api", () => {
     const actions = SOURCES.filter((file) => /^\s*["']use server["']/m.test(read(file)));
     expect(actions).toEqual([]);

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { coreFetch } from "@/lib/core";
 
 function stubFetch() {
-  const fetchMock = vi.fn(async (_url: URL, _init: RequestInit) => new Response("{}"));
+  const fetchMock = vi.fn<(url: URL, init: RequestInit) => Promise<Response>>(async () => new Response("{}"));
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }

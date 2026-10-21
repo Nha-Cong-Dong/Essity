@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { FieldError, FieldHint } from "@/components/field-error";
 import { NhanVo, NhanVoRow, NotebookCover, PencilNote } from "@/components/notebook";
+import { ServiceChain } from "@/components/service-chain";
 import { AppShell } from "@/components/shells";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,6 +55,9 @@ export default function DesignPreviewPage() {
         <header className="flex flex-col gap-4">
           <h1 className="text-title">Design preview</h1>
           <ThemeSwitch />
+          <Suspense fallback={<p className="font-mono text-small text-ink-soft">web → …</p>}>
+            <ServiceChain />
+          </Suspense>
         </header>
 
         <section className="flex flex-col gap-4">
