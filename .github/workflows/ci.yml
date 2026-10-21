@@ -32,6 +32,7 @@ jobs:
           filters: |
             core-api:
               - services/core-api/**
+              - packages/api-client/openapi.json
               - scripts/check_licenses.py
               - .github/workflows/ci.yml
             ai-service:
@@ -145,14 +146,21 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile --filter web
-      - name: Licenses (ADR-0011)
-        working-directory: apps/web
+      - run: pnpm install --frozen-lockfile --filter web...
+      # T1.11: the committed types must match the committed openapi.json (core-api's pytest
+      # checks openapi.json against the app).
+      - name: API client is up to date
         run: |
-          pnpm licenses list --json > "$RUNNER_TEMP/licenses.json"
-          python3 ../../scripts/check_licenses.py pnpm "$RUNNER_TEMP/licenses.json"
+          pnpm --dir packages/api-client generate
+          git diff --exit-code packages/api-client
+      # `web...`: also the dependencies of the workspace packages web uses (packages/*).
+      - name: Licenses (ADR-0011)
+        run: |
+          pnpm licenses list --json --filter "web..." > "$RUNNER_TEMP/licenses.json"
+          python3 scripts/check_licenses.py pnpm "$RUNNER_TEMP/licenses.json"
       - run: pnpm --filter web lint
       - run: pnpm --filter web typecheck
+      - run: pnpm --filter web test
       - run: pnpm --filter web build
 
   boundaries:

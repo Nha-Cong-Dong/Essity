@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
+import { AccountMenu } from "@/components/account-menu";
 import { FieldError, FieldHint } from "@/components/field-error";
 import { NhanVo, NhanVoRow, NotebookCover, PencilNote } from "@/components/notebook";
+import { ServiceChain } from "@/components/service-chain";
 import { AppShell } from "@/components/shells";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { ThemeSwitch } from "./theme-switch";
 
 export const metadata: Metadata = { title: "Design preview · Essity" };
 
@@ -52,7 +54,13 @@ export default function DesignPreviewPage() {
       <div className="flex flex-col gap-16">
         <header className="flex flex-col gap-4">
           <h1 className="text-title">Design preview</h1>
-          <ThemeSwitch />
+          <div className="flex justify-end">
+            {/* The real account menu, with a made-up address: Chế độ hiển thị switches the page. */}
+            <AccountMenu email="ban@example.com" />
+          </div>
+          <Suspense fallback={<p className="font-mono text-small text-ink-soft">web → …</p>}>
+            <ServiceChain />
+          </Suspense>
         </header>
 
         <section className="flex flex-col gap-4">

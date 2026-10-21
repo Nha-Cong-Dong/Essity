@@ -121,6 +121,8 @@ services:
       CORE_SMTP_PORT: ${SMTP_PORT}
       CORE_EMAIL_FROM: ${EMAIL_FROM}
       CORE_LOG_HASH_KEY: ${LOG_HASH_KEY:-}
+      # Requests carrying this token come from web, so core-api trusts their X-Client-IP.
+      CORE_WEB_TOKEN: ${WEB_TO_CORE_TOKEN:?set in .env}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     ports:
       - "127.0.0.1:8000:8000"
@@ -171,6 +173,12 @@ services:
       dockerfile: apps/web/Dockerfile
     environment:
       CORE_API_URL: ${CORE_API_URL}
+      WEB_TO_CORE_TOKEN: ${WEB_TO_CORE_TOKEN:?set in .env}
+      WEB_ORIGIN: ${WEB_ORIGIN:?set in .env}
+      # No proxy in front of web, and a route handler cannot see the socket's address, so web
+      # sends no X-Client-IP and core-api sees web's container: one rate-limit bucket for
+      # everyone. Fine for one local user; production sets the real number (ADR-0022).
+      WEB_TRUSTED_PROXY_HOPS: ${WEB_TRUSTED_PROXY_HOPS:?set in .env}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     ports:
       - "127.0.0.1:3000:3000"
