@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 
+import { THEME_SCRIPT } from "@/lib/theme";
+
 import "./globals.css";
 
 // DESIGN.md §3.2. All three have a Vietnamese subset; next/font self-hosts them, so browsers
@@ -30,7 +32,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   const fonts = [beVietnamPro, bricolage, jetbrainsMono].map((f) => f.variable).join(" ");
   return (
-    <html lang="vi" className={`${fonts} h-full antialiased`}>
+    // The script may set data-theme before React hydrates <html>; only that attribute differs.
+    <html lang="vi" className={`${fonts} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
