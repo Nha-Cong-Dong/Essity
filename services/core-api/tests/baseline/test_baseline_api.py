@@ -5,6 +5,7 @@ Time is moved by back-dating the stored columns (`email_verified_at`, `entered_a
 seven-day boundaries are in test_baseline_domain.py.
 """
 
+import json
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
@@ -376,7 +377,17 @@ def test_adr_0013_gpa_never_reaches_the_logs(
     post(client, headers, {"gpa_before": "3.27", "prior_ready_days": 41})
     client.put("/v1/baseline", json={"gpa_before": "3.28", "prior_ready_days": 1}, headers=headers)
     client.put("/v1/baseline", json={"gpa_before": "4.37", "prior_ready_days": 1}, headers=headers)
-    logs = log_output()
-    assert logs  # the requests did log something
+    raw = log_output()
+    assert raw  # the requests did log something
+    # Look at what the lines say, not at their clocks and ids: "23.275987" in a timestamp
+    # contains "3.27" by chance (about 1 run in 40 turned this test red).
+    noise = {"timestamp", "request_id", "user_id", "trace_id", "span_id", "duration_ms"}
+    logs = "\n".join(
+        json.dumps(
+            {k: v for k, v in json.loads(line).items() if k not in noise}, ensure_ascii=False
+        )
+        for line in raw.splitlines()
+    )
+    assert '"path": "/v1/baseline"' in logs
     for value in ("3.27", "3.28", "4.37"):
         assert value not in logs
