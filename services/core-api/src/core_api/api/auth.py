@@ -10,9 +10,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from core_api.api.deps import CurrentSession
 from core_api.config import get_settings
+from core_api.db.models import User
 from core_api.db.session import DbSession
 from core_api.domain.auth.passwords import (
     PasswordRejectedError,
@@ -144,6 +146,20 @@ class LoginResult(BaseModel):
     email_verified: bool
 
 
+def _password_unchanged(session: DbSession, user: User) -> bool:
+    """Lock the user's row and check the hash just verified is still the stored one.
+
+    A reset may have committed while the password was being checked: the session this login
+    creates would then outlive the reset's `revoke_all`, and a rehash would write the old
+    password back over the new one. Under the lock, a reset either finished first (the hash
+    differs: refuse, as for a wrong password) or waits for this login to commit, and then
+    revokes its session too (ADR-0021).
+    """
+    checked = user.password_hash
+    current = session.scalar(select(User.password_hash).where(User.id == user.id).with_for_update())
+    return current is not None and current == checked
+
+
 def login_pair_key(email: str, ip: str) -> str:
     return f"{email}|{ip}"
 
@@ -168,7 +184,9 @@ def login(body: LoginBody, request: Request, session: DbSession, limiter: Limite
     if user is None or user.deleted_at is not None or user.password_hash is None:
         dummy_verify(body.password)  # the same work as a real check
         user = None
-    elif not verify_password(user.password_hash, body.password):
+    elif not verify_password(user.password_hash, body.password) or not _password_unchanged(
+        session, user
+    ):
         user = None
     if user is None:
         security_event("login_failed", email=email, ip=ip)

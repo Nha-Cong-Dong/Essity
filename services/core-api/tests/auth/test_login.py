@@ -11,13 +11,13 @@ ADR-0014 (rehash on login when the parameters have changed).
 import json
 import random
 import uuid
-from collections.abc import Callable
-from datetime import datetime
+from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
 
 import pytest
 from argon2 import PasswordHasher
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import Engine, delete, select, update
 from sqlalchemy.orm import Session
 
 from core_api.api import auth
@@ -26,6 +26,7 @@ from core_api.db.models import AuthSession, User
 from core_api.domain.auth.passwords import hash_password, needs_rehash, verify_password
 from core_api.domain.auth.sessions import SESSION_MAX
 from core_api.domain.auth.tokens import TOKEN_BYTES, hash_token
+from core_api.repositories.auth_session import AuthSessionRepository
 from core_api.repositories.user import UserRepository
 from core_api.security import rate_limit
 from core_api.security.audit import hash_ip
@@ -167,6 +168,82 @@ def test_ac7_every_login_issues_a_new_token(client: TestClient, db_session: Sess
     first = login(client, user.email)[1]["token"]
     second = login(client, user.email)[1]["token"]
     assert first != second
+
+
+# --- A reset racing a login (ADR-0021: every session ends at reset) -------------------------
+
+
+@pytest.fixture
+def committed_user(engine: Engine) -> Iterator[User]:
+    """Visible to a second connection, unlike users made in `db_session`."""
+    with Session(engine, expire_on_commit=False) as session:
+        user = UserRepository(session).create(new_email(), hash_password(PASSWORD))
+        user.email_verified_at = user.created_at
+        session.commit()
+    yield user
+    with Session(engine) as session:
+        session.execute(delete(User).where(User.id == user.id))
+        session.commit()
+
+
+NEW_PASSWORD = "trâu già gặm cỏ non chiều"
+
+
+def reset_while_hashing(monkeypatch: pytest.MonkeyPatch, engine: Engine, user: User) -> None:
+    """While the login checks the old password, the owner resets it on another connection."""
+    check = auth.verify_password
+
+    def check_then_reset(password_hash: str, password: str) -> bool:
+        ok = check(password_hash, password)
+        with Session(engine) as other:
+            other.execute(
+                update(User)
+                .where(User.id == user.id)
+                .values(password_hash=hash_password(NEW_PASSWORD))
+            )
+            AuthSessionRepository(other).revoke_all(user.id, datetime.now(UTC))
+            other.commit()
+        return ok
+
+    monkeypatch.setattr(auth, "verify_password", check_then_reset)
+
+
+def live_sessions(engine: Engine, user: User) -> list[AuthSession]:
+    with Session(engine) as session:
+        return list(
+            session.scalars(
+                select(AuthSession).where(
+                    AuthSession.user_id == user.id, AuthSession.revoked_at.is_(None)
+                )
+            )
+        )
+
+
+def test_login_racing_a_reset_gets_no_session(
+    committed_user: User,  # first: torn down after the client's transaction has rolled back
+    client: TestClient,
+    engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reset_while_hashing(monkeypatch, engine, committed_user)
+    assert login(client, committed_user.email) == (401, {"detail": "invalid_credentials"})
+    assert live_sessions(engine, committed_user) == []
+
+
+def test_login_racing_a_reset_never_rehashes_the_old_password_over_the_new(
+    committed_user: User,  # first: torn down after the client's transaction has rolled back
+    client: TestClient,
+    db_session: Session,
+    engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reset_while_hashing(monkeypatch, engine, committed_user)
+    monkeypatch.setattr(auth, "needs_rehash", lambda password_hash: True)  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
+    login(client, committed_user.email)
+    # What the login's transaction would commit (the test rolls it back afterwards).
+    stored = db_session.scalar(select(User.password_hash).where(User.id == committed_user.id))
+    assert stored is not None
+    assert verify_password(stored, NEW_PASSWORD)
 
 
 def test_rehash_on_login_when_params_old(client: TestClient, db_session: Session) -> None:
