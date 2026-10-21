@@ -105,6 +105,20 @@ describe("POST /api/auth/password-reset/confirm (T1.14)", () => {
     },
   );
 
+  it.each([
+    ["a malformed token (field errors)", { detail: [{ loc: ["body", "token"] }] }, 400, "invalid_or_expired_token"],
+    ["a reason web does not know", { detail: "something_new" }, 422, "invalid_password"],
+  ])("F6: 422 for %s (review 7ea491c #1)", async (_name, detail, status, error) => {
+    fakeCoreApi(() => Response.json(detail, { status: 422 }));
+
+    const response = await confirm(
+      browserPost("/api/auth/password-reset/confirm", { token: LINK_TOKEN, password: NEW_PASSWORD }),
+    );
+
+    expect(response.status).toBe(status);
+    expect(await response.json()).toEqual({ error });
+  });
+
   it("AC4, F6: an expired or used link is invalid_or_expired_token", async () => {
     fakeCoreApi(() => Response.json({ detail: "invalid_or_expired_token" }, { status: 400 }));
 

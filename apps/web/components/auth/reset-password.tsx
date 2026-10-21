@@ -7,12 +7,7 @@ import { FieldError, FieldHint } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import { authMessage, PASSWORD_REASONS, postJson, rateLimitMessage } from "@/lib/auth-errors";
 import { consumeLinkToken } from "@/lib/link-token";
-
-type State =
-  | { view: "loading" }
-  | { view: "form"; token: string; error?: string; retryAfter?: number }
-  | { view: "done" }
-  | { view: "expired" };
+import { afterReset, type ResetState } from "@/lib/reset-state";
 
 /** A ✓ before "Đã đặt mật khẩu mới." */
 function Check() {
@@ -36,7 +31,7 @@ function Check() {
  * expired or used link shows "expired". No sign-in afterwards: every session has ended.
  */
 export function ResetPassword() {
-  const [state, setState] = useState<State>({ view: "loading" });
+  const [state, setState] = useState<ResetState>({ view: "loading" });
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -50,9 +45,7 @@ export function ResetPassword() {
     setBusy(true);
     const result = await postJson("/api/auth/password-reset/confirm", { token, password });
     setBusy(false);
-    if (result.data) setState({ view: "done" });
-    else if (result.error === "invalid_or_expired_token") setState({ view: "expired" });
-    else setState({ view: "form", token, error: result.error, retryAfter: result.retryAfter });
+    setState(afterReset(token, result));
   }
 
   if (state.view === "loading") {
