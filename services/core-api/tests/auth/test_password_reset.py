@@ -25,6 +25,7 @@ from core_api.domain.auth.passwords import hash_password, verify_password
 from core_api.domain.auth.tokens import RESET_PASSWORD_TTL, TokenPurpose
 from core_api.repositories.email_token import EmailTokenRepository
 from core_api.repositories.user import UserRepository
+from core_api.security.audit import hash_ip
 
 RESET = "/v1/auth/password-reset"
 CONFIRM = "/v1/auth/password-reset/confirm"
@@ -257,19 +258,33 @@ def test_confirm_is_limited_per_ip(client: TestClient) -> None:
 # --- Logs (ADR-0013) --------------------------------------------------------------------------
 
 
+def security_events(output: str) -> list[dict[str, object]]:
+    lines = (json.loads(raw) for raw in output.splitlines() if raw.startswith("{"))
+    return [line for line in lines if line.get("logger") == "core_api.security"]
+
+
 def test_reset_events_logged_without_token(
-    client: TestClient, db_session: Session, log_output: Callable[[], str]
+    client: TestClient, db_session: Session, client_ip: str, log_output: Callable[[], str]
 ) -> None:
+    """ADR-0013, PLAN T1.10: asking for a link (any address), a failed confirm and a reset are
+    each a security event; neither token nor password reaches the log."""
     user = make_user(db_session)
+    unknown = new_email()
+    client.post(RESET, json={"email": unknown})
+    bad = confirm(client, "not-a-real-token")
     token = reset_token(db_session, user)
-    assert confirm(client, token)[0] == 200
+    assert bad[0] == 400 and confirm(client, token)[0] == 200
     output = log_output()
-    [line] = [
-        line
-        for line in (json.loads(raw) for raw in output.splitlines() if raw.startswith("{"))
-        if line.get("event") == "password_reset"
+
+    events = security_events(output)
+    assert [line["event"] for line in events] == [
+        "password_reset_requested",
+        "password_reset_failed",
+        "password_reset",
     ]
-    assert line["user_id"] == str(user.id)
-    assert "ip_hash" in line
-    for secret in (token, NEW, OLD):
+    for line in events:
+        assert line["ip_hash"] == hash_ip(client_ip)
+    assert events[2]["user_id"] == str(user.id)
+    assert unknown not in output  # the address is masked
+    for secret in (token, "not-a-real-token", NEW, OLD):
         assert secret not in output

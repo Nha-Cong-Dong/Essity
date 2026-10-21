@@ -230,13 +230,22 @@ def request_password_reset(
     body: EmailBody, request: Request, session: DbSession, limiter: Limiter
 ) -> dict[str, str]:
     """Email a one-hour reset link if the account exists; the same answer either way (AC5)."""
-    limiter.enforce(RESET_PER_IP, client_ip(request, get_settings().web_token))
+    ip = client_ip(request, get_settings().web_token)
+    limiter.enforce(RESET_PER_IP, ip)
     email = normalize_email(body.email)
     limiter.enforce_cooldown(EMAIL_COOLDOWN, email)
+    # Every address, known or not: the log is ours, and a run of these shows mailbox spam.
+    security_event("password_reset_requested", email=email, ip=ip)
     user = UserRepository(session).get_by_email(email)
     if user is not None and user.deleted_at is None:
         enqueue_email(session, user.id, EmailKind.RESET_PASSWORD)
     return CHECK_EMAIL
+
+
+def _reset_failed(ip: str) -> HTTPException:
+    """Log a refused reset link (someone may be trying tokens) and build its single answer."""
+    security_event("password_reset_failed", ip=ip)
+    return HTTPException(status_code=400, detail="invalid_or_expired_token")
 
 
 class ResetBody(TokenBody):
@@ -257,7 +266,7 @@ def confirm_password_reset(
     owner = tokens.owner_of_live(body.token, TokenPurpose.RESET_PASSWORD, now)
     user = users.get(owner) if owner else None
     if user is None or user.deleted_at is not None:
-        raise HTTPException(status_code=400, detail="invalid_or_expired_token")
+        raise _reset_failed(ip)
     # The rules before the token is spent: a refused password leaves the link usable (§2).
     try:
         validate_password(body.password, email=user.email)
@@ -266,7 +275,7 @@ def confirm_password_reset(
     # consume decides, under the user's row lock: a second request with the same link, or one
     # with another of the user's links, finds it spent and gets the same 400.
     if tokens.consume(body.token, TokenPurpose.RESET_PASSWORD, now) != user.id:
-        raise HTTPException(status_code=400, detail="invalid_or_expired_token")
+        raise _reset_failed(ip)
     user.password_hash = hash_password(body.password)
     if user.email_verified_at is None:
         user.email_verified_at = now  # the link proved the mailbox is theirs (ADR-0021)
