@@ -37,6 +37,11 @@ NAME_MAX = 200  # subject.name is String(200)
 
 
 def _name(value: str) -> str:
+    # JSON can carry a lone surrogate (a "\ud800" escape): Python holds it, UTF-8 cannot store it.
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise ValueError("name must be valid Unicode text") from None
     value = normalize_subject_name(value)
     if not 1 <= len(value) <= NAME_MAX:
         raise ValueError(f"name must be 1 to {NAME_MAX} characters")

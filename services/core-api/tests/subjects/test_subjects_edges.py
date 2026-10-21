@@ -85,17 +85,27 @@ def test_b12_patch_name_is_normalized_like_create(client: TestClient, db_session
     assert response.json()["name"] == "Hệ điều hành"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG: a JSON name holding a lone surrogate (\\ud800) passes Pydantic and then "
-    "fails to encode as UTF-8 at the database: 500 instead of 422. Remove this marker once "
-    "`_name` in api/subjects.py refuses text that is not valid UTF-8.",
-)
 def test_malformed_unicode_name_is_422_not_500(client: TestClient, db_session: Session) -> None:
     _, headers = signed_in(db_session)
     body = b'{"name": "a\\ud800b", "exam_date": "2099-01-01"}'
     response = client.post(
         "/v1/subjects", content=body, headers={**headers, "content-type": "application/json"}
+    )
+    assert response.status_code == 422
+
+
+def test_malformed_unicode_name_in_patch_is_422_not_500(
+    client: TestClient, db_session: Session
+) -> None:
+    _, headers = signed_in(db_session)
+    subject_id = client.post(
+        "/v1/subjects", json={"name": "Mạng", "exam_date": "2099-01-01"}, headers=headers
+    ).json()["id"]
+    body = b'{"name": "a\\ud800b"}'
+    response = client.patch(
+        f"/v1/subjects/{subject_id}",
+        content=body,
+        headers={**headers, "content-type": "application/json"},
     )
     assert response.status_code == 422
 
