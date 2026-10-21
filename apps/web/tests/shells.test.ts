@@ -46,6 +46,16 @@ describe("frames share one container (§5)", () => {
     expect(markup).toContain("Câu 3 / 14");
   });
 
+  it("the nav can shrink and scroll rather than push the page sideways at 320px (review of 96bebab)", () => {
+    const markup = renderToStaticMarkup(h(AppShell, { current: "/today", children: "x" }));
+    expect(markup).toMatch(/<nav[^>]*class="[^"]*min-w-0[^"]*overflow-x-auto/);
+  });
+
+  it("the sticky header never hides the focused element (WCAG 2.4.11, review of 96bebab)", () => {
+    const css = readFileSync(path.resolve(import.meta.dirname, "../app/globals.css"), "utf-8");
+    expect(css).toMatch(/scroll-padding-top: calc\(var\(--header-h\) \+ 8px\)/);
+  });
+
   it("shells and the account menu use type steps and role radii, not pixel values", () => {
     for (const file of ["components/shells.tsx", "components/account-menu.tsx"]) {
       const source = readFileSync(path.resolve(import.meta.dirname, "..", file), "utf-8");

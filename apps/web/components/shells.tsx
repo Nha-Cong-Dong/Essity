@@ -35,16 +35,16 @@ export function AppShell({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="sticky top-0 z-(--z-header) border-b border-line bg-bg">
-        <div className={cn(CONTAINER, "flex h-(--header-h) items-center gap-4 min-[901px]:gap-10")}>
+        <div className={cn(CONTAINER, "flex h-(--header-h) items-center gap-2 min-[401px]:gap-4 min-[901px]:gap-10")}>
           <Logo />
-          <nav aria-label="Chính" className="flex gap-1">
+          <nav aria-label="Chính" className="flex min-w-0 gap-1 overflow-x-auto">
             {NAV.map((item) => (
               <a
                 key={item.href}
                 href={item.href}
                 aria-current={item.href === current ? "page" : undefined}
                 className={cn(
-                  "flex h-10 items-center rounded-full px-3 text-body font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink min-[901px]:px-4",
+                  "flex h-10 shrink-0 items-center rounded-full px-2.5 text-body font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink min-[401px]:px-3 min-[901px]:px-4",
                   "aria-[current=page]:bg-ink aria-[current=page]:font-semibold aria-[current=page]:text-bg",
                 )}
               >
