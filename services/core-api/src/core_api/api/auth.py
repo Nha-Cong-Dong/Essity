@@ -205,3 +205,54 @@ def logout_all(signed: CurrentSession, request: Request, session: DbSession) -> 
     AuthSessionRepository(session).revoke_all(signed.user.id, datetime.now(UTC))
     security_event("logout_all", ip=client_ip(request, get_settings().web_token))
     return Response(status_code=204)
+
+
+@router.post("/password-reset", status_code=202)
+def request_password_reset(
+    body: EmailBody, request: Request, session: DbSession, limiter: Limiter
+) -> dict[str, str]:
+    """Email a one-hour reset link if the account exists; the same answer either way (AC5)."""
+    limiter.enforce(RESET_PER_IP, client_ip(request, get_settings().web_token))
+    email = normalize_email(body.email)
+    limiter.enforce_cooldown(EMAIL_COOLDOWN, email)
+    user = UserRepository(session).get_by_email(email)
+    if user is not None and user.deleted_at is None:
+        enqueue_email(session, user.id, EmailKind.RESET_PASSWORD)
+    return CHECK_EMAIL
+
+
+class ResetBody(TokenBody):
+    password: str = Field(max_length=1024)
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(
+    body: ResetBody, request: Request, session: DbSession, limiter: Limiter
+) -> dict[str, str]:
+    """Set a new password from a reset link (ADR-0021): the old password and every session end,
+    the email counts as verified. Done in the request's transaction, with the token's use."""
+    ip = client_ip(request, get_settings().web_token)
+    limiter.enforce(CONFIRM_PER_IP, ip)
+    now = datetime.now(UTC)
+    tokens = EmailTokenRepository(session)
+    users = UserRepository(session)
+    owner = tokens.owner_of_live(body.token, TokenPurpose.RESET_PASSWORD, now)
+    user = users.get(owner) if owner else None
+    if user is None or user.deleted_at is not None:
+        raise HTTPException(status_code=400, detail="invalid_or_expired_token")
+    # The rules before the token is spent: a refused password leaves the link usable (§2).
+    try:
+        validate_password(body.password, email=user.email)
+    except PasswordRejectedError as exc:
+        raise HTTPException(status_code=422, detail=exc.problem.value) from None
+    # consume decides, under the user's row lock: a second request with the same link, or one
+    # with another of the user's links, finds it spent and gets the same 400.
+    if tokens.consume(body.token, TokenPurpose.RESET_PASSWORD, now) != user.id:
+        raise HTTPException(status_code=400, detail="invalid_or_expired_token")
+    user.password_hash = hash_password(body.password)
+    if user.email_verified_at is None:
+        user.email_verified_at = now  # the link proved the mailbox is theirs (ADR-0021)
+    AuthSessionRepository(session).revoke_all(user.id, now)
+    set_user_id(str(user.id))
+    security_event("password_reset", ip=ip)
+    return {"status": "password_reset"}

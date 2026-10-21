@@ -32,7 +32,17 @@ class EmailTokenRepository:
         return raw
 
     def owner_of_live(self, raw: str, purpose: TokenPurpose, now: datetime) -> uuid.UUID | None:
-        return None
+        """The user of a token that `consume` would accept now, without using it; None
+        otherwise. Lets a caller check what it needs the user for (a new password against the
+        address) before spending the token; `consume` still decides."""
+        return self.session.scalar(
+            select(EmailToken.user_id).where(
+                EmailToken.token_hash == hash_token(raw),
+                EmailToken.purpose == purpose,
+                EmailToken.used_at.is_(None),
+                EmailToken.expires_at > now,
+            )
+        )
 
     def consume(
         self, raw: str, purpose: TokenPurpose, now: datetime | None = None
