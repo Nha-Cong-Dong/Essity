@@ -9,7 +9,9 @@ Span attributes must not carry personal data any more than logs may (ADR-0013). 
 instrumentations record full URLs, query string included, and the ASGI one sets them after the
 span has started, so cleaning them in a SpanProcessor is too early. Instead every exporter is
 wrapped in `RedactingSpanExporter`, which strips query strings from the finished span before it
-leaves the process. Request and response headers are not captured.
+leaves the process. Request and response headers are not captured; if an
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_* variable turns capture on, the exporter still blanks
+the ones carrying secrets (Authorization, cookies, X-Service-Token).
 """
 
 import os
@@ -24,6 +26,20 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter, Spa
 # Attributes holding a URL or a request target, old and stable HTTP semantic conventions.
 _URL_ATTRIBUTES = ("url.full", "http.url", "http.target")
 _QUERY_ATTRIBUTES = ("url.query",)
+# Captured headers (only if an OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_* variable asks for
+# them) that carry secrets or personal data: session tokens, cookies, service tokens, and the
+# user's real IP that web passes on.
+_HEADER_PREFIXES = ("http.request.header.", "http.response.header.")
+_SECRET_HEADERS = frozenset(
+    {
+        "authorization",
+        "proxy_authorization",
+        "cookie",
+        "set_cookie",
+        "x_service_token",
+        "x_client_ip",
+    }
+)
 REDACTED = "[redacted]"
 
 
@@ -40,6 +56,12 @@ def redact_span(span: ReadableSpan) -> ReadableSpan:
         if attributes.get(key):
             attributes[key] = REDACTED
             changed = True
+    for key in list(attributes):
+        if key.startswith(_HEADER_PREFIXES):
+            header = key.rsplit(".", 1)[1].replace("-", "_").lower()
+            if header in _SECRET_HEADERS:
+                attributes[key] = (REDACTED,)
+                changed = True
     if not changed:
         return span
     return ReadableSpan(

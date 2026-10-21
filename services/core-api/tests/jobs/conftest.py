@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterator
 import pytest
 from sqlalchemy import Engine, text
 
-from core_api.jobs.app import libpq_conninfo
+from core_api.jobs.app import app, libpq_conninfo
 from core_api.jobs.worker import run, run_workers
 
 
@@ -27,8 +27,13 @@ def clean_jobs(engine: Engine) -> Iterator[None]:
 
 
 @pytest.fixture
-def work(test_database_url: str) -> Callable[..., None]:
-    """Run workers until no job is due, then return."""
+def work(test_database_url: str, monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
+    """Run workers until no job is due, then return.
+
+    Without periodic tasks: a worker defers any periodic job due in the last 10 minutes, so the
+    hourly purge would show up in tests run just after the hour. Tests defer it by hand instead.
+    """
+    monkeypatch.setattr(app, "periodic_registry", type(app.periodic_registry)())
     conninfo = libpq_conninfo(test_database_url)
 
     def work(count: int = 1) -> None:

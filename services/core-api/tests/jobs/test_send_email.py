@@ -9,6 +9,7 @@ import io
 import json
 import logging
 import os
+import re
 import uuid
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
@@ -95,6 +96,28 @@ def test_account_exists_email_reaches_mailpit(
     assert f"{WEB_BASE_URL}/login" in message["Text"]
     assert f"{WEB_BASE_URL}/forgot-password" in message["Text"]
     assert [row["status"] for row in job_rows(engine)] == ["succeeded"]
+
+
+def test_reset_password_email_carries_a_one_hour_one_time_link(
+    engine: Engine, work: Callable[..., None], user: User
+) -> None:
+    """US-12 AC4 (T1.10): the link opens /reset-password with a token stored only as a hash."""
+    enqueue_committed(engine, user.id, EmailKind.RESET_PASSWORD)
+    work()
+
+    [message] = mailpit_messages(user.email)
+    assert message["Subject"] == "Đặt lại mật khẩu Essity"
+    assert "1 giờ" in message["Text"]
+    [raw] = re.findall(
+        rf"{re.escape(WEB_BASE_URL)}/reset-password\?token=([\w-]+)", message["Text"]
+    )
+    with Session(engine) as session:
+        assert (
+            EmailTokenRepository(session).owner_of_live(
+                raw, TokenPurpose.RESET_PASSWORD, datetime.now(UTC)
+            )
+            == user.id
+        )
 
 
 def test_payload_holds_the_user_id_and_the_kind_only(engine: Engine, user: User) -> None:

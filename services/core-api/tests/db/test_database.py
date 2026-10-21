@@ -9,7 +9,7 @@ from alembic.config import Config
 from alembic.util.exc import CommandError
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, func, select, text
+from sqlalchemy import Column, Engine, ForeignKey, Integer, MetaData, Table, func, select, text
 from sqlalchemy.orm import Session
 
 from core_api.db.base import NAMING_CONVENTION, Base
@@ -150,3 +150,27 @@ def test_rows_from_other_tests_are_never_visible(
     SubjectRepository(db_session, two_users[0].id).create(f"attempt {attempt}")
     db_session.commit()  # a commit inside a test is still rolled back afterwards
     assert db_session.scalar(select(func.count()).select_from(Subject)) == 1
+
+
+# --- Deleting a user (ADR-0020 §4: purge_unverified deletes the user row only) ----------------
+
+
+def foreign_keys_to_user_without_cascade(metadata: MetaData) -> list[str]:
+    return sorted(
+        f"{table.name}.{fk.parent.name}"
+        for table in metadata.tables.values()
+        for fk in table.foreign_keys
+        if fk.column.table.name == "user" and fk.ondelete != "CASCADE"
+    )
+
+
+def test_every_foreign_key_to_user_cascades_on_delete() -> None:
+    """A table that kept a user's row alive would make every purge fail, and retry forever."""
+    assert foreign_keys_to_user_without_cascade(Base.metadata) == []
+
+
+def test_cascade_check_flags_a_foreign_key_without_it() -> None:
+    probe = MetaData()
+    Table("user", probe, Column("id", Integer, primary_key=True))
+    Table("note", probe, Column("user_id", Integer, ForeignKey("user.id")))
+    assert foreign_keys_to_user_without_cascade(probe) == ["note.user_id"]

@@ -28,8 +28,29 @@ def test_outside_local_the_web_url_must_be_set_and_https(values: dict[str, str])
         settings(**values)
 
 
+LOG_HASH_KEY = "log-hash-key-for-tests-0123456789abcdef"
+
+
 def test_outside_local_an_https_web_url_is_accepted() -> None:
-    assert settings(environment="production", web_base_url="https://essity.example/").web_base_url
+    assert settings(
+        environment="production", web_base_url="https://essity.example/", log_hash_key=LOG_HASH_KEY
+    ).web_base_url
+
+
+def test_log_hash_key_required_outside_local_and_test() -> None:
+    # Without a key, hashed IPs in the security log could be reversed (A13, T1.8).
+    with pytest.raises(ValidationError, match="log_hash_key"):
+        settings(environment="production", web_base_url="https://essity.example/")
+
+
+def test_log_hash_key_must_be_long() -> None:
+    with pytest.raises(ValidationError, match="log_hash_key"):
+        settings(log_hash_key="short")
+
+
+def test_local_works_without_a_log_hash_key() -> None:
+    assert settings(environment="local").log_hash_key is None
+    assert settings(environment="local", log_hash_key="").log_hash_key is None  # from Compose
 
 
 def test_a_settings_error_never_shows_a_secret(monkeypatch: pytest.MonkeyPatch) -> None:

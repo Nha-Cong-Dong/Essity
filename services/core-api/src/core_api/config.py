@@ -40,6 +40,11 @@ class Settings(DatabaseSettings):
     # Empty = not set (see the validator below).
     web_base_url: str = Field(default="", validate_default=True)
 
+    # Key for the keyed hash of IPs in the security log (T1.8): a plain hash of an IPv4 address
+    # can be reversed by hashing all 2^32 of them. Outside local and test it must be set; locally
+    # each process picks a random one.
+    log_hash_key: SecretStr | None = Field(default=None, min_length=32, validate_default=True)
+
     ai_service_url: str = "http://127.0.0.1:8001"
     # Sent to ai-service in X-Service-Token. No default: core-api refuses to start without one,
     # the same rule ai-service applies on its side.
@@ -58,6 +63,20 @@ class Settings(DatabaseSettings):
         if not url.startswith("https://"):
             raise ValueError("web_base_url must be set to an https:// URL outside local and test")
         return url
+
+    @field_validator("log_hash_key", mode="before")
+    @classmethod
+    def _empty_log_hash_key_is_unset(cls, key: object) -> object:
+        return None if key == "" else key  # Compose passes an unset variable as ""
+
+    @field_validator("log_hash_key")
+    @classmethod
+    def _log_hash_key_fits_environment(
+        cls, key: SecretStr | None, info: ValidationInfo
+    ) -> SecretStr | None:
+        if key is None and info.data.get("environment", "local") not in DEV_ENVIRONMENTS:
+            raise ValueError("log_hash_key must be set outside local and test")
+        return key
 
 
 @lru_cache

@@ -5,5 +5,8 @@ refuses kinds missing here, and the worker would fail jobs whose kind it does no
 """
 
 # Modules that declare handlers; importing them registers their kinds.
-from core_api.jobs import send_email  # noqa: F401, E402  # pyright: ignore[reportUnusedImport]
+from core_api.jobs import (
+    purge_unverified,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    send_email,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+)
 from core_api.jobs.handler import job_handler  # noqa: F401  # pyright: ignore[reportUnusedImport]
