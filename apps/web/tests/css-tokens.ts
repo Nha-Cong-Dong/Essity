@@ -91,6 +91,20 @@ function luminance([r, g, b]: Rgba): number {
   return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 
+/** The colour stops of a gradient token, as hex. */
+export function stops(tokens: Tokens, name: string): string[] {
+  const value = tokens[name];
+  if (value === undefined) throw new Error(`token ${name} is not declared`);
+  const found = value.match(/#[0-9a-f]{6}/gi);
+  if (!found) throw new Error(`${name} has no hex stops: ${value}`);
+  return found;
+}
+
+/** Contrast of a token colour on a literal hex background. */
+export function contrastOn(tokens: Tokens, fg: string, hexBg: string): number {
+  return contrast({ ...tokens, "--stop": hexBg }, fg, "--stop");
+}
+
 /**
  * Contrast of `fg` on `bg`. A translucent background (the dark highlighter) is laid on
  * `base` first, which must then be opaque.

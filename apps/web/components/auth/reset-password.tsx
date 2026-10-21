@@ -12,7 +12,7 @@ import { afterReset, type ResetState } from "@/lib/reset-state";
 /** A ✓ before "Đã đặt mật khẩu mới." */
 function Check() {
   return (
-    <svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0 text-right">
+    <svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0 text-correct">
       <path
         d="m3 8.5 3.25 3L13 4.75"
         fill="none"

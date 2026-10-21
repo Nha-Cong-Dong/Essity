@@ -30,7 +30,7 @@
   overflow: hidden;
   border-radius: 14px 22px 22px 14px;
   padding: 52px 52px 48px 84px;
-  box-shadow: var(--book);
+  box-shadow: var(--elev-cover);
   background-color: var(--cover);
   /* Faint squared-paper texture (the first thing to drop if it feels busy, DESIGN.md §10). */
   background-image:
@@ -69,7 +69,7 @@
   inset: 0 auto 0 0;
   width: 30px;
   border-right: 2px solid rgb(0 0 0 / 0.15);
-  background: color-mix(in srgb, var(--cam) 85%, var(--cover));
+  background: var(--spine);
   pointer-events: none;
 }
 
@@ -161,7 +161,7 @@
   height: 26px;
   margin-left: -56px;
   transform: rotate(-2.5deg);
-  background-color: color-mix(in srgb, var(--cam) 48%, transparent);
+  background-color: var(--hl);
   background-image: repeating-linear-gradient(90deg, rgb(255 255 255 / 0.14) 0 5px, transparent 5px 11px);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.15);
   pointer-events: none;
@@ -199,8 +199,8 @@
   background-image: linear-gradient(
     100deg,
     transparent 1%,
-    color-mix(in srgb, var(--cam) 45%, transparent) 3%,
-    color-mix(in srgb, var(--cam) 38%, transparent) 95%,
+    var(--hl) 3%,
+    var(--hl) 95%,
     transparent 98%
   );
   background-position: 0 86%;
@@ -219,7 +219,7 @@
   font-style: italic;
   font-weight: 500;
   line-height: 1.4;
-  color: var(--miss);
+  color: var(--pencil);
 }
 
 @media (max-width: 640px) {

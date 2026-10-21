@@ -21,7 +21,7 @@ const SURFACES = [
   ["paper", "bg-paper text-ink"],
   ["sheet", "bg-sheet text-ink"],
   ["subtle", "bg-subtle text-ink"],
-  ["cover", "bg-cover text-ink"],
+  ["cover", "bg-book-cover text-ink"],
   ["hong", "bg-hong text-on-hong"],
 ] as const;
 
@@ -29,10 +29,9 @@ const INKS = [
   ["ink", "text-ink"],
   ["ink-soft", "text-ink-soft"],
   ["hong", "text-hong"],
-  ["cam", "text-cam"],
-  ["right", "text-right"],
+  ["correct", "text-correct"],
   ["partial", "text-partial"],
-  ["miss", "text-miss"],
+  ["pencil", "text-pencil"],
 ] as const;
 
 const TYPE = [
@@ -43,7 +42,7 @@ const TYPE = [
   ["section · 22/600", "font-display text-section", "Đáp án tham chiếu"],
   ["answer · 18/32px, hồng", "text-answer text-hong", "Client hết timeout và gửi lại SYN."],
   ["source · 18/1.75", "text-source", "Khi rwnd = 0, bên gửi bật persist timer."],
-  ["hand · Be Vietnam Pro nghiêng 18, chì", "font-hand text-hand text-miss", "còn thiếu · hiểu được vì sao"],
+  ["hand · Be Vietnam Pro nghiêng 18, chì", "font-hand text-hand text-pencil", "còn thiếu · hiểu được vì sao"],
   ["body · 16/1.6", "text-body", "Vở ghi khác giáo trình ở điểm này."],
   ["small · 14 / caption · 13", "text-small text-ink-soft", "Giáo trình MMT · tr. 47 (trang file 55)"],
 ] as const;
@@ -149,7 +148,7 @@ export default function DesignPreviewPage() {
           <div className="flex justify-center px-6 pt-8 pb-12">
             <NotebookCover
               title="Hôm nay"
-              aside={<span className="font-hand text-hand text-cam">thứ Sáu, 16/10</span>}
+              aside={<span className="font-hand text-hand text-pencil">thứ Sáu, 16/10</span>}
             >
               <NhanVo>
                 <p className="m-0 mb-3.5 text-center font-display text-[18px] font-bold text-hong">

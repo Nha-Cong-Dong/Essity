@@ -3,7 +3,7 @@
 // from app/globals.css, never copied from the spec (plan V6, V15).
 import { describe, expect, it } from "vitest";
 
-import { contrast, osDarkPalette, palette, type Mode } from "./css-tokens";
+import { contrast, contrastOn, osDarkPalette, palette, stops, type Mode } from "./css-tokens";
 
 type Pair = [fg: string, bg: string, base?: string];
 
@@ -103,6 +103,20 @@ describe.each(["light", "dark"] as const)("%s palette", (mode) => {
       expect(contrast(tokens(), fg, bg, base)).toBeLessThan(limit);
     },
   );
+});
+
+// Final §1.3 "on buttons and the pink tile": text and focus on every stop of the tile's gradient.
+describe.each(["light", "dark"] as const)("%s pink tile", (mode) => {
+  it.each([
+    ["--on-surface-hong", 4.5],
+    ["--hong-soft-text", 4.5],
+    ["--focus-on-hong", 3],
+  ] as const)("%s on every stop of --hong-glow", (fg, limit) => {
+    const tokens = palette(mode);
+    const found = stops(tokens, "--hong-glow");
+    expect(found).toHaveLength(3);
+    for (const stop of found) expect(contrastOn(tokens, fg, stop)).toBeGreaterThanOrEqual(limit);
+  });
 });
 
 describe("token tables", () => {

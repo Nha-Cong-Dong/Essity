@@ -41,7 +41,7 @@
   --color-sheet: var(--sheet);
   --color-raised: var(--raised);
   --color-sunken: var(--sunken);
-  --color-cover: var(--cover);
+  --color-book-cover: var(--cover); /* not --color-cover: `bg-cover` is also background-size */
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-line: var(--line);
@@ -68,7 +68,6 @@
   --color-subtle: var(--sunken);
   --color-miss: var(--pencil);
   --color-hong-tint: var(--rose-100);
-  --color-right: var(--correct); /* temporary: `text-right` also means text-align */
 
   /* shadcn/ui tokens, mapped onto the ones above: no new colours. */
   --color-background: var(--bg);
@@ -210,7 +209,7 @@
   --ink: #221b1b;
   --ink-soft: #6b4a59;
   --line: #eedde4;
-  --line-strong: #946a7d; /* final §1.4 said #9a6f82: only 2.92 on rose-200 */
+  --line-strong: #946a7d; /* not #9a6f82: that is only 2.92 on rose-200 (plan V16) */
   --hong: #a8255f;
   --on-hong: #ffffff;
   --hong-soft-text: #ffe3ef;
@@ -220,6 +219,8 @@
   --rose-300: #eaafc7;
   --rose-700: #8e1e50;
   --hong-glow: radial-gradient(120% 110% at 0% 0%, #b3265f 0%, #a8255f 45%, #8e1e50 100%);
+  --on-surface-hong: var(--on-hong); /* text on the pink tile */
+  --focus-on-hong: var(--on-hong);
   --hl: #ff9ec6; /* pink highlighter: a background under ink only (8.83) */
   --hl-band: var(--hl); /* thin band at the foot of the letters */
   --hl-edge: #c2286c; /* underline of a highlight, page-image boxes */
@@ -259,6 +260,8 @@
     --rose-300: #5a3a4a;
     --rose-700: #e77faf;
     --hong-glow: radial-gradient(120% 110% at 0% 0%, #4a2a3c 0%, #3a2432 50%, #2c1d27 100%);
+    --on-surface-hong: var(--ink);
+    --focus-on-hong: var(--hong);
     --hl: color-mix(in srgb, #ff9ec6 30%, transparent);
     --hl-band: color-mix(in srgb, #ff9ec6 45%, transparent);
     --hl-edge: #ff9ec6;
@@ -275,10 +278,6 @@
     --elev-cover: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 48px -16px rgb(0 0 0 / 0.7);
     --elev-hong: 0 10px 28px -10px rgb(242 141 186 / 0.45);
     color-scheme: dark;
-  }
-  :root:not([data-theme="light"]) [data-surface="hong"] {
-    color: var(--ink);
-    --focus: var(--hong);
   }
 }
 
@@ -304,6 +303,8 @@
   --rose-300: #5a3a4a;
   --rose-700: #e77faf;
   --hong-glow: radial-gradient(120% 110% at 0% 0%, #4a2a3c 0%, #3a2432 50%, #2c1d27 100%);
+  --on-surface-hong: var(--ink);
+  --focus-on-hong: var(--hong);
   --hl: color-mix(in srgb, #ff9ec6 30%, transparent); /* full highlight: ≥ 5.61 on every dark surface */
   --hl-band: color-mix(in srgb, #ff9ec6 45%, transparent); /* the thin band needs more: 5.55 on bg */
   --hl-edge: #ff9ec6;
@@ -322,17 +323,14 @@
   color-scheme: dark;
 }
 
-/* Solid surfaces: the pink tile (Today, session done) and the landing's closing block. */
+/* Solid surfaces: the pink tile (Today, session done) and the landing's closing block. Its text
+   and focus colours are palette tokens, so a [data-tone] switch around it inherits the right ones. */
 [data-surface="hong"] {
   background: var(--hong-glow);
-  color: var(--on-hong);
-  --focus: var(--on-hong);
+  color: var(--on-surface-hong);
+  --focus: var(--focus-on-hong);
   position: relative;
   isolation: isolate;
-}
-:root[data-theme="dark"] [data-surface="hong"] {
-  color: var(--ink);
-  --focus: var(--hong);
 }
 [data-surface="hong"]::after {
   content: "";
