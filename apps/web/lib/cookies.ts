@@ -21,5 +21,8 @@ export function cookieOptions(expiresAt: Date, now: Date = new Date()) {
   return { ...COOKIE_ATTRIBUTES, maxAge };
 }
 
+/** The pending sign-up email lives as long as its verification link (24 hours, F1). */
+export const PENDING_EMAIL_MAX_AGE = 24 * 3600;
+
 /** Attributes that delete a cookie: the browser only replaces a `__Host-` cookie set alike. */
 export const EXPIRED_COOKIE = { ...COOKIE_ATTRIBUTES, maxAge: 0 };

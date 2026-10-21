@@ -3,7 +3,8 @@
 import { Menu } from "@base-ui/react/menu";
 import { useState } from "react";
 
-import { postJson } from "@/lib/auth-errors";
+import { authMessage } from "@/lib/auth-errors";
+import { signOut } from "@/lib/sign-out";
 
 // DESIGN.md §5, canvas Shells: a pill with ☰ and the initials; the menu shows the email and
 // Đăng xuất. Base UI gives Esc to close, arrow keys and focus back to the button (§11).
@@ -17,11 +18,16 @@ function initials(email: string): string {
 
 export function AccountMenu({ email }: { email: string }) {
   const [leaving, setLeaving] = useState(false);
+  const [failed, setFailed] = useState(false);
 
+  // Stays signed in, and says so, if web could not clear the cookie (review cdbaa25 #1).
   async function logout() {
     setLeaving(true);
-    const result = await postJson<{ next: string }>("/api/auth/logout");
-    window.location.assign(result.data?.next ?? "/login");
+    setFailed(false);
+    if (!(await signOut())) {
+      setLeaving(false);
+      setFailed(true);
+    }
   }
 
   return (
@@ -42,9 +48,14 @@ export function AccountMenu({ email }: { email: string }) {
           <Menu.Popup className="flex w-[300px] flex-col rounded-2xl border border-line bg-sheet p-2 text-ink shadow-panel">
             <p className="m-0 truncate px-3.5 py-2.5 text-small text-ink-soft">{email}</p>
             <Menu.Separator className="my-2 h-px bg-line" />
-            <Menu.Item className={ITEM} disabled={leaving} onClick={logout}>
+            <Menu.Item className={ITEM} disabled={leaving} closeOnClick={false} onClick={logout}>
               Đăng xuất
             </Menu.Item>
+            {failed && (
+              <p role="alert" className="m-0 px-3.5 py-2 text-small text-partial">
+                {authMessage("unavailable")}
+              </p>
+            )}
           </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>

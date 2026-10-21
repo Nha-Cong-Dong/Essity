@@ -41,7 +41,7 @@ export function AuthField({ id, label, describedBy, invalid, className, children
 }
 
 /** A password field with a show/hide button, which replaces "type it again" (DESIGN.md §6.1). */
-export function PasswordField(props: Omit<FieldProps, "type">) {
+export function PasswordField({ children, ...props }: Omit<FieldProps, "type">) {
   const [shown, setShown] = useState(false);
   const Icon = shown ? EyeOff : Eye;
   return (
@@ -51,10 +51,11 @@ export function PasswordField(props: Omit<FieldProps, "type">) {
         onClick={() => setShown(!shown)}
         aria-label={shown ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
         aria-pressed={shown}
-        className="absolute right-0 bottom-1 inline-flex size-11 items-center justify-center rounded-full text-ink-soft hover:text-ink"
+        className="absolute top-[29px] right-0 inline-flex size-11 items-center justify-center rounded-full text-ink-soft hover:text-ink"
       >
         <Icon className="size-5" aria-hidden="true" />
       </button>
+      {children}
     </AuthField>
   );
 }

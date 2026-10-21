@@ -41,7 +41,15 @@ export default function TodayPage() {
       }
     >
       <div className="flex justify-center">
-        <Suspense fallback={null}>
+        {/* Loading: a skeleton the shape of the cover (DESIGN.md §6.3), never a page spinner. */}
+        <Suspense
+          fallback={
+            <div
+              aria-busy="true"
+              className="h-[260px] w-full max-w-[620px] rounded-[14px_22px_22px_14px] bg-[color-mix(in_srgb,var(--line)_80%,transparent)]"
+            />
+          }
+        >
           <Today />
         </Suspense>
       </div>

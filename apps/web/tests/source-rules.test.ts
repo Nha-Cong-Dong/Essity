@@ -39,7 +39,7 @@ describe("source rules", () => {
     const routes = sourceFiles("app/api").filter((file) => path.basename(file) === "route.ts");
     const reexports = routes.filter((file) =>
       [...read(file).matchAll(/export\s*(\*|\{[^}]*\})/g)].some(
-        (match) => match[1] === "*" || /(POST|PUT|PATCH|DELETE)/.test(match[1]),
+        (match) => match[1] === "*" || /\b(POST|PUT|PATCH|DELETE)\b/.test(match[1]),
       ),
     );
     expect(reexports).toEqual([]);
@@ -75,7 +75,7 @@ describe("source rules", () => {
       "/" + path.dirname(file).split(path.sep).slice(1).join("/");
     const unchecked = pages.filter((file) => {
       if (PUBLIC_PAGES.has(route(file)) || route(file) === "/") return false;
-      return !/require(Verified)?Session\(/.test(read(file));
+      return !/\brequire(Verified)?Session\(/.test(read(file));
     });
     expect(pages.length).toBeGreaterThan(2);
     expect(unchecked).toEqual([]);

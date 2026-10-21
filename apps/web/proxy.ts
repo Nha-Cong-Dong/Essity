@@ -6,7 +6,7 @@ import { SESSION_COOKIE } from "@/lib/cookies";
 // the cookie is still a live session, and whether the email is verified, the page itself asks
 // core-api (lib/session.ts). Never sends /login back to the app, so a dead cookie cannot loop.
 
-const PUBLIC_PAGES = new Set([
+export const PUBLIC_PAGES: ReadonlySet<string> = new Set([
   "/login",
   "/register",
   "/check-email",
@@ -26,6 +26,9 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Pages only: API routes answer for themselves (401 from core-api, origin check), and static
-  // files must load on /login.
-  matcher: ["/((?!api/|_next/|favicon.ico|.*\\.[a-z0-9]+$).*)"],
+  // files must load on /login. A page path may contain a dot (/subjects/de-thi.v2), so only
+  // the extensions of real files are skipped.
+  matcher: [
+    "/((?!api/|_next/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|map|txt|woff2?)$).*)",
+  ],
 };

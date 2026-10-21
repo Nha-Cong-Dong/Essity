@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { EXPIRED_COOKIE, SESSION_COOKIE } from "@/lib/cookies";
+import { EXPIRED_COOKIE, PENDING_EMAIL_COOKIE, SESSION_COOKIE } from "@/lib/cookies";
 import { coreClientFor } from "@/lib/core-client";
 import { withOrigin } from "@/lib/csrf";
 
@@ -20,5 +20,8 @@ export const POST = withOrigin(async (request) => {
   }
   const response = NextResponse.json({ next: "/login" });
   response.cookies.set(SESSION_COOKIE, "", EXPIRED_COOKIE);
+  if (request.cookies.has(PENDING_EMAIL_COOKIE)) {
+    response.cookies.set(PENDING_EMAIL_COOKIE, "", EXPIRED_COOKIE); // F2: "Sai email?"
+  }
   return response;
 });

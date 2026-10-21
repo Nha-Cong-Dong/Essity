@@ -9,7 +9,7 @@ import { cn } from "cn"
 //   Chấm sai, Bỏ câu này, Sửa bằng một câu.
 // No destructive variant: nothing in the app is red (§2.3).
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap select-none font-sans text-body font-semibold leading-none transition-colors disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap no-underline select-none font-sans text-body font-semibold leading-none transition-colors disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {

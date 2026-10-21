@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
-import { SESSION_COOKIE } from "@/lib/cookies";
+import { PENDING_EMAIL_COOKIE, SESSION_COOKIE } from "@/lib/cookies";
 import { type components, coreClient } from "@/lib/core-client";
 
 export { PENDING_EMAIL_COOKIE, SESSION_COOKIE } from "@/lib/cookies";
@@ -37,4 +37,9 @@ export async function requireVerifiedSession(): Promise<Me> {
   const me = await requireSession();
   if (!me.email_verified) redirect("/check-email");
   return me;
+}
+
+/** The email just signed up with, for /check-email before there is a session (F1). */
+export async function getPendingEmail(): Promise<string | null> {
+  return (await cookies()).get(PENDING_EMAIL_COOKIE)?.value || null;
 }
