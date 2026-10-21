@@ -14,9 +14,16 @@ const ME = {
   day_start_hour: 4,
 };
 
-function core(verify: Response, me: Response = Response.json(ME)) {
-  return fakeCoreApi((call) => (call.path === "/v1/me" ? me.clone() : verify.clone()));
+/** `me` answers /v1/me in turn (the last one repeats): before the token is spent, then after. */
+function core(verify: Response, me: Response | Response[] = Response.json(ME)) {
+  const answers = Array.isArray(me) ? me : [me];
+  let asked = 0;
+  return fakeCoreApi((call) =>
+    call.path === "/v1/me" ? answers[Math.min(asked++, answers.length - 1)].clone() : verify.clone(),
+  );
 }
+
+const UNVERIFIED = { ...ME, email_verified: false };
 
 describe("POST /api/auth/verify-email (T1.13)", () => {
   beforeEach(() => {
@@ -41,14 +48,24 @@ describe("POST /api/auth/verify-email (T1.13)", () => {
     expect(await response.json()).toEqual({ verified: true, signedIn: false });
   });
 
-  it("F4: with a session that is now verified, says signed in", async () => {
-    core(Response.json({ status: "verified" }));
+  it("F4: with the link owner's session, unverified before and verified after, says signed in", async () => {
+    core(Response.json({ status: "verified" }), [Response.json(UNVERIFIED), Response.json(ME)]);
 
     const response = await POST(
       browserPost("/api/auth/verify-email", { token: LINK_TOKEN }, { cookies: { [SESSION_COOKIE]: "tok" } }),
     );
 
     expect(await response.json()).toEqual({ verified: true, signedIn: true });
+  });
+
+  it("F4: someone else's session, verified all along, is not signed in (shared computer, review 822b3ea #2)", async () => {
+    core(Response.json({ status: "verified" }), Response.json(ME));
+
+    const response = await POST(
+      browserPost("/api/auth/verify-email", { token: LINK_TOKEN }, { cookies: { [SESSION_COOKIE]: "tok" } }),
+    );
+
+    expect(await response.json()).toEqual({ verified: true, signedIn: false });
   });
 
   it("F4: a session whose account is still unverified is not signed in (another account's link)", async () => {
