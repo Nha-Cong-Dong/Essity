@@ -5,7 +5,7 @@ Time is moved by back-dating the stored columns (`email_verified_at`, `entered_a
 seven-day boundaries are in test_baseline_domain.py.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -14,7 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from accounts import signed_in
-from core_api.repositories.subject import SubjectRepository
+from core_api.repositories.subject import ExamRepository, SubjectRepository
 
 VALID: dict[str, Any] = {"gpa_before": "2.85", "prior_ready_days": 3}
 
@@ -23,6 +23,20 @@ def me(client: TestClient, headers: dict[str, str]) -> dict[str, Any]:
     response = client.get("/v1/me", headers=headers)
     assert response.status_code == 200
     return response.json()
+
+
+def error_field(response: Any) -> str:
+    """The field a 422 points at, or "body" for a rule across fields."""
+    assert response.status_code == 422
+    return response.json()["detail"][0]["loc"][-1]
+
+
+def add_subject(session: Session, user_id: Any) -> Any:
+    subject = SubjectRepository(session, user_id).create("Mạng máy tính")
+    session.flush()
+    ExamRepository(session, user_id).create(subject.id, date(2027, 1, 15))
+    session.flush()
+    return subject
 
 
 def post(client: TestClient, headers: dict[str, str], body: dict[str, Any] = VALID) -> Any:
@@ -47,17 +61,24 @@ def test_ac1_unverified_account_is_not_asked_yet(client: TestClient, db_session:
 
 def test_b14_has_subjects_once_a_subject_exists(client: TestClient, db_session: Session) -> None:
     user, headers = signed_in(db_session)
+    add_subject(db_session, user.id)
+    assert me(client, headers)["has_subjects"] is True
+
+
+def test_b14_a_subject_without_an_exam_does_not_count(
+    client: TestClient, db_session: Session
+) -> None:
+    # The same subjects as GET /v1/subjects lists: those with their exam (plan B17).
+    user, headers = signed_in(db_session)
     SubjectRepository(db_session, user.id).create("Mạng máy tính")
     db_session.flush()
-    assert me(client, headers)["has_subjects"] is True
+    assert me(client, headers)["has_subjects"] is False
 
 
 def test_b14_a_deleted_subject_does_not_count(client: TestClient, db_session: Session) -> None:
     user, headers = signed_in(db_session)
-    subjects = SubjectRepository(db_session, user.id)
-    subject = subjects.create("Mạng máy tính")
-    db_session.flush()
-    subjects.soft_delete(subject.id)
+    subject = add_subject(db_session, user.id)
+    SubjectRepository(db_session, user.id).soft_delete(subject.id)
     db_session.flush()
     assert me(client, headers)["has_subjects"] is False
 
@@ -99,7 +120,15 @@ def test_ac1_dont_remember_stores_zero_days_and_the_flag(
 def test_b8_dont_remember_with_a_count_is_refused(client: TestClient, db_session: Session) -> None:
     _, headers = signed_in(db_session)
     body = {"gpa_before": "3.00", "prior_ready_days": 4, "prior_days_unknown": True}
-    assert post(client, headers, body).status_code == 422
+    assert error_field(post(client, headers, body)) == "body"
+
+
+def test_days_are_required_unless_unknown(client: TestClient, db_session: Session) -> None:
+    # Missing must not pass for "0 days": that is an answer, and "don't remember" is another (B8).
+    _, headers = signed_in(db_session)
+    assert error_field(post(client, headers, {"gpa_before": "3.00"})) == "body"
+    body = {"gpa_before": "3.00", "prior_days_unknown": False}
+    assert error_field(post(client, headers, body)) == "body"
 
 
 def test_plan_t1_17_baseline_cannot_be_entered_twice(
@@ -136,7 +165,7 @@ def test_ac2_b16_server_fields_cannot_be_sent(
 ) -> None:
     _, headers = signed_in(db_session)
     body = {**VALID, field: "2026-01-01T00:00:00Z" if field == "entered_at" else False}
-    assert post(client, headers, body).status_code == 422
+    assert error_field(post(client, headers, body)) == field
 
 
 @pytest.mark.parametrize("gpa", [0, 4, "0.00", "4.00", 2.85, "2.85", "3"])
@@ -154,7 +183,7 @@ def test_ac3_gpa_out_of_range_or_malformed_is_422(
 ) -> None:
     _, headers = signed_in(db_session)
     response = post(client, headers, {"gpa_before": gpa, "prior_ready_days": 0})
-    assert response.status_code == 422
+    assert error_field(response) == "gpa_before"
 
 
 @pytest.mark.parametrize("days", [-1, 1.5, 366, 10**12, "many", None])
@@ -163,7 +192,7 @@ def test_ac3_days_out_of_range_or_malformed_is_422(
 ) -> None:
     _, headers = signed_in(db_session)
     response = post(client, headers, {"gpa_before": "2.00", "prior_ready_days": days})
-    assert response.status_code == 422
+    assert error_field(response) == ("body" if days is None else "prior_ready_days")
 
 
 @pytest.mark.parametrize("days", [0, 365])
@@ -176,7 +205,7 @@ def test_b9_days_bounds_are_accepted(client: TestClient, db_session: Session, da
 
 def test_gpa_is_required(client: TestClient, db_session: Session) -> None:
     _, headers = signed_in(db_session)
-    assert post(client, headers, {"prior_ready_days": 2}).status_code == 422
+    assert error_field(post(client, headers, {"prior_ready_days": 2})) == "gpa_before"
 
 
 def test_ac3_error_does_not_echo_the_gpa(client: TestClient, db_session: Session) -> None:
@@ -237,7 +266,9 @@ def test_ac5_put_after_seven_days_is_locked(client: TestClient, db_session: Sess
         {"at": datetime.now(UTC) - timedelta(days=7, seconds=1), "user_id": user.id},
     )
     db_session.expire_all()
-    response = client.put("/v1/baseline", json={"gpa_before": "4.00"}, headers=headers)
+    response = client.put(
+        "/v1/baseline", json={"gpa_before": "4.00", "prior_ready_days": 1}, headers=headers
+    )
     assert (response.status_code, response.json()) == (409, {"detail": "baseline_locked"})
     body = client.get("/v1/baseline", headers=headers).json()
     assert (body["gpa_before"], body["locked"]) == ("2.85", True)
@@ -252,8 +283,10 @@ def test_ac5_put_without_a_baseline_is_404(client: TestClient, db_session: Sessi
 def test_ac3_put_validates_like_post(client: TestClient, db_session: Session) -> None:
     _, headers = signed_in(db_session)
     post(client, headers)
-    response = client.put("/v1/baseline", json={"gpa_before": "4.01"}, headers=headers)
-    assert response.status_code == 422
+    body = {"gpa_before": "4.01", "prior_ready_days": 1}
+    assert error_field(client.put("/v1/baseline", json=body, headers=headers)) == "gpa_before"
+    missing_days = {"gpa_before": "3.00"}
+    assert error_field(client.put("/v1/baseline", json=missing_days, headers=headers)) == "body"
 
 
 # --- Skip (AC2, B1–B3) ------------------------------------------------------------------------
@@ -299,8 +332,13 @@ def test_adr_0001_bob_cannot_read_or_change_alices_baseline(
     post(client, alice)
 
     assert client.get("/v1/baseline", headers=bob).status_code == 404
-    assert client.put("/v1/baseline", json={"gpa_before": "0.10"}, headers=bob).status_code == 404
-    assert post(client, bob, {"gpa_before": "1.00"}).status_code == 201
+    assert (
+        client.put(
+            "/v1/baseline", json={"gpa_before": "0.10", "prior_ready_days": 1}, headers=bob
+        ).status_code
+        == 404
+    )
+    assert post(client, bob, {"gpa_before": "1.00", "prior_ready_days": 0}).status_code == 201
     assert client.post("/v1/baseline/skip", headers=bob).status_code == 200
 
     assert client.get("/v1/baseline", headers=alice).json()["gpa_before"] == "2.85"
@@ -336,8 +374,8 @@ def test_adr_0013_gpa_never_reaches_the_logs(
 ) -> None:
     _, headers = signed_in(db_session)
     post(client, headers, {"gpa_before": "3.27", "prior_ready_days": 41})
-    client.put("/v1/baseline", json={"gpa_before": "3.28"}, headers=headers)
-    client.put("/v1/baseline", json={"gpa_before": "4.37"}, headers=headers)
+    client.put("/v1/baseline", json={"gpa_before": "3.28", "prior_ready_days": 1}, headers=headers)
+    client.put("/v1/baseline", json={"gpa_before": "4.37", "prior_ready_days": 1}, headers=headers)
     logs = log_output()
     assert logs  # the requests did log something
     for value in ("3.27", "3.28", "4.37"):

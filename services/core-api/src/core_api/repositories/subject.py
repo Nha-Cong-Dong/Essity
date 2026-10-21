@@ -2,7 +2,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, date, datetime
 
-from sqlalchemy import Select
+from sqlalchemy import Select, exists, select
 
 from core_api.db.models import Exam, Subject
 from core_api.repositories.base import UserScopedRepository
@@ -24,6 +24,11 @@ class SubjectRepository(UserScopedRepository[Subject]):
         if not name:
             raise ValueError("subject name cannot be blank")
         return self.add(Subject(name=name))
+
+    def has_any(self) -> bool:
+        """Whether the user has a subject web lists: not deleted, with its exam."""
+        query = self._select().join(Exam, Exam.subject_id == Subject.id)
+        return bool(self.session.scalar(select(exists(query))))
 
     def soft_delete(self, id: uuid.UUID) -> bool:
         subject = self.get(id)

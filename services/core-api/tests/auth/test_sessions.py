@@ -81,6 +81,8 @@ def test_me_returns_the_signed_in_user(client: TestClient, db_session: Session) 
         "email_verified": True,
         "timezone": user.timezone,
         "day_start_hour": user.day_start_hour,
+        "needs_baseline": True,
+        "has_subjects": False,
     }
 
 

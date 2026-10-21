@@ -4,11 +4,12 @@
 import uuid
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core_api.db.models.user import DEFAULT_TIMEZONE, User
+from core_api.domain.baseline import MAX_SKIPS
 from core_api.domain.email import normalize_email
 
 
@@ -43,3 +44,15 @@ class UserRepository:
         return self.session.scalars(
             select(User).where(User.email == normalize_email(email))
         ).one_or_none()
+
+    def record_baseline_skip(self, user_id: uuid.UUID) -> int:
+        """Count one "Later" on the baseline screen, up to MAX_SKIPS (US-11 AC2). One statement,
+        so a double click cannot count past the cap. Returns the count now stored."""
+        self.session.execute(
+            update(User)
+            .where(User.id == user_id, User.baseline_skips < MAX_SKIPS)
+            .values(baseline_skips=User.baseline_skips + 1)
+            .execution_options(synchronize_session="fetch")
+        )
+        count = self.session.scalar(select(User.baseline_skips).where(User.id == user_id))
+        return count or 0
