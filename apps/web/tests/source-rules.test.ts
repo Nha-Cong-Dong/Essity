@@ -4,6 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { PUBLIC_PAGES } from "@/proxy";
+
 const WEB = path.resolve(import.meta.dirname, "..");
 
 function sourceFiles(dir: string): string[] {
@@ -65,5 +67,17 @@ describe("source rules", () => {
       (file) => file !== path.join("lib", "core-client.ts") && read(file).includes("@essity/api-client"),
     );
     expect(direct).toEqual([]);
+  });
+  it("every private page asks core-api for the session (review cdbaa25 #2)", () => {
+    // The proxy only sees that a cookie exists; any value passes it.
+    const pages = sourceFiles("app").filter((file) => path.basename(file) === "page.tsx");
+    const route = (file: string) =>
+      "/" + path.dirname(file).split(path.sep).slice(1).join("/");
+    const unchecked = pages.filter((file) => {
+      if (PUBLIC_PAGES.has(route(file)) || route(file) === "/") return false;
+      return !/require(Verified)?Session\(/.test(read(file));
+    });
+    expect(pages.length).toBeGreaterThan(2);
+    expect(unchecked).toEqual([]);
   });
 });

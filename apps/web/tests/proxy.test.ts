@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 
 import { SESSION_COOKIE } from "@/lib/session";
-import { proxy } from "@/proxy";
+import { config, proxy } from "@/proxy";
 
 import { ORIGIN } from "./helpers";
 
@@ -53,5 +53,17 @@ describe("proxy (T1.12, W3: an optimistic cookie check only)", () => {
   it("does not treat a look-alike path as public", () => {
     expect(redirectedTo(visit("/login-help"))).toBe("/login");
     expect(redirectedTo(visit("/registered"))).toBe("/login");
+  });
+
+  it("review cdbaa25 #2: runs on page paths with a dot, skips only static files and API routes", () => {
+    const [matcher] = config.matcher;
+    const runs = (path: string) => new RegExp(`^${matcher}$`).test(path);
+    expect(runs("/subjects/de-thi.v2")).toBe(true);
+    expect(runs("/today")).toBe(true);
+    expect(runs("/")).toBe(true);
+    expect(runs("/_next/static/chunks/app.js")).toBe(false);
+    expect(runs("/api/auth/login")).toBe(false);
+    expect(runs("/favicon.ico")).toBe(false);
+    expect(runs("/fonts/x.woff2")).toBe(false);
   });
 });

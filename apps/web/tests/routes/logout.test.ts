@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import * as logoutRoute from "@/app/api/auth/logout/route";
-import { SESSION_COOKIE } from "@/lib/session";
+import { PENDING_EMAIL_COOKIE, SESSION_COOKIE } from "@/lib/session";
 
 import { browserPost, fakeCoreApi, setCookies } from "../helpers";
 
@@ -37,6 +37,16 @@ describe("POST /api/auth/logout (T1.12)", () => {
 
     expect(response.status).toBe(200);
     expect(setCookies(response).get(SESSION_COOKIE)).toMatch(/Max-Age=0/i);
+  });
+
+  it("F2: also forgets a pending sign-up email (\"Sai email? Đăng xuất\")", async () => {
+    fakeCoreApi(() => new Response(null, { status: 204 }));
+
+    const response = await POST(
+      browserPost("/api/auth/logout", undefined, { cookies: { [PENDING_EMAIL_COOKIE]: "a%40example.com" } }),
+    );
+
+    expect(setCookies(response).get(PENDING_EMAIL_COOKIE)).toMatch(/Max-Age=0/i);
   });
 
   it("does not call core-api without a session cookie", async () => {
