@@ -22,7 +22,7 @@ const buttonVariants = cva(
         quiet:
           "h-11 rounded-control px-3 font-medium text-ink underline decoration-line-strong decoration-[1.5px] underline-offset-[5px] hover:decoration-ink disabled:text-ink-soft disabled:no-underline",
         "primary-inverse":
-          "rounded-full bg-(--inverse-bg) px-6 text-(--inverse-fg) hover:-translate-y-px hover:shadow-[0_12px_28px_-12px_rgb(0_0_0/0.45)] disabled:bg-sunken disabled:text-ink-soft",
+          "rounded-full bg-(color:--inverse-bg) px-6 text-(color:--inverse-fg) hover:-translate-y-px hover:shadow-[0_12px_28px_-12px_rgb(0_0_0/0.45)] disabled:bg-sunken disabled:text-ink-soft",
       },
       size: {
         md: "",
@@ -53,6 +53,9 @@ function Button({ className, variant = "primary", size = "md", pending = false, 
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       disabled={disabled || pending}
+      // Pending keeps focus on the button (aria-disabled, presses blocked), so a keyboard or screen
+      // reader user is not thrown back to the top of the page while the request runs.
+      focusableWhenDisabled={pending && !disabled}
       aria-busy={pending || undefined}
       {...props}
     >

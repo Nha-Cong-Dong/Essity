@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { isDesignPreview } from "@/lib/design-preview";
 import { PUBLIC_PAGES } from "@/proxy";
 
 const WEB = path.resolve(import.meta.dirname, "..");
@@ -74,7 +75,8 @@ describe("source rules", () => {
     const route = (file: string) =>
       "/" + path.dirname(file).split(path.sep).slice(1).join("/");
     const unchecked = pages.filter((file) => {
-      if (PUBLIC_PAGES.has(route(file)) || route(file) === "/") return false;
+      // /design-preview has a gate of its own in proxy.ts, before any cookie (lib/design-preview.ts).
+      if (PUBLIC_PAGES.has(route(file)) || route(file) === "/" || isDesignPreview(route(file))) return false;
       return !/\brequire(Verified)?Session\(/.test(read(file));
     });
     expect(pages.length).toBeGreaterThan(2);

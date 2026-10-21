@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { SESSION_COOKIE } from "@/lib/session";
-import { config, proxy } from "@/proxy";
+import { designPreviewAllowed } from "@/lib/design-preview";
+import { PUBLIC_PAGES, config, proxy } from "@/proxy";
 
 import { ORIGIN } from "./helpers";
 
@@ -41,7 +42,6 @@ describe("proxy (T1.12, W3: an optimistic cookie check only)", () => {
     "/verify-email",
     "/forgot-password",
     "/reset-password",
-    "/design-preview",
   ])("F7: %s is public", (path) => {
     expect(redirectedTo(visit(path))).toBeNull();
   });
@@ -65,5 +65,44 @@ describe("proxy (T1.12, W3: an optimistic cookie check only)", () => {
     expect(runs("/api/auth/login")).toBe(false);
     expect(runs("/favicon.ico")).toBe(false);
     expect(runs("/fonts/x.woff2")).toBe(false);
+  });
+});
+
+// Plan V11, V14: /design-preview calls core-api on every request (ServiceChain), so outside
+// development it is a 404 unless WEB_DESIGN_PREVIEW is exactly "1", whatever the cookie.
+describe("/design-preview gate", () => {
+  const status = (path: string, cookie?: string) => visit(path, { cookie }).status;
+
+  it("is a 404 in production without the flag, with or without a cookie", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    expect(status("/design-preview")).toBe(404);
+    expect(status("/design-preview", "tok")).toBe(404);
+    expect(status("/design-preview?_rsc=1", "tok")).toBe(404);
+    expect(status("/design-preview/", "tok")).toBe(404);
+  });
+
+  it.each(["true", "0", "yes", " 1", ""])("a flag other than exactly 1 (%j) keeps it closed", (flag) => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("WEB_DESIGN_PREVIEW", flag);
+    expect(status("/design-preview")).toBe(404);
+  });
+
+  it("opens in production with WEB_DESIGN_PREVIEW=1, and in development, without a cookie", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("WEB_DESIGN_PREVIEW", "1");
+    expect(status("/design-preview")).toBe(200);
+    vi.stubEnv("WEB_DESIGN_PREVIEW", "");
+    vi.stubEnv("NODE_ENV", "development");
+    expect(status("/design-preview")).toBe(200);
+  });
+
+  it("is closed when NODE_ENV is missing or test", () => {
+    expect(designPreviewAllowed({})).toBe(false);
+    expect(designPreviewAllowed({ NODE_ENV: "test" })).toBe(false);
+    expect(designPreviewAllowed({ NODE_ENV: "test", WEB_DESIGN_PREVIEW: "1" })).toBe(true);
+  });
+
+  it("is not a public page any more", () => {
+    expect([...PUBLIC_PAGES]).not.toContain("/design-preview");
   });
 });

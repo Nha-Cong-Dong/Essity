@@ -78,7 +78,7 @@
 .row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  align-items: end;
+  align-items: baseline;
   gap: 12px;
   padding: 10px 0;
 }

@@ -42,10 +42,15 @@ describe("Button (§4.1)", () => {
     expect(buttonVariants({ variant: "primary" })).toMatch(/\bh-13\b/);
   });
 
-  it("a pending button is busy and cannot be pressed twice", () => {
+  it("a pending button is busy, cannot be pressed twice, and keeps focus (review of 4b86dc4)", () => {
     const markup = html(h(Button, { pending: true }, "Gửi"));
     expect(markup).toContain('aria-busy="true"');
-    expect(markup).toMatch(/disabled=""/);
+    expect(markup).toContain('aria-disabled="true"');
+    expect(markup).not.toMatch(/\sdisabled=""/);
+  });
+
+  it("a button disabled by its caller (rate limit) is disabled for real", () => {
+    expect(html(h(Button, { pending: false, disabled: true }, "Đăng nhập"))).toMatch(/\sdisabled=""/);
   });
 
   it("the hover colour is hồng 88% with ink, in oklab, and its label still reads (≥ 4.5)", () => {

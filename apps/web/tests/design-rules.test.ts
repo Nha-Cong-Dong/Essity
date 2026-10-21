@@ -5,6 +5,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { buttonProblems } from "./jsx-rules";
+
 const WEB = path.resolve(import.meta.dirname, "..");
 
 function files(dir: string, pattern: RegExp): string[] {
@@ -49,6 +51,11 @@ describe("design rules", () => {
     expect(offenders(UI, /text-\[\d+px\]|rounded-\[|rounded-(xs|xl|2xl|3xl|4xl)\b/)).toEqual([]);
   });
 
+  it("a colour from a custom property names its type: text-(--x) is read as a font size", () => {
+    // primary-inverse lost its label this way: text-(--inverse-fg) became a font size.
+    expect(offenders(UI, /\b(text|bg|border|decoration|outline|ring|fill|stroke|shadow)-\(--/)).toEqual([]);
+  });
+
   it("no Tailwind dark: variant in components: dark mode is tokens only", () => {
     expect(offenders(UI, /\bdark:/)).toEqual([]);
   });
@@ -57,12 +64,28 @@ describe("design rules", () => {
     expect(offenders(UI, /font-hand[^"]*text-hong|text-hong[^"]*font-hand/)).toEqual([]);
   });
 
-  it("a busy submit button is pending (spinner, aria-busy), not just disabled", () => {
-    expect(offenders(UI, /<Button[^>]*type="submit"[^>]*disabled=\{busy/)).toEqual([]);
+  it("buttons: height from the size scale, a busy submit is pending (read as JSX, review of 4b86dc4)", () => {
+    const problems = UI.flatMap((file) =>
+      buttonProblems(read(file), file).map((p) => `${file}:${p.line}: ${p.text}`),
+    );
+    expect(problems).toEqual([]);
   });
 
-  it("buttons take their height from the size scale, not a class", () => {
-    expect(offenders(UI, /<Button[^>]*className="[^"]*\bh-\d+/)).toEqual([]);
+  it("the JSX rule sees a Button over several lines with an element in its props", () => {
+    const source = [
+      "const x = (",
+      "  <Button",
+      '    render={<a href="/login" />}',
+      "    nativeButton={false}",
+      '    className="h-14 w-full"',
+      "  />",
+      ");",
+      'const y = <Button type="submit" disabled={busy || late}>Gửi</Button>;',
+    ].join("\n");
+    expect(buttonProblems(source)).toEqual([
+      { line: 2, text: "height set by class: use size" },
+      { line: 8, text: "busy submit only disabled: use pending" },
+    ]);
   });
 
   it("every custom property a component reads is declared in globals.css", () => {
