@@ -50,6 +50,9 @@ RESEND_PER_IP = RateLimit("resend_ip", 10, timedelta(hours=1))
 # ADR-0014: emails to one address at least 60 s apart, whichever endpoint sends them.
 EMAIL_COOLDOWN = Cooldown("email_address", timedelta(seconds=60))
 
+RESET_PER_IP = RateLimit("reset_ip", 10, timedelta(hours=1))
+CONFIRM_PER_IP = RateLimit("reset_confirm_ip", 30, timedelta(hours=1))
+
 # ADR-0020 §2: failed logins, 5 per email+IP (one person mistyping does not lock others out) and
 # 20 per email across IPs (a botnet trying one account), in 15-minute windows.
 LOGIN_PER_EMAIL_IP = RateLimit("login_email_ip", 5, timedelta(minutes=15))

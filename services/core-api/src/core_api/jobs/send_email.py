@@ -36,6 +36,7 @@ _log = logging.getLogger("core_api.jobs")
 class EmailKind(StrEnum):
     ACCOUNT_EXISTS = "account_exists"  # sign-up with an address that already has an account
     VERIFY_EMAIL = "verify_email"  # link with a fresh one-time token (T1.7)
+    RESET_PASSWORD = "reset_password"
 
 
 def enqueue_email(session: Session, user_id: uuid.UUID, kind: EmailKind) -> None:
@@ -85,4 +86,6 @@ def _compose(kind: EmailKind, user: User, session: Session, settings: Settings) 
                 link=f"{base}/verify-email?token={raw}",
                 valid_for="24 giờ",
             )
+        case EmailKind.RESET_PASSWORD:
+            raise NotImplementedError
     return EmailMessage(to=user.email, subject=subject, text=text)

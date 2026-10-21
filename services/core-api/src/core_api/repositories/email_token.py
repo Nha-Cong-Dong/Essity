@@ -31,6 +31,9 @@ class EmailTokenRepository:
         )
         return raw
 
+    def owner_of_live(self, raw: str, purpose: TokenPurpose, now: datetime) -> uuid.UUID | None:
+        return None
+
     def consume(
         self, raw: str, purpose: TokenPurpose, now: datetime | None = None
     ) -> uuid.UUID | None:
