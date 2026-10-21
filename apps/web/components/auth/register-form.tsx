@@ -68,10 +68,10 @@ export function RegisterForm() {
       {otherError && error !== "rate_limited" && (
         <FieldError id="register-error">{authMessage(error)}</FieldError>
       )}
-      <Button type="submit" disabled={busy} className="h-14 w-full">
+      <Button type="submit" pending={busy} className="w-full">
         Đăng ký
       </Button>
-      <p className="m-0 text-[15px]">
+      <p className="m-0 text-body">
         Đã có tài khoản?{" "}
         <a href="/login" className={AUTH_LINK}>
           Đăng nhập

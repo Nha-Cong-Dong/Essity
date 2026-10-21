@@ -51,14 +51,14 @@ export function CheckEmailActions({ initialWait }: { initialWait: number }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Button variant="secondary" onClick={resend} disabled={busy || left > 0} className="h-14 w-full">
+      <Button variant="secondary" onClick={resend} pending={busy} disabled={left > 0} className="w-full">
         {left > 0 ? `Gửi lại (${clock(left)})` : "Gửi lại"}
       </Button>
       <p className="m-0 min-h-6 text-small text-ink-soft" aria-live="polite">
         {resent ? "Đã gửi lại." : ""}
       </p>
       {error && <FieldError id="check-email-error">{authMessage(error)}</FieldError>}
-      <p className="m-0 text-[15px]">
+      <p className="m-0 text-body">
         Sai email?{" "}
         <button type="button" onClick={wrongEmail} className={AUTH_LINK}>
           Đăng xuất

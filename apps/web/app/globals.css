@@ -453,94 +453,99 @@
 }
 
 /* Motifs (design system v3.1 §4.10; components/motifs.tsx). Decoration only: aria-hidden in the
-   markup, never behind text, hidden in print. One stroke, two opacities, one pink family. */
-.motif {
-  position: absolute;
-  z-index: 0;
-  pointer-events: none;
-}
-.motif-grid {
-  width: 320px;
-  height: 240px;
-  background-image:
-    linear-gradient(to right, var(--motif-grid) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--motif-grid) 1px, transparent 1px);
-  background-size: 24px 24px;
-  opacity: var(--motif-faint);
-}
-.motif-grid.tl {
-  top: 0;
-  left: 0;
-  mask-image: radial-gradient(100% 100% at 0 0, #000, transparent 70%);
-}
-.motif-grid.tr {
-  top: 0;
-  right: 0;
-  mask-image: radial-gradient(100% 100% at 100% 0, #000, transparent 70%);
-}
-.motif-grid.bl {
-  bottom: 0;
-  left: 0;
-  mask-image: radial-gradient(100% 100% at 0 100%, #000, transparent 70%);
-}
-.motif-grid.br {
-  right: 0;
-  bottom: 0;
-  mask-image: radial-gradient(100% 100% at 100% 100%, #000, transparent 70%);
-}
-.motif-fold {
-  top: 0;
-  right: 0;
-  width: 44px;
-  height: 44px;
-  border-top-right-radius: var(--radius-sheet);
-  border-bottom-left-radius: 10px;
-  background: linear-gradient(225deg, var(--bg) 0 50%, var(--motif-fold) 50% 100%);
-  box-shadow: var(--motif-fold-shadow);
-}
-.sticker {
-  --sticker-ring: var(--bg); /* the ring takes the colour of the surface under the sticker */
-  position: absolute;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 999px;
-  background: var(--sheet);
-  color: var(--hong);
-  box-shadow: 0 0 0 4px var(--sticker-ring), var(--sticker-shadow);
-  transform: rotate(var(--sticker-tilt));
-  pointer-events: none;
-}
-.sticker svg {
-  width: 28px;
-  height: 28px;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .motif-float {
-    animation: motif-float 6s ease-in-out infinite alternate;
+   markup, never behind text, hidden in print. One stroke, two opacities, one pink family. In the
+   components layer, so a class passed to a motif (hidden, z-2...) still wins. */
+@layer components {
+  .motif {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
   }
-  .motif-float.slow {
-    animation-duration: 9s;
+  .motif-grid {
+    width: 320px;
+    height: 240px;
+    background-image:
+      linear-gradient(to right, var(--motif-grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--motif-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: var(--motif-faint);
   }
-}
-@keyframes motif-float {
-  from {
-    translate: 0 0;
+  .motif-grid.tl {
+    top: 0;
+    left: 0;
+    mask-image: radial-gradient(100% 100% at 0 0, #000, transparent 70%);
   }
-  to {
-    translate: 0 -4px;
+  .motif-grid.tr {
+    top: 0;
+    right: 0;
+    mask-image: radial-gradient(100% 100% at 100% 0, #000, transparent 70%);
   }
-}
-@media (max-width: 900px) {
-  .motif-wide {
-    display: none;
+  .motif-grid.bl {
+    bottom: 0;
+    left: 0;
+    mask-image: radial-gradient(100% 100% at 0 100%, #000, transparent 70%);
   }
-}
-@media print {
-  .motif,
+  .motif-grid.br {
+    right: 0;
+    bottom: 0;
+    mask-image: radial-gradient(100% 100% at 100% 100%, #000, transparent 70%);
+  }
+  .motif-fold {
+    top: 0;
+    right: 0;
+    width: 44px;
+    height: 44px;
+    border-top-right-radius: var(--radius-sheet);
+    border-bottom-left-radius: 10px;
+    /* the corner shows what lies under the sheet: the cover, by default */
+    --fold-under: var(--cover);
+    background: linear-gradient(225deg, var(--fold-under) 0 50%, var(--motif-fold) 50% 100%);
+    box-shadow: var(--motif-fold-shadow);
+  }
   .sticker {
-    display: none;
+    --sticker-ring: var(--bg); /* the ring takes the colour of the surface under the sticker */
+    position: absolute;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 999px;
+    background: var(--sheet);
+    color: var(--hong);
+    box-shadow: 0 0 0 4px var(--sticker-ring), var(--sticker-shadow);
+    transform: rotate(var(--sticker-tilt));
+    pointer-events: none;
+  }
+  .sticker svg {
+    width: 28px;
+    height: 28px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .motif-float {
+      animation: motif-float 6s ease-in-out infinite alternate;
+    }
+    .motif-float.slow {
+      animation-duration: 9s;
+    }
+  }
+  @keyframes motif-float {
+    from {
+      translate: 0 0;
+    }
+    to {
+      translate: 0 -4px;
+    }
+  }
+  @media (max-width: 900px) {
+    .motif-wide {
+      display: none;
+    }
+  }
+  @media print {
+    .motif,
+    .sticker {
+      display: none;
+    }
   }
 }

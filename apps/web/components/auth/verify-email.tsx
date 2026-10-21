@@ -68,8 +68,8 @@ export function VerifyEmail() {
     return (
       <div className="flex flex-col gap-4" aria-busy="true">
         <p className="m-0">Đang kiểm tra link…</p>
-        <div className="h-5 w-3/4 rounded-sm bg-[color-mix(in_srgb,var(--line)_80%,transparent)]" />
-        <div className="h-14 rounded-sm bg-[color-mix(in_srgb,var(--line)_80%,transparent)]" />
+        <div className="h-5 w-3/4 rounded-control bg-sunken" />
+        <div className="h-13 rounded-control bg-sunken" />
       </div>
     );
   }
@@ -83,12 +83,12 @@ export function VerifyEmail() {
         {state.signedIn ? (
           <>
             <p className="m-0 text-ink-soft">Đang chuyển tiếp…</p>
-            <Button render={<a href="/onboarding" />} nativeButton={false} className="h-14 w-full">
+            <Button render={<a href="/onboarding" />} nativeButton={false} className="w-full">
               Ghi điểm xuất phát
             </Button>
           </>
         ) : (
-          <Button render={<a href="/login" />} nativeButton={false} className="h-14 w-full">
+          <Button render={<a href="/login" />} nativeButton={false} className="w-full">
             Đăng nhập
           </Button>
         )}
@@ -105,7 +105,7 @@ export function VerifyEmail() {
           render={<a href={state.signedIn ? "/check-email" : "/login"} />}
           nativeButton={false}
           variant="secondary"
-          className="h-14 w-full"
+          className="w-full"
         >
           Gửi link mới
         </Button>
@@ -115,7 +115,7 @@ export function VerifyEmail() {
   return (
     <div className="flex flex-col gap-4">
       <p className="m-0">Chưa kiểm tra được link. Kiểm tra kết nối rồi thử lại.</p>
-      <Button variant="secondary" onClick={() => retry(state.token)} className="h-14 w-full">
+      <Button variant="secondary" onClick={() => retry(state.token)} className="w-full">
         Thử lại
       </Button>
     </div>

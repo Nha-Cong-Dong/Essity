@@ -45,6 +45,26 @@ describe("design rules", () => {
     expect(offenders(UI, /\bbg-cover\b(?!-)/)).toEqual([]);
   });
 
+  it("§7 #4, #20: type steps and role radii, not pixel sizes, hand radii or Tailwind's xl scale", () => {
+    expect(offenders(UI, /text-\[\d+px\]|rounded-\[|rounded-(xs|xl|2xl|3xl|4xl)\b/)).toEqual([]);
+  });
+
+  it("no Tailwind dark: variant in components: dark mode is tokens only", () => {
+    expect(offenders(UI, /\bdark:/)).toEqual([]);
+  });
+
+  it("§3.1: italic belongs to the pencil; what the user wrote is upright pink", () => {
+    expect(offenders(UI, /font-hand[^"]*text-hong|text-hong[^"]*font-hand/)).toEqual([]);
+  });
+
+  it("a busy submit button is pending (spinner, aria-busy), not just disabled", () => {
+    expect(offenders(UI, /<Button[^>]*type="submit"[^>]*disabled=\{busy/)).toEqual([]);
+  });
+
+  it("buttons take their height from the size scale, not a class", () => {
+    expect(offenders(UI, /<Button[^>]*className="[^"]*\bh-\d+/)).toEqual([]);
+  });
+
   it("every custom property a component reads is declared in globals.css", () => {
     // Set by next/font in app/layout.tsx, not in CSS.
     const runtime = new Set(["--font-be-vietnam-pro", "--font-bricolage", "--font-jetbrains-mono"]);

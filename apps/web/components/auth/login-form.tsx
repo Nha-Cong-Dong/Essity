@@ -65,10 +65,10 @@ export function LoginForm() {
         describedBy={wrong ? "login-error" : undefined}
       />
       {error && !rateLimited && <FieldError id="login-error">{authMessage(error)}</FieldError>}
-      <Button type="submit" disabled={busy || rateLimited} className="h-14 w-full">
+      <Button type="submit" pending={busy} disabled={rateLimited} className="w-full">
         {busy ? "Đang đăng nhập…" : "Đăng nhập"}
       </Button>
-      <div className="flex flex-col gap-2.5 text-[15px]">
+      <div className="flex flex-col gap-2.5 text-body">
         <a href="/forgot-password" className={AUTH_LINK}>
           Quên mật khẩu?
         </a>

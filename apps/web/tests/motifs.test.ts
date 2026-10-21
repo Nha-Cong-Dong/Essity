@@ -41,6 +41,17 @@ describe("motifs are decoration (§4.10 rule 7)", () => {
     expect(CSS).toMatch(/@keyframes motif-float/);
   });
 
+  it("live in the components layer, so a class passed to a motif wins (review of 940760e)", () => {
+    const layer = CSS.slice(CSS.indexOf("@layer components {"));
+    expect(layer).toMatch(/^@layer components \{\s*\.motif \{/);
+    expect(layer).toContain(".sticker {");
+  });
+
+  it("the folded corner shows the surface under the sheet, the cover by default (review of 940760e)", () => {
+    expect(CSS).toMatch(/--fold-under: var\(--cover\)/);
+    expect(CSS).toMatch(/linear-gradient\(225deg, var\(--fold-under\)/);
+  });
+
   it("the background grid is hidden on narrow screens (§4.10 rule 5)", () => {
     expect(CSS).toMatch(/@media \(max-width: 900px\)\s*\{\s*\.motif-wide\s*\{\s*display:\s*none/);
     expect(renderToStaticMarkup(h(GridCorner, { corner: "br" }))).toMatch(/motif-wide/);

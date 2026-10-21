@@ -33,7 +33,7 @@ export function ForgotPassword() {
       <AuthCard title={FORGOT_PASSWORD_SENT.title}>
         <p className="m-0 text-body">
           {FORGOT_PASSWORD_SENT.sentTo}{" "}
-          <span className="font-hand text-hand text-hong">{maskEmail(sentTo)}</span>
+          <span className="font-medium text-hong">{maskEmail(sentTo)}</span>
         </p>
         <p className="m-0 text-ink-soft">{FORGOT_PASSWORD_SENT.body}</p>
         <a href="/login" className={AUTH_LINK}>
@@ -51,7 +51,7 @@ export function ForgotPassword() {
         {error && error.code !== "rate_limited" && (
           <FieldError id="forgot-error">{authMessage(error.code)}</FieldError>
         )}
-        <Button type="submit" disabled={busy} className="h-14 w-full">
+        <Button type="submit" pending={busy} className="w-full">
           Gửi link đặt lại
         </Button>
         <a href="/login" className={AUTH_LINK}>

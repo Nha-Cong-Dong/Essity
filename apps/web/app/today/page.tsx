@@ -46,7 +46,7 @@ export default function TodayPage() {
           fallback={
             <div
               aria-busy="true"
-              className="h-[260px] w-full max-w-[620px] rounded-[14px_22px_22px_14px] bg-[color-mix(in_srgb,var(--line)_80%,transparent)]"
+              className="h-65 w-full max-w-155 rounded-sheet bg-sunken"
             />
           }
         >

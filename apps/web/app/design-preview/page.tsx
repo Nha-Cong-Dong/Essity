@@ -91,7 +91,7 @@ export default function DesignPreviewPage() {
             </div>
           ))}
           <p className="font-display text-title">Ữ Ặ Ẫ Ỡ Ể Ộ</p>
-          <p className="font-mono text-[15px]">fork() trả về 0 cho tiến trình con</p>
+          <p className="font-mono text-body">fork() trả về 0 cho tiến trình con</p>
         </section>
 
         <section className="flex flex-col gap-4">
@@ -151,14 +151,14 @@ export default function DesignPreviewPage() {
               aside={<span className="font-hand text-hand text-pencil">thứ Sáu, 16/10</span>}
             >
               <NhanVo>
-                <p className="m-0 mb-3.5 text-center font-display text-[18px] font-bold text-hong">
+                <p className="m-0 mb-3.5 text-center font-display text-lead text-hong">
                   Phiên ôn
                 </p>
                 <NhanVoRow label="Số câu">14 câu</NhanVoRow>
                 <NhanVoRow label="Thời gian">khoảng 25 phút</NhanVoRow>
                 <NhanVoRow label="Môn">Mạng máy tính, Hệ điều hành</NhanVoRow>
               </NhanVo>
-              <Button className="h-15 w-full rounded-[10px] text-[18px]">Bắt đầu</Button>
+              <Button size="lg" className="w-full">Bắt đầu</Button>
             </NotebookCover>
           </div>
           <PencilNote>còn thiếu · hiểu được vì sao</PencilNote>
