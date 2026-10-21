@@ -25,10 +25,45 @@ class SubjectRepository(UserScopedRepository[Subject]):
             raise ValueError("subject name cannot be blank")
         return self.add(Subject(name=name))
 
+    def create_with_exam(self, name: str, exam_date: date) -> tuple[Subject, Exam]:
+        """A subject with its one exam (Q17), in the caller's transaction."""
+        subject = self.create(name)
+        self.session.flush()
+        exam = ExamRepository(self.session, self.user_id).create(subject.id, exam_date)
+        self.session.flush()
+        return subject, exam
+
+    def _with_exam(self) -> Select[tuple[Subject, Exam]]:
+        # Inner join: every subject made through the API has its exam (one, by the database).
+        return self._select().add_columns(Exam).join(Exam, Exam.subject_id == Subject.id)
+
+    def list_with_exams(self) -> list[tuple[Subject, Exam]]:
+        """Soonest exam first; subjects created first come first on the same day."""
+        query = self._with_exam().order_by(Exam.exam_date, Subject.created_at, Subject.id)
+        return [(subject, exam) for subject, exam in self.session.execute(query)]
+
+    def get_with_exam(self, id: uuid.UUID) -> tuple[Subject, Exam] | None:
+        row = self.session.execute(self._with_exam().where(Subject.id == id)).one_or_none()
+        return None if row is None else (row[0], row[1])
+
+    def update(
+        self, id: uuid.UUID, *, name: str | None = None, exam_date: date | None = None
+    ) -> tuple[Subject, Exam] | None:
+        """Change what is given. None if the subject is not this user's (or deleted)."""
+        found = self.get_with_exam(id)
+        if found is None:
+            return None
+        subject, exam = found
+        if name is not None:
+            subject.name = name
+        if exam_date is not None:
+            exam.exam_date = exam_date
+        self.session.flush()
+        return subject, exam
+
     def has_any(self) -> bool:
         """Whether the user has a subject web lists: not deleted, with its exam."""
-        query = self._select().join(Exam, Exam.subject_id == Subject.id)
-        return bool(self.session.scalar(select(exists(query))))
+        return bool(self.session.scalar(select(exists(self._with_exam()))))
 
     def soft_delete(self, id: uuid.UUID) -> bool:
         subject = self.get(id)

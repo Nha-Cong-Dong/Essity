@@ -147,13 +147,22 @@ def test_b17_create_writes_the_subject_and_its_one_exam(
 def test_get_lists_own_subjects_by_exam_date(client: TestClient, db_session: Session) -> None:
     user, headers = signed_in(db_session)
     _, other = signed_in(db_session)
-    create(client, headers, "Hệ điều hành", in_days(user, 60))
     create(client, headers, "Mạng máy tính", in_days(user, 30))
-    create(client, headers, "Cơ sở dữ liệu", in_days(user, 60))
     create(client, other, "Của người khác", in_days(user, 5))
+    same_day = [f"Môn {n}" for n in range(5)]
+    ids = [create(client, headers, name, in_days(user, 60)).json()["id"] for name in same_day]
+    # now() is the transaction's start, the same for every row of this test: set them apart,
+    # in an order that a sort on the (random) id alone would almost never give.
+    for hours, subject_id in enumerate(reversed(ids), start=1):
+        db_session.execute(
+            text(
+                "UPDATE subject SET created_at = now() - make_interval(hours => :h) WHERE id = :id"
+            ),
+            {"h": hours, "id": subject_id},
+        )
     listed = client.get("/v1/subjects", headers=headers).json()
-    # Same exam date: the subject created first comes first.
-    assert [s["name"] for s in listed] == ["Mạng máy tính", "Hệ điều hành", "Cơ sở dữ liệu"]
+    # Soonest exam first; on the same day, the subject created first comes first.
+    assert [s["name"] for s in listed] == ["Mạng máy tính", *same_day]
 
 
 def test_get_without_subjects_is_an_empty_list(client: TestClient, db_session: Session) -> None:
@@ -255,21 +264,23 @@ def test_b11_sending_back_the_stored_past_date_is_allowed(
 
 
 @pytest.mark.parametrize(
-    "body",
+    ("body", "field"),
     [
-        {},
-        {"exam_date": None},
-        {"name": None},
-        {"name": "   "},
-        {"user_id": "x"},
-        {"name": "x" * 201},
+        ({}, "body"),
+        ({"exam_date": None}, "body"),
+        ({"name": None}, "body"),
+        ({"name": "Mạng", "exam_date": None}, "body"),  # null is not "leave as is"
+        ({"name": "   "}, "name"),
+        ({"name": "x" * 201}, "name"),
+        ({"name": "Mạng", "user_id": str(uuid.uuid4())}, "user_id"),
+        ({"name": "Mạng", "deleted_at": None}, "deleted_at"),
     ],
 )
 def test_patch_bad_body_is_422(
-    client: TestClient, owned: tuple[User, dict[str, str], str], body: object
+    client: TestClient, owned: tuple[User, dict[str, str], str], body: object, field: str
 ) -> None:
     _, headers, subject_id = owned
-    assert patch(client, headers, subject_id, body).status_code == 422
+    assert error_field(patch(client, headers, subject_id, body)) == field
 
 
 def test_patch_unknown_subject_is_404(client: TestClient, db_session: Session) -> None:

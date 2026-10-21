@@ -29,7 +29,8 @@ class Subject(UserOwned, Base):
 
 
 class Exam(UserOwned, Base):
-    """One exam of a subject. MVP: one per subject (Q17); the schema already allows more.
+    """The exam of a subject. MVP: one per subject (Q17), held by a unique constraint; for
+    mid-term exams (outside the MVP) a migration drops it.
 
     The page range covered by the exam (Q1, "ready" metric) is added with the document table.
     """
@@ -43,6 +44,7 @@ class Exam(UserOwned, Base):
             ["subject.id", "subject.user_id"],
             ondelete="CASCADE",
         ),
+        UniqueConstraint("subject_id"),
     )
 
     subject_id: Mapped[uuid.UUID] = mapped_column(index=True)
