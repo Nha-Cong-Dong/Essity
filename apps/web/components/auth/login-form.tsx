@@ -5,7 +5,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { AUTH_LINK, AuthField, AuthNote, PasswordField } from "@/components/auth/fields";
 import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
-import { authMessage, postJson } from "@/lib/auth-errors";
+import { authMessage, postJson, rateLimitMessage } from "@/lib/auth-errors";
 
 // T1.12, canvas Auth "login". The session token stays in an HttpOnly cookie set by
 // /api/auth/login; this form only learns where to go next.
@@ -44,7 +44,7 @@ export function LoginForm() {
   const wrong = error === "invalid_credentials";
   return (
     <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
-      {rateLimited && <AuthNote>{authMessage("rate_limited")}</AuthNote>}
+      {rateLimited && <AuthNote>{rateLimitMessage(lockedFor)}</AuthNote>}
       <AuthField
         id="email"
         name="email"

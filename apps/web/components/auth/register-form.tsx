@@ -5,13 +5,14 @@ import { type FormEvent, useState } from "react";
 import { AUTH_LINK, AuthField, AuthNote, PasswordField } from "@/components/auth/fields";
 import { FieldError, FieldHint } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
-import { authMessage, PASSWORD_REASONS, postJson } from "@/lib/auth-errors";
+import { authMessage, PASSWORD_REASONS, postJson, rateLimitMessage } from "@/lib/auth-errors";
 
 // T1.13, canvas Auth "register": exactly two fields (AC1), a show/hide button instead of
 // "type it again". The password rules live in core-api; this only shows its reason.
 export function RegisterForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [retryAfter, setRetryAfter] = useState<number>();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,6 +29,7 @@ export function RegisterForm() {
     }
     setBusy(false);
     setError(result.error);
+    setRetryAfter(result.retryAfter);
   }
 
   const passwordError = error !== undefined && (PASSWORD_REASONS.has(error) || error === "invalid_password");
@@ -35,7 +37,7 @@ export function RegisterForm() {
   const otherError = error !== undefined && !passwordError && !emailError;
   return (
     <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
-      {error === "rate_limited" && <AuthNote>{authMessage(error)}</AuthNote>}
+      {error === "rate_limited" && <AuthNote>{rateLimitMessage(retryAfter)}</AuthNote>}
       <AuthField
         id="email"
         name="email"

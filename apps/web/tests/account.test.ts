@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { authMessage, resendWait } from "@/lib/auth-errors";
+import { authMessage, rateLimitMessage, resendWait } from "@/lib/auth-errors";
 import { consumeLinkToken, postOnce } from "@/lib/link-token";
 import { maskEmail } from "@/lib/mask-email";
 import { signOut } from "@/lib/sign-out";
@@ -16,6 +16,23 @@ describe("authMessage (DESIGN.md §6.1)", () => {
   it("AC1: an unknown reason gets a generic sentence, not the code", () => {
     expect(authMessage("something_new")).toBe(authMessage("unavailable"));
     expect(authMessage(undefined)).toBe(authMessage("unavailable"));
+  });
+});
+
+describe("rateLimitMessage (AC6, review b26f601)", () => {
+  it("says 15 minutes for a sign-in lockout (DESIGN.md §6.1)", () => {
+    expect(rateLimitMessage(15 * 60)).toBe("Bạn đã thử quá nhiều lần. Thử lại sau 15 phút.");
+    expect(rateLimitMessage(undefined)).toBe("Bạn đã thử quá nhiều lần. Thử lại sau 15 phút.");
+  });
+
+  it("follows Retry-After, so a sign-up limit of an hour does not promise 15 minutes", () => {
+    expect(rateLimitMessage(3600)).toBe("Bạn đã thử quá nhiều lần. Thử lại sau 60 phút.");
+    expect(rateLimitMessage(3600)).not.toContain("15 phút");
+  });
+
+  it("rounds up and never says 0 minutes", () => {
+    expect(rateLimitMessage(61)).toBe("Bạn đã thử quá nhiều lần. Thử lại sau 2 phút.");
+    expect(rateLimitMessage(5)).toBe("Bạn đã thử quá nhiều lần. Thử lại sau 1 phút.");
   });
 });
 

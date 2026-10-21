@@ -4,8 +4,6 @@
 const MESSAGES: Record<string, string> = {
   // AC5: the same sentence whatever was wrong, so it reveals no account.
   invalid_credentials: "Email hoặc mật khẩu không đúng.",
-  // AC6: no count of attempts left.
-  rate_limited: "Bạn đã thử quá nhiều lần. Thử lại sau 15 phút.",
   unavailable: "Chưa gửi được. Kiểm tra kết nối rồi thử lại.",
   // AC1: why a password was refused (core-api's domain/auth/passwords.py).
   too_short: "Mật khẩu cần ít nhất 8 ký tự. Không cần ký tự đặc biệt.",
@@ -19,6 +17,11 @@ const MESSAGES: Record<string, string> = {
 /** Reasons core-api gives for refusing a password (422), passed on to the form. */
 export const PASSWORD_REASONS = new Set(["too_short", "too_long", "common", "same_as_email"]);
 
+/** core-api's 422 detail as a code the form shows: a password reason, or the given fallback. */
+export function passwordReason(detail: unknown, fallback = "invalid_password"): string {
+  return typeof detail === "string" && PASSWORD_REASONS.has(detail) ? detail : fallback;
+}
+
 /** The 60 seconds core-api waits between two emails to one address (AC2). */
 export const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -26,6 +29,15 @@ const FALLBACK = MESSAGES.unavailable;
 
 export function authMessage(code: string | undefined): string {
   return (code !== undefined && MESSAGES[code]) || FALLBACK;
+}
+
+/**
+ * The 429 box (AC6): DESIGN.md §6.1's sentence, with the minutes core-api's Retry-After gives.
+ * Signing in locks for 15 minutes; signing up or resetting from one network can wait an hour.
+ */
+export function rateLimitMessage(retryAfterSeconds: number | undefined): string {
+  const minutes = Math.max(1, Math.ceil((retryAfterSeconds ?? 15 * 60) / 60));
+  return `Bạn đã thử quá nhiều lần. Thử lại sau ${minutes} phút.`;
 }
 
 export type AuthResult<Data> = {
