@@ -107,6 +107,14 @@ describe("POST /api/auth/password-reset/confirm (T1.14)", () => {
 
   it.each([
     ["a malformed token (field errors)", { detail: [{ loc: ["body", "token"] }] }, 400, "invalid_or_expired_token"],
+    // Over core-api's 1024-character cap: the link still works (review bb28275 #1).
+    ["a password too long for the field", { detail: [{ loc: ["body", "password"] }] }, 422, "too_long"],
+    [
+      "both fields refused",
+      { detail: [{ loc: ["body", "token"] }, { loc: ["body", "password"] }] },
+      400,
+      "invalid_or_expired_token",
+    ],
     ["a reason web does not know", { detail: "something_new" }, 422, "invalid_password"],
   ])("F6: 422 for %s (review 7ea491c #1)", async (_name, detail, status, error) => {
     fakeCoreApi(() => Response.json(detail, { status: 422 }));

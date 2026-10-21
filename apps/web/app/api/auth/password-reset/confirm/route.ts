@@ -27,11 +27,21 @@ export const POST = withOrigin(async (request) => {
   }
   if (response.status === 422) {
     // A refused password keeps the link usable (F6); a malformed token is just a bad link.
+    // Field errors on the password alone mean it is over core-api's length cap.
     const detail: unknown = (result.error as { detail?: unknown } | undefined)?.detail;
-    if (Array.isArray(detail)) return errorResponse("invalid_or_expired_token", 400);
+    if (Array.isArray(detail)) {
+      return detail.some(onToken)
+        ? errorResponse("invalid_or_expired_token", 400)
+        : errorResponse("too_long", 422);
+    }
     return errorResponse(passwordReason(detail), 422);
   }
   if (response.status === 400) return errorResponse("invalid_or_expired_token", 400);
   if (response.status === 429) return rateLimited(response);
   return unavailable("password-reset-confirm");
 });
+
+function onToken(error: unknown): boolean {
+  const loc: unknown = (error as { loc?: unknown } | null)?.loc;
+  return !Array.isArray(loc) || loc.includes("token");
+}
