@@ -264,3 +264,46 @@ def test_has_any_counts_only_my_own_visible_subjects(
     mine.create_with_exam("Còn", date(2027, 1, 15))
     db_session.flush()
     assert mine.has_any() is True
+
+
+# --- Names Postgres cannot store, or that show as nothing (final review) --------------------
+
+
+@pytest.mark.parametrize("name", ["a\u0000b", "Mạng\u0007", "a\u001fb"])
+@pytest.mark.parametrize("method", ["POST", "PATCH"])
+def test_control_characters_in_a_name_are_422_not_500(
+    client: TestClient, db_session: Session, name: str, method: str
+) -> None:
+    """Red if `_name` lets control characters through: Postgres text refuses NUL (a 500)."""
+    _, headers = signed_in(db_session)
+    if method == "POST":
+        response = client.post(
+            "/v1/subjects", json={"name": name, "exam_date": "2099-01-01"}, headers=headers
+        )
+    else:
+        subject_id = client.post(
+            "/v1/subjects", json={"name": "Mạng", "exam_date": "2099-01-01"}, headers=headers
+        ).json()["id"]
+        response = client.patch(f"/v1/subjects/{subject_id}", json={"name": name}, headers=headers)
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"][-1] == "name"
+
+
+@pytest.mark.parametrize("name", ["​", "​ ‍", "﻿", "⁠ "])
+def test_a_name_that_shows_as_nothing_is_422(
+    client: TestClient, db_session: Session, name: str
+) -> None:
+    """Red if a name of only invisible characters passes: the subject list would show a blank."""
+    _, headers = signed_in(db_session)
+    body = {"name": name, "exam_date": "2099-01-01"}
+    response = client.post("/v1/subjects", json=body, headers=headers)
+    assert response.status_code == 422
+
+
+def test_a_name_with_a_joiner_inside_visible_text_is_kept(
+    client: TestClient, db_session: Session
+) -> None:
+    """Red if format characters are refused outright: they are only a problem when alone."""
+    _, headers = signed_in(db_session)
+    body = {"name": "Mạng‍máy", "exam_date": "2099-01-01"}
+    assert client.post("/v1/subjects", json=body, headers=headers).status_code == 201

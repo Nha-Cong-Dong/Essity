@@ -6,6 +6,7 @@ still be renamed: PATCH checks the date only when it changes. Someone else's sub
 one and one that never existed all answer the same 404.
 """
 
+import unicodedata
 import uuid
 from datetime import UTC, date, datetime
 from typing import Annotated, Self
@@ -34,6 +35,7 @@ from core_api.repositories.subject import SubjectRepository
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
 NAME_MAX = 200  # subject.name is String(200)
+INVISIBLE = {"Cf", "Zs", "Zl", "Zp"}  # format characters and separators
 
 
 def _name(value: str) -> str:
@@ -43,6 +45,13 @@ def _name(value: str) -> str:
     except UnicodeEncodeError:
         raise ValueError("name must be valid Unicode text") from None
     value = normalize_subject_name(value)
+    # Control characters left after stripping: Postgres text cannot hold NUL, and none belongs
+    # in a name.
+    if any(unicodedata.category(c) == "Cc" for c in value):
+        raise ValueError("name cannot contain control characters")
+    # Only invisible characters (zero-width, BOM, spaces) would list as a blank subject.
+    if all(unicodedata.category(c) in INVISIBLE for c in value):
+        raise ValueError(f"name must be 1 to {NAME_MAX} characters")
     if not 1 <= len(value) <= NAME_MAX:
         raise ValueError(f"name must be 1 to {NAME_MAX} characters")
     return value
