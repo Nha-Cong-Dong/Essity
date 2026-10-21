@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { SESSION_COOKIE } from "@/lib/session";
-import { designPreviewAllowed } from "@/lib/design-preview";
+import { designPreviewAllowed, isDesignPreview } from "@/lib/design-preview";
 import { PUBLIC_PAGES, config, proxy } from "@/proxy";
 
 import { ORIGIN } from "./helpers";
@@ -104,5 +104,30 @@ describe("/design-preview gate", () => {
 
   it("is not a public page any more", () => {
     expect([...PUBLIC_PAGES]).not.toContain("/design-preview");
+  });
+});
+
+describe("/design-preview gate against encoded paths (review of 60bb47b)", () => {
+  it.each(["/design%2Dpreview", "/design%2dpreview", "//design-preview", "/design-preview%2F", "/%64esign-preview"])(
+    "%s is closed in production, even with a cookie",
+    (path) => {
+      vi.stubEnv("NODE_ENV", "production");
+      expect(visit(path, { cookie: "tok" }).status).toBe(404);
+    },
+  );
+
+  it("a path that cannot be decoded fails closed", () => {
+    expect(isDesignPreview("/design-preview%E0%A4%A")).toBe(true);
+  });
+});
+
+describe("/design-preview second lock in the page (review of 60bb47b)", () => {
+  it("renders ServiceChain only behind a check made after connection()", async () => {
+    const { readFileSync } = await import("node:fs");
+    const page = readFileSync(new URL("../app/design-preview/page.tsx", import.meta.url), "utf-8");
+    expect(page.match(/<ServiceChain \/>/g)).toHaveLength(1);
+    expect(page).toMatch(
+      /await connection\(\);[^\n]*\n\s*if \(!designPreviewAllowed\(process\.env\)\) notFound\(\);\s*\n\s*return <ServiceChain \/>/,
+    );
   });
 });

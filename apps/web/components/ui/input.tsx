@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 
 // Design system v3.1 §4.2: forms are boxes, writing is ruled lines (AnswerBox). 52px, radius 12,
 // `--line-strong` border (3:1). Focus is a 2px ring 2px away: the base `:focus-visible` rule loses

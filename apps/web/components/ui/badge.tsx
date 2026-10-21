@@ -1,7 +1,7 @@
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 
 // DESIGN.md §6.4: the question level (Nhận biết / Vận dụng / Vận dụng cao) is one rounded pill
 // with a `--line` border. All three levels look the same: a level is not a score. Results are

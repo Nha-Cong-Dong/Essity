@@ -1,6 +1,6 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 
 // Design system v3.1 §4.3, in place of shadcn's Card.
 // - sheet: a notebook page, a confirmation card, a book label.

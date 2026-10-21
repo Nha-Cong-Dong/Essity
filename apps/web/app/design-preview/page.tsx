@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
@@ -12,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet } from "@/components/ui/sheet";
+import { designPreviewAllowed } from "@/lib/design-preview";
 
 export const metadata: Metadata = { title: "Design preview · Essity" };
 
@@ -59,6 +62,13 @@ const TYPE = [
   ["meta · 14/1.5", "text-meta text-ink-soft", "Giáo trình Địa lý đại cương · tr. 24"],
 ] as const;
 
+/** A second lock behind proxy.ts: core-api is never called unless the preview is allowed. */
+async function GuardedServiceChain() {
+  await connection(); // read the environment at request time, not at build time
+  if (!designPreviewAllowed(process.env)) notFound();
+  return <ServiceChain />;
+}
+
 export default function DesignPreviewPage() {
   return (
     <AppShell current="/today" account={<AccountMenu email="ban@example.com" />}>
@@ -69,7 +79,7 @@ export default function DesignPreviewPage() {
             Chế độ hiển thị trong menu tài khoản đổi cả trang. Hệ thiết kế v3.1.
           </p>
           <Suspense fallback={<p className="font-mono text-meta text-ink-soft">web → …</p>}>
-            <ServiceChain />
+            <GuardedServiceChain />
           </Suspense>
         </header>
 

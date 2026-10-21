@@ -1,6 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 
 // Design system v3.1 (docs/plans/design-architecture-final.md §4.1): pills, four kinds, no more.
 // - primary: at most one per screen. Bắt đầu, Gửi, Câu tiếp...

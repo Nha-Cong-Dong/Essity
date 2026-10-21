@@ -5,6 +5,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { TYPE_STEPS } from "@/lib/utils";
+
 import { buttonProblems } from "./jsx-rules";
 
 const WEB = path.resolve(import.meta.dirname, "..");
@@ -54,6 +56,17 @@ describe("design rules", () => {
   it("a colour from a custom property names its type: text-(--x) is read as a font size", () => {
     // primary-inverse lost its label this way: text-(--inverse-fg) became a font size.
     expect(offenders(UI, /\b(text|bg|border|decoration|outline|ring|fill|stroke|shadow)-\(--/)).toEqual([]);
+  });
+
+  it("components merge classes with lib/utils' cn, which knows the type steps (Tester, da48854)", () => {
+    expect(offenders([...UI, ...files("lib", /\.ts$/)].filter((f) => !f.endsWith("utils.ts")), /from "cn(\/[\w-]+)?"/)).toEqual([]);
+  });
+
+  it("cn knows every type step declared in globals.css, so a new step cannot drop a colour", () => {
+    const declared = [...GLOBALS.matchAll(/--text-([\w-]+):/g)]
+      .map((m) => m[1])
+      .filter((name) => !name.includes("--"));
+    expect([...new Set(declared)].sort()).toEqual([...TYPE_STEPS].sort());
   });
 
   it("no Tailwind dark: variant in components: dark mode is tokens only", () => {
