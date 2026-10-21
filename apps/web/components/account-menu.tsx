@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { authMessage } from "@/lib/auth-errors";
 import { signOut } from "@/lib/sign-out";
-import { chooseTheme, readTheme, type Theme } from "@/lib/theme";
+import { browserStorage, chooseTheme, readTheme, type Theme } from "@/lib/theme";
 
 // DESIGN.md §5, canvas Shells: a pill with ☰ and the initials; the menu shows the email,
 // Chế độ hiển thị (Sáng / Tối / Theo hệ thống, §3.6) and Đăng xuất. Base UI gives Esc to close, arrow keys and focus back to the button (§11).
@@ -31,7 +31,7 @@ export function AccountMenu({ email }: { email: string }) {
 
   function pick(value: Theme) {
     setTheme(value);
-    chooseTheme(value, localStorage, document.documentElement);
+    chooseTheme(value, browserStorage(), document.documentElement);
   }
 
   // Stays signed in, and says so, if web could not clear the cookie (review cdbaa25 #1).
@@ -45,7 +45,7 @@ export function AccountMenu({ email }: { email: string }) {
   }
 
   return (
-    <Menu.Root onOpenChange={(open) => open && setTheme(readTheme(localStorage))}>
+    <Menu.Root onOpenChange={(open) => open && setTheme(readTheme(browserStorage()))}>
       <Menu.Trigger
         aria-label="Tài khoản"
         className="inline-flex h-11 items-center gap-2.5 rounded-full border border-line bg-sheet pr-1.5 pl-3.5 text-ink shadow-elev"

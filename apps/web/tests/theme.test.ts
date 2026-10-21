@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { applyTheme, chooseTheme, readTheme, saveTheme, THEME_KEY, THEME_SCRIPT } from "@/lib/theme";
+import { applyTheme, browserStorage, chooseTheme, readTheme, saveTheme, THEME_KEY, THEME_SCRIPT } from "@/lib/theme";
 
 function fakeRoot() {
   return { dataset: {} as Record<string, string | undefined> };
@@ -73,6 +73,22 @@ describe("theme (DESIGN.md §3.6, §5: Sáng / Tối / Theo hệ thống)", () =
     const root = fakeRoot();
     chooseTheme("light", broken, root);
     expect(root.dataset.theme).toBe("light");
+  });
+
+  it("site data blocked: reaching localStorage itself throws, the menu still works (review 5c04bae #1)", () => {
+    const storage = browserStorage(() => {
+      throw new DOMException("The operation is insecure.", "SecurityError");
+    });
+    expect(storage).toBeNull();
+    expect(readTheme(storage)).toBe("system");
+    const root = fakeRoot();
+    expect(() => chooseTheme("dark", storage, root)).not.toThrow();
+    expect(root.dataset.theme).toBe("dark");
+  });
+
+  it("browserStorage gives the storage when it can be reached", () => {
+    const storage = fakeStorage();
+    expect(browserStorage(() => storage)).toBe(storage);
   });
 
   it("the inline script applies the stored choice before the page paints", () => {

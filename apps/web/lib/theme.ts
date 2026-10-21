@@ -8,19 +8,31 @@ export const THEME_KEY = "essity-theme";
 type Storage = Pick<globalThis.Storage, "getItem" | "setItem" | "removeItem">;
 type Root = { dataset: Record<string, string | undefined> };
 
-export function readTheme(storage: Storage): Theme {
+/**
+ * The browser's localStorage, or null when site data is blocked: then even reading
+ * window.localStorage throws a SecurityError (review 5c04bae #1).
+ */
+export function browserStorage(reach: () => Storage = () => window.localStorage): Storage | null {
   try {
-    const value = storage.getItem(THEME_KEY);
+    return reach();
+  } catch {
+    return null;
+  }
+}
+
+export function readTheme(storage: Storage | null): Theme {
+  try {
+    const value = storage?.getItem(THEME_KEY);
     return value === "light" || value === "dark" ? value : "system";
   } catch {
     return "system"; // storage blocked (private window): follow the OS
   }
 }
 
-export function saveTheme(theme: Theme, storage: Storage): void {
+export function saveTheme(theme: Theme, storage: Storage | null): void {
   try {
-    if (theme === "system") storage.removeItem(THEME_KEY);
-    else storage.setItem(THEME_KEY, theme);
+    if (theme === "system") storage?.removeItem(THEME_KEY);
+    else storage?.setItem(THEME_KEY, theme);
   } catch {
     // Not remembered; the choice still holds for this page.
   }
@@ -32,7 +44,7 @@ export function applyTheme(theme: Theme, root: Root): void {
 }
 
 /** What the account menu does on a pick: the page changes now, the browser remembers it. */
-export function chooseTheme(theme: Theme, storage: Storage, root: Root): void {
+export function chooseTheme(theme: Theme, storage: Storage | null, root: Root): void {
   applyTheme(theme, root);
   saveTheme(theme, storage);
 }
