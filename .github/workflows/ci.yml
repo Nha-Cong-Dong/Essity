@@ -153,6 +153,7 @@ jobs:
           python3 ../../scripts/check_licenses.py pnpm "$RUNNER_TEMP/licenses.json"
       - run: pnpm --filter web lint
       - run: pnpm --filter web typecheck
+      - run: pnpm --filter web test
       - run: pnpm --filter web build
 
   boundaries:
