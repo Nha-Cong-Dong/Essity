@@ -38,7 +38,7 @@ check-imports:
 check-licenses:
     uv run --directory services/core-api --no-sync python ../../scripts/check_licenses.py python
     uv run --directory services/ai-service --no-sync python ../../scripts/check_licenses.py python
-    pnpm --dir apps/web licenses list --json | uv run --no-project python scripts/check_licenses.py pnpm -
+    pnpm licenses list --json --filter "web..." | uv run --no-project python scripts/check_licenses.py pnpm -
 
 # Sinh lại packages/api-client từ OpenAPI của core-api (T1.11; CI báo lỗi khi lệch)
 gen-api:

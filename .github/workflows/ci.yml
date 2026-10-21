@@ -153,11 +153,11 @@ jobs:
         run: |
           pnpm --dir packages/api-client generate
           git diff --exit-code packages/api-client
+      # `web...`: also the dependencies of the workspace packages web uses (packages/*).
       - name: Licenses (ADR-0011)
-        working-directory: apps/web
         run: |
-          pnpm licenses list --json > "$RUNNER_TEMP/licenses.json"
-          python3 ../../scripts/check_licenses.py pnpm "$RUNNER_TEMP/licenses.json"
+          pnpm licenses list --json --filter "web..." > "$RUNNER_TEMP/licenses.json"
+          python3 scripts/check_licenses.py pnpm "$RUNNER_TEMP/licenses.json"
       - run: pnpm --filter web lint
       - run: pnpm --filter web typecheck
       - run: pnpm --filter web test
