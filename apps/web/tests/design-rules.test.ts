@@ -26,6 +26,11 @@ function offenders(sources: string[], pattern: RegExp): string[] {
   );
 }
 
+/** Whether `source` declares `name` itself (`[--card-spacing:…]`), as a whole name. */
+export function declaresItself(source: string, name: string): boolean {
+  return new RegExp(`(?<![\\w-])${name}\\s*:`).test(source);
+}
+
 describe("design rules", () => {
   it("finds the sources it checks", () => {
     expect(UI).toContain(path.join("components", "shells.tsx"));
@@ -44,14 +49,19 @@ describe("design rules", () => {
     // Set by next/font in app/layout.tsx, not in CSS.
     const runtime = new Set(["--font-be-vietnam-pro", "--font-bricolage", "--font-jetbrains-mono"]);
     const declared = new Set([...GLOBALS.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
-    const used = [...UI, ...STYLES].flatMap((file) =>
+    const used = [...UI, ...STYLES, "app/globals.css"].flatMap((file) =>
       [...read(file).matchAll(/var\((--[\w-]+)|\((--[\w-]+)\)/g)].map((m) => ({ file, name: m[1] ?? m[2] })),
     );
-    // A component may declare its own (`[--card-spacing:…]`).
-    const local = (file: string, name: string) => new RegExp(`${name}\\s*:`).test(read(file));
+    const local = (file: string, name: string) => declaresItself(read(file), name);
     const missing = used.filter(
       ({ file, name }) => !declared.has(name) && !runtime.has(name) && !local(file, name),
     );
     expect(missing.map(({ file, name }) => `${file}: ${name}`)).toEqual([]);
+  });
+
+  it("a declaration inside a longer name does not count (review of 2ab0d91)", () => {
+    expect(declaresItself("x--strong: #000;", "--strong")).toBe(false);
+    expect(declaresItself("--strong-line: #000;", "--strong")).toBe(false);
+    expect(declaresItself("[--strong:4px]", "--strong")).toBe(true);
   });
 });
