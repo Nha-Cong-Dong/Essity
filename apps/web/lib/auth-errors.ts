@@ -17,6 +17,17 @@ const MESSAGES: Record<string, string> = {
 /** Reasons core-api gives for refusing a password (422), passed on to the form. */
 export const PASSWORD_REASONS = new Set(["too_short", "too_long", "common", "same_as_email"]);
 
+/**
+ * True when every field error in a 422 list is on the password. The only rule core-api checks
+ * there is its 1024-character cap, so that reads as too_long (reviews bb28275 #1, 822b3ea #1).
+ */
+export function onlyPasswordTooLong(detail: unknown[]): boolean {
+  return detail.every((error) => {
+    const loc: unknown = (error as { loc?: unknown } | null)?.loc;
+    return Array.isArray(loc) && loc.includes("password");
+  });
+}
+
 /** core-api's 422 detail as a code the form shows: a password reason, or the given fallback. */
 export function passwordReason(detail: unknown, fallback = "invalid_password"): string {
   return typeof detail === "string" && PASSWORD_REASONS.has(detail) ? detail : fallback;

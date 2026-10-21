@@ -69,6 +69,19 @@ describe("POST /api/auth/register (T1.13)", () => {
     expect(await response.json()).toEqual({ error: "invalid_email" });
   });
 
+  it.each([
+    ["a password over core-api's 1024-character cap", [{ loc: ["body", "password"] }], "too_long"],
+    ["both fields refused", [{ loc: ["body", "email"] }, { loc: ["body", "password"] }], "invalid_email"],
+    ["a field error without loc", [{ type: "value_error" }], "invalid_email"],
+  ])("AC1: 422 field errors for %s (review 822b3ea #1)", async (_name, detail, error) => {
+    fakeCoreApi(() => Response.json({ detail }, { status: 422 }));
+
+    const response = await POST(browserPost("/api/auth/register", SIGN_UP));
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({ error });
+  });
+
   it("an unknown 422 reason is not passed through as is", async () => {
     fakeCoreApi(() => Response.json({ detail: "something_new" }, { status: 422 }));
 

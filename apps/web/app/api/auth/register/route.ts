@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { passwordReason } from "@/lib/auth-errors";
+import { onlyPasswordTooLong, passwordReason } from "@/lib/auth-errors";
 import { cookieOptions, PENDING_EMAIL_COOKIE, PENDING_EMAIL_MAX_AGE } from "@/lib/cookies";
 import { coreClientFor } from "@/lib/core-client";
 import { withOrigin } from "@/lib/csrf";
@@ -30,7 +30,9 @@ export const POST = withOrigin(async (request) => {
   if (response.status === 422) {
     // AC1: a refused password says why; a malformed email is a list of field errors.
     const detail: unknown = (result.error as { detail?: unknown } | undefined)?.detail;
-    if (Array.isArray(detail)) return errorResponse("invalid_email", 422);
+    if (Array.isArray(detail)) {
+      return errorResponse(onlyPasswordTooLong(detail) ? "too_long" : "invalid_email", 422);
+    }
     return errorResponse(passwordReason(detail), 422);
   }
   if (response.status === 429) return rateLimited(response);
