@@ -13,18 +13,13 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core_api.db.base import Base, UserOwned
+from core_api.db.base import Base, UserOwned, one_of
 
-# PRD US-02b: the five kinds of knowledge unit (plan D4). A CHECK, not a Postgres ENUM: adding
-# one later is a migration that swaps the CHECK.
+# PRD US-02b: the five kinds of knowledge unit (plan D4).
 UNIT_KINDS = frozenset({"concept", "mechanism", "comparison", "formula", "example"})
 UNIT_STATUSES = frozenset({"active", "split", "merged", "retired"})
 # Where an anchor's quote comes from: a document page, or the user's own notes (us-02b AC5).
 ANCHOR_SOURCES = frozenset({"document", "notes"})
-
-
-def _in(column: str, values: frozenset[str]) -> str:
-    return f"{column} IN ({', '.join(repr(value) for value in sorted(values))})"
 
 
 class KnowledgeUnit(UserOwned, Base):
@@ -40,8 +35,8 @@ class KnowledgeUnit(UserOwned, Base):
             ["subject_id", "user_id"], ["subject.id", "subject.user_id"], ondelete="CASCADE"
         ),
         CheckConstraint("length(trim(title)) > 0", name="title_not_blank"),
-        CheckConstraint(_in("kind", UNIT_KINDS), name="kind_known"),
-        CheckConstraint(_in("status", UNIT_STATUSES), name="status_known"),
+        CheckConstraint(one_of("kind", UNIT_KINDS), name="kind_known"),
+        CheckConstraint(one_of("status", UNIT_STATUSES), name="status_known"),
         # Targets of the composite foreign keys below and in question_unit (plan D9).
         UniqueConstraint("id", "user_id"),
         UniqueConstraint("id", "subject_id", "user_id"),
@@ -70,7 +65,7 @@ class Anchor(UserOwned, Base):
             ["knowledge_unit.id", "knowledge_unit.user_id"],
             ondelete="CASCADE",
         ),
-        CheckConstraint(_in("source", ANCHOR_SOURCES), name="source_known"),
+        CheckConstraint(one_of("source", ANCHOR_SOURCES), name="source_known"),
         CheckConstraint("length(trim(quote_text)) > 0", name="quote_not_blank"),
         CheckConstraint("page_no IS NULL OR page_no >= 1", name="page_from_one"),
         CheckConstraint(

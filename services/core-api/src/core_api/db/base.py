@@ -18,6 +18,12 @@ NAMING_CONVENTION = {
 }
 
 
+def one_of(column: str, values: frozenset[str]) -> str:
+    """SQL for a CHECK that `column` is one of `values`: a CHECK, not a Postgres ENUM, so adding
+    a value later is a migration that swaps the CHECK."""
+    return f"{column} IN ({', '.join(repr(value) for value in sorted(values))})"
+
+
 class OwnerChangeError(Exception):
     """A row of user data would move to another user."""
 

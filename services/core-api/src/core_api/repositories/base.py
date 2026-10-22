@@ -51,3 +51,15 @@ class UserScopedRepository[M: UserOwned]:
             return False
         self.session.delete(obj)
         return True
+
+
+class AppendOnlyError(Exception):
+    """A row of review history (layer 3) would be deleted: it is kept for good (ADR-0012)."""
+
+
+class AppendOnlyRepository[M: UserOwned](UserScopedRepository[M]):
+    """For layer 3: rows are added, never deleted. The triggers of migration 0008 refuse it in
+    the database as well; this keeps the mistake out of the code."""
+
+    def delete(self, id: uuid.UUID) -> bool:
+        raise AppendOnlyError(f"{self.model.__name__} rows are never deleted")

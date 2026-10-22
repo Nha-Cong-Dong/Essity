@@ -59,4 +59,9 @@ def test_the_rule_actually_finds_repositories() -> None:
         "AnchorRepository",
         "QuestionRepository",
         "QuestionUnitRepository",
+        "ReviewSessionRepository",
+        "AttemptRepository",
+        "GradeRepository",
+        "ReviewLogRepository",
+        "MemoryStateRepository",
     } <= names
