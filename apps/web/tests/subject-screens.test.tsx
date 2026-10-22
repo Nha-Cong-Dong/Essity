@@ -300,6 +300,16 @@ describe("the date example (risk register R24)", () => {
     expect(date().getAttribute("placeholder")).toBe(EXAMPLE);
   });
 
+  // Red when: a message is shown without its example filled in (review 27b3601).
+  it("no message ever shows the raw {example}", () => {
+    render(<NewSubjectForm example={EXAMPLE} />);
+    fireEvent.change(name(), { target: { value: "Mạng" } });
+    fireEvent.change(date(), { target: { value: "31/02/2027" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+    expect(document.body.textContent).not.toContain("{example}");
+    expect(document.body.textContent).toContain(EXAMPLE);
+  });
+
   it("the edit field shows the same example", () => {
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
     fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
