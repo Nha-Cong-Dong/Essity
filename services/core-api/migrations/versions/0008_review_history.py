@@ -34,6 +34,7 @@ $$;
 CREATE FUNCTION attempt_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF TG_OP = 'DELETE' OR OLD.status <> 'draft'
+     OR NEW.id <> OLD.id OR NEW.created_at <> OLD.created_at
      OR NEW.user_id <> OLD.user_id
      OR NEW.review_session_id <> OLD.review_session_id
      OR NEW.question_id <> OLD.question_id THEN
@@ -47,6 +48,7 @@ $$;
 CREATE FUNCTION review_session_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF TG_OP = 'DELETE' OR OLD.ended_at IS NOT NULL
+     OR NEW.id <> OLD.id OR NEW.created_at <> OLD.created_at
      OR NEW.user_id <> OLD.user_id
      OR NEW.learning_day <> OLD.learning_day
      OR NEW.started_at <> OLD.started_at THEN
@@ -56,6 +58,33 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- Only a submitted attempt is graded (review 31074ea): a draft could still change under its grade.
+CREATE FUNCTION grade_needs_submitted_attempt() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM attempt WHERE id = NEW.attempt_id AND status = 'submitted') THEN
+    RAISE EXCEPTION 'INSERT on grade is refused: the attempt is not submitted'
+      USING ERRCODE = 'restrict_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- A grade's verdicts are written with it, in its transaction; a later judgement is a new grade.
+CREATE FUNCTION grade_unit_with_its_grade() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM grade WHERE id = NEW.grade_id AND created_at = now()) THEN
+    RAISE EXCEPTION 'INSERT on grade_unit is refused: verdicts go with a new grade'
+      USING ERRCODE = 'restrict_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER grade_needs_submitted_attempt BEFORE INSERT ON grade
+  FOR EACH ROW EXECUTE FUNCTION grade_needs_submitted_attempt();
+CREATE TRIGGER grade_unit_with_its_grade BEFORE INSERT ON grade_unit
+  FOR EACH ROW EXECUTE FUNCTION grade_unit_with_its_grade();
 
 CREATE TRIGGER grade_append_only BEFORE UPDATE OR DELETE ON grade
   FOR EACH ROW EXECUTE FUNCTION append_only_refuse();
@@ -84,6 +113,8 @@ DROP_GUARDS = """
 DROP FUNCTION append_only_refuse() CASCADE;
 DROP FUNCTION attempt_guard() CASCADE;
 DROP FUNCTION review_session_guard() CASCADE;
+DROP FUNCTION grade_needs_submitted_attempt() CASCADE;
+DROP FUNCTION grade_unit_with_its_grade() CASCADE;
 """
 
 
@@ -111,6 +142,10 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "(ended_at IS NULL) = (stop_reason IS NULL)",
             name=op.f("ck_review_session_ended_with_reason"),
+        ),
+        sa.CheckConstraint(
+            "ended_at IS NULL OR ended_at >= started_at",
+            name=op.f("ck_review_session_ends_after_start"),
         ),
         sa.ForeignKeyConstraint(
             ["user_id"],
@@ -215,7 +250,9 @@ def upgrade() -> None:
             ["user_id"], ["user.id"], name=op.f("fk_memory_state_user_id_user"), ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_memory_state")),
-        sa.UniqueConstraint("unit_id", "facet", name=op.f("uq_memory_state_unit_id_facet")),
+        sa.UniqueConstraint(
+            "user_id", "unit_id", "facet", name=op.f("uq_memory_state_user_id_unit_id_facet")
+        ),
     )
     op.create_index(op.f("ix_memory_state_user_id"), "memory_state", ["user_id"], unique=False)
     op.create_index(

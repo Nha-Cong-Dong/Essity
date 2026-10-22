@@ -17,7 +17,12 @@ from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
 from core_api.domain.scheduling.fsrs_adapter import Phase
 from core_api.domain.scheduling.rating import ReviewRating, Verdict
 from core_api.repositories.base import AppendOnlyRepository, UserScopedRepository
-from core_api.repositories.question import QuestionNotFoundError, QuestionRepository
+from core_api.repositories.question import (
+    QuestionNotFoundError,
+    QuestionRepository,
+    QuestionUnitRepository,
+)
+from core_api.repositories.unit import KnowledgeUnitRepository, UnitNotFoundError
 
 
 class ReviewSessionNotFoundError(LookupError):
@@ -30,6 +35,14 @@ class AttemptNotFoundError(LookupError):
 
 class AttemptNotDraftError(ValueError):
     """The attempt was submitted: it no longer changes."""
+
+
+class AttemptNotSubmittedError(ValueError):
+    """The attempt is still a draft: it can be graded only once submitted."""
+
+
+class UnitsMismatchError(ValueError):
+    """A grade must judge exactly the units its question checks."""
 
 
 class ReviewSessionRepository(AppendOnlyRepository[ReviewSession]):
@@ -103,8 +116,14 @@ class GradeRepository(AppendOnlyRepository[Grade]):
         anchors_used: Sequence[str] = (),
     ) -> Grade:
         """A new judgement of the attempt, with one verdict per unit (us-05 AC9)."""
-        if AttemptRepository(self.session, self.user_id).get(attempt_id) is None:
+        attempt = AttemptRepository(self.session, self.user_id).get(attempt_id)
+        if attempt is None:
             raise AttemptNotFoundError(attempt_id)
+        if attempt.status != "submitted":
+            raise AttemptNotSubmittedError(attempt_id)
+        checked = QuestionUnitRepository(self.session, self.user_id).units_of(attempt.question_id)
+        if set(units) != {unit.id for unit in checked}:
+            raise UnitsMismatchError(attempt_id)
         grade = self.add(
             Grade(
                 attempt_id=attempt_id,
@@ -179,6 +198,8 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         )
 
     def upsert(self, unit_id: uuid.UUID, facet: str, state: State) -> MemoryState:
+        if KnowledgeUnitRepository(self.session, self.user_id).get(unit_id) is None:
+            raise UnitNotFoundError(unit_id)
         values = {
             "phase": state.phase.value,
             "step": state.step,
@@ -190,7 +211,7 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         statement = (
             insert(MemoryState)
             .values(id=uuid.uuid4(), user_id=self.user_id, unit_id=unit_id, facet=facet, **values)
-            .on_conflict_do_update(index_elements=["unit_id", "facet"], set_=values)
+            .on_conflict_do_update(index_elements=["user_id", "unit_id", "facet"], set_=values)
             .returning(MemoryState)
         )
         return self.session.scalars(statement, execution_options={"populate_existing": True}).one()

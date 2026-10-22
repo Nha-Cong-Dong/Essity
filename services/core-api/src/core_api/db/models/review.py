@@ -61,6 +61,7 @@ class ReviewSession(UserOwned, Base):
             name="stop_reason_known",
         ),
         CheckConstraint("(ended_at IS NULL) = (stop_reason IS NULL)", name="ended_with_reason"),
+        CheckConstraint("ended_at IS NULL OR ended_at >= started_at", name="ends_after_start"),
         UniqueConstraint("id", "user_id"),
         Index(None, "user_id", "learning_day"),
     )
@@ -206,7 +207,9 @@ class MemoryState(UserOwned, Base):
         CheckConstraint(one_of("facet", FACETS), name="facet_known"),
         CheckConstraint(one_of("phase", PHASES), name="phase_known"),
         CheckConstraint("(phase = 'relearning') = (step IS NOT NULL)", name="step_when_relearning"),
-        UniqueConstraint("unit_id", "facet"),
+        # user_id in the key: an upsert of another user's unit must not find this row and update
+        # it in place; it tries to insert, and the composite key refuses (review 31074ea).
+        UniqueConstraint("user_id", "unit_id", "facet"),
         Index(None, "user_id", "due"),
     )
 

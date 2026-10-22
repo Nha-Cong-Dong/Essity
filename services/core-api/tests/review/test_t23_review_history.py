@@ -22,14 +22,16 @@ from core_api.repositories.base import AppendOnlyError
 from core_api.repositories.question import QuestionRepository, QuestionUnitRepository
 from core_api.repositories.review import (
     AttemptNotDraftError,
+    AttemptNotSubmittedError,
     AttemptRepository,
     GradeRepository,
     MemoryStateRepository,
     ReviewLogRepository,
     ReviewSessionRepository,
+    UnitsMismatchError,
 )
 from core_api.repositories.subject import SubjectRepository
-from core_api.repositories.unit import KnowledgeUnitRepository
+from core_api.repositories.unit import KnowledgeUnitRepository, UnitNotFoundError
 from core_api.repositories.user import UserRepository
 from isolation import assert_isolated
 
@@ -307,7 +309,7 @@ def test_us04_ac2_dont_remember_grade_is_system_forgot(
                 source=source,
                 overall=Verdict(overall),
                 understanding=None,
-                units={},
+                units={history.unit.id: Verdict.INCORRECT},
                 run_id=None,
             )
             db_session.flush()
@@ -322,7 +324,7 @@ def test_t23_understanding_hidden_when_wrong_or_forgot(
             source="ai",
             overall=Verdict.INCORRECT,
             understanding=2,
-            units={},
+            units={history.unit.id: Verdict.INCORRECT},
             run_id=RUN,
         )
         db_session.flush()
@@ -383,15 +385,12 @@ def test_checks_accept_every_unit_verdict(
     db_session: Session, history: History, verdict: Verdict
 ) -> None:
     # Red when: Verdict gains a value the grade_unit CHECK does not know.
-    other = KnowledgeUnitRepository(db_session, history.user.id).create(
-        history.unit.subject_id, title=f"u-{verdict}", summary="s", kind="concept", run_id=RUN
-    )
     GradeRepository(db_session, history.user.id).add_with_units(
         history.attempt.id,
         source="ai",
         overall=Verdict.PARTIAL,
         understanding=1,
-        units={other.id: verdict},
+        units={history.unit.id: verdict},
         run_id=RUN,
     )
     db_session.flush()
@@ -572,3 +571,116 @@ def test_every_fk_between_user_owned_tables_includes_user_id(db_session: Session
         and "user_id" not in fk["constrained_columns"]
     ]
     assert single == []
+
+
+# --- Review 31074ea ------------------------------------------------------------------------------
+
+
+def test_t23_bob_cannot_overwrite_alices_memory_state(
+    db_session: Session, two_users: tuple[User, User]
+) -> None:
+    # Red when: the upsert conflicts on (unit_id, facet) alone and updates Alice's row in place,
+    # never checking the composite key of the row it would have inserted (review 🔴).
+    alice, bob = two_users
+    h = History(db_session, alice)
+    hers = FsrsScheduler().review(None, ReviewRating.GOOD, NOW)
+    MemoryStateRepository(db_session, alice.id).upsert(h.unit.id, "core", hers)
+    db_session.flush()
+    with pytest.raises((UnitNotFoundError, IntegrityError)), db_session.begin_nested():
+        MemoryStateRepository(db_session, bob.id).upsert(
+            h.unit.id, "core", FsrsScheduler().review(None, ReviewRating.AGAIN, NOW)
+        )
+    db_session.expire_all()
+    assert MemoryStateRepository(db_session, alice.id).state(h.unit.id) == hers
+
+
+def test_t23_a_draft_cannot_be_graded(db_session: Session, history: History) -> None:
+    # Red when: a draft gets a grade, then its text still changes under it (review 🟠).
+    draft = AttemptRepository(db_session, history.user.id).create_draft(
+        ReviewSessionRepository(db_session, history.user.id).start(DAY, NOW).id,
+        history.question.id,
+    )
+    with pytest.raises(AttemptNotSubmittedError):
+        GradeRepository(db_session, history.user.id).add_with_units(
+            draft.id,
+            source="ai",
+            overall=Verdict.CORRECT,
+            understanding=3,
+            units={history.unit.id: Verdict.CORRECT},
+            run_id=RUN,
+        )
+    refused_by_trigger(
+        db_session,
+        "INSERT INTO grade (id, user_id, attempt_id, source, overall) VALUES"
+        " (gen_random_uuid(), :user, :attempt, 'ai', 'correct')",
+        user=history.user.id,
+        attempt=draft.id,
+    )
+
+
+def test_t23_grade_units_are_exactly_the_questions_units(
+    db_session: Session, history: History
+) -> None:
+    # Red when: a grade judges a unit the question does not check, so replay (T2.6) schedules an
+    # unrelated unit (review 🟡).
+    stray = KnowledgeUnitRepository(db_session, history.user.id).create(
+        history.unit.subject_id, title="UDP", summary="s", kind="concept", run_id=RUN
+    )
+    grades = GradeRepository(db_session, history.user.id)
+    for units in ({stray.id: Verdict.CORRECT}, {}):
+        with pytest.raises(UnitsMismatchError):
+            grades.add_with_units(
+                history.attempt.id,
+                source="ai",
+                overall=Verdict.CORRECT,
+                understanding=3,
+                units=units,
+                run_id=RUN,
+            )
+
+
+def test_t23_units_cannot_be_added_to_an_old_grade(db_session: Session, history: History) -> None:
+    # A grade's verdicts are written with it, in one transaction; a later one is a new grade.
+    old = db_session.execute(
+        text(
+            "INSERT INTO grade (id, user_id, attempt_id, source, overall, created_at) VALUES"
+            " (gen_random_uuid(), :user, :attempt, 'user_override', 'partial',"
+            " now() - interval '1 day') RETURNING id"
+        ),
+        {"user": history.user.id, "attempt": history.attempt.id},
+    ).scalar_one()
+    refused_by_trigger(
+        db_session,
+        "INSERT INTO grade_unit (id, user_id, grade_id, unit_id, verdict)"
+        " VALUES (gen_random_uuid(), :user, :grade, :unit, 'partial')",
+        user=history.user.id,
+        grade=old,
+        unit=history.unit.id,
+    )
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "UPDATE attempt SET id = gen_random_uuid() WHERE id = :attempt",
+        "UPDATE attempt SET created_at = now() - interval '1 day' WHERE id = :attempt",
+        "UPDATE review_session SET created_at = now() - interval '1 day' WHERE id = :session",
+    ],
+)
+def test_t23_ids_and_creation_times_never_change(
+    db_session: Session, two_users: tuple[User, User], statement: str
+) -> None:
+    alice, _ = two_users
+    sessions = ReviewSessionRepository(db_session, alice.id)
+    review = sessions.start(DAY, NOW)
+    h = History(db_session, alice)
+    draft = AttemptRepository(db_session, alice.id).create_draft(review.id, h.question.id)
+    db_session.flush()
+    refused_by_trigger(db_session, statement, attempt=draft.id, session=review.id)
+
+
+def test_us08_a_session_cannot_end_before_it_started(db_session: Session, history: History) -> None:
+    with pytest.raises(IntegrityError), db_session.begin_nested():
+        ReviewSessionRepository(db_session, history.user.id).end(
+            history.review.id, NOW - timedelta(hours=1), reason="completed"
+        )
