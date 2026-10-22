@@ -78,33 +78,21 @@ describe("password field (review of 7bcc5d7)", () => {
 describe("notebook cover at level b (§4.4, §4.5)", () => {
   const cover = () => renderToStaticMarkup(h(NotebookCover, { title: "Đăng nhập", children: h(NhanVo, { children: "x" }) }));
 
-  it("keeps the spine and one stripe; drops the paper behind it", () => {
-    expect(cover()).not.toMatch(/under/);
-    expect(CSS).not.toMatch(/\.under\b/);
+  // R10 (T1.21, plan D16): what the cover is, not a list of strings an older design used.
+  it("keeps the spine and one stripe", () => {
     expect(cover().match(/<i><\/i>/g) ?? []).toHaveLength(1);
-  });
-
-  it("has no texture, corner protectors, staples, second stripe, dashed frame or tape", () => {
-    expect(CSS).not.toMatch(/\.board::(before|after)/);
-    expect(CSS).not.toMatch(/\.spine::(before|after)/);
-    expect(CSS).not.toMatch(/\.label::(before|after)/);
-    expect(CSS).not.toMatch(/\.stripes i \+ i/);
-    expect(CSS).not.toMatch(/background-size: 14px 14px/);
   });
 
   it("is rounded 10 on the spine side and 28 on the edge", () => {
     expect(CSS).toMatch(/border-radius: var\(--radius-cover-spine\) var\(--radius-cover-edge\) var\(--radius-cover-edge\) var\(--radius-cover-spine\)/);
   });
 
-  it("the title uses the display step (line height 1.15), not a fixed 64px with line height 1", () => {
-    expect(CSS).not.toMatch(/font-size: 64px/);
-    expect(CSS).not.toMatch(/line-height: 1;/);
+  it("the title uses the display step", () => {
     expect(CSS).toMatch(/font-size: var\(--text-display\)/);
   });
 
-  it("the label values are upright ink, not italic pink", () => {
+  it("the label values are ink", () => {
     const value = /\.rowValue \{[^}]*\}/.exec(CSS)?.[0] ?? "";
-    expect(value).not.toMatch(/italic/);
     expect(value).toMatch(/color: var\(--ink\)/);
   });
 });
