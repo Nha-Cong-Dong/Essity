@@ -12,11 +12,22 @@ export type Subject = components["schemas"]["SubjectOut"];
 
 export { isSubjectId } from "@/lib/subject-id";
 
-/** Every subject of the signed-in user, by exam date. Throws when core-api cannot answer. */
+/** core-api answered with a status that is not a success; the page decides what it means. */
+export class CoreStatusError extends Error {
+  constructor(
+    path: string,
+    readonly status: number,
+  ) {
+    super(`core-api answered ${path} with ${status}`);
+    this.name = "CoreStatusError";
+  }
+}
+
+/** Every subject of the signed-in user, by exam date. Throws CoreStatusError when core-api refuses. */
 export async function listSubjects(): Promise<Subject[]> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const { data, response } = await coreClient({ token }).GET("/v1/subjects");
-  if (!data) throw new Error(`core-api answered /v1/subjects with ${response.status}`);
+  if (!data) throw new CoreStatusError("/v1/subjects", response.status);
   return data;
 }
 

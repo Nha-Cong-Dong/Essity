@@ -58,7 +58,8 @@ function SubjectRow({ initial }: { initial: ListedSubject }) {
 
     // Only what changed: core-api checks the date only when it changes (plan B11).
     const body: Record<string, string> = {};
-    if (name.trim() !== subject.name) body.name = name;
+    // core-api stores names composed (NFC): the same name typed as combining marks is no change.
+    if (name.trim().normalize("NFC") !== subject.name) body.name = name;
     if (checked.iso !== subject.exam_date) body.exam_date = checked.iso;
     if (Object.keys(body).length === 0) return setEditing(false);
 

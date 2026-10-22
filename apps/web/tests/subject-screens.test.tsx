@@ -202,6 +202,20 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
     expect(sent).toHaveLength(0);
   });
 
+  // Red when: a name typed as combining marks (Unikey "Unicode tổ hợp") counts as changed, though
+  // core-api stores it composed (review c469b4d #2).
+  it("plan K2: the same name in combining marks is no change", async () => {
+    const sent = fakeWeb(() => Response.json({ subject: MMT }));
+    render(<SubjectList subjects={[MMT]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    fireEvent.change(name(), { target: { value: "Mạng máy tính".normalize("NFD") } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Lưu" })).toBeNull());
+    expect(sent).toHaveLength(0);
+  });
+
   it("US-01 AC2: editing to a past date shows the sentence under the date", async () => {
     fakeWeb(() => Response.json({ error: "exam_date_not_in_future" }, { status: 422 }));
     render(<SubjectList subjects={[MMT]} />);

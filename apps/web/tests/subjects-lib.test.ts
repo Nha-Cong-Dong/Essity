@@ -10,7 +10,7 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
-const { findSubject, isSubjectId, listSubjects } = await import("@/lib/subjects");
+const { CoreStatusError, findSubject, isSubjectId, listSubjects } = await import("@/lib/subjects");
 
 const ID = "3f2b8c1e-7a4d-4e5f-9b6a-1c2d3e4f5a6b";
 const MMT = { id: ID, name: "Mạng máy tính", exam_date: "2026-12-15", days_until_exam: 54, created_at: "x" };
@@ -28,10 +28,13 @@ describe("subjects on the server", () => {
     expect(calls[0].headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
   });
 
-  it("listSubjects throws when core-api fails, so the page shows its error state", async () => {
-    fakeCoreApi(() => new Response("", { status: 500 }));
+  // Red when: every failure looks alike, and a dead session reads as a network error (review c469b4d #1).
+  it.each([401, 500])("listSubjects throws a CoreStatusError carrying %i", async (status) => {
+    fakeCoreApi(() => new Response("", { status }));
 
-    await expect(listSubjects()).rejects.toThrow();
+    const error = await listSubjects().catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(CoreStatusError);
+    expect((error as InstanceType<typeof CoreStatusError>).status).toBe(status);
   });
 
   it("plan K5: findSubject picks the subject by id", async () => {
