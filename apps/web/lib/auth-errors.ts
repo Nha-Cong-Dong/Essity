@@ -73,11 +73,17 @@ export async function postJson<Data>(path: string, body?: unknown): Promise<Auth
   } catch {
     return { status: 0, error: "unavailable" };
   }
-  const json = (await response.json().catch(() => ({}))) as Data & { error?: string };
+  // Web's routes always answer a JSON object (review plan P7). Anything else, even with a 2xx,
+  // means something in between broke: unavailable, never an empty success (R22).
+  const parsed: unknown = await response.json().catch(() => undefined);
+  const json = (typeof parsed === "object" && parsed !== null ? parsed : undefined) as
+    | (Data & { error?: string })
+    | undefined;
   const retryAfter = Number(response.headers.get("retry-after")) || undefined;
-  return response.ok
-    ? { status: response.status, data: json }
-    : { status: response.status, error: json.error ?? "unavailable", retryAfter, body: json };
+  if (response.ok) {
+    return json ? { status: response.status, data: json } : { status: response.status, error: "unavailable" };
+  }
+  return { status: response.status, error: json?.error ?? "unavailable", retryAfter, body: json };
 }
 
 /**
