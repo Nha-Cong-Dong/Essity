@@ -46,7 +46,8 @@ describe("source rules", () => {
     expect(reexports).toEqual([]);
   });
 
-  // Red when: a <form> leaves out method="post". Submitted before hydration, the browser falls back
+  // Red when: a <form> leaves out method="post". Put it first: the scan stops at the first ">",
+  // even the one in "=>". Submitted before hydration, the browser falls back
   // to GET and puts every field (password, GPA) in the URL, history and Referer (ADR-0013).
   it("ADR-0013: every form says method=\"post\", so a submit before hydration keeps fields out of the URL", () => {
     const getForms = SOURCES.flatMap((file) =>

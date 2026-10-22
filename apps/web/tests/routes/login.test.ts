@@ -69,13 +69,14 @@ describe("POST /api/auth/login (T1.12)", () => {
     expect(body).not.toContain(CREDENTIALS.password);
   });
 
-  it("AC7: a verified user goes to /today", async () => {
+  // T1.18 plan K4: "/" picks the page from /v1/me (baseline, first subject or /today).
+  it("AC7: a verified user goes to /, which sends them on by landingFor", async () => {
     loginOk({ verified: true });
 
     const response = await POST(browserPost("/api/auth/login", CREDENTIALS));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ next: "/today" });
+    expect(await response.json()).toEqual({ next: "/" });
   });
 
   it("AC2: an unverified user goes to /check-email", async () => {
