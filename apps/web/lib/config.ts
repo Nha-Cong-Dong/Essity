@@ -32,6 +32,7 @@ export function webConfig(env: Env = process.env): WebConfig {
 
   const origin = env.WEB_ORIGIN ?? (production ? undefined : "http://localhost:3000");
   if (origin === undefined) throw new WebConfigError("WEB_ORIGIN is required in production");
+  if (!isHttpUrl(origin)) throw new WebConfigError("WEB_ORIGIN must be an http(s) URL");
 
   const serviceToken = env.WEB_TO_CORE_TOKEN || undefined;
   if (serviceToken !== undefined && serviceToken.length < MIN_SERVICE_TOKEN_LENGTH) {

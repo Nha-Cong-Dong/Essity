@@ -68,6 +68,15 @@ describe("webConfig (ADR-0022)", () => {
       expect(() => webConfig({ ...production, CORE_API_URL: "" })).toThrow(/CORE_API_URL/);
     });
 
+    // Red when: a malformed WEB_ORIGIN throws a bare TypeError, so the start-up line says
+    // "invalid settings" without naming it (review 8765c30).
+    it("r04: WEB_ORIGIN must be an http(s) URL, named in the error", () => {
+      for (const origin of ["essity.example", "https://", "ftp://essity.example"]) {
+        expect(() => webConfig({ ...production, WEB_ORIGIN: origin })).toThrow(WebConfigError);
+        expect(() => webConfig({ ...production, WEB_ORIGIN: origin })).toThrow(/WEB_ORIGIN/);
+      }
+    });
+
     it("r04: CORE_API_URL must be an http(s) URL", () => {
       for (const url of ["core-api:8000", "http://", "ftp://core-api"]) {
         expect(() => webConfig({ ...production, CORE_API_URL: url })).toThrow(/CORE_API_URL/);
