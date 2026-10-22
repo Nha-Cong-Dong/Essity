@@ -11,7 +11,10 @@ import { requireVerifiedSession } from "@/lib/session";
 export const metadata: Metadata = { title: "Tải tài liệu · Essity" };
 
 // T1.20, US-01 AC7 (plan K5): the step after "Tạo môn", at its own URL so a reload keeps it and
-// does not create the subject twice. Someone else's subject, or an id that is not one, is a 404.
+// does not create the subject twice. Someone else's subject, or an id that is not one, shows the
+// not-found page. Inside Suspense the status stays 200 once the shell has streamed (Next's
+// streaming docs); accepted (risk register R19): the page needs a session, has no SEO, and every
+// case looks the same, so nothing about other people's subjects leaks.
 async function Upload({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   await requireVerifiedSession();

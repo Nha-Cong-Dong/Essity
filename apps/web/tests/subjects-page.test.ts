@@ -7,6 +7,9 @@ vi.mock("next/navigation", () => ({
   redirect: (to: string) => {
     throw new Error(`redirect:${to}`);
   },
+  notFound: () => {
+    throw new Error("notFound");
+  },
 }));
 vi.mock("@/lib/subjects", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/subjects")>();
@@ -51,5 +54,12 @@ describe("/subjects/[id]/upload when the list fails (review 796071c #1)", () => 
   it("a session core-api no longer knows goes to /login", async () => {
     failure = new CoreStatusError("/v1/subjects", 401);
     await expect(subjectForUpload("3f2b8c1e-7a4d-4e5f-9b6a-1c2d3e4f5a6b")).rejects.toThrow("redirect:/login");
+  });
+
+  // Red when: a subject findSubject does not return (someone else's, gone, or an id that is not
+  // one: all null, see subjects-lib) renders the step instead of the not-found page (plan K5).
+  it("plan K5: a subject that is not found is the not-found page", async () => {
+    failure = null;
+    await expect(subjectForUpload("0f2b8c1e-7a4d-4e5f-9b6a-1c2d3e4f5a6b")).rejects.toThrow("notFound");
   });
 });
