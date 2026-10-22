@@ -13,7 +13,7 @@ export async function RedirectIfSignedIn() {
   await connection();
   const me = await getSession().catch((error: unknown) => {
     // core-api down: show the form, and say so in the log (R12).
-    logError("core-api call failed", { route: "session_check", error: errorName(error) });
+    logError("core-api call failed", { route: "session-check", error: errorName(error) });
     return null;
   });
   if (me) redirect(landingFor(me));

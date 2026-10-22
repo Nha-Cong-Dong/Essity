@@ -44,6 +44,14 @@ describe("logError (R12)", () => {
     expect(JSON.stringify(line)).not.toMatch(/a@example\.com|gpa=3\.2/);
   });
 
+  // Red when (pnpm typecheck): route takes any string again, so request data could be logged
+  // as a route name (review 501af99).
+  it("takes only the fixed route names", () => {
+    captured();
+    // @ts-expect-error: not one of LogRoute
+    logError("core-api call failed", { route: `user-${"a@example.com"}` });
+  });
+
   // Red when: the line is not joined to the request's trace (ADR-0013).
   it("carries the active span's trace_id", () => {
     const lines = captured();

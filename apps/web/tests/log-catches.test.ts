@@ -26,14 +26,14 @@ describe("recovered failures are logged (R12)", () => {
   it("/v1/me failing after a baseline save", async () => {
     const core = { GET: async () => Promise.reject(new TypeError("fetch failed: secret-host")) };
     expect(await nextAfterBaseline(core as never)).toBe("/today");
-    expect(logError).toHaveBeenCalledWith("core-api call failed", { route: "baseline_next", error: "TypeError" });
+    expect(logError).toHaveBeenCalledWith("core-api call failed", { route: "baseline-next", error: "TypeError" });
   });
 
   // Red when: getSession().catch(() => null) still hides a core-api outage on /login.
   it("core-api failing behind /login and /register", async () => {
     session = async () => Promise.reject(new Error("core-api answered /v1/me with 503"));
     expect(await RedirectIfSignedIn()).toBeNull();
-    expect(logError).toHaveBeenCalledWith("core-api call failed", { route: "session_check", error: "Error" });
+    expect(logError).toHaveBeenCalledWith("core-api call failed", { route: "session-check", error: "Error" });
   });
 
   it("logs nothing when there is simply no session", async () => {

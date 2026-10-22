@@ -1,4 +1,4 @@
-import { errorName, logError } from "@/lib/log";
+import { errorName, type LogRoute, logError } from "@/lib/log";
 
 // Small helpers for web's own route handlers (app/api/**).
 
@@ -97,7 +97,7 @@ export function errorResponse(error: string, status: number, headers?: HeadersIn
  * core-api could not answer. Logged with a fixed message and the error's type only: the
  * request carried a password or a token (ADR-0013).
  */
-export function unavailable(route: string, error?: unknown): Response {
+export function unavailable(route: LogRoute, error?: unknown): Response {
   logError("core-api call failed", { route, error: errorName(error) });
   return errorResponse("unavailable", 503);
 }

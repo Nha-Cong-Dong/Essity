@@ -27,7 +27,7 @@ export async function nextAfterBaseline(core: CoreClient): Promise<"/subjects/ne
     const { data } = await core.GET("/v1/me");
     return data ? afterBaseline(data) : "/today";
   } catch (error) {
-    logError("core-api call failed", { route: "baseline_next", error: errorName(error) });
+    logError("core-api call failed", { route: "baseline-next", error: errorName(error) });
     return "/today";
   }
 }

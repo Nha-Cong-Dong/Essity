@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
     return [
       // Risk register R06, ADR-0023: every page. A static CSP with 'unsafe-inline': a nonce
       // cannot work with partial prerendering, and Next writes inline scripts of its own. Dev
-      // adds eval and the reload socket. HSTS only in production, never pinned on localhost.
+      // adds eval and the reload socket. HSTS only in production (it does nothing over http anyway).
       {
         source: "/(.*)",
         headers: [

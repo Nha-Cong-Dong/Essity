@@ -4,9 +4,24 @@ import { trace } from "@opentelemetry/api";
 // joined to the request's trace, with only the fields below: never a message from an error
 // (it may quote a URL or a body), an email, a token or anything the user typed.
 
+/** Which call failed: a fixed name, never built from request data (review 501af99). */
+export type LogRoute =
+  | "baseline"
+  | "baseline-next"
+  | "baseline-skip"
+  | "login"
+  | "logout"
+  | "password-reset"
+  | "password-reset-confirm"
+  | "register"
+  | "resend"
+  | "session-check"
+  | "subject"
+  | "subjects"
+  | "verify-email";
+
 type Fields = {
-  /** Which call failed, a fixed name ("subjects", "logout"). */
-  route?: string;
+  route?: LogRoute;
   /** core-api's HTTP status, when it answered. */
   status?: number;
   /** The error's type ("TypeError"), never its message. */

@@ -1,4 +1,5 @@
 import { errorResponse, unavailable } from "@/lib/http";
+import type { LogRoute } from "@/lib/log";
 
 // How web's /api/subjects routes pass on core-api's refusals (T1.20). The 422 names the field,
 // never the value typed (ADR-0013: a subject name is the user's own text).
@@ -17,7 +18,7 @@ function invalidFields(detail: unknown): string[] {
 }
 
 /** core-api's answer that is not a success, as web's error. */
-export function subjectError(route: string, response: Response, error: unknown): Response {
+export function subjectError(route: LogRoute, response: Response, error: unknown): Response {
   const detail = (error as { detail?: unknown } | undefined)?.detail;
   if (response.status === 401) return errorResponse("signed_out", 401);
   if (response.status === 404) return errorResponse("subject_not_found", 404);
