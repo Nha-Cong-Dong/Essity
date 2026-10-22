@@ -112,7 +112,7 @@ services:
   core-api:
     build: ../services/core-api
     environment: &core-environment
-      CORE_ENVIRONMENT: local
+      CORE_ENVIRONMENT: local  # this file is for dev only; deploys set production (T0.13)
       CORE_DATABASE_URL: postgresql+psycopg://${CORE_DB_USER}:${CORE_DB_PASSWORD}@postgres:5432/${CORE_DB_NAME}
       CORE_REDIS_URL: ${REDIS_URL}
       CORE_AI_SERVICE_URL: ${AI_SERVICE_URL}
@@ -151,7 +151,7 @@ services:
   ai-service:
     build: ../services/ai-service
     environment:
-      AI_ENVIRONMENT: local
+      AI_ENVIRONMENT: local  # this file is for dev only; deploys set production (T0.13)
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?set in .env}
       AI_DATABASE_URL: postgresql+psycopg://${AI_DB_USER}:${AI_DB_PASSWORD}@postgres:5432/${AI_DB_NAME}
       AI_REDIS_URL: ${REDIS_URL}

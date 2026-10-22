@@ -1,5 +1,6 @@
 import logging
 import smtplib
+import ssl
 from email.message import EmailMessage as MimeMessage
 
 from core_api.clients.email.sender import EmailMessage
@@ -38,7 +39,9 @@ class SmtpEmailSender:
         mime.set_content(message.text, charset="utf-8")
         with smtplib.SMTP(self.host, self.port, timeout=self.timeout) as smtp:
             if self.starttls:
-                smtp.starttls()
+                # A verifying context: smtplib's default checks neither the certificate nor the
+                # host name (review f617e23). Port 465 (TLS from the start) is not supported.
+                smtp.starttls(context=ssl.create_default_context())
             if self.username is not None and self.password is not None:
                 smtp.login(self.username, self.password)
             smtp.send_message(mime)

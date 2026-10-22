@@ -6,7 +6,7 @@ import { useRef, useSyncExternalStore } from "react";
 import { AuthField } from "@/components/auth/fields";
 import { FieldError } from "@/components/field-error";
 import { formatExamDate, parseExamDate } from "@/lib/exam-date";
-import { PLACEHOLDER_MESSAGES, SUBJECT_MESSAGES, type SubjectMessage } from "@/lib/subject-copy";
+import { PLACEHOLDER_MESSAGES, type SubjectMessage, subjectMessage } from "@/lib/subject-copy";
 
 // The two fields of a subject, and nothing else (US-01 AC1). The exam date is a text field
 // typed day/month/year; the calendar button only helps fill it (plan K10).
@@ -17,18 +17,16 @@ const noSubscribe = () => () => undefined;
 // Browsers without showPicker get no calendar button: a button that does nothing is worse.
 const canPick = () => "showPicker" in HTMLInputElement.prototype;
 
-function Message({ id, code }: { id: string; code: SubjectMessage }) {
-  return (
-    <FieldError id={id}>
-      {PLACEHOLDER_MESSAGES.has(code) ? <span data-copy="tam">{SUBJECT_MESSAGES[code]}</span> : SUBJECT_MESSAGES[code]}
-    </FieldError>
-  );
+function Message({ id, code, example }: { id: string; code: SubjectMessage; example: string }) {
+  const text = subjectMessage(code, example);
+  return <FieldError id={id}>{PLACEHOLDER_MESSAGES.has(code) ? <span data-copy="tam">{text}</span> : text}</FieldError>;
 }
 
 export function SubjectFields({
   idPrefix = "",
   name,
   examDate,
+  example,
   errors,
   onName,
   onExamDate,
@@ -36,6 +34,8 @@ export function SubjectFields({
   idPrefix?: string;
   name: string;
   examDate: string;
+  /** The example date for the placeholder and the format message (R24). */
+  example: string;
   errors: SubjectErrors;
   onName: (value: string) => void;
   onExamDate: (value: string) => void;
@@ -70,7 +70,7 @@ export function SubjectFields({
         invalid={errors.name !== undefined}
         describedBy={errors.name ? `${ids.name}-error` : undefined}
       >
-        {errors.name && <Message id={`${ids.name}-error`} code={errors.name} />}
+        {errors.name && <Message id={`${ids.name}-error`} code={errors.name} example={example} />}
       </AuthField>
 
       <AuthField
@@ -79,7 +79,7 @@ export function SubjectFields({
         label="Ngày thi"
         inputMode="numeric"
         autoComplete="off"
-        placeholder="15/12/2026"
+        placeholder={example}
         ref={dateInput}
         value={examDate}
         onChange={(event) => onExamDate(event.target.value)}
@@ -114,7 +114,7 @@ export function SubjectFields({
             />
           </div>
         )}
-        {errors.examDate && <Message id={`${ids.date}-error`} code={errors.examDate} />}
+        {errors.examDate && <Message id={`${ids.date}-error`} code={errors.examDate} example={example} />}
       </AuthField>
     </>
   );

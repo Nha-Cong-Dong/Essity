@@ -30,7 +30,7 @@ async function patchSubject(id: string, body: Record<string, string>) {
   return { status: response.status, json };
 }
 
-function SubjectRow({ initial }: { initial: ListedSubject }) {
+function SubjectRow({ initial, example }: { initial: ListedSubject; example: string }) {
   const [subject, setSubject] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(initial.name);
@@ -111,6 +111,7 @@ function SubjectRow({ initial }: { initial: ListedSubject }) {
             idPrefix={`edit-${subject.id}-`}
             name={name}
             examDate={examDate}
+            example={example}
             errors={errors}
             onName={setName}
             onExamDate={setExamDate}
@@ -130,7 +131,7 @@ function SubjectRow({ initial }: { initial: ListedSubject }) {
   );
 }
 
-export function SubjectList({ subjects }: { subjects: ListedSubject[] }) {
+export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; example: string }) {
   if (subjects.length === 0) {
     return (
       <div className="flex flex-col items-start gap-3 py-8">
@@ -145,7 +146,7 @@ export function SubjectList({ subjects }: { subjects: ListedSubject[] }) {
   return (
     <ul className="m-0 flex list-none flex-col p-0">
       {subjects.map((subject) => (
-        <SubjectRow key={subject.id} initial={subject} />
+        <SubjectRow key={subject.id} initial={subject} example={example} />
       ))}
     </ul>
   );

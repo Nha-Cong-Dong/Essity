@@ -31,7 +31,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 configure_logging("core-api", "INFO")
 configure_tracing("core-api")
 
-app = FastAPI(title="core-api", lifespan=lifespan)
+# Internal service (ARCH §3): no docs or schema route in any environment (R30). The web client's
+# schema comes from app.openapi() (scripts/openapi_export.py), which does not need the route.
+app = FastAPI(title="core-api", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 app.middleware("http")(log_requests)
 install_rate_limit_handlers(app)
 install_validation_handler(app)

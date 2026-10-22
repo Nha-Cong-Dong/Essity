@@ -36,17 +36,20 @@ describe("/subjects when the list fails", () => {
 
   it("a session core-api no longer knows goes to /login", async () => {
     failure = new CoreStatusError("/v1/subjects", 401);
-    await expect(Subjects()).rejects.toThrow("redirect:/login");
+    await expect(Subjects({ example: "15/12/2031" })).rejects.toThrow("redirect:/login");
   });
 
   it("any other failure shows the error state and logs the status only (ADR-0013)", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     failure = new CoreStatusError("/v1/subjects", 500);
 
-    const markup = renderToStaticMarkup(await Subjects());
+    const markup = renderToStaticMarkup(await Subjects({ example: "15/12/2031" }));
 
     expect(markup).toContain('role="alert"');
-    expect(logged).toHaveBeenCalledWith("core-api call failed", { route: "subjects", status: 500, error: "CoreStatusError" });
+    // One JSON line through lib/log.ts (R12): the status and the error's type, nothing else.
+    expect(JSON.parse(String(logged.mock.calls[0][0]))).toEqual(
+      expect.objectContaining({ message: "core-api call failed", route: "subjects", status: 500, error: "CoreStatusError" }),
+    );
   });
 });
 

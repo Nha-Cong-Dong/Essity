@@ -6,7 +6,7 @@ seven-day boundaries are in test_baseline_domain.py.
 """
 
 import json
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -15,6 +15,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from accounts import signed_in
+from clock import future_exam
 from core_api.repositories.subject import ExamRepository, SubjectRepository
 
 VALID: dict[str, Any] = {"gpa_before": "2.85", "prior_ready_days": 3}
@@ -35,7 +36,7 @@ def error_field(response: Any) -> str:
 def add_subject(session: Session, user_id: Any) -> Any:
     subject = SubjectRepository(session, user_id).create("Mạng máy tính")
     session.flush()
-    ExamRepository(session, user_id).create(subject.id, date(2027, 1, 15))
+    ExamRepository(session, user_id).create(subject.id, future_exam(60))
     session.flush()
     return subject
 

@@ -19,6 +19,14 @@ from core_api.repositories.user import UserRepository
 BEARER = "bearer"
 
 
+def get_now() -> datetime:
+    """The request's "now" (R23). A dependency, so tests at 03:59 and 04:00 are exact."""
+    return datetime.now(UTC)
+
+
+Now = Annotated[datetime, Depends(get_now)]
+
+
 @dataclass(frozen=True)
 class SignedIn:
     user: User

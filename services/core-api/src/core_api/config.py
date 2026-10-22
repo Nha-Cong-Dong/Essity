@@ -1,4 +1,8 @@
+import ipaddress
+from email.utils import parseaddr
 from functools import lru_cache
+from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -6,6 +10,26 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Environments where defaults pointing at localhost are fine.
 DEV_ENVIRONMENTS = frozenset({"local", "test"})
 LOCAL_WEB_BASE_URL = "http://localhost:3000"
+
+Environment = Literal["local", "test", "staging", "production"]
+
+
+def _is_dev(info: ValidationInfo) -> bool:
+    # A missing or unknown environment is not in info.data: the rules then run as production's
+    # (plan D1), so a typo fails closed instead of starting with local defaults.
+    return info.data.get("environment") in DEV_ENVIRONMENTS
+
+
+def _is_loopback(host: str) -> bool:
+    """localhost, 127.0.0.0/8, ::1 or 0.0.0.0: a value that only works on one machine."""
+    host = host.strip("[]").lower().rstrip(".")
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return address.is_loopback or address.is_unspecified
 
 
 class DatabaseSettings(BaseSettings):
@@ -19,7 +43,9 @@ class DatabaseSettings(BaseSettings):
 
 
 class Settings(DatabaseSettings):
-    environment: str = "local"
+    # No default (R04): a forgotten CORE_ENVIRONMENT is a startup error, never production
+    # running with local's rules. Compose sets it to local; deploys set it themselves (T0.13).
+    environment: Environment
     log_level: str = "INFO"
 
     # redis://[:password@]host:6379/0. Rate limits (T1.6); a secret if it holds a password.
@@ -55,12 +81,54 @@ class Settings(DatabaseSettings):
 
     # A field validator, not a model one: a model validator's error prints the whole input,
     # secrets included, to the startup traceback; this one prints only the URL.
+    @field_validator("web_token")
+    @classmethod
+    def _web_token_fits_environment(
+        cls, token: SecretStr | None, info: ValidationInfo
+    ) -> SecretStr | None:
+        # Without it no client IP is trusted, so every user shares web's IP and its rate limits.
+        if token is None and not _is_dev(info):
+            raise ValueError("web_token must be set outside local and test")
+        return token
+
+    @field_validator("web_token", mode="before")
+    @classmethod
+    def _empty_web_token_is_unset(cls, token: object) -> object:
+        return None if token == "" else token  # Compose passes an unset variable as ""
+
+    @field_validator("smtp_host")
+    @classmethod
+    def _smtp_host_fits_environment(cls, host: str, info: ValidationInfo) -> str:
+        # Empty too: Compose passes an unset variable as "" (Tester 12872a1).
+        if not _is_dev(info) and (not host.strip() or _is_loopback(host)):
+            raise ValueError("smtp_host must be a real mail server outside local and test")
+        return host
+
+    # Outside local and test, always: verification and reset emails carry one-time links, and a
+    # login would otherwise go in clear (review 8489155; Mailpit from .env.example has no TLS).
+    @field_validator("smtp_starttls")
+    @classmethod
+    def _starttls_fits_environment(cls, starttls: bool, info: ValidationInfo) -> bool:
+        if not _is_dev(info) and not starttls:
+            raise ValueError("smtp_starttls must be on outside local and test")
+        return starttls
+
+    @field_validator("email_from")
+    @classmethod
+    def _email_from_fits_environment(cls, address: str, info: ValidationInfo) -> str:
+        local, at, domain = parseaddr(address)[1].rpartition("@")  # "Essity <a@b>" and "a@b"
+        if not _is_dev(info) and (not (local and at and domain) or _is_loopback(domain)):
+            raise ValueError(
+                "email_from must be an address on a real domain outside local and test"
+            )
+        return address
+
     @field_validator("web_base_url")
     @classmethod
     def _web_url_fits_environment(cls, url: str, info: ValidationInfo) -> str:
-        if info.data.get("environment", "local") in DEV_ENVIRONMENTS:
+        if _is_dev(info):
             return url or LOCAL_WEB_BASE_URL
-        if not url.startswith("https://"):
+        if not url.startswith("https://") or _is_loopback(urlsplit(url).hostname or ""):
             raise ValueError("web_base_url must be set to an https:// URL outside local and test")
         return url
 
@@ -74,9 +142,17 @@ class Settings(DatabaseSettings):
     def _log_hash_key_fits_environment(
         cls, key: SecretStr | None, info: ValidationInfo
     ) -> SecretStr | None:
-        if key is None and info.data.get("environment", "local") not in DEV_ENVIRONMENTS:
+        if key is None and not _is_dev(info):
             raise ValueError("log_hash_key must be set outside local and test")
         return key
+
+    @field_validator("ai_service_url")
+    @classmethod
+    def _ai_url_fits_environment(cls, url: str, info: ValidationInfo) -> str:
+        host = urlsplit(url).hostname or ""
+        if not _is_dev(info) and (not host or _is_loopback(host)):
+            raise ValueError("ai_service_url must be ai-service's address outside local and test")
+        return url
 
 
 @lru_cache

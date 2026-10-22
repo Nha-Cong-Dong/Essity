@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import { daysLeftText, formatExamDate, parseExamDate } from "@/lib/exam-date";
-import { SUBJECT_MESSAGES } from "@/lib/subject-copy";
+import { dateFormatMessage, SUBJECT_MESSAGES } from "@/lib/subject-copy";
 
 describe("parseExamDate (plan K10)", () => {
   it.each([
@@ -58,7 +58,8 @@ describe("showing an exam date", () => {
 describe("subject sentences (DESIGN.md §6.8; chosen by the user 22/10)", () => {
   it("US-01 AC2: each refusal says what to type", () => {
     expect(SUBJECT_MESSAGES.exam_date_not_in_future).toBe("Ngày thi phải sau hôm nay.");
-    expect(SUBJECT_MESSAGES.date_format).toBe("Nhập ngày theo dạng ngày/tháng/năm, ví dụ 15/12/2026.");
+    // The user's sentence (plan K7); only the example's year follows the date (R24, D12).
+    expect(dateFormatMessage("15/12/2031")).toBe("Nhập ngày theo dạng ngày/tháng/năm, ví dụ 15/12/2031.");
     expect(SUBJECT_MESSAGES.name_empty).toBe("Nhập tên môn, ví dụ Mạng máy tính.");
     expect(SUBJECT_MESSAGES.saved).toBe("Đã lưu.");
   });

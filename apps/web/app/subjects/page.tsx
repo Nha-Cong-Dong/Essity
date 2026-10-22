@@ -6,6 +6,7 @@ import { AccountSlot } from "@/components/account-slot";
 import { Marker } from "@/components/notebook";
 import { AppShell } from "@/components/shells";
 import { Subjects } from "@/components/subjects/subjects-loader";
+import { exampleFor } from "@/lib/exam-date";
 import { requireVerifiedSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Môn học · Essity" };
@@ -14,8 +15,8 @@ export const metadata: Metadata = { title: "Môn học · Essity" };
 // (plan K2).
 async function SignedInSubjects() {
   await connection();
-  await requireVerifiedSession();
-  return <Subjects />;
+  const me = await requireVerifiedSession();
+  return <Subjects example={exampleFor(new Date(), me.timezone, me.day_start_hour)} />;
 }
 
 export default function SubjectsPage() {

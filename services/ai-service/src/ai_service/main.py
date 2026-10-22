@@ -18,7 +18,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="ai-service", lifespan=lifespan)
+    # Internal service (ARCH §3): no docs or schema route in any environment (R30).
+    app = FastAPI(
+        title="ai-service", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None
+    )
     app.middleware("http")(require_service_token)
     # Added last, so it runs first: rejected requests are logged too, with their request id.
     app.middleware("http")(log_requests)

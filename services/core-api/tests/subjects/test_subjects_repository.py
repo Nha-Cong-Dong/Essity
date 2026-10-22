@@ -6,10 +6,11 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from clock import future_exam
 from core_api.db.models import User
 from core_api.repositories.subject import ExamRepository, SubjectRepository
 
-EXAM_DAY = date(2027, 1, 15)
+EXAM_DAY = future_exam(60)
 
 
 def test_create_with_exam_writes_both(db_session: Session, two_users: tuple[User, User]) -> None:
@@ -26,7 +27,7 @@ def test_b17_a_subject_has_at_most_one_exam(
     alice, _ = two_users
     subject, _ = SubjectRepository(db_session, alice.id).create_with_exam("Mạng máy tính", EXAM_DAY)
     db_session.flush()
-    ExamRepository(db_session, alice.id).create(subject.id, date(2027, 2, 1))
+    ExamRepository(db_session, alice.id).create(subject.id, future_exam(77))
     with pytest.raises(IntegrityError):
         db_session.flush()
 
@@ -36,17 +37,17 @@ def test_list_with_exams_is_ordered_by_exam_date_and_hides_deleted(
 ) -> None:
     alice, bob = two_users
     subjects = SubjectRepository(db_session, alice.id)
-    later, _ = subjects.create_with_exam("Hệ điều hành", date(2027, 2, 1))
-    sooner, _ = subjects.create_with_exam("Mạng máy tính", date(2027, 1, 15))
-    gone, _ = subjects.create_with_exam("Đã bỏ", date(2027, 1, 1))
-    SubjectRepository(db_session, bob.id).create_with_exam("Của Bob", date(2027, 1, 2))
+    later, _ = subjects.create_with_exam("Hệ điều hành", future_exam(77))
+    sooner, _ = subjects.create_with_exam("Mạng máy tính", future_exam(60))
+    gone, _ = subjects.create_with_exam("Đã bỏ", future_exam(45))
+    SubjectRepository(db_session, bob.id).create_with_exam("Của Bob", future_exam(46))
     db_session.flush()
     subjects.soft_delete(gone.id)
     db_session.flush()
     listed = subjects.list_with_exams()
     assert [(s.id, e.exam_date) for s, e in listed] == [
-        (sooner.id, date(2027, 1, 15)),
-        (later.id, date(2027, 2, 1)),
+        (sooner.id, future_exam(60)),
+        (later.id, future_exam(77)),
     ]
 
 
@@ -57,9 +58,9 @@ def test_update_changes_name_and_exam_date(
     subjects = SubjectRepository(db_session, alice.id)
     subject, _ = subjects.create_with_exam("Mạng", EXAM_DAY)
     db_session.flush()
-    updated = subjects.update(subject.id, name="Mạng máy tính", exam_date=date(2027, 3, 1))
+    updated = subjects.update(subject.id, name="Mạng máy tính", exam_date=future_exam(105))
     assert updated is not None
-    assert (updated[0].name, updated[1].exam_date) == ("Mạng máy tính", date(2027, 3, 1))
+    assert (updated[0].name, updated[1].exam_date) == ("Mạng máy tính", future_exam(105))
 
 
 def test_update_leaves_out_what_is_not_given(

@@ -10,6 +10,7 @@ describe("webConfig (ADR-0022)", () => {
       origin: "http://localhost:3000",
       serviceToken: undefined,
       trustedProxyHops: 0,
+      coreApiUrl: "http://127.0.0.1:8000",
     });
   });
 
@@ -42,6 +43,7 @@ describe("webConfig (ADR-0022)", () => {
       WEB_ORIGIN: "https://essity.example",
       WEB_TO_CORE_TOKEN: TOKEN,
       WEB_TRUSTED_PROXY_HOPS: "1",
+      CORE_API_URL: "http://core-api:8000",
     };
 
     it("accepts a complete configuration", () => {
@@ -49,16 +51,37 @@ describe("webConfig (ADR-0022)", () => {
         origin: "https://essity.example",
         serviceToken: TOKEN,
         trustedProxyHops: 1,
+        coreApiUrl: "http://core-api:8000",
       });
     });
 
-    it.each(["WEB_ORIGIN", "WEB_TO_CORE_TOKEN", "WEB_TRUSTED_PROXY_HOPS"])(
-      "refuses a missing %s",
+    // R04: CORE_API_URL too; it used to fall back to 127.0.0.1 silently (lib/core.ts).
+    it.each(["WEB_ORIGIN", "WEB_TO_CORE_TOKEN", "WEB_TRUSTED_PROXY_HOPS", "CORE_API_URL"])(
+      "refuses a missing %s, naming it",
       (name) => {
         const env: Record<string, string | undefined> = { ...production, [name]: undefined };
-        expect(() => webConfig(env)).toThrow(WebConfigError);
+        expect(() => webConfig(env)).toThrow(new RegExp(name));
       },
     );
+
+    it("r04: an empty CORE_API_URL (Compose's unset variable) is missing too", () => {
+      expect(() => webConfig({ ...production, CORE_API_URL: "" })).toThrow(/CORE_API_URL/);
+    });
+
+    // Red when: a malformed WEB_ORIGIN throws a bare TypeError, so the start-up line says
+    // "invalid settings" without naming it (review 8765c30).
+    it("r04: WEB_ORIGIN must be an http(s) URL, named in the error", () => {
+      for (const origin of ["essity.example", "https://", "ftp://essity.example"]) {
+        expect(() => webConfig({ ...production, WEB_ORIGIN: origin })).toThrow(WebConfigError);
+        expect(() => webConfig({ ...production, WEB_ORIGIN: origin })).toThrow(/WEB_ORIGIN/);
+      }
+    });
+
+    it("r04: CORE_API_URL must be an http(s) URL", () => {
+      for (const url of ["core-api:8000", "http://", "ftp://core-api"]) {
+        expect(() => webConfig({ ...production, CORE_API_URL: url })).toThrow(/CORE_API_URL/);
+      }
+    });
 
     it("accepts hops = 0 only when set explicitly (web reached directly, as in Compose)", () => {
       expect(webConfig({ ...production, WEB_TRUSTED_PROXY_HOPS: "0" }).trustedProxyHops).toBe(0);

@@ -6,7 +6,7 @@ Each test names the change in `src/` that turns it red.
 import threading
 import uuid
 from collections.abc import Iterator
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -15,6 +15,7 @@ from sqlalchemy import Engine, delete, select, text
 from sqlalchemy.orm import Session
 
 from accounts import signed_in
+from clock import future_exam
 from core_api.db.models import User
 from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.user import UserRepository
@@ -138,7 +139,7 @@ def test_b14_has_subjects_ignores_other_users_subjects(
     make Alice skip the "create a subject" step."""
     alice, alice_headers = signed_in(db_session)
     bob, _ = signed_in(db_session)
-    SubjectRepository(db_session, bob.id).create_with_exam("Của Bob", date(2099, 1, 1))
+    SubjectRepository(db_session, bob.id).create_with_exam("Của Bob", future_exam(90))
     db_session.flush()
     response = client.get("/v1/me", headers=alice_headers)
     assert response.json()["has_subjects"] is False

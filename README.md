@@ -49,6 +49,8 @@ just down   # stop, keep data
 just reset  # stop and delete all local data
 ```
 
+Each service refuses to start without its environment (`CORE_ENVIRONMENT`, `AI_ENVIRONMENT`: `local`, `test`, `staging` or `production`). Compose sets `local`; running a service outside Compose, set it yourself, e.g. `CORE_ENVIRONMENT=local`. Outside `local` and `test`, local-only values (Mailpit, `localhost`, no STARTTLS) are refused at start; the mail server must offer STARTTLS on its submission port (port 465 is not supported).
+
 Local endpoints (bound to `127.0.0.1` only):
 
 | Service | URL |

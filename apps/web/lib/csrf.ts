@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { WebConfigError, webConfig } from "@/lib/config";
+import { logError } from "@/lib/log";
 
 /**
  * ADR-0014, W5: an unsafe request is ours only if the browser says it comes from our origin.
@@ -24,7 +25,8 @@ export function withOrigin<Args extends unknown[]>(
       origin = webConfig().origin;
     } catch (error) {
       if (!(error instanceof WebConfigError)) throw error;
-      console.error("web configuration is incomplete", error.message);
+      // The message names the missing variable, never its value (lib/config.ts).
+      logError(`web configuration is incomplete: ${error.message}`);
       return Response.json({ error: "misconfigured" }, { status: 500 });
     }
     if (!isAllowedOrigin(request, origin)) {

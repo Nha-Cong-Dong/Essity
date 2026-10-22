@@ -35,3 +35,43 @@ export function daysLeftText(days: number): string {
   if (days > 0) return `còn ${days} ngày`;
   return days === 0 ? "thi hôm nay" : "đã thi";
 }
+
+// Risk register R24, plan D11: the example in the date field and its message. It must be a date
+// core-api accepts, so it is computed from the user's learning day, not the server's clock.
+
+const parts = (now: Date, timeZone: string) =>
+  Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(now)
+      .map(({ type, value }) => [type, value]),
+  );
+
+/** core_api.domain.learning_day in TypeScript: before dayStartHour, it is still yesterday. */
+export function learningDay(now: Date, timeZone: string, dayStartHour: number): string {
+  const local = parts(now, timeZone);
+  const day = new Date(Date.UTC(Number(local.year), Number(local.month) - 1, Number(local.day)));
+  if (Number(local.hour) < dayStartHour) day.setUTCDate(day.getUTCDate() - 1);
+  return day.toISOString().slice(0, 10);
+}
+
+/** 15/12 of this year while it is still ahead (an exam today is refused), else of next year. */
+export function examExample(today: string): string {
+  const year = Number(today.slice(0, 4));
+  return today < `${year}-12-15` ? `15/12/${year}` : `15/12/${year + 1}`;
+}
+
+/** The example for a user; a zone Intl does not know gives next year's, which is always accepted. */
+export function exampleFor(now: Date, timeZone: string, dayStartHour: number): string {
+  try {
+    return examExample(learningDay(now, timeZone, dayStartHour));
+  } catch {
+    return `15/12/${now.getUTCFullYear() + 1}`;
+  }
+}

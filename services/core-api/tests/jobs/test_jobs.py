@@ -9,6 +9,7 @@ import json
 import logging
 import threading
 import time
+import uuid
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -25,7 +26,8 @@ from core_api.jobs.queue import enqueue_job
 from core_api.logging import configure_logging
 from core_api.telemetry import configure_tracing
 
-EMAIL = "someone@example.com"
+# Random, so two runs side by side never read each other's job (R32).
+EMAIL = f"jobs-{uuid.uuid4().hex[:12]}@example.com"
 
 pytestmark = pytest.mark.usefixtures("clean_jobs")
 

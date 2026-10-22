@@ -15,6 +15,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from accounts import signed_in
+from clock import FROZEN_NOW, future_exam
 from core_api.db.models import User
 from core_api.domain.learning_day import learning_day
 from core_api.domain.subjects import normalize_subject_name
@@ -22,7 +23,7 @@ from core_api.repositories.subject import SubjectRepository
 
 
 def today(user: User) -> date:
-    return learning_day(datetime.now(UTC), ZoneInfo(user.timezone), user.day_start_hour)
+    return learning_day(FROZEN_NOW, ZoneInfo(user.timezone), user.day_start_hour)
 
 
 def in_days(user: User, days: int) -> str:
@@ -236,7 +237,7 @@ def test_list_with_exams_breaks_a_tie_on_the_exam_date_by_created_at(
     `created_at` in every possible order, so storage order matches at most one case."""
     alice, _ = two_users
     subjects = SubjectRepository(db_session, alice.id)
-    made = [subjects.create_with_exam(f"Môn {n}", date(2027, 1, 15))[0] for n in range(3)]
+    made = [subjects.create_with_exam(f"Môn {n}", future_exam(60))[0] for n in range(3)]
     db_session.flush()
     for n, subject in enumerate(made):
         db_session.execute(
@@ -259,18 +260,18 @@ def test_has_any_counts_only_my_own_visible_subjects(
     alice, bob = two_users
     mine = SubjectRepository(db_session, alice.id)
     assert mine.has_any() is False
-    SubjectRepository(db_session, bob.id).create_with_exam("Của Bob", date(2027, 1, 15))
+    SubjectRepository(db_session, bob.id).create_with_exam("Của Bob", future_exam(60))
     db_session.flush()
     assert mine.has_any() is False
     mine.create("Không có kỳ thi")
     db_session.flush()
     assert mine.has_any() is False
-    gone, _ = mine.create_with_exam("Đã xóa", date(2027, 1, 15))
+    gone, _ = mine.create_with_exam("Đã xóa", future_exam(60))
     db_session.flush()
     mine.soft_delete(gone.id)
     db_session.flush()
     assert mine.has_any() is False
-    mine.create_with_exam("Còn", date(2027, 1, 15))
+    mine.create_with_exam("Còn", future_exam(60))
     db_session.flush()
     assert mine.has_any() is True
 

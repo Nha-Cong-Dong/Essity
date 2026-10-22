@@ -3,7 +3,7 @@
 Each test names the change in `src/` that turns it red.
 """
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -13,6 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from accounts import signed_in
+from clock import FROZEN_NOW
 from core_api.db.models import User
 from core_api.domain.learning_day import learning_day
 from core_api.domain.subjects import ExamDateTooFarError, validate_exam_date
@@ -21,8 +22,7 @@ HCM = ZoneInfo("Asia/Ho_Chi_Minh")
 
 
 def in_days(user: User, days: int) -> str:
-    now = datetime.now(UTC)
-    today = learning_day(now, ZoneInfo(user.timezone), user.day_start_hour)
+    today = learning_day(FROZEN_NOW, ZoneInfo(user.timezone), user.day_start_hour)
     return (today + timedelta(days=days)).isoformat()
 
 

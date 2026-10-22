@@ -13,6 +13,8 @@ const { UploadStep } = await import("@/components/subjects/upload-step");
 
 const ID = "3f2b8c1e-7a4d-4e5f-9b6a-1c2d3e4f5a6b";
 const MMT = { id: ID, name: "Mạng máy tính", exam_date: "2026-12-15", days_until_exam: 54 };
+// A year no fixed text has: the field and its message must follow the page's example (R24).
+const EXAMPLE = "15/12/2031";
 
 type Sent = { path: string; method: string; body: unknown };
 
@@ -36,7 +38,7 @@ beforeEach(() => go.mockReset());
 
 describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
   beforeEach(() => {
-    render(<NewSubjectForm />);
+    render(<NewSubjectForm example={EXAMPLE} />);
   });
 
   it("US-01 AC1: exactly two fields, name and exam date, posted", () => {
@@ -115,7 +117,7 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
 
-    expect(screen.getByText("Nhập ngày theo dạng ngày/tháng/năm, ví dụ 15/12/2026.")).toBeTruthy();
+    expect(screen.getByText("Nhập ngày theo dạng ngày/tháng/năm, ví dụ 15/12/2031.")).toBeTruthy();
     expect(sent).toHaveLength(0);
   });
 
@@ -143,7 +145,7 @@ describe("NewSubjectForm calendar (plan K10, where showPicker exists)", () => {
   beforeEach(() => {
     showPicker.mockReset();
     Object.defineProperty(HTMLInputElement.prototype, "showPicker", { value: showPicker, configurable: true });
-    render(<NewSubjectForm />);
+    render(<NewSubjectForm example={EXAMPLE} />);
   });
   afterEach(() => {
     delete (HTMLInputElement.prototype as { showPicker?: unknown }).showPicker;
@@ -188,14 +190,14 @@ describe("NewSubjectForm calendar (plan K10, where showPicker exists)", () => {
 
 describe("SubjectList (T1.20, plan K2, K3)", () => {
   it("each subject shows its name, exam date and core-api's days left", () => {
-    render(<SubjectList subjects={[MMT]} />);
+    render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
     const row = screen.getByText("Mạng máy tính").closest("li") as HTMLElement;
     expect(within(row).getByText("thi 15/12/2026")).toBeTruthy();
     expect(within(row).getByText("còn 54 ngày")).toBeTruthy();
   });
 
   it("no subject yet: DESIGN.md §6.8's empty state with a way to create one", () => {
-    render(<SubjectList subjects={[]} />);
+    render(<SubjectList subjects={[]} example={EXAMPLE} />);
     expect(screen.getByText("Chưa có môn nào.")).toBeTruthy();
     // The project's link-as-button (Button render={<a/>}), as on the verify-email screen.
     expect(screen.getByText("Tạo môn").closest("a")?.getAttribute("href")).toBe("/subjects/new");
@@ -205,7 +207,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
     const sent = fakeWeb(() =>
       Response.json({ subject: { ...MMT, exam_date: "2026-12-20", days_until_exam: 59 } }),
     );
-    render(<SubjectList subjects={[MMT]} />);
+    render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
     fireEvent.change(date(), { target: { value: "20/12/2026" } });
@@ -219,7 +221,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
 
   it("plan K2: nothing changed → nothing sent, the form closes", async () => {
     const sent = fakeWeb(() => Response.json({ subject: MMT }));
-    render(<SubjectList subjects={[MMT]} />);
+    render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
     fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
@@ -232,7 +234,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
   // core-api stores it composed (review c469b4d #2).
   it("plan K2: the same name in combining marks is no change", async () => {
     const sent = fakeWeb(() => Response.json({ subject: MMT }));
-    render(<SubjectList subjects={[MMT]} />);
+    render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
     fireEvent.change(name(), { target: { value: "Mạng máy tính".normalize("NFD") } });
@@ -244,7 +246,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
 
   it("plan K17: editing to a date too far shows the placeholder sentence under the date", async () => {
     fakeWeb(() => Response.json({ error: "exam_date_too_far" }, { status: 422 }));
-    render(<SubjectList subjects={[MMT]} />);
+    render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
     fireEvent.change(date(), { target: { value: "15/12/2062" } });
@@ -257,7 +259,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
   // (review final 🟡).
   it("ADR-0001: a subject that is not found says so under the name", async () => {
     fakeWeb(() => Response.json({ error: "subject_not_found" }, { status: 404 }));
-    render(<SubjectList subjects={[MMT]} />);
+    render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
     fireEvent.change(name(), { target: { value: "Mạng máy tính 2" } });
@@ -270,7 +272,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
   // Red when: saving after the session ended stays on the page with a network sentence.
   it("editing after the session ended sends the user to /login", async () => {
     fakeWeb(() => Response.json({ error: "signed_out" }, { status: 401 }));
-    render(<SubjectList subjects={[MMT]} />);
+    render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
     fireEvent.change(name(), { target: { value: "Mạng máy tính 2" } });
@@ -281,7 +283,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
 
   it("US-01 AC2: editing to a past date shows the sentence under the date", async () => {
     fakeWeb(() => Response.json({ error: "exam_date_not_in_future" }, { status: 422 }));
-    render(<SubjectList subjects={[MMT]} />);
+    render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
     fireEvent.change(date(), { target: { value: "02/10/2026" } });
@@ -291,9 +293,33 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
   });
 });
 
+describe("the date example (risk register R24)", () => {
+  // Red when: the field keeps a fixed "15/12/2026" placeholder.
+  it("the new-subject field shows the page's example", () => {
+    render(<NewSubjectForm example={EXAMPLE} />);
+    expect(date().getAttribute("placeholder")).toBe(EXAMPLE);
+  });
+
+  // Red when: a message is shown without its example filled in (review 27b3601).
+  it("no message ever shows the raw {example}", () => {
+    render(<NewSubjectForm example={EXAMPLE} />);
+    fireEvent.change(name(), { target: { value: "Mạng" } });
+    fireEvent.change(date(), { target: { value: "31/02/2027" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+    expect(document.body.textContent).not.toContain("{example}");
+    expect(document.body.textContent).toContain(EXAMPLE);
+  });
+
+  it("the edit field shows the same example", () => {
+    render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
+    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    expect(date().getAttribute("placeholder")).toBe(EXAMPLE);
+  });
+});
+
 describe("SubjectList day count (DESIGN.md §6.8)", () => {
   it("\"còn N ngày\" is DESIGN's and is not a placeholder", () => {
-    render(<SubjectList subjects={[MMT]} />);
+    render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
     expect(screen.getByText("còn 54 ngày").getAttribute("data-copy")).toBeNull();
   });
 
@@ -302,7 +328,7 @@ describe("SubjectList day count (DESIGN.md §6.8)", () => {
     [0, "thi hôm nay"],
     [-3, "đã thi"],
   ])("%i days: %s is marked as a placeholder", (days, text) => {
-    render(<SubjectList subjects={[{ ...MMT, days_until_exam: days }]} />);
+    render(<SubjectList subjects={[{ ...MMT, days_until_exam: days }]} example={EXAMPLE} />);
     expect(screen.getByText(text).getAttribute("data-copy")).toBe("tam");
   });
 });

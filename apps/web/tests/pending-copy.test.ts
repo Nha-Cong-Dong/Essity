@@ -13,7 +13,7 @@ import { PLACEHOLDER_MESSAGES, SUBJECT_MESSAGES } from "@/lib/subject-copy";
 const ROOT = path.resolve(import.meta.dirname, "..");
 
 const PENDING_COPY: [file: string, text: string][] = [
-  ["components/subjects/subject-fields.tsx", "{SUBJECT_MESSAGES[code]}"],
+  ["components/subjects/subject-fields.tsx", "{text}"],
   ["components/subjects/subject-list.tsx", "Lưu"],
   ["components/subjects/subject-list.tsx", "Hủy"],
   ["components/subjects/subject-list.tsx", "{daysLeftText(subject.days_until_exam)}"],
