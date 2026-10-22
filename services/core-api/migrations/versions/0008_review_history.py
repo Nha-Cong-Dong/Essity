@@ -19,6 +19,12 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+# Restoring a backup (ADR-0012, T2.20): restore schema and data together (pg_restore without
+# --data-only), which creates these triggers after the data. A data-only restore into a migrated
+# database runs the BEFORE INSERT triggers on every row and fails on grade_unit (its grades are
+# old): use --disable-triggers, which needs a superuser. Every test that adds a grade_unit also
+# checks that grade.created_at is the database's now(), never set by the ORM (review 668d501).
+#
 # The append-only rules of layer 3 (ARCH §6.1, ADR-0012, plan D1/D5/D8, review plan P1). BEFORE
 # ... FOR EACH ROW also catches INSERT ... ON CONFLICT DO UPDATE and the deletes of a cascade:
 # there is no way around them yet, not even deleting the account; T6.3 opens one for a database
