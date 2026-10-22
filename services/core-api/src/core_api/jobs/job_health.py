@@ -15,7 +15,7 @@ Only counts are read and logged, never a job's arguments: they hold email addres
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import Engine, text
@@ -43,26 +43,29 @@ class JobHealth:
         return self.failed_recent > 0 or self.stalled > 0
 
 
-def job_health(session: Session, now: datetime) -> JobHealth:
+def job_health(session: Session, now: datetime | None = None) -> JobHealth:
+    """Counts as of `now`; without one, as of the database's clock, which wrote the times it
+    compares (a worker's clock a few minutes off would otherwise call live jobs stalled)."""
     counts = session.execute(
         text(
             """
+            WITH t AS (SELECT COALESCE(CAST(:now AS timestamptz), now()) AS now)
             SELECT
-              (SELECT count(*) FROM procrastinate_events
-                 WHERE type = 'failed' AND at >= :recent) AS failed_recent,
+              (SELECT count(*) FROM procrastinate_events, t
+                 WHERE type = 'failed' AND at >= t.now - :recent) AS failed_recent,
               (SELECT count(*) FROM procrastinate_jobs WHERE status = 'failed') AS failed_total,
               (SELECT count(*) FROM procrastinate_jobs j
-                 LEFT JOIN procrastinate_workers w ON w.id = j.worker_id
+                 LEFT JOIN procrastinate_workers w ON w.id = j.worker_id, t
                  WHERE j.status = 'doing'
-                   AND (w.id IS NULL OR w.last_heartbeat < :stalled)) AS stalled
+                   AND (w.id IS NULL OR w.last_heartbeat < t.now - :stalled)) AS stalled
             """
         ),
-        {"recent": now - RECENT_FAILURES, "stalled": now - STALLED_AFTER},
+        {"now": now, "recent": RECENT_FAILURES, "stalled": STALLED_AFTER},
     ).one()
     return JobHealth(counts.failed_recent, counts.failed_total, counts.stalled)
 
 
-def report_job_health(engine: Engine, now: datetime) -> JobHealth:
+def report_job_health(engine: Engine, now: datetime | None = None) -> JobHealth:
     with Session(engine) as session:
         health = job_health(session, now)
     fields = {
@@ -79,4 +82,4 @@ def report_job_health(engine: Engine, now: datetime) -> JobHealth:
 
 @periodic_job(JOB_HEALTH, cron="*/15 * * * *")
 def job_health_job(payload: dict[str, Any]) -> None:
-    report_job_health(get_engine(), datetime.now(UTC))
+    report_job_health(get_engine())

@@ -8,12 +8,14 @@ import json
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
-from core_api.jobs.job_health import JobHealth, job_health, report_job_health
+from core_api.jobs.app import app
+from core_api.jobs.job_health import JOB_HEALTH, JobHealth, job_health, report_job_health
 
 pytestmark = pytest.mark.usefixtures("clean_jobs")
 
@@ -115,3 +117,18 @@ def test_r05_failed_job_logs_error_with_counts_and_no_args(
         0,
     )
     assert SECRET not in output and "s***@" not in output
+
+
+def test_r05_runs_every_15_minutes() -> None:
+    # Red when: the job is not registered with the worker, or on another schedule.
+    registry: Any = app.periodic_registry  # Procrastinate leaves its task types unparametrised
+    assert registry.periodic_tasks[(JOB_HEALTH, JOB_HEALTH)].cron == "*/15 * * * *"
+
+
+def test_r05_without_a_given_time_it_uses_the_database_clock(engine: Engine) -> None:
+    # Red when: the scheduled run compares the worker's clock with times Postgres wrote; a
+    # worker clock 5 minutes off would call every running job stalled (review f70c519).
+    alive = add_worker(engine, datetime.now(UTC) - timedelta(seconds=20))
+    add_job(engine, "doing", worker=alive)
+    with Session(engine) as session:
+        assert job_health(session).stalled == 0
