@@ -98,23 +98,21 @@ class SubjectOut(BaseModel):
     created_at: datetime
 
 
-def _out(subject: Subject, exam: Exam, user: User) -> SubjectOut:
+def _out(subject: Subject, exam: Exam, user: User, now: datetime) -> SubjectOut:
     return SubjectOut(
         id=subject.id,
         name=subject.name,
         exam_date=exam.exam_date,
         days_until_exam=days_until_exam(
-            exam.exam_date, datetime.now(UTC), ZoneInfo(user.timezone), user.day_start_hour
+            exam.exam_date, now, ZoneInfo(user.timezone), user.day_start_hour
         ),
         created_at=subject.created_at,
     )
 
 
-def _check_exam_date(exam_date: date, user: User) -> None:
+def _check_exam_date(exam_date: date, user: User, now: datetime) -> None:
     try:
-        validate_exam_date(
-            exam_date, datetime.now(UTC), ZoneInfo(user.timezone), user.day_start_hour
-        )
+        validate_exam_date(exam_date, now, ZoneInfo(user.timezone), user.day_start_hour)
     except ExamDateNotInFutureError:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="exam_date_not_in_future"
@@ -123,26 +121,29 @@ def _check_exam_date(exam_date: date, user: User) -> None:
 
 @router.post("/subjects", status_code=status.HTTP_201_CREATED)
 def create_subject(body: SubjectIn, user: VerifiedUser, session: DbSession) -> SubjectOut:
-    _check_exam_date(body.exam_date, user)
+    now = datetime.now(UTC)  # one "today" per request, for the check and the answer
+    _check_exam_date(body.exam_date, user, now)
     subject, exam = SubjectRepository(session, user.id).create_with_exam(body.name, body.exam_date)
-    return _out(subject, exam, user)
+    return _out(subject, exam, user, now)
 
 
 @router.get("/subjects")
 def list_subjects(user: VerifiedUser, session: DbSession) -> list[SubjectOut]:
-    return [_out(s, e, user) for s, e in SubjectRepository(session, user.id).list_with_exams()]
+    now = datetime.now(UTC)
+    return [_out(s, e, user, now) for s, e in SubjectRepository(session, user.id).list_with_exams()]
 
 
 @router.patch("/subjects/{subject_id}")
 def change_subject(
     subject_id: uuid.UUID, body: SubjectChange, user: VerifiedUser, session: DbSession
 ) -> SubjectOut:
+    now = datetime.now(UTC)
     subjects = SubjectRepository(session, user.id)
     found = subjects.get_with_exam(subject_id)
     if found is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="subject_not_found")
     if body.exam_date is not None and body.exam_date != found[1].exam_date:
-        _check_exam_date(body.exam_date, user)
+        _check_exam_date(body.exam_date, user, now)
     updated = subjects.update(subject_id, name=body.name, exam_date=body.exam_date)
     assert updated is not None  # found above, in the same transaction
-    return _out(*updated, user)
+    return _out(*updated, user, now)
