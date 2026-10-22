@@ -17,6 +17,7 @@ describe("postJson (R22)", () => {
     ["an HTML page", new Response("<html>proxy error</html>", { status: 200 })],
     ["an empty body", new Response(null, { status: 201 })],
     ["JSON that is not an object", new Response("42", { status: 200 })],
+    ["a JSON array", Response.json([])],
   ])("a 2xx with %s is unavailable, with no data", async (_name, response) => {
     reply(response);
     const result = await postJson("/api/auth/register", {});

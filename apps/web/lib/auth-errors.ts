@@ -76,7 +76,7 @@ export async function postJson<Data>(path: string, body?: unknown): Promise<Auth
   // Web's routes always answer a JSON object (review plan P7). Anything else, even with a 2xx,
   // means something in between broke: unavailable, never an empty success (R22).
   const parsed: unknown = await response.json().catch(() => undefined);
-  const json = (typeof parsed === "object" && parsed !== null ? parsed : undefined) as
+  const json = (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? parsed : undefined) as
     | (Data & { error?: string })
     | undefined;
   const retryAfter = Number(response.headers.get("retry-after")) || undefined;
