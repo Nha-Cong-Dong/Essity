@@ -99,7 +99,8 @@ class Settings(DatabaseSettings):
     @field_validator("smtp_host")
     @classmethod
     def _smtp_host_fits_environment(cls, host: str, info: ValidationInfo) -> str:
-        if not _is_dev(info) and _is_loopback(host):
+        # Empty too: Compose passes an unset variable as "" (Tester 12872a1).
+        if not _is_dev(info) and (not host.strip() or _is_loopback(host)):
             raise ValueError("smtp_host must be a real mail server outside local and test")
         return host
 
@@ -148,8 +149,9 @@ class Settings(DatabaseSettings):
     @field_validator("ai_service_url")
     @classmethod
     def _ai_url_fits_environment(cls, url: str, info: ValidationInfo) -> str:
-        if not _is_dev(info) and _is_loopback(urlsplit(url).hostname or ""):
-            raise ValueError("ai_service_url must not be a loopback address outside local and test")
+        host = urlsplit(url).hostname or ""
+        if not _is_dev(info) and (not host or _is_loopback(host)):
+            raise ValueError("ai_service_url must be ai-service's address outside local and test")
         return url
 
 
