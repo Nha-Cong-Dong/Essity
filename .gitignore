@@ -44,7 +44,9 @@ infra/**/data/
 .idea/
 .DS_Store
 Thumbs.db
-.claude/settings.local.json
+# Claude Code: only the shared settings are tracked; the agent loop and personal settings stay local.
+/.claude/*
+!/.claude/settings.json
 
 # Working files of design skills (taste-skill)
 .taste-skill/
