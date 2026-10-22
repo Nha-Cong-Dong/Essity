@@ -43,7 +43,7 @@ export function LoginForm() {
   const rateLimited = error === "rate_limited" && lockedFor > 0;
   const wrong = error === "invalid_credentials";
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
+    <form method="post" onSubmit={submit} className="flex flex-col gap-5" noValidate>
       {rateLimited && <AuthNote>{rateLimitMessage(lockedFor)}</AuthNote>}
       <AuthField
         id="email"

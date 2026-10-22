@@ -36,7 +36,7 @@ export function RegisterForm() {
   const emailError = error === "invalid_email";
   const otherError = error !== undefined && !passwordError && !emailError;
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
+    <form method="post" onSubmit={submit} className="flex flex-col gap-5" noValidate>
       {error === "rate_limited" && <AuthNote>{rateLimitMessage(retryAfter)}</AuthNote>}
       <AuthField
         id="email"
