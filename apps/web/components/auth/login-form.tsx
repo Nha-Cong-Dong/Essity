@@ -6,9 +6,13 @@ import { AUTH_LINK, AuthField, AuthNote, PasswordField } from "@/components/auth
 import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import { authMessage, postJson, rateLimitMessage } from "@/lib/auth-errors";
+import { safeNext } from "@/lib/landing";
+import { go } from "@/lib/navigate";
 
 // T1.12, canvas Auth "login". The session token stays in an HttpOnly cookie set by
 // /api/auth/login; this form only learns where to go next.
+const SIGN_IN_PAGES = ["/", "/check-email"];
+
 export function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -31,8 +35,9 @@ export function LoginForm() {
       password: String(form.get("password")),
     });
     if (result.data) {
-      // A full load, so every server component reads the new session.
-      window.location.assign(result.data.next);
+      // A full load, so every server component reads the new session. Only the pages
+      // /api/auth/login names are followed (review 266042d #3).
+      go(safeNext(result.data.next, SIGN_IN_PAGES, "/"));
       return;
     }
     setBusy(false);

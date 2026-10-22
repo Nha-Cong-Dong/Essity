@@ -125,6 +125,18 @@ describe("BaselineForm (T1.18)", () => {
     expect(go).not.toHaveBeenCalled();
   });
 
+  // Red when: a 422 naming no field shows the network sentence (review 266042d #2). The only
+  // body-level rule is the day count's (days or "Không nhớ"), so it lands on that field.
+  it("US-11 AC3: a 422 naming no field puts the day sentence under the day field", async () => {
+    fakeWeb(() => Response.json({ error: "invalid", fields: [] }, { status: 422 }));
+    fill("3", "12");
+
+    save();
+
+    expect(await screen.findByText("Số ngày là số nguyên từ 0 đến 365.")).toBeTruthy();
+    expect(screen.queryByText("Chưa gửi được. Kiểm tra kết nối rồi thử lại.")).toBeNull();
+  });
+
   it("a network failure keeps what was typed and says so", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("offline"))));
     fill("3", "12");

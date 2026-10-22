@@ -41,3 +41,15 @@ describe("safeNext (review plan R3)", () => {
     },
   );
 });
+
+describe("safeNext with its own pages (review 266042d #3: the sign-in form)", () => {
+  const SIGN_IN = ["/", "/check-email"] as const;
+
+  it.each(SIGN_IN)("keeps %s", (next) => {
+    expect(safeNext(next, SIGN_IN, "/")).toBe(next);
+  });
+
+  it.each(["//evil.example", "/today", "https://evil.example/"])("turns %j into /", (next) => {
+    expect(safeNext(next, SIGN_IN, "/")).toBe("/");
+  });
+});

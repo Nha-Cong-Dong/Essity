@@ -33,10 +33,12 @@ export function BaselineForm() {
     if (result.data) return go(safeNext(result.data.next));
     if (result.status === 401) return go("/login");
     setBusy(undefined);
-    const fields = result.status === 422 ? result.body?.fields : undefined;
-    const named = Array.isArray(fields) ? fields.map((field) => FIELD_ERRORS[String(field)]).filter(Boolean) : [];
-    if (named.length > 0) {
-      setErrors(Object.fromEntries(named.map((field) => [field, RANGE[field]])));
+    if (result.status === 422) {
+      const fields = result.body?.fields;
+      const named = Array.isArray(fields) ? fields.map((field) => FIELD_ERRORS[String(field)]).filter(Boolean) : [];
+      // A 422 naming no field comes from core-api's one body-level rule, days or "Không nhớ"
+      // (review 266042d #2): it belongs under the day field, not as a network error.
+      setErrors(Object.fromEntries((named.length > 0 ? named : ["days" as const]).map((field) => [field, RANGE[field]])));
       return;
     }
     setFormError(authMessage("unavailable"));

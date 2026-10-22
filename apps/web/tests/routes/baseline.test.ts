@@ -114,7 +114,11 @@ describe("POST /api/baseline (T1.18)", () => {
   ])("US-11 AC3: core-api's 422 at %j names field(s) %j and never echoes the value", async (loc, fields) => {
     core({
       baseline: () =>
-        Response.json({ detail: [{ loc, type: "less_than_equal", msg: "bad" }] }, { status: 422 }),
+        // FastAPI's 422 carries the input and the bound (review 266042d #1): neither may reach the browser.
+        Response.json(
+          { detail: [{ loc, type: "less_than_equal", msg: "bad", input: GPA_MARKER, ctx: { le: GPA_MARKER } }] },
+          { status: 422 },
+        ),
     });
 
     const response = await save(browserPost("/api/baseline", BODY, SIGNED_IN));
