@@ -1,16 +1,15 @@
-from datetime import date
-
 import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from clock import future_exam
 from core_api.db.base import OwnerChangeError
 from core_api.db.models import Exam, Subject, User
 from core_api.repositories.subject import ExamRepository, SubjectNotFoundError, SubjectRepository
 from isolation import assert_isolated
 
-EXAM_DAY = date(2027, 1, 15)
+EXAM_DAY = future_exam(60)
 
 
 def test_subjects_are_isolated(db_session: Session, two_users: tuple[User, User]) -> None:

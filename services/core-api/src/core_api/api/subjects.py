@@ -8,7 +8,7 @@ one and one that never existed all answer the same 404.
 
 import unicodedata
 import uuid
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from typing import Annotated, Self
 from zoneinfo import ZoneInfo
 
@@ -22,7 +22,7 @@ from pydantic import (
     model_validator,
 )
 
-from core_api.api.deps import VerifiedUser, verified_user
+from core_api.api.deps import Now, VerifiedUser, verified_user
 from core_api.api.text import has_control, is_unicode
 from core_api.db.models import Exam, Subject, User
 from core_api.db.session import DbSession
@@ -125,24 +125,22 @@ def _check_exam_date(exam_date: date, user: User, now: datetime) -> None:
 
 
 @router.post("/subjects", status_code=status.HTTP_201_CREATED)
-def create_subject(body: SubjectIn, user: VerifiedUser, session: DbSession) -> SubjectOut:
-    now = datetime.now(UTC)  # one "today" per request, for the check and the answer
+def create_subject(body: SubjectIn, user: VerifiedUser, session: DbSession, now: Now) -> SubjectOut:
+    # One "today" per request, for the check and the answer.
     _check_exam_date(body.exam_date, user, now)
     subject, exam = SubjectRepository(session, user.id).create_with_exam(body.name, body.exam_date)
     return _out(subject, exam, user, now)
 
 
 @router.get("/subjects")
-def list_subjects(user: VerifiedUser, session: DbSession) -> list[SubjectOut]:
-    now = datetime.now(UTC)
+def list_subjects(user: VerifiedUser, session: DbSession, now: Now) -> list[SubjectOut]:
     return [_out(s, e, user, now) for s, e in SubjectRepository(session, user.id).list_with_exams()]
 
 
 @router.patch("/subjects/{subject_id}")
 def change_subject(
-    subject_id: uuid.UUID, body: SubjectChange, user: VerifiedUser, session: DbSession
+    subject_id: uuid.UUID, body: SubjectChange, user: VerifiedUser, session: DbSession, now: Now
 ) -> SubjectOut:
-    now = datetime.now(UTC)
     subjects = SubjectRepository(session, user.id)
     found = subjects.get_with_exam(subject_id)
     if found is None:

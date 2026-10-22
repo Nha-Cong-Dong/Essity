@@ -5,7 +5,7 @@ Dates are relative to the user's learning day now, so the tests hold whatever da
 
 import unicodedata
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -15,13 +15,14 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from accounts import signed_in
+from clock import FROZEN_NOW
 from core_api.db.models import User
 from core_api.domain.learning_day import learning_day
 from core_api.main import app
 
 
 def today(user: User) -> date:
-    return learning_day(datetime.now(UTC), ZoneInfo(user.timezone), user.day_start_hour)
+    return learning_day(FROZEN_NOW, ZoneInfo(user.timezone), user.day_start_hour)
 
 
 def in_days(user: User, days: int) -> str:
