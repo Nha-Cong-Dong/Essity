@@ -20,6 +20,7 @@ class User(CreatedAt, Base):
         # never differ only by case.
         CheckConstraint("email = lower(email)", name="email_lowercase"),
         CheckConstraint("day_start_hour BETWEEN 0 AND 23", name="day_start_hour_range"),
+        CheckConstraint("baseline_skips BETWEEN 0 AND 2", name="baseline_skips_range"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -37,3 +38,6 @@ class User(CreatedAt, Base):
     # Empty = the user has not agreed to their data being used for evals.
     eval_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Times "Later" was chosen on the baseline screen (US-11 AC2, domain.baseline.MAX_SKIPS).
+    # Kept here because there is no baseline row yet when it is skipped.
+    baseline_skips: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
