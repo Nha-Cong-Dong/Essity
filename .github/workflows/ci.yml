@@ -21,6 +21,7 @@ jobs:
       pull-requests: read
     outputs:
       python: ${{ steps.python.outputs.services }}
+      images: ${{ steps.python.outputs.images }}
       web: ${{ steps.filter.outputs.web }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -52,6 +53,8 @@ jobs:
         run: |
           services=$(jq -c '[.[] | select(. == "core-api" or . == "ai-service")]' <<< "$CHANGED")
           echo "services=$services" >> "$GITHUB_OUTPUT"
+          images=$(jq -c '[.[] | select(. == "core-api" or . == "ai-service" or . == "web")]' <<< "$CHANGED")
+          echo "images=$images" >> "$GITHUB_OUTPUT"
 
   python:
     name: ${{ matrix.service }}
@@ -163,6 +166,50 @@ jobs:
       - run: pnpm --filter web test
       - run: pnpm --filter web build
 
+  # Risk register R11: a broken Dockerfile shows up on the PR, not at the first deploy (T0.13).
+  # Built, never pushed, for each service whose files changed (its filter covers its Dockerfile
+  # and lockfile, and ci.yml itself).
+  images:
+    name: image ${{ matrix.image }}
+    needs: changes
+    if: needs.changes.outputs.images != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.changes.outputs.images) }}
+    env:
+      IMAGE: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build (not pushed)
+        run: |
+          if [ "$IMAGE" = web ]; then
+            docker build -f apps/web/Dockerfile -t "essity-$IMAGE" .
+          else
+            docker build -t "essity-$IMAGE" "services/$IMAGE"
+          fi
+      # R04, review 8765c30: without CORE_API_URL the production server must exit, naming it,
+      # instead of starting and answering 500 to everyone.
+      - name: web refuses to start without CORE_API_URL
+        if: matrix.image == 'web'
+        run: |
+          set +e
+          timeout 60 docker run --rm \
+            -e WEB_ORIGIN=https://essity.example \
+            -e WEB_TO_CORE_TOKEN="$(openssl rand -hex 24)" \
+            -e WEB_TRUSTED_PROXY_HOPS=1 \
+            essity-web > "$RUNNER_TEMP/web.log" 2>&1
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/web.log"
+          if [ "$code" -eq 0 ] || [ "$code" -eq 124 ]; then
+            echo "web kept running (exit $code) without CORE_API_URL"; exit 1
+          fi
+          grep -q "CORE_API_URL is required in production" "$RUNNER_TEMP/web.log"
+
   boundaries:
     name: Repo checks
     runs-on: ubuntu-latest
@@ -201,7 +248,7 @@ jobs:
 
   ci-ok:
     name: CI ok
-    needs: [changes, python, web, boundaries, secrets]
+    needs: [changes, python, web, images, boundaries, secrets]
     if: always()
     runs-on: ubuntu-latest
     steps:
