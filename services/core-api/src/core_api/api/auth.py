@@ -9,10 +9,11 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from core_api.api.deps import CurrentSession
+from core_api.api.text import Email, LoginEmail
 from core_api.config import get_settings
 from core_api.db.models import User
 from core_api.db.session import DbSession
@@ -66,13 +67,16 @@ Limiter = Annotated[RateLimiter, Depends(get_rate_limiter)]
 
 
 class TokenBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     # In the body, never the URL: request paths are logged and traced, bodies are not.
     token: str = Field(min_length=1, max_length=100)
 
 
 class EmailBody(BaseModel):
-    # A light shape check; whether the address works is proven by the verification link.
-    email: str = Field(max_length=320, pattern=r"^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$")
+    model_config = ConfigDict(extra="forbid")
+
+    email: Email
 
 
 class RegisterBody(EmailBody):
@@ -136,7 +140,9 @@ def verify_email(body: TokenBody, session: DbSession) -> dict[str, str]:
 
 
 class LoginBody(BaseModel):
-    email: str = Field(max_length=320)
+    model_config = ConfigDict(extra="forbid")
+
+    email: LoginEmail
     password: str = Field(max_length=1024)
 
 

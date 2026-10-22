@@ -88,6 +88,7 @@
         "type": "object"
       },
       "EmailBody": {
+        "additionalProperties": false,
         "properties": {
           "email": {
             "maxLength": 320,
@@ -116,6 +117,7 @@
         "type": "object"
       },
       "LoginBody": {
+        "additionalProperties": false,
         "properties": {
           "email": {
             "maxLength": 320,
@@ -230,6 +232,7 @@
         "type": "object"
       },
       "RegisterBody": {
+        "additionalProperties": false,
         "properties": {
           "email": {
             "maxLength": 320,
@@ -251,6 +254,7 @@
         "type": "object"
       },
       "ResetBody": {
+        "additionalProperties": false,
         "properties": {
           "password": {
             "maxLength": 1024,
@@ -366,6 +370,7 @@
         "type": "object"
       },
       "TokenBody": {
+        "additionalProperties": false,
         "properties": {
           "token": {
             "maxLength": 100,

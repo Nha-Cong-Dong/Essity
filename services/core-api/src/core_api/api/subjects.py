@@ -23,6 +23,7 @@ from pydantic import (
 )
 
 from core_api.api.deps import VerifiedUser, verified_user
+from core_api.api.text import has_control, is_unicode
 from core_api.db.models import Exam, Subject, User
 from core_api.db.session import DbSession
 from core_api.domain.subjects import (
@@ -40,14 +41,11 @@ INVISIBLE = {"Cf", "Zs", "Zl", "Zp"}  # format characters and separators
 
 def _name(value: str) -> str:
     # JSON can carry a lone surrogate (a "\ud800" escape): Python holds it, UTF-8 cannot store it.
-    try:
-        value.encode("utf-8")
-    except UnicodeEncodeError:
-        raise ValueError("name must be valid Unicode text") from None
+    if not is_unicode(value):
+        raise ValueError("name must be valid Unicode text")
     value = normalize_subject_name(value)
-    # Control characters left after stripping: Postgres text cannot hold NUL, and none belongs
-    # in a name.
-    if any(unicodedata.category(c) == "Cc" for c in value):
+    # Control characters left after stripping (`api/text.py`), so a trailing newline still goes.
+    if has_control(value):
         raise ValueError("name cannot contain control characters")
     # Only invisible characters (zero-width, BOM, spaces) would list as a blank subject.
     if all(unicodedata.category(c) in INVISIBLE for c in value):
