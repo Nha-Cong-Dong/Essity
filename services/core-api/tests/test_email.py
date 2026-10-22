@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import os
+import ssl
 import uuid
 from collections.abc import Iterator
 from typing import Any
@@ -131,3 +132,50 @@ def test_sender_from_settings_uses_the_configured_server(monkeypatch: pytest.Mon
         "no-reply@essity.test",
     )
     assert sender.username is None and not sender.starttls
+
+
+class _FakeSmtp:
+    """smtplib.SMTP stand-in that records what the sender asks of it."""
+
+    calls: list[tuple[str, object]] = []
+
+    def __init__(self, *_args: object, **_kwargs: object) -> None:
+        _FakeSmtp.calls = []
+
+    def __enter__(self) -> "_FakeSmtp":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def starttls(self, context: object = None) -> None:
+        _FakeSmtp.calls.append(("starttls", context))
+
+    def login(self, username: str, _password: str) -> None:
+        _FakeSmtp.calls.append(("login", username))
+
+    def send_message(self, _mime: object) -> None:
+        _FakeSmtp.calls.append(("send", None))
+
+
+def test_r04_starttls_checks_the_server_certificate_and_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Red when: starttls() runs without a verifying context. smtplib's default does not check
+    # the certificate or the host name, so anyone in between reads the password and the links
+    # (review f617e23).
+    monkeypatch.setattr("core_api.clients.email.smtp.smtplib.SMTP", _FakeSmtp)
+    sender = SmtpEmailSender(
+        "smtp.essity.example",
+        587,
+        "no-reply@essity.example",
+        username="essity",
+        password="smtp-password",
+        starttls=True,
+    )
+    sender.send(EmailMessage(to="a@example.com", subject="s", text="t"))
+    kind, context = _FakeSmtp.calls[0]
+    assert kind == "starttls"
+    assert isinstance(context, ssl.SSLContext)
+    assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
+    assert [call[0] for call in _FakeSmtp.calls] == ["starttls", "login", "send"]

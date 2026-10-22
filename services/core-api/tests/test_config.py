@@ -111,6 +111,8 @@ def test_r04_an_unknown_environment_is_treated_as_production() -> None:
         ("email_from", "no-reply@localhost"),
         ("email_from", "Essity <no-reply@localhost>"),
         ("email_from", "no-reply@localhost."),
+        ("email_from", ""),
+        ("email_from", "not-an-address"),
         ("web_base_url", "https://localhost:3000"),
         ("web_base_url", "https://127.0.0.1/"),
         ("smtp_starttls", "false"),  # a password sent in clear

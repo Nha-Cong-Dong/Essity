@@ -115,9 +115,11 @@ class Settings(DatabaseSettings):
     @field_validator("email_from")
     @classmethod
     def _email_from_fits_environment(cls, address: str, info: ValidationInfo) -> str:
-        domain = parseaddr(address)[1].rpartition("@")[2]  # "Essity <a@b>" and "a@b" alike
-        if not _is_dev(info) and _is_loopback(domain):
-            raise ValueError("email_from must be on a real domain outside local and test")
+        local, at, domain = parseaddr(address)[1].rpartition("@")  # "Essity <a@b>" and "a@b"
+        if not _is_dev(info) and (not (local and at and domain) or _is_loopback(domain)):
+            raise ValueError(
+                "email_from must be an address on a real domain outside local and test"
+            )
         return address
 
     @field_validator("web_base_url")
