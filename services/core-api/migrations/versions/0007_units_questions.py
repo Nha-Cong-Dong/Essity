@@ -99,6 +99,10 @@ def upgrade() -> None:
             "length(content_hash) = 64", name=op.f("ck_question_content_hash_length")
         ),
         sa.CheckConstraint("level BETWEEN 1 AND 3", name=op.f("ck_question_level_range")),
+        sa.CheckConstraint("length(trim(prompt)) > 0", name=op.f("ck_question_prompt_not_blank")),
+        sa.CheckConstraint(
+            "length(trim(reference_answer)) > 0", name=op.f("ck_question_answer_not_blank")
+        ),
         sa.ForeignKeyConstraint(
             ["subject_id", "user_id"],
             ["subject.id", "subject.user_id"],

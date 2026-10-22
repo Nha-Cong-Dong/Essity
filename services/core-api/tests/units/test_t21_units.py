@@ -17,6 +17,7 @@ from core_api.db.models import Anchor, KnowledgeUnit, Question, Subject, User
 from core_api.db.models.unit import ANCHOR_SOURCES, UNIT_KINDS
 from core_api.domain.question_hash import content_hash
 from core_api.repositories.question import (
+    QuestionConflictError,
     QuestionRepository,
     QuestionUnitRepository,
     SubjectMismatchError,
@@ -404,3 +405,38 @@ def test_t21_content_hash_normalises_and_keeps_case() -> None:
     assert content_hash("Mạng") == content_hash("Mạng")  # NFC
     assert content_hash("N là gì?") != content_hash("n là gì?")  # no casefold
     assert len(content_hash("x")) == 64
+
+
+# --- A seed run again with a changed answer is refused, not silently ignored (review 8a92b17) -----
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"reference_answer": "Đáp án đã sửa"}, {"level": 2}, {"rubric": {"must": ["thứ tự"]}}],
+)
+def test_t21_same_prompt_with_other_fields_changed_is_a_conflict(
+    db_session: Session, two_users: tuple[User, User], change: dict[str, Any]
+) -> None:
+    # Red when: add_idempotent hands back the old row, and a corrected reference answer in the
+    # seed never reaches the database (T2.12 would grade against the wrong one).
+    alice, _ = two_users
+    of = subject(db_session, alice)
+    question(db_session, alice, of, "TCP là gì?")
+    fields: dict[str, Any] = {"level": 1, "reference_answer": "Giao thức tin cậy", "rubric": None}
+    with pytest.raises(QuestionConflictError):
+        QuestionRepository(db_session, alice.id).add_idempotent(
+            of.id, prompt="TCP là gì?", run_id=RUN, **(fields | change)
+        )
+
+
+@pytest.mark.parametrize("column", ["prompt", "reference_answer"])
+def test_t21_question_text_cannot_be_blank(
+    db_session: Session, two_users: tuple[User, User], column: str
+) -> None:
+    alice, _ = two_users
+    of = subject(db_session, alice)
+    values = {"prompt": "TCP là gì?", "reference_answer": "a"} | {column: "   "}
+    with pytest.raises(IntegrityError), db_session.begin_nested():
+        QuestionRepository(db_session, alice.id).add_idempotent(
+            of.id, level=1, run_id=RUN, **values
+        )

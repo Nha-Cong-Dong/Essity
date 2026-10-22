@@ -15,6 +15,11 @@ class QuestionNotFoundError(LookupError):
     """No such question for this user."""
 
 
+class QuestionConflictError(ValueError):
+    """The subject already has this question with another level, answer or rubric: adding it
+    again would keep the old one in silence (review 8a92b17). Retire and re-add instead."""
+
+
 class SubjectMismatchError(ValueError):
     """A question and a unit of different subjects (plan D9)."""
 
@@ -56,9 +61,16 @@ class QuestionRepository(UserScopedRepository[Question]):
         )
         self.session.execute(statement)
         # The row just added, or the one already there: one per user, subject and hash.
-        return self.session.scalars(
+        question = self.session.scalars(
             self._select().where(Question.subject_id == subject_id, Question.content_hash == digest)
         ).one()
+        if (question.level, question.reference_answer, question.rubric) != (
+            level,
+            reference_answer,
+            rubric,
+        ):
+            raise QuestionConflictError(question.id)
+        return question
 
 
 class QuestionUnitRepository(UserScopedRepository[QuestionUnit]):

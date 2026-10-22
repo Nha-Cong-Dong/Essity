@@ -31,6 +31,8 @@ class Question(UserOwned, Base):
             ["subject_id", "user_id"], ["subject.id", "subject.user_id"], ondelete="CASCADE"
         ),
         CheckConstraint("level BETWEEN 1 AND 3", name="level_range"),
+        CheckConstraint("length(trim(prompt)) > 0", name="prompt_not_blank"),
+        CheckConstraint("length(trim(reference_answer)) > 0", name="answer_not_blank"),
         CheckConstraint("status IN ('active', 'retired')", name="status_known"),
         CheckConstraint("length(content_hash) = 64", name="content_hash_length"),
         UniqueConstraint("user_id", "subject_id", "content_hash"),
