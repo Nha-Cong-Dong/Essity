@@ -40,6 +40,8 @@ Optional: `CORE_WEB_TOKEN` (at least 32 characters), the token web sends in `X-S
 
 Tests use `CORE_TEST_DATABASE_URL` (default: the Compose Postgres, database `core_test`) and `CORE_TEST_REDIS_URL` (default: the Compose Redis, database 15). Each test runs in a transaction that is rolled back, and tests run in random order (`pytest-randomly`).
 
+**Two runs at once need their own database and Redis database** (R32): some tests migrate the schema down and up, or empty the job tables, so two runs on one database fail each other (measured: 12 and 13 failures side by side on one database, none on two). Create one per run, e.g. `createdb core_test_2`, and set `CORE_TEST_DATABASE_URL=…/core_test_2` and `CORE_TEST_REDIS_URL=…/14`.
+
 ## Database
 
 - SQLAlchemy 2.0 (pinned below 2.1 until OpenTelemetry instruments it), psycopg 3, Alembic.
