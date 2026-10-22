@@ -87,7 +87,12 @@ function SubjectRow({ initial }: { initial: ListedSubject }) {
         <span className="min-w-0 flex-1 text-section font-semibold">{subject.name}</span>
         <span className="flex flex-col items-end text-small">
           <span>thi {formatExamDate(subject.exam_date)}</span>
-          <span className="text-ink-soft">{daysLeftText(subject.days_until_exam)}</span>
+          {subject.days_until_exam > 0 ? (
+            <span className="text-ink-soft">{daysLeftText(subject.days_until_exam)}</span>
+          ) : (
+            // "thi hôm nay" and "đã thi" are no document's yet (DESIGN §6.8 has only "còn N ngày").
+            <span className="text-ink-soft" data-copy="tam">{daysLeftText(subject.days_until_exam)}</span>
+          )}
         </span>
         {!editing && (
           <Button variant="quiet" onClick={open} aria-label={`Sửa ${subject.name}`}>

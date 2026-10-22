@@ -16,6 +16,8 @@ const PENDING_COPY: [file: string, text: string][] = [
   ["components/subjects/subject-fields.tsx", "{SUBJECT_MESSAGES[code]}"],
   ["components/subjects/subject-list.tsx", "Lưu"],
   ["components/subjects/subject-list.tsx", "Hủy"],
+  ["components/subjects/subject-list.tsx", "{daysLeftText(subject.days_until_exam)}"],
+  ["app/subjects/page.tsx", "Đang tải danh sách môn."],
   ["components/subjects/subjects-loader.tsx", "Không tải được danh sách môn."],
   ["components/subjects/upload-step.tsx", "Tải tài liệu sẽ có ở bản sau."],
   ["components/today-note.tsx", "Lịch ôn hôm nay sẽ hiện ở đây sớm."],

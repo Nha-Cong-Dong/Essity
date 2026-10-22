@@ -291,6 +291,22 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
   });
 });
 
+describe("SubjectList day count (DESIGN.md §6.8)", () => {
+  it("\"còn N ngày\" is DESIGN's and is not a placeholder", () => {
+    render(<SubjectList subjects={[MMT]} />);
+    expect(screen.getByText("còn 54 ngày").getAttribute("data-copy")).toBeNull();
+  });
+
+  // Red when: a sentence no document has is shown without data-copy="tam" (PM gate 23/10 #3).
+  it.each([
+    [0, "thi hôm nay"],
+    [-3, "đã thi"],
+  ])("%i days: %s is marked as a placeholder", (days, text) => {
+    render(<SubjectList subjects={[{ ...MMT, days_until_exam: days }]} />);
+    expect(screen.getByText(text).getAttribute("data-copy")).toBe("tam");
+  });
+});
+
 describe("UploadStep (US-01 AC7, plan K5)", () => {
   beforeEach(() => {
     render(<UploadStep name="Mạng máy tính" />);
