@@ -46,7 +46,7 @@ def test_ac1_create_returns_the_subject(client: TestClient, db_session: Session)
     response = create(client, headers, "Mạng máy tính", in_days(user, 55))
     assert response.status_code == 201
     body = response.json()
-    assert set(body) == {"id", "name", "exam_date", "created_at"}
+    assert set(body) == {"id", "name", "exam_date", "days_until_exam", "created_at"}
     assert (body["name"], body["exam_date"]) == ("Mạng máy tính", in_days(user, 55))
     uuid.UUID(body["id"])
 
@@ -222,6 +222,48 @@ def test_patch_changes_the_exam_date(
     assert [s["exam_date"] for s in listed] == [in_days(user, 40)]
 
 
+@pytest.mark.parametrize("days", [731, 13000])
+def test_k17_exam_date_more_than_two_years_ahead_is_refused(
+    client: TestClient, db_session: Session, days: int
+) -> None:
+    user, headers = signed_in(db_session)
+    response = create(client, headers, "Mạng máy tính", in_days(user, days))
+    assert (response.status_code, response.json()) == (422, {"detail": "exam_date_too_far"})
+    assert client.get("/v1/subjects", headers=headers).json() == []
+
+
+def test_k17_exam_date_exactly_two_years_ahead_is_accepted(
+    client: TestClient, db_session: Session
+) -> None:
+    user, headers = signed_in(db_session)
+    response = create(client, headers, "Mạng máy tính", in_days(user, 730))
+    assert response.status_code == 201
+    assert response.json()["days_until_exam"] == 730
+
+
+def test_k17_patch_to_a_date_too_far_is_refused(
+    client: TestClient, owned: tuple[User, dict[str, str], str]
+) -> None:
+    user, headers, subject_id = owned
+    response = patch(client, headers, subject_id, {"exam_date": in_days(user, 731)})
+    assert (response.status_code, response.json()) == (422, {"detail": "exam_date_too_far"})
+
+
+def test_k17_renaming_a_subject_whose_stored_date_is_far_still_works(
+    client: TestClient, db_session: Session, owned: tuple[User, dict[str, str], str]
+) -> None:
+    # A date stored before the cap existed: only a changed date is checked, as for the past.
+    user, headers, subject_id = owned
+    far = in_days(user, 1000)
+    db_session.execute(
+        text("UPDATE exam SET exam_date = :d WHERE subject_id = :s"),
+        {"d": far, "s": subject_id},
+    )
+    response = patch(client, headers, subject_id, {"name": "Mạng máy tính 2", "exam_date": far})
+    assert response.status_code == 200
+    assert response.json()["name"] == "Mạng máy tính 2"
+
+
 @pytest.mark.parametrize("days", [0, -1])
 def test_ac2_patch_to_a_date_not_after_today_is_refused(
     client: TestClient, owned: tuple[User, dict[str, str], str], days: int
@@ -326,8 +368,8 @@ def test_adr_0001_bob_cannot_see_or_change_alices_subject(
 def test_t1_9_unverified_account_is_refused(
     client: TestClient, db_session: Session, method: str, path: str
 ) -> None:
-    _, headers = signed_in(db_session, verified=False)
-    body = {"name": "Mạng máy tính", "exam_date": "2099-01-01"}
+    user, headers = signed_in(db_session, verified=False)
+    body = {"name": "Mạng máy tính", "exam_date": in_days(user, 10)}
     response = client.request(method, path, json=body, headers=headers)
     assert (response.status_code, response.json()) == (403, {"detail": "email_not_verified"})
 

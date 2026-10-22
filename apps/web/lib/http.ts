@@ -23,11 +23,8 @@ async function readLimited(request: Request): Promise<string | null> {
   return new TextDecoder().decode(Buffer.concat(chunks));
 }
 
-/** The JSON body's string fields `names`, or null when the body is not that shape. */
-export async function readStrings<Name extends string>(
-  request: Request,
-  names: readonly Name[],
-): Promise<Record<Name, string> | null> {
+/** The JSON body as an object, or null when it is too big, not JSON or not an object. */
+async function readObject(request: Request): Promise<Record<string, unknown> | null> {
   const text = await readLimited(request);
   if (text === null) return null;
   let body: unknown;
@@ -37,9 +34,56 @@ export async function readStrings<Name extends string>(
     return null;
   }
   if (typeof body !== "object" || body === null || Array.isArray(body)) return null;
-  const fields = body as Record<string, unknown>;
+  return body as Record<string, unknown>;
+}
+
+/** The JSON body's string fields `names`, or null when the body is not that shape. */
+export async function readStrings<Name extends string>(
+  request: Request,
+  names: readonly Name[],
+): Promise<Record<Name, string> | null> {
+  const fields = await readObject(request);
+  if (fields === null) return null;
   if (!names.every((name) => typeof fields[name] === "string")) return null;
   return Object.fromEntries(names.map((name) => [name, fields[name]])) as Record<Name, string>;
+}
+
+type FieldKind = { string: string; integer: number; boolean: boolean };
+type FieldSpec = { kind: keyof FieldKind; optional?: boolean };
+type Fields<Spec extends Record<string, FieldSpec>> = {
+  [Name in keyof Spec as Spec[Name]["optional"] extends true ? never : Name]: FieldKind[Spec[Name]["kind"]];
+} & {
+  [Name in keyof Spec as Spec[Name]["optional"] extends true ? Name : never]?: FieldKind[Spec[Name]["kind"]];
+};
+
+const IS_KIND: Record<keyof FieldKind, (value: unknown) => boolean> = {
+  string: (value) => typeof value === "string",
+  integer: (value) => Number.isSafeInteger(value),
+  boolean: (value) => typeof value === "boolean",
+};
+
+/**
+ * The JSON body read by `spec`: each field of its type, optional ones left out when missing, and
+ * no other key. Null otherwise. What a route sends on is built from this, never the browser's JSON
+ * (review plan R1).
+ */
+export async function readFields<Spec extends Record<string, FieldSpec>>(
+  request: Request,
+  spec: Spec,
+): Promise<Fields<Spec> | null> {
+  const body = await readObject(request);
+  if (body === null) return null;
+  if (!Object.keys(body).every((name) => Object.hasOwn(spec, name))) return null;
+  const fields: Record<string, unknown> = {};
+  for (const [name, { kind, optional }] of Object.entries(spec)) {
+    if (!Object.hasOwn(body, name)) {
+      if (optional) continue;
+      return null;
+    }
+    if (!IS_KIND[kind](body[name])) return null;
+    fields[name] = body[name];
+  }
+  return fields as Fields<Spec>;
 }
 
 /** An error the browser can show (lib/auth-errors.ts has its sentence). */

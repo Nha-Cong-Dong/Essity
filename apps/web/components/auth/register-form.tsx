@@ -6,6 +6,8 @@ import { AUTH_LINK, AuthField, AuthNote, PasswordField } from "@/components/auth
 import { FieldError, FieldHint } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import { authMessage, PASSWORD_REASONS, postJson, rateLimitMessage } from "@/lib/auth-errors";
+import { safeNext } from "@/lib/landing";
+import { go } from "@/lib/navigate";
 
 // T1.13, canvas Auth "register": exactly two fields (AC1), a show/hide button instead of
 // "type it again". The password rules live in core-api; this only shows its reason.
@@ -24,7 +26,8 @@ export function RegisterForm() {
       password: String(form.get("password")),
     });
     if (result.data) {
-      window.location.assign(result.data.next);
+      // Review plan R3: only the page the flow knows, never whatever `next` came back.
+      go(safeNext(result.data.next, ["/check-email"], "/check-email"));
       return;
     }
     setBusy(false);
@@ -36,7 +39,7 @@ export function RegisterForm() {
   const emailError = error === "invalid_email";
   const otherError = error !== undefined && !passwordError && !emailError;
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
+    <form method="post" onSubmit={submit} className="flex flex-col gap-5" noValidate>
       {error === "rate_limited" && <AuthNote>{rateLimitMessage(retryAfter)}</AuthNote>}
       <AuthField
         id="email"

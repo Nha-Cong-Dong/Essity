@@ -86,7 +86,7 @@ export function ResetPassword() {
   const { token, error, retryAfter } = state;
   const passwordError = error !== undefined && (PASSWORD_REASONS.has(error) || error === "invalid_password");
   return (
-    <form onSubmit={(event) => submit(event, token)} className="flex flex-col gap-5" noValidate>
+    <form method="post" onSubmit={(event) => submit(event, token)} className="flex flex-col gap-5" noValidate>
       {error === "rate_limited" && <AuthNote>{rateLimitMessage(retryAfter)}</AuthNote>}
       <PasswordField
         id="password"

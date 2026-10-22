@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
+import { landingFor } from "@/lib/landing";
 import { getSession } from "@/lib/session";
 
 /**
@@ -10,6 +11,6 @@ import { getSession } from "@/lib/session";
 export async function RedirectIfSignedIn() {
   await connection();
   const me = await getSession().catch(() => null); // core-api down: show the form
-  if (me) redirect(me.email_verified ? "/today" : "/check-email");
+  if (me) redirect(landingFor(me));
   return null;
 }

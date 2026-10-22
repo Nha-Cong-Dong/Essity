@@ -4,11 +4,15 @@ import { vi } from "vitest";
 export const ORIGIN = "http://localhost:3000";
 export const SERVICE_TOKEN = "web-token-for-tests-only-0123456789";
 
-/** A browser POST to one of web's own routes, from our own origin unless told otherwise. */
+/** A browser POST (or `method`) to one of web's own routes, from our own origin unless told otherwise. */
 export function browserPost(
   path: string,
   body?: unknown,
-  { origin = ORIGIN, cookies = {} }: { origin?: string | null; cookies?: Record<string, string> } = {},
+  {
+    origin = ORIGIN,
+    cookies = {},
+    method = "POST",
+  }: { origin?: string | null; cookies?: Record<string, string>; method?: string } = {},
 ): NextRequest {
   const headers = new Headers({ "content-type": "application/json" });
   if (origin !== null) headers.set("origin", origin);
@@ -17,7 +21,7 @@ export function browserPost(
     .join("; ");
   if (cookie) headers.set("cookie", cookie);
   return new NextRequest(`${ORIGIN}${path}`, {
-    method: "POST",
+    method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   });

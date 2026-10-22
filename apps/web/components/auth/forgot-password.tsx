@@ -44,7 +44,7 @@ export function ForgotPassword() {
   }
   return (
     <AuthCard title="Quên mật khẩu">
-      <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
+      <form method="post" onSubmit={submit} className="flex flex-col gap-5" noValidate>
         {error?.code === "rate_limited" && <AuthNote>{rateLimitMessage(error.retryAfter)}</AuthNote>}
         <p className="m-0">Nhập email bạn dùng để đăng ký. App sẽ gửi link đặt lại mật khẩu.</p>
         <AuthField id="email" name="email" label="Email" type="email" autoComplete="email" required />
