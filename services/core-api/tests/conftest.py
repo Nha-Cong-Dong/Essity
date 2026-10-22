@@ -45,6 +45,7 @@ def ai_service_token() -> str:
 
 @pytest.fixture(autouse=True)
 def test_settings_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    monkeypatch.setenv("CORE_ENVIRONMENT", "test")
     monkeypatch.setenv("CORE_AI_SERVICE_TOKEN", TEST_AI_SERVICE_TOKEN)
     monkeypatch.setenv("CORE_DATABASE_URL", TEST_DATABASE_URL)
     monkeypatch.setenv("CORE_REDIS_URL", TEST_REDIS_URL)

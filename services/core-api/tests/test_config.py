@@ -31,10 +31,23 @@ def test_outside_local_the_web_url_must_be_set_and_https(values: dict[str, str])
 LOG_HASH_KEY = "log-hash-key-for-tests-0123456789abcdef"
 
 
+# Everything production needs, set as it should be (R04): each test below breaks one of them.
+PRODUCTION = {
+    "environment": "production",
+    "web_base_url": "https://essity.example/",
+    "log_hash_key": LOG_HASH_KEY,
+    "web_token": "web-token-for-tests-0123456789abcdefgh",
+    "smtp_host": "smtp.essity.example",
+    "smtp_username": "essity",
+    "smtp_password": "smtp-password-for-tests",
+    "smtp_starttls": "true",
+    "email_from": "no-reply@essity.example",
+    "ai_service_url": "http://ai-service:8001",
+}
+
+
 def test_outside_local_an_https_web_url_is_accepted() -> None:
-    assert settings(
-        environment="production", web_base_url="https://essity.example/", log_hash_key=LOG_HASH_KEY
-    ).web_base_url
+    assert settings(**PRODUCTION).web_base_url
 
 
 def test_log_hash_key_required_outside_local_and_test() -> None:
@@ -65,3 +78,69 @@ def test_a_settings_error_never_shows_a_secret(monkeypatch: pytest.MonkeyPatch) 
     assert "input_value={" not in message
     assert "printed-anywhere" not in message
     assert "db-password-secret" not in message
+
+
+def test_r04_environment_is_required(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Red when: environment keeps a default, and a forgotten variable runs production as local.
+    monkeypatch.delenv("CORE_ENVIRONMENT", raising=False)
+    with pytest.raises(ValidationError, match="environment"):
+        Settings()  # pyright: ignore[reportCallIssue]
+
+
+def test_r04_environment_must_be_one_it_knows() -> None:
+    with pytest.raises(ValidationError, match="environment"):
+        settings(**{**PRODUCTION, "environment": "prod"})
+
+
+def test_r04_an_unknown_environment_is_treated_as_production() -> None:
+    # Red when: the other rules fall back to local's when environment is wrong (plan D1).
+    with pytest.raises(ValidationError) as error:
+        settings(environment="prod")
+    assert "web_base_url" in str(error.value)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("web_token", ""),
+        ("smtp_host", "127.0.0.1"),
+        ("smtp_host", "127.8.8.8"),
+        ("smtp_host", "localhost"),
+        ("smtp_host", "::1"),
+        ("smtp_host", "0.0.0.0"),
+        ("email_from", "no-reply@localhost"),
+        ("smtp_starttls", "false"),  # a password sent in clear
+        ("ai_service_url", "http://127.0.0.1:8001"),
+        ("ai_service_url", "http://localhost:8001"),
+    ],
+)
+def test_r04_outside_dev_a_local_value_is_refused(field: str, value: str) -> None:
+    # Red when: production starts with a value that only works on a developer's machine.
+    with pytest.raises(ValidationError, match=field):
+        settings(**{**PRODUCTION, field: value})
+
+
+def test_r04_staging_follows_the_production_rules() -> None:
+    with pytest.raises(ValidationError, match="smtp_host"):
+        settings(**{**PRODUCTION, "environment": "staging", "smtp_host": "127.0.0.1"})
+
+
+def test_r04_without_a_login_starttls_is_not_required() -> None:
+    values = {**PRODUCTION, "smtp_starttls": "false"}
+    del values["smtp_username"], values["smtp_password"]
+    assert settings(**values).smtp_starttls is False
+
+
+def test_r04_local_keeps_its_defaults() -> None:
+    local = settings(environment="local")
+    assert (local.smtp_host, local.email_from) == ("127.0.0.1", "no-reply@localhost")
+
+
+def test_r04_error_names_the_variable_and_no_secret() -> None:
+    # Red when: the startup error leaves out which setting is wrong, or prints a secret (P2).
+    with pytest.raises(ValidationError) as error:
+        settings(**{**PRODUCTION, "smtp_starttls": "false", "smtp_host": "127.0.0.1"})
+    message = str(error.value)
+    assert "smtp_starttls" in message and "smtp_host" in message
+    for secret in ("smtp-password-for-tests", "web-token-for-tests", "log-hash-key-for-tests"):
+        assert secret not in message
