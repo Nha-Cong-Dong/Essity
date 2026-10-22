@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import type { CoreClient } from "@/lib/core-client";
 import { afterBaseline, landingFor } from "@/lib/landing";
 import { type Me, requireVerifiedSession } from "@/lib/session";
+import { errorName, logError } from "@/lib/log";
 
 /**
  * For /onboarding: the user while core-api still asks for a baseline (US-11 AC2: not yet given,
@@ -25,7 +26,8 @@ export async function nextAfterBaseline(core: CoreClient): Promise<"/subjects/ne
   try {
     const { data } = await core.GET("/v1/me");
     return data ? afterBaseline(data) : "/today";
-  } catch {
+  } catch (error) {
+    logError("core-api call failed", { route: "baseline_next", error: errorName(error) });
     return "/today";
   }
 }

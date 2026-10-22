@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { SubjectList } from "@/components/subjects/subject-list";
 import { Button } from "@/components/ui/button";
 import { CoreStatusError, findSubject, listSubjects, type Subject } from "@/lib/subjects";
+import { errorName, logError } from "@/lib/log";
 
 /** A session that ended between the page's check and core-api's answer is a sign-in, not a failure. */
 function redirectIfSignedOut(error: unknown): void {
@@ -36,10 +37,10 @@ export async function Subjects({ example }: { example: string }) {
   } catch (error) {
     redirectIfSignedOut(error);
     // The status and the error's type only: nothing the user wrote (ADR-0013).
-    console.error("core-api call failed", {
+    logError("core-api call failed", {
       route: "subjects",
       status: error instanceof CoreStatusError ? error.status : undefined,
-      error: error instanceof Error ? error.name : undefined,
+      error: errorName(error),
     });
     return (
       <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">

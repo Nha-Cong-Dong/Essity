@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { landingFor } from "@/lib/landing";
 import { getSession } from "@/lib/session";
+import { errorName, logError } from "@/lib/log";
 
 /**
  * On /login and /register: someone still signed in goes straight to the app (AC7). The proxy
@@ -10,7 +11,11 @@ import { getSession } from "@/lib/session";
  */
 export async function RedirectIfSignedIn() {
   await connection();
-  const me = await getSession().catch(() => null); // core-api down: show the form
+  const me = await getSession().catch((error: unknown) => {
+    // core-api down: show the form, and say so in the log (R12).
+    logError("core-api call failed", { route: "session_check", error: errorName(error) });
+    return null;
+  });
   if (me) redirect(landingFor(me));
   return null;
 }

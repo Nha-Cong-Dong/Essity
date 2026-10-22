@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { EXPIRED_COOKIE, PENDING_EMAIL_COOKIE, SESSION_COOKIE } from "@/lib/cookies";
 import { coreClientFor } from "@/lib/core-client";
 import { withOrigin } from "@/lib/csrf";
+import { errorName, logError } from "@/lib/log";
 
 // T1.12: POST only, so a link or an image on another site cannot sign anyone out.
 export const POST = withOrigin(async (request) => {
@@ -12,10 +13,7 @@ export const POST = withOrigin(async (request) => {
       await coreClientFor(request, token).POST("/v1/auth/logout");
     } catch (error) {
       // The cookie goes anyway: this browser is signed out even if core-api did not hear it.
-      console.error("core-api call failed", {
-        route: "logout",
-        error: error instanceof Error ? error.name : undefined,
-      });
+      logError("core-api call failed", { route: "logout", error: errorName(error) });
     }
   }
   const response = NextResponse.json({ next: "/login" });

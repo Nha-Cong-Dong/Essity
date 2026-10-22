@@ -46,7 +46,10 @@ describe("/subjects when the list fails", () => {
     const markup = renderToStaticMarkup(await Subjects({ example: "15/12/2031" }));
 
     expect(markup).toContain('role="alert"');
-    expect(logged).toHaveBeenCalledWith("core-api call failed", { route: "subjects", status: 500, error: "CoreStatusError" });
+    // One JSON line through lib/log.ts (R12): the status and the error's type, nothing else.
+    expect(JSON.parse(String(logged.mock.calls[0][0]))).toEqual(
+      expect.objectContaining({ message: "core-api call failed", route: "subjects", status: 500, error: "CoreStatusError" }),
+    );
   });
 });
 

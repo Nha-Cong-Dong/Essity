@@ -1,3 +1,5 @@
+import { errorName, logError } from "@/lib/log";
+
 // Small helpers for web's own route handlers (app/api/**).
 
 // Account forms send a few short fields; anything bigger is refused before it fills memory.
@@ -96,10 +98,7 @@ export function errorResponse(error: string, status: number, headers?: HeadersIn
  * request carried a password or a token (ADR-0013).
  */
 export function unavailable(route: string, error?: unknown): Response {
-  console.error("core-api call failed", {
-    route,
-    error: error instanceof Error ? error.name : undefined,
-  });
+  logError("core-api call failed", { route, error: errorName(error) });
   return errorResponse("unavailable", 503);
 }
 
