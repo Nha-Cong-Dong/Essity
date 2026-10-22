@@ -12,7 +12,7 @@ import { afterReset, type ResetState } from "@/lib/reset-state";
 /** A ✓ before "Đã đặt mật khẩu mới." */
 function Check() {
   return (
-    <svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0 text-right">
+    <svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0 text-correct">
       <path
         d="m3 8.5 3.25 3L13 4.75"
         fill="none"
@@ -50,7 +50,7 @@ export function ResetPassword() {
 
   if (state.view === "loading") {
     return (
-      <div aria-busy="true" className="h-40 rounded-sm bg-[color-mix(in_srgb,var(--line)_80%,transparent)]" />
+      <div aria-busy="true" className="h-40 rounded-control bg-sunken" />
     );
   }
   if (state.view === "done") {
@@ -61,7 +61,7 @@ export function ResetPassword() {
           Đã đặt mật khẩu mới.
         </p>
         <p className="m-0 text-ink-soft">Đăng nhập bằng mật khẩu mới.</p>
-        <Button render={<a href="/login" />} nativeButton={false} className="h-14 w-full">
+        <Button render={<a href="/login" />} nativeButton={false} className="w-full">
           Đăng nhập
         </Button>
       </div>
@@ -76,7 +76,7 @@ export function ResetPassword() {
           render={<a href="/forgot-password" />}
           nativeButton={false}
           variant="secondary"
-          className="h-14 w-full"
+          className="w-full"
         >
           Gửi link mới
         </Button>
@@ -106,7 +106,7 @@ export function ResetPassword() {
       {error && !passwordError && error !== "rate_limited" && (
         <FieldError id="reset-error">{authMessage(error)}</FieldError>
       )}
-      <Button type="submit" disabled={busy} className="h-14 w-full">
+      <Button type="submit" pending={busy} className="w-full">
         Lưu mật khẩu
       </Button>
     </form>

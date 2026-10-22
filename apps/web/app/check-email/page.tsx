@@ -23,7 +23,7 @@ async function SentTo() {
   return (
     <>
       <p className="m-0 text-body">
-        Đã gửi link tới <span className="font-hand text-hand text-hong">{maskEmail(email)}</span>
+        Đã gửi link tới <span className="font-medium text-hong">{maskEmail(email)}</span>
       </p>
       <p className="m-0 text-ink-soft">
         Mở email và bấm vào link để tiếp tục. Nếu không thấy, xem cả mục thư rác.
@@ -37,7 +37,7 @@ export default function CheckEmailPage() {
   return (
     <AuthCard title="Hãy kiểm tra email của bạn">
       <Suspense
-        fallback={<div className="h-40 rounded-sm bg-[color-mix(in_srgb,var(--line)_80%,transparent)]" />}
+        fallback={<div className="h-40 rounded-control bg-sunken" />}
       >
         <SentTo />
       </Suspense>

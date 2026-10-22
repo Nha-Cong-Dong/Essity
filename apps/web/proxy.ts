@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { SESSION_COOKIE } from "@/lib/cookies";
+import { designPreviewAllowed, isDesignPreview } from "@/lib/design-preview";
 
 // T1.12, W3: an optimistic check only. A page without a session cookie goes to /login; whether
 // the cookie is still a live session, and whether the email is verified, the page itself asks
@@ -13,10 +14,15 @@ export const PUBLIC_PAGES: ReadonlySet<string> = new Set([
   "/verify-email",
   "/forgot-password",
   "/reset-password",
-  "/design-preview",
 ]);
 
 export function proxy(request: NextRequest) {
+  // Before the cookie check: a cookie, any cookie, must not open it (review of the plan #2).
+  if (isDesignPreview(request.nextUrl.pathname)) {
+    return designPreviewAllowed(process.env)
+      ? NextResponse.next()
+      : new NextResponse(null, { status: 404 });
+  }
   if (PUBLIC_PAGES.has(request.nextUrl.pathname) || request.cookies.has(SESSION_COOKIE)) {
     return NextResponse.next();
   }

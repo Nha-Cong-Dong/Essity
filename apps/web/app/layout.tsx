@@ -10,7 +10,7 @@ import "./globals.css";
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
   // Not a variable font: list the weights in use. Italic is the "written" voice (font-hand).
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   style: ["normal", "italic"],
   variable: "--font-be-vietnam-pro", // interface, body text, answers, written values
 });

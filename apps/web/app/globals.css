@@ -3,21 +3,20 @@
 @import "shadcn/tailwind.css";
 
 /*
- * Design tokens from docs/DESIGN.md (§3), visual direction "vở ô li, bút hồng và bút dạ quang cam".
- * Type sizes follow the canvas (Type artboard) where it differs from DESIGN.md §3.2.
+ * Design tokens v3.1 (docs/plans/design-architecture-final.md §1): one pink hue (333°), lighter
+ * or darker, plus three status colours. "Three pens on a page": ink is the app's text, the pink
+ * pen is what you write and every action, pencil (the only italic) is the app's grading, and the
+ * pink highlighter is evidence from the textbook, only ever a background under ink.
  *
- * Option A of the 19/10 type and colour review ("vở chỉnh tề"): calmer pink, ash-pink cover,
- * Be Vietnam Pro instead of Lexend, italic instead of a handwriting face, lighter display weights.
- *
- * Rules (DESIGN.md §2, §3.1):
+ * Rules (DESIGN.md §2, final §3):
  * - No red anywhere, form errors included. Errors and warnings use `--partial` (vàng nghệ).
  * - One accent for action: `--hong`. Links are `--ink` + underline.
- * - Hồng stays near 330°, cam near 27°: never drift towards red.
  * - A status colour never stands alone: always with words and a distinct shape.
- * - Components use these tokens, never raw hex. shadcn's tokens are mapped onto them below.
+ * - Components use these tokens, never raw hex, and never Tailwind's `dark:` variant.
+ * - The palette is written three times (light, OS dark, chosen dark) because CSS has no mixins:
+ *   change a value in every copy. tests/design-tokens.test.ts checks the copies and contrast.
  *
- * Dark mode is designed first (evenings). It follows the OS unless <html data-theme> says
- * otherwise; the account menu will set it (DESIGN.md §3.6, T1.12).
+ * Dark mode follows the OS unless <html data-theme> says otherwise (account menu, lib/theme.ts).
  */
 
 @custom-variant dark {
@@ -37,148 +36,376 @@
   --font-heading: var(--font-display);
   --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, monospace;
 
-  /* Essity tokens (DESIGN.md §3.1). */
-  --color-paper: var(--paper);
+  /* Semantic colours. */
+  --color-bg: var(--bg);
   --color-sheet: var(--sheet);
-  --color-subtle: var(--subtle);
+  --color-raised: var(--raised);
+  --color-sunken: var(--sunken);
+  --color-book-cover: var(--cover); /* not --color-cover: `bg-cover` is also background-size */
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-hong: var(--hong);
   --color-on-hong: var(--on-hong);
-  --color-cam: var(--cam);
-  --color-cover: var(--cover);
-  --color-right: var(--right);
-  --color-partial: var(--partial);
-  --color-miss: var(--miss);
+  --color-hong-soft-text: var(--hong-soft-text);
+  --color-rose-50: var(--rose-50);
+  --color-rose-100: var(--rose-100);
+  --color-rose-200: var(--rose-200);
+  --color-rose-300: var(--rose-300);
+  --color-rose-700: var(--rose-700);
   --color-hl: var(--hl);
-  --shadow-elev: var(--elev);
-  --shadow-panel: var(--panel);
-  --shadow-book: var(--book);
+  --color-hl-edge: var(--hl-edge);
+  --color-hl-band: var(--hl-band);
+  --color-spine: var(--spine);
+  --color-correct: var(--correct);
+  --color-partial: var(--partial);
+  --color-pencil: var(--pencil);
+  --color-focus: var(--focus);
+
+  /* Old names kept so components do not break; removed in a later clean-up. */
+  --color-paper: var(--bg);
+  --color-subtle: var(--sunken);
+  --color-miss: var(--pencil);
+  --color-hong-tint: var(--rose-100);
 
   /* shadcn/ui tokens, mapped onto the ones above: no new colours. */
-  --color-background: var(--paper);
+  --color-background: var(--bg);
   --color-foreground: var(--ink);
   --color-card: var(--sheet);
   --color-card-foreground: var(--ink);
-  --color-popover: var(--sheet);
+  --color-popover: var(--raised);
   --color-popover-foreground: var(--ink);
   --color-primary: var(--hong);
   --color-primary-foreground: var(--on-hong);
   --color-secondary: var(--sheet);
   --color-secondary-foreground: var(--ink);
-  --color-muted: var(--subtle);
+  --color-muted: var(--sunken);
   --color-muted-foreground: var(--ink-soft);
-  --color-accent: var(--subtle);
+  --color-accent: var(--rose-50);
   --color-accent-foreground: var(--ink);
   --color-destructive: var(--partial); /* invalid fields: vàng nghệ, never red */
   --color-border: var(--line);
-  --color-input: var(--ink-soft); /* input and secondary-button borders reach 3:1 */
-  --color-ring: var(--hong);
+  --color-input: var(--line-strong); /* input and secondary-button borders reach 3:1 */
+  --color-ring: var(--focus);
 
-  /* Type scale (canvas Type artboard). Vietnamese diacritics need ~0.1 more line height. */
-  --text-caption: 13px;
-  --text-caption--line-height: 1.5;
-  --text-small: 14px;
-  --text-small--line-height: 1.55;
+  /* Elevation: pink-tinted shadows in light mode, steps of lightness and a hairline in dark. */
+  --shadow-sheet: var(--elev-sheet);
+  --shadow-over: var(--elev-over);
+  --shadow-cover: var(--elev-cover);
+  --shadow-hong: var(--elev-hong);
+  --shadow-elev: var(--elev-sheet);
+  --shadow-panel: var(--elev-over);
+  --shadow-book: var(--elev-cover);
+
+  /* Type scale (final §2): at most five steps on one screen. Diacritics need line height ≥ 1.15. */
+  --text-meta: 14px;
+  --text-meta--line-height: 1.5;
   --text-body: 16px;
   --text-body--line-height: 1.6;
-  --text-source: 18px;
-  --text-source--line-height: 1.75;
+  --text-read: 18px;
+  --text-read--line-height: 1.7;
   --text-answer: 18px;
-  --text-answer--line-height: 32px; /* sits on the 32px ruled lines (§3.4) */
-  --text-hand: 18px;
-  --text-hand--line-height: 1.4;
-  --text-hand--font-weight: 500;
-  --text-section: 22px;
-  --text-section--line-height: 1.35;
-  --text-section--font-weight: 600;
-  --text-question: 26px;
-  --text-question--line-height: 1.45;
+  --text-answer--line-height: 32px; /* sits on the 32px ruled lines */
+  --text-lead: 22px;
+  --text-lead--line-height: 1.4;
+  --text-lead--font-weight: 600;
+  --text-question: clamp(22px, 1.2vw + 17px, 28px);
+  --text-question--line-height: 1.4;
   --text-question--font-weight: 500;
-  --text-verdict: 40px; /* canvas Controls artboard and DESIGN.md agree */
-  --text-verdict--line-height: 1.25;
+  --text-verdict: clamp(28px, 1.6vw + 22px, 36px);
+  --text-verdict--line-height: 1.2;
   --text-verdict--font-weight: 650;
-  --text-verdict--letter-spacing: -0.03em;
-  --text-title: 52px;
+  --text-verdict--letter-spacing: -0.02em;
+  --text-title: clamp(36px, 2.4vw + 26px, 48px);
   --text-title--line-height: 1.15;
   --text-title--font-weight: 650;
   --text-title--letter-spacing: -0.02em;
-  --text-display: 64px;
-  --text-display--line-height: 1;
-  --text-display--font-weight: 600;
+  --text-display: clamp(48px, 3.2vw + 34px, 64px);
+  --text-display--line-height: 1.15;
+  --text-display--font-weight: 650;
   --text-display--letter-spacing: -0.02em;
+  --text-mega: clamp(88px, 9vw, 144px); /* numbers only (14 câu, 6/7) */
+  --text-mega--line-height: 1;
+  --text-mega--font-weight: 650;
+  --text-mega--letter-spacing: -0.05em;
+  --text-hero: clamp(46px, 5.8vw, 88px); /* landing H1 only */
+  --text-hero--line-height: 1.15;
+  --text-hero--font-weight: 650;
+  --text-hero--letter-spacing: -0.02em;
+  --text-logo: 24px;
+  --text-logo--line-height: 1;
+  --text-logo--font-weight: 700;
+  --text-logo--letter-spacing: -0.03em;
+  /* old names */
+  --text-caption: 14px;
+  --text-caption--line-height: 1.5;
+  --text-small: 14px;
+  --text-small--line-height: 1.5;
+  --text-source: 18px;
+  --text-source--line-height: 1.7;
+  --text-hand: 18px;
+  --text-hand--line-height: 1.7;
+  --text-hand--font-weight: 500;
+  --text-section: 22px;
+  --text-section--line-height: 1.4;
+  --text-section--font-weight: 600;
 
-  /* Radius by level (§3.3): buttons and inputs, images and groups, cards and panels. */
-  --radius-sm: 8px;
+  /* Radius by role; buttons, chips, nav and progress bars are rounded-full. New code uses the
+     role names: Tailwind's xl/2xl stay 12/16px, smaller than lg here. */
+  --radius-control: 12px;
+  --radius-slip: 14px;
+  --radius-sheet: 24px;
+  --radius-tile: 28px;
+  --radius-cover-spine: 10px;
+  --radius-cover-edge: 28px;
+  --radius-sm: 12px;
   --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-lg: 24px;
+
+  /* Motion. --ease-out deliberately replaces Tailwind's default curve. */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-emph: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-reveal: reveal 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-rise: rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-hl-sweep: hl-sweep 300ms cubic-bezier(0.2, 0.8, 0.2, 1) 260ms both;
 }
 
 :root {
-  --paper: #ffffff;
+  /* Frame, spacing, layers and durations do not change with the mode. */
+  --page-max: 1280px;
+  --page-gutter: clamp(16px, 5.5vw, 80px);
+  --col-read: 68ch;
+  --col-focus: 900px;
+  --header-h: 64px;
+  --header-focus-h: 56px;
+  --space-group: 24px;
+  --space-section: 64px;
+  --bento-gap: 20px;
+  --z-header: 10;
+  --z-scrim: 30;
+  --z-panel: 40;
+  --z-menu: 50;
+  --z-tooltip: 60;
+  --z-skip: 70;
+  --dur-press: 120ms;
+  --dur-exit: 160ms;
+  --dur-ui: 200ms;
+  --dur-reveal: 260ms;
+  --dur-sweep: 300ms;
+  --sticker-tilt: -8deg;
+  /* Paper grain, as a data: URL: a future CSP needs `img-src data:`. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Light palette: the default, and [data-tone="light"] for a local switch (a light page on a dark
+   one). Variables declared on an element win over inherited ones. */
+:root,
+[data-tone="light"] {
+  --bg: #ffffff;
   --sheet: #ffffff;
-  --subtle: #f8f4f2;
-  --ink: #2a2120;
-  --ink-soft: #6b5f5c;
-  --line: #e7dedb;
-  --hong: #9e3a66;
+  --raised: #ffffff;
+  --sunken: #f7f0f3;
+  --cover: var(--rose-100);
+  --ink: #221b1b;
+  --ink-soft: #6b4a59;
+  --line: #eedde4;
+  --line-strong: #946a7d; /* not #9a6f82: that is only 2.92 on rose-200 (plan V16) */
+  --hong: #a8255f;
   --on-hong: #ffffff;
-  --cam: #985a26;
-  --cover: #f1e6e9;
-  --right: #2c7a57;
-  --partial: #7d6500;
-  --miss: #66605e;
-  --hl: color-mix(in srgb, var(--cam) 30%, transparent);
-  --elev: 0 6px 16px rgb(42 33 32 / 0.12);
-  --panel: 0 16px 40px rgb(42 33 32 / 0.18);
-  --book: 0 18px 40px rgb(42 33 32 / 0.16);
+  --hong-soft-text: #ffe3ef;
+  --rose-50: #fdf0f5;
+  --rose-100: #fae3ec;
+  --rose-200: #f4ccdc;
+  --rose-300: #eaafc7;
+  --rose-700: #8e1e50;
+  --hong-glow: radial-gradient(120% 110% at 0% 0%, #b3265f 0%, #a8255f 45%, #8e1e50 100%);
+  --on-surface-hong: var(--on-hong); /* text on the pink tile */
+  --focus-on-hong: var(--on-hong);
+  --inverse-bg: var(--on-hong); /* the primary-inverse button on the pink tile */
+  --inverse-fg: var(--hong);
+  --hl: #ff9ec6; /* pink highlighter: a background under ink only (8.83) */
+  --hl-band: var(--hl); /* thin band at the foot of the letters */
+  --hl-edge: #c2286c; /* underline of a highlight, page-image boxes */
+  --hl-stroke: #ffc2da; /* the giant pen stroke: landing only */
+  --stroke-line: #7e5568; /* borders on the giant stroke */
+  --spine: var(--rose-700);
+  --correct: #23744f;
+  --partial: #7a6200;
+  --pencil: #625c5a;
+  --focus: var(--hong);
+  --grain-opacity: 0.1;
+  --elev-sheet: 0 0 0 1px var(--line), 0 1px 2px rgb(110 23 62 / 0.06), 0 16px 40px -20px rgb(110 23 62 / 0.28);
+  --elev-over: 0 0 0 1px rgb(110 23 62 / 0.06), 0 28px 64px -24px rgb(110 23 62 / 0.4);
+  --elev-cover: 0 1px 2px rgb(110 23 62 / 0.08), 0 24px 48px -20px rgb(110 23 62 / 0.4);
+  --elev-hong: 0 10px 24px -10px rgb(168 37 95 / 0.6);
+  --motif-stroke: #e3a1bd;
+  --motif-fill: var(--rose-100);
+  --motif-grid: #eaafc7;
+  --motif-fold: var(--rose-100);
+  --motif-faint: 0.55;
+  --motif-soft: 0.9;
+  --motif-fold-shadow: -2px 2px 6px -3px rgb(110 23 62 / 0.25);
+  --sticker-shadow: 0 10px 22px -10px rgb(110 23 62 / 0.45);
   color-scheme: light;
 }
 
+/* Dark palette, following the OS. Same values as the block below. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #201b1c;
-    --sheet: #2a2425;
-    --subtle: #2a2425;
-    --ink: #f2ecea;
-    --ink-soft: #b9aeab;
-    --line: #423a3a;
-    --hong: #e79bbe;
-    --on-hong: #201b1c;
-    --cam: #e0a36a;
-    --cover: #3a2a31;
-    --right: #6ccb9f;
+    --bg: #161314;
+    --sheet: #221d1e;
+    --raised: #2d2728;
+    --sunken: #1f181c;
+    --cover: #4a2e3d;
+    --ink: #f4eeec;
+    --ink-soft: #c9aab8;
+    --line: #3d2c34;
+    --line-strong: #8a6b7a;
+    --hong: #f28dba;
+    --on-hong: #161314;
+    --hong-soft-text: #c9aab8;
+    --rose-50: #221820;
+    --rose-100: #2c1d27;
+    --rose-200: #3a2432;
+    --rose-300: #5a3a4a;
+    --rose-700: #e77faf;
+    --hong-glow: radial-gradient(120% 110% at 0% 0%, #4a2a3c 0%, #3a2432 50%, #2c1d27 100%);
+    --on-surface-hong: var(--ink);
+    --focus-on-hong: var(--hong);
+    --inverse-bg: var(--hong);
+    --inverse-fg: var(--on-hong);
+    --hl: color-mix(in srgb, #ff9ec6 30%, transparent);
+    --hl-band: color-mix(in srgb, #ff9ec6 45%, transparent);
+    --hl-edge: #ff9ec6;
+    --hl-stroke: #46202f;
+    --stroke-line: #a07e8e;
+    --spine: #c8577f;
+    --correct: #6ccb9f;
     --partial: #e6c350;
-    --miss: #ada8a6;
-    --hl: color-mix(in srgb, var(--cam) 24%, transparent);
-    --elev: 0 0 0 1px #423a3a;
-    --panel: 0 16px 40px rgb(0 0 0 / 0.5);
-    --book: 0 18px 40px rgb(0 0 0 / 0.4);
+    --pencil: #ada8a6;
+    --focus: var(--hong);
+    --grain-opacity: 0.14;
+    --elev-sheet: 0 0 0 1px var(--line), inset 0 1px 0 rgb(255 255 255 / 0.05);
+    --elev-over: 0 0 0 1px var(--line), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 28px 64px -16px rgb(0 0 0 / 0.7);
+    --elev-cover: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 48px -16px rgb(0 0 0 / 0.7);
+    --elev-hong: 0 10px 28px -10px rgb(242 141 186 / 0.45);
+    --motif-stroke: #7c4a62;
+    --motif-fill: #2c1d27;
+    --motif-grid: #5a3a4a;
+    --motif-fold: var(--rose-200);
+    --motif-faint: 0.6;
+    --motif-soft: 0.85;
+    --motif-fold-shadow: -2px 2px 6px -3px rgb(0 0 0 / 0.6);
+    --sticker-shadow: 0 10px 22px -8px rgb(0 0 0 / 0.7);
     color-scheme: dark;
   }
 }
 
-/* Same values as the block above, for an explicit choice in the account menu. */
-:root[data-theme="dark"] {
-  --paper: #201b1c;
-  --sheet: #2a2425;
-  --subtle: #2a2425;
-  --ink: #f2ecea;
-  --ink-soft: #b9aeab;
-  --line: #423a3a;
-  --hong: #e79bbe;
-  --on-hong: #201b1c;
-  --cam: #e0a36a;
-  --cover: #3a2a31;
-  --right: #6ccb9f;
+/* Dark palette, chosen in the account menu, and [data-tone="dark"] for a local switch. In the
+   evening the pink tile is a muted block; only its number and button stay bright. */
+:root[data-theme="dark"],
+[data-tone="dark"] {
+  --bg: #161314;
+  --sheet: #221d1e;
+  --raised: #2d2728;
+  --sunken: #1f181c;
+  --cover: #4a2e3d;
+  --ink: #f4eeec;
+  --ink-soft: #c9aab8;
+  --line: #3d2c34;
+  --line-strong: #8a6b7a;
+  --hong: #f28dba;
+  --on-hong: #161314;
+  --hong-soft-text: #c9aab8;
+  --rose-50: #221820;
+  --rose-100: #2c1d27;
+  --rose-200: #3a2432;
+  --rose-300: #5a3a4a;
+  --rose-700: #e77faf;
+  --hong-glow: radial-gradient(120% 110% at 0% 0%, #4a2a3c 0%, #3a2432 50%, #2c1d27 100%);
+  --on-surface-hong: var(--ink);
+  --focus-on-hong: var(--hong);
+  --inverse-bg: var(--hong); /* the evening tile is muted: its button stays bright */
+  --inverse-fg: var(--on-hong);
+  --hl: color-mix(in srgb, #ff9ec6 30%, transparent); /* full highlight: ≥ 5.61 on every dark surface */
+  --hl-band: color-mix(in srgb, #ff9ec6 45%, transparent); /* the thin band needs more: 5.55 on bg */
+  --hl-edge: #ff9ec6;
+  --hl-stroke: #46202f;
+  --stroke-line: #a07e8e;
+  --spine: #c8577f;
+  --correct: #6ccb9f;
   --partial: #e6c350;
-  --miss: #ada8a6;
-  --hl: color-mix(in srgb, var(--cam) 24%, transparent);
-  --elev: 0 0 0 1px #423a3a;
-  --panel: 0 16px 40px rgb(0 0 0 / 0.5);
-  --book: 0 18px 40px rgb(0 0 0 / 0.4);
+  --pencil: #ada8a6;
+  --focus: var(--hong);
+  --grain-opacity: 0.14;
+  --elev-sheet: 0 0 0 1px var(--line), inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --elev-over: 0 0 0 1px var(--line), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 28px 64px -16px rgb(0 0 0 / 0.7);
+  --elev-cover: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 48px -16px rgb(0 0 0 / 0.7);
+  --elev-hong: 0 10px 28px -10px rgb(242 141 186 / 0.45);
+  --motif-stroke: #7c4a62;
+  --motif-fill: #2c1d27;
+  --motif-grid: #5a3a4a;
+  --motif-fold: var(--rose-200);
+  --motif-faint: 0.6;
+  --motif-soft: 0.85;
+  --motif-fold-shadow: -2px 2px 6px -3px rgb(0 0 0 / 0.6);
+  --sticker-shadow: 0 10px 22px -8px rgb(0 0 0 / 0.7);
   color-scheme: dark;
+}
+
+/* Solid surfaces: the pink tile (Today, session done) and the landing's closing block. Its text
+   and focus colours are palette tokens, so a [data-tone] switch around it inherits the right ones. */
+[data-surface="hong"] {
+  background: var(--hong-glow);
+  color: var(--on-surface-hong);
+  --focus: var(--focus-on-hong);
+  position: relative;
+  isolation: isolate;
+}
+[data-surface="hong"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: -1;
+  background-image: var(--grain);
+  opacity: var(--grain-opacity);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+[data-surface="rose"] {
+  background: var(--rose-200);
+  color: var(--ink);
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes hl-sweep {
+  from {
+    background-size: 0% 38%;
+  }
+  to {
+    background-size: 100% 38%;
+  }
 }
 
 /* Written values (label values, pencil notes, dates): the body face in italic, not a
@@ -194,24 +421,25 @@
   }
   html {
     @apply font-sans;
+    /* The sticky header never hides the focused element (WCAG 2.4.11). */
+    scroll-padding-top: calc(var(--header-h) + 8px);
   }
   body {
-    @apply bg-paper text-ink text-body;
+    @apply bg-bg text-ink text-body;
   }
   h1,
   h2,
   h3 {
     @apply font-display;
   }
-  /* Focus is always visible (§8): 2px hồng ring, 2px away. */
+  /* Focus is always visible: a 2px ring, 2px away; on a pink surface it turns white. */
   :focus-visible {
-    outline: 2px solid var(--hong);
+    outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
   a {
     @apply text-ink underline decoration-line underline-offset-4 hover:decoration-ink;
   }
-  /* The one active motion is the grade result opening; everything respects reduced motion. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -220,6 +448,104 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Motifs (design system v3.1 §4.10; components/motifs.tsx). Decoration only: aria-hidden in the
+   markup, never behind text, hidden in print. One stroke, two opacities, one pink family. In the
+   components layer, so a class passed to a motif (hidden, z-2...) still wins. */
+@layer components {
+  .motif {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .motif-grid {
+    width: 320px;
+    height: 240px;
+    background-image:
+      linear-gradient(to right, var(--motif-grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--motif-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: var(--motif-faint);
+  }
+  .motif-grid.tl {
+    top: 0;
+    left: 0;
+    mask-image: radial-gradient(100% 100% at 0 0, #000, transparent 70%);
+  }
+  .motif-grid.tr {
+    top: 0;
+    right: 0;
+    mask-image: radial-gradient(100% 100% at 100% 0, #000, transparent 70%);
+  }
+  .motif-grid.bl {
+    bottom: 0;
+    left: 0;
+    mask-image: radial-gradient(100% 100% at 0 100%, #000, transparent 70%);
+  }
+  .motif-grid.br {
+    right: 0;
+    bottom: 0;
+    mask-image: radial-gradient(100% 100% at 100% 100%, #000, transparent 70%);
+  }
+  .motif-fold {
+    top: 0;
+    right: 0;
+    width: 44px;
+    height: 44px;
+    border-top-right-radius: var(--radius-sheet);
+    border-bottom-left-radius: 10px;
+    /* the corner shows what lies under the sheet: the cover, by default */
+    --fold-under: var(--cover);
+    background: linear-gradient(225deg, var(--fold-under) 0 50%, var(--motif-fold) 50% 100%);
+    box-shadow: var(--motif-fold-shadow);
+  }
+  .sticker {
+    --sticker-ring: var(--bg); /* the ring takes the colour of the surface under the sticker */
+    position: absolute;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 999px;
+    background: var(--sheet);
+    color: var(--hong);
+    box-shadow: 0 0 0 4px var(--sticker-ring), var(--sticker-shadow);
+    transform: rotate(var(--sticker-tilt));
+    pointer-events: none;
+  }
+  .sticker svg {
+    width: 28px;
+    height: 28px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .motif-float {
+      animation: motif-float 6s ease-in-out infinite alternate;
+    }
+    .motif-float.slow {
+      animation-duration: 9s;
+    }
+  }
+  @keyframes motif-float {
+    from {
+      translate: 0 0;
+    }
+    to {
+      translate: 0 -4px;
+    }
+  }
+  @media (max-width: 900px) {
+    .motif-wide {
+      display: none;
+    }
+  }
+  @media print {
+    .motif,
+    .sticker {
+      display: none;
     }
   }
 }
