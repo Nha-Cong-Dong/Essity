@@ -345,6 +345,10 @@
             "title": "Created At",
             "type": "string"
           },
+          "days_until_exam": {
+            "title": "Days Until Exam",
+            "type": "integer"
+          },
           "exam_date": {
             "format": "date",
             "title": "Exam Date",
@@ -364,6 +368,7 @@
           "id",
           "name",
           "exam_date",
+          "days_until_exam",
           "created_at"
         ],
         "title": "SubjectOut",

@@ -416,6 +416,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Days Until Exam */
+            days_until_exam: number;
             /**
              * Exam Date
              * Format: date

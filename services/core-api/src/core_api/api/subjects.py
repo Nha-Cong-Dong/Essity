@@ -28,6 +28,7 @@ from core_api.db.models import Exam, Subject, User
 from core_api.db.session import DbSession
 from core_api.domain.subjects import (
     ExamDateNotInFutureError,
+    days_until_exam,
     normalize_subject_name,
     validate_exam_date,
 )
@@ -92,12 +93,20 @@ class SubjectOut(BaseModel):
     id: uuid.UUID
     name: str
     exam_date: date
+    # "còn N ngày" (DESIGN §6.8), in the user's learning days (T1.20 plan K3).
+    days_until_exam: int
     created_at: datetime
 
 
-def _out(subject: Subject, exam: Exam) -> SubjectOut:
+def _out(subject: Subject, exam: Exam, user: User) -> SubjectOut:
     return SubjectOut(
-        id=subject.id, name=subject.name, exam_date=exam.exam_date, created_at=subject.created_at
+        id=subject.id,
+        name=subject.name,
+        exam_date=exam.exam_date,
+        days_until_exam=days_until_exam(
+            exam.exam_date, datetime.now(UTC), ZoneInfo(user.timezone), user.day_start_hour
+        ),
+        created_at=subject.created_at,
     )
 
 
@@ -116,12 +125,12 @@ def _check_exam_date(exam_date: date, user: User) -> None:
 def create_subject(body: SubjectIn, user: VerifiedUser, session: DbSession) -> SubjectOut:
     _check_exam_date(body.exam_date, user)
     subject, exam = SubjectRepository(session, user.id).create_with_exam(body.name, body.exam_date)
-    return _out(subject, exam)
+    return _out(subject, exam, user)
 
 
 @router.get("/subjects")
 def list_subjects(user: VerifiedUser, session: DbSession) -> list[SubjectOut]:
-    return [_out(s, e) for s, e in SubjectRepository(session, user.id).list_with_exams()]
+    return [_out(s, e, user) for s, e in SubjectRepository(session, user.id).list_with_exams()]
 
 
 @router.patch("/subjects/{subject_id}")
@@ -136,4 +145,4 @@ def change_subject(
         _check_exam_date(body.exam_date, user)
     updated = subjects.update(subject_id, name=body.name, exam_date=body.exam_date)
     assert updated is not None  # found above, in the same transaction
-    return _out(*updated)
+    return _out(*updated, user)

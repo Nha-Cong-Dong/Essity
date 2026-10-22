@@ -46,7 +46,7 @@ def test_ac1_create_returns_the_subject(client: TestClient, db_session: Session)
     response = create(client, headers, "Mạng máy tính", in_days(user, 55))
     assert response.status_code == 201
     body = response.json()
-    assert set(body) == {"id", "name", "exam_date", "created_at"}
+    assert set(body) == {"id", "name", "exam_date", "days_until_exam", "created_at"}
     assert (body["name"], body["exam_date"]) == ("Mạng máy tính", in_days(user, 55))
     uuid.UUID(body["id"])
 

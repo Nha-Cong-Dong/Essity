@@ -18,6 +18,12 @@ def validate_exam_date(exam_date: date, now: datetime, tz: ZoneInfo, day_start_h
         raise ExamDateNotInFutureError(exam_date)
 
 
+def days_until_exam(exam_date: date, now: datetime, tz: ZoneInfo, day_start_hour: int) -> int:
+    """Learning days from today to the exam: 1 for tomorrow, 0 on the day, below 0 once it is
+    over. The same "today" as validate_exam_date, so the screen and the API agree at 04:00."""
+    return (exam_date - learning_day(now, tz, day_start_hour)).days
+
+
 def normalize_subject_name(name: str) -> str:
     """Stripped and composed (NFC): Vietnamese typed as combining marks (Unikey's "Unicode tổ
     hợp") is stored the same as precomposed text."""
