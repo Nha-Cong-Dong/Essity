@@ -47,6 +47,8 @@ Thumbs.db
 # Claude Code: only the shared settings are tracked; the agent loop and personal settings stay local.
 /.claude/*
 !/.claude/settings.json
+**/.claude/settings.local.json
+/CLAUDE.local.md
 
 # Working files of design skills (taste-skill)
 .taste-skill/
