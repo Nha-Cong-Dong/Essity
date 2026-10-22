@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 let me: Record<string, unknown> | null = null;
 vi.mock("@/lib/session", () => ({
   getSession: async () => me,
+  getPendingEmail: async () => null,
   requireVerifiedSession: async () => {
     if (me === null) throw new Error("redirect:/login");
     if (!me.email_verified) throw new Error("redirect:/check-email");
@@ -24,6 +25,7 @@ vi.mock("next/server", () => ({ connection: async () => undefined }));
 const { LandingRedirect } = await import("@/components/landing-redirect");
 const { RedirectIfSignedIn } = await import("@/components/auth/redirect-if-signed-in");
 const { requireBaselineToEnter } = await import("@/lib/onboarding");
+const { SentTo } = await import("@/components/auth/sent-to");
 
 const ME = { email_verified: true, needs_baseline: true, has_subjects: false };
 
@@ -73,5 +75,17 @@ describe("/today stays put (plan K4)", () => {
   it("app/today/page.tsx does not use landingFor or redirect", () => {
     const source = readFileSync(path.resolve(import.meta.dirname, "../app/today/page.tsx"), "utf-8");
     expect(source).not.toMatch(/landingFor|requireBaselineToEnter|\bredirect\(/);
+  });
+});
+
+describe("/check-email once verified (flow-expert 23/10)", () => {
+  // Red when: /check-email sends a verified account straight to /today, past the baseline (US-11 AC1).
+  it.each([
+    [{ needs_baseline: true }, "/onboarding"],
+    [{ needs_baseline: false, has_subjects: false }, "/subjects/new"],
+    [{ needs_baseline: false, has_subjects: true }, "/today"],
+  ])("with %j goes to %s", async (over, to) => {
+    me = { ...ME, email: "a@example.com", ...over };
+    await expect(SentTo()).rejects.toThrow(`redirect:${to}`);
   });
 });

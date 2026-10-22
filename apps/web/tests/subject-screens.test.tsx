@@ -307,4 +307,11 @@ describe("UploadStep (US-01 AC7, plan K5)", () => {
     expect(document.querySelector('input[type="file"]')).toBeNull();
     expect(document.querySelector('[aria-disabled="true"]')).not.toBeNull();
   });
+
+  // Red when: the disabled zone tells the user to drop or pick a file it cannot take (flow-expert
+  // 23/10, the same kind of untrue sentence as /today's before plan K16).
+  it("US-01 AC7: asks for no action the page cannot do", () => {
+    expect(screen.queryByText(/Thả file|bấm để chọn/)).toBeNull();
+    expect(screen.getByText("Tải tài liệu sẽ có ở bản sau.")).toBeTruthy();
+  });
 });

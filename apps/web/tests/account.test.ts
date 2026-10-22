@@ -132,6 +132,15 @@ describe("signOut (review cdbaa25 #1)", () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
+  // Red when: signOut follows whatever `next` the logout route carries (review plan R3).
+  it("turns a next it does not know into /login", async () => {
+    const assign = vi.fn();
+
+    await signOut({ post: async () => ({ status: 200, data: { next: "//evil.example" } }), assign });
+
+    expect(assign).toHaveBeenCalledWith("/login");
+  });
+
   it("goes where web says (F2: /register after \"Sai email?\")", async () => {
     const assign = vi.fn();
 
