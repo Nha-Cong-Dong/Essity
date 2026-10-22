@@ -12,6 +12,8 @@ export type WebConfig = {
   serviceToken: string | undefined;
   /** Proxies in front of web that append to X-Forwarded-For; 0 = web is reached directly. */
   trustedProxyHops: number;
+  /** core-api, never exposed to the internet (ARCH §3); only the web server calls it. */
+  coreApiUrl: string;
 };
 
 type Env = Record<string, string | undefined>;
@@ -41,5 +43,10 @@ export function webConfig(env: Env = process.env): WebConfig {
     throw new WebConfigError("WEB_TRUSTED_PROXY_HOPS needs WEB_TO_CORE_TOKEN");
   }
 
-  return { origin: new URL(origin).origin, serviceToken, trustedProxyHops };
+  // R04: required in production, where 127.0.0.1 would silently be a different machine.
+  const coreApiUrl = env.CORE_API_URL || (production ? undefined : "http://127.0.0.1:8000");
+  if (coreApiUrl === undefined) throw new WebConfigError("CORE_API_URL is required in production");
+  if (!/^https?:\/\//.test(coreApiUrl)) throw new WebConfigError("CORE_API_URL must be an http(s) URL");
+
+  return { origin: new URL(origin).origin, serviceToken, trustedProxyHops, coreApiUrl };
 }

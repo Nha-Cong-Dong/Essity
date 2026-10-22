@@ -4,7 +4,7 @@ import { type CoreClient, createCoreClient } from "@essity/api-client";
 
 import { clientIpFrom } from "@/lib/client-ip";
 import { webConfig } from "@/lib/config";
-import { CORE_API_URL, coreFetch } from "@/lib/core";
+import { coreFetch } from "@/lib/core";
 
 export type { CoreClient, components } from "@essity/api-client";
 
@@ -23,7 +23,7 @@ export type CoreAuth = {
 
 export function coreClient({ token, clientIp }: CoreAuth = {}): CoreClient {
   return createCoreClient({
-    baseUrl: CORE_API_URL,
+    baseUrl: webConfig().coreApiUrl,
     fetch: async (request: Request) => {
       const { serviceToken } = webConfig();
       // Built from scratch: nothing the browser sent is passed on.
