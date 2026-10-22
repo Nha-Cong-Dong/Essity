@@ -21,7 +21,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("next/server", () => ({ connection: async () => undefined }));
 
-const { default: Home } = await import("@/app/page");
+const { LandingRedirect } = await import("@/components/landing-redirect");
 const { RedirectIfSignedIn } = await import("@/components/auth/redirect-if-signed-in");
 const { requireBaselineToEnter } = await import("@/lib/onboarding");
 
@@ -38,7 +38,7 @@ describe("entry points follow landingFor (plan K4)", () => {
     [{ needs_baseline: false, has_subjects: true }, "/today"],
   ])("US-11 AC1, AC2: / with %j goes to %s", async (over, to) => {
     me = { ...ME, ...over };
-    await expect(Home()).rejects.toThrow(`redirect:${to}`);
+    await expect(LandingRedirect()).rejects.toThrow(`redirect:${to}`);
   });
 
   it("/login while signed in goes where landingFor says", async () => {

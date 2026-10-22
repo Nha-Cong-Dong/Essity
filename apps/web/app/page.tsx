@@ -1,6 +1,12 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
-// "/" is "Phiên hôm nay" (DESIGN.md §6.3); the proxy sends a visitor without a session to /login.
+import { LandingRedirect } from "@/components/landing-redirect";
+
+// The proxy sends a visitor without a session to /login before this runs.
 export default function Home() {
-  redirect("/today");
+  return (
+    <Suspense fallback={null}>
+      <LandingRedirect />
+    </Suspense>
+  );
 }

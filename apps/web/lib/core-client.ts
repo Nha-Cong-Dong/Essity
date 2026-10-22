@@ -6,7 +6,7 @@ import { clientIpFrom } from "@/lib/client-ip";
 import { webConfig } from "@/lib/config";
 import { CORE_API_URL, coreFetch } from "@/lib/core";
 
-export type { components } from "@essity/api-client";
+export type { CoreClient, components } from "@essity/api-client";
 
 // The only file that creates a core-api client (a test checks): every call goes through
 // coreFetch, so none is cached or left without a timeout (W3).

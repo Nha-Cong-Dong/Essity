@@ -90,7 +90,8 @@ describe("source rules", () => {
     const unchecked = pages.filter((file) => {
       // /design-preview has a gate of its own in proxy.ts, before any cookie (lib/design-preview.ts).
       if (PUBLIC_PAGES.has(route(file)) || route(file) === "/" || isDesignPreview(route(file))) return false;
-      return !/\brequire(Verified)?Session\(/.test(read(file));
+      // requireBaselineToEnter (lib/onboarding.ts) starts with requireVerifiedSession.
+      return !/\b(require(Verified)?Session|requireBaselineToEnter)\(/.test(read(file));
     });
     expect(pages.length).toBeGreaterThan(2);
     expect(unchecked).toEqual([]);

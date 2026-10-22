@@ -2,32 +2,38 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { BaselineForm } from "@/components/baseline/baseline-form";
+import { PageFold } from "@/components/motifs";
+import { Marker } from "@/components/notebook";
 import { AuthShell } from "@/components/shells";
-import { requireVerifiedSession } from "@/lib/session";
+import { Sheet } from "@/components/ui/sheet";
+import { requireBaselineToEnter } from "@/lib/onboarding";
 
 export const metadata: Metadata = { title: "Điểm xuất phát · Essity" };
 
-// Placeholder for the baseline screen (T1.18 builds it, DESIGN.md §6.2): where "Ghi điểm
-// xuất phát" leads after verifying, so that link does not change when T1.18 lands.
+// T1.18, DESIGN.md §6.2: the baseline, once after verifying and before the first subject. A second
+// visit after "Nhập sau" shows this same screen (US-11 AC2, DESIGN §10 #16).
 async function Onboarding() {
   await connection();
-  await requireVerifiedSession();
-  return (
-    <div className="flex max-w-[640px] flex-col gap-6">
-      <h1 className="m-0 font-display text-title">Trước khi bắt đầu, ghi lại điểm xuất phát</h1>
-      <a href="/today" className="font-medium text-ink underline decoration-ink-soft underline-offset-4">
-        Nhập sau
-      </a>
-    </div>
-  );
+  await requireBaselineToEnter();
+  return <BaselineForm />;
 }
 
 export default function OnboardingPage() {
   return (
     <AuthShell>
-      <Suspense fallback={null}>
-        <Onboarding />
-      </Suspense>
+      <Sheet className="relative w-full max-w-160" aria-labelledby="onboarding-title">
+        <PageFold />
+        <h1 id="onboarding-title" className="m-0 font-display text-title">
+          <Marker>Trước khi bắt đầu, ghi lại điểm xuất phát</Marker>
+        </h1>
+        <p className="mt-3.5 mb-0 max-w-[56ch] text-read text-ink-soft">
+          Cuối học kỳ, app sẽ so sánh với hai con số này để cho bạn biết cách học mới có hiệu quả không.
+        </p>
+        <Suspense fallback={<div aria-busy="true" className="mt-8 h-72 rounded-control bg-sunken" />}>
+          <Onboarding />
+        </Suspense>
+      </Sheet>
     </AuthShell>
   );
 }
