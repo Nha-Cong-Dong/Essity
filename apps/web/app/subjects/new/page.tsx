@@ -7,6 +7,7 @@ import { AUTH_LINK } from "@/components/auth/fields";
 import { NhanVo, NotebookCover } from "@/components/notebook";
 import { AppShell } from "@/components/shells";
 import { NewSubjectForm } from "@/components/subjects/new-subject-form";
+import { exampleFor } from "@/lib/exam-date";
 import { requireVerifiedSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Tạo môn · Essity" };
@@ -14,8 +15,9 @@ export const metadata: Metadata = { title: "Tạo môn · Essity" };
 // T1.20, DESIGN.md §6.8: a new subject is a notebook cover with a label of two fields (US-01 AC1).
 async function NewSubject() {
   await connection();
-  await requireVerifiedSession();
-  return <NewSubjectForm />;
+  const me = await requireVerifiedSession();
+  // The example follows the user's learning day, not the server's clock (risk register R24).
+  return <NewSubjectForm example={exampleFor(new Date(), me.timezone, me.day_start_hour)} />;
 }
 
 export default function NewSubjectPage() {

@@ -11,7 +11,7 @@ import { SUBJECT_MESSAGES } from "@/lib/subject-copy";
 import { isSubjectId } from "@/lib/subject-id";
 
 // T1.20, DESIGN.md §6.8: "Môn mới" with a name and an exam date, then the upload step (US-01 AC7).
-export function NewSubjectForm() {
+export function NewSubjectForm({ example }: { example: string }) {
   const [name, setName] = useState("");
   const [examDate, setExamDate] = useState("");
   const [errors, setErrors] = useState<SubjectErrors>({});
@@ -43,6 +43,7 @@ export function NewSubjectForm() {
       <SubjectFields
         name={name}
         examDate={examDate}
+        example={example}
         errors={errors}
         onName={setName}
         onExamDate={setExamDate}

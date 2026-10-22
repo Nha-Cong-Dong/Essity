@@ -29,7 +29,7 @@ export async function subjectForUpload(id: string): Promise<Subject> {
  * The list part of /subjects (T1.20, DESIGN.md §6.8), for a page that has checked the session. One
  * primary button: "Tạo môn" above the list, or in the empty state.
  */
-export async function Subjects() {
+export async function Subjects({ example }: { example: string }) {
   let subjects: Subject[];
   try {
     subjects = await listSubjects();
@@ -63,7 +63,7 @@ export async function Subjects() {
           </Button>
         </div>
       )}
-      <SubjectList subjects={listed} />
+      <SubjectList subjects={listed} example={example} />
     </>
   );
 }
