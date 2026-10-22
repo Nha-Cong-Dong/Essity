@@ -1,6 +1,7 @@
 """Signed-in sessions (ADR-0014, ADR-0020). Not scoped to a user: the token in the request is
 how the user is found in the first place (see tests/test_repository_rule.py)."""
 
+import unicodedata
 import uuid
 from datetime import datetime
 
@@ -12,6 +13,16 @@ from core_api.domain.auth.sessions import session_expiry, session_is_active
 from core_api.domain.auth.tokens import hash_token, new_token
 
 USER_AGENT_MAX = 256
+
+
+def _user_agent(value: str | None) -> str | None:
+    # The HTTP server refuses control characters in a header, but a change of server or proxy
+    # must not let NUL reach a text column; the rest is dropped too, never refused, as the header
+    # is not something the person typed.
+    if value is None:
+        return None
+    kept = "".join(c for c in value if unicodedata.category(c) != "Cc")[:USER_AGENT_MAX]
+    return kept or None
 
 
 class AuthSessionRepository:
@@ -30,7 +41,7 @@ class AuthSessionRepository:
             created_at=now,
             last_seen_at=now,
             expires_at=session_expiry(now, now),
-            user_agent=user_agent[:USER_AGENT_MAX] if user_agent else None,
+            user_agent=_user_agent(user_agent),
         )
         self.session.add(row)
         self.session.flush()
