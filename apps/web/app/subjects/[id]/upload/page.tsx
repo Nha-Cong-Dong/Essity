@@ -1,0 +1,34 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { connection } from "next/server";
+import { Suspense } from "react";
+
+import { AccountSlot } from "@/components/account-slot";
+import { AppShell } from "@/components/shells";
+import { UploadStep } from "@/components/subjects/upload-step";
+import { requireVerifiedSession } from "@/lib/session";
+import { findSubject } from "@/lib/subjects";
+
+export const metadata: Metadata = { title: "Tải tài liệu · Essity" };
+
+// T1.20, US-01 AC7 (plan K5): the step after "Tạo môn", at its own URL so a reload keeps it and
+// does not create the subject twice. Someone else's subject, or an id that is not one, is a 404.
+async function Upload({ params }: { params: Promise<{ id: string }> }) {
+  await connection();
+  await requireVerifiedSession();
+  const subject = await findSubject((await params).id);
+  if (subject === null) notFound();
+  return <UploadStep name={subject.name} />;
+}
+
+export default function UploadPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <AppShell current="/subjects" account={<AccountSlot />}>
+      <div className="flex justify-center">
+        <Suspense fallback={<div aria-busy="true" className="h-80 w-full max-w-220 rounded-sheet bg-sunken" />}>
+          <Upload params={params} />
+        </Suspense>
+      </div>
+    </AppShell>
+  );
+}

@@ -10,6 +10,8 @@ describe("parseExamDate (plan K10)", () => {
     ["1/2/2027", "2027-02-01"],
     [" 05/01/2027 ", "2027-01-05"],
     ["29/02/2028", "2028-02-29"], // a leap year
+    ["15-12-2026", "2026-12-15"], // dash or dot accepted too (plan K10, flow-expert)
+    ["15.12.2026", "2026-12-15"],
   ])("%j is %s", (typed, iso) => {
     expect(parseExamDate(typed)).toEqual({ value: iso });
   });
@@ -23,8 +25,8 @@ describe("parseExamDate (plan K10)", () => {
     "0/12/2026",
     "15/13/2026",
     "15/12/26", // two-digit year
-    "15-12-2026",
-    "15.12.2026",
+    "15/12", // no year: the sentence's example shows one (plan K10)
+    "15/12-2026", // mixed separators
     "2026-12-15",
     "15 / 12 / 2026",
     "15/12/2026x",

@@ -104,22 +104,59 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
     expect(sent).toHaveLength(0);
   });
 
-  // Red when: a browser without showPicker (jsdom has none) breaks the form.
-  it("plan K10: the calendar button without showPicker leaves the typed field working", () => {
-    fireEvent.click(screen.getByRole("button", { name: "Chọn ngày trên lịch" }));
+  // Red when: a browser without showPicker (jsdom has none) shows a button that does nothing.
+  it("plan K10: without showPicker there is no calendar button, and the typed field works", () => {
+    expect(screen.queryByRole("button", { name: "Chọn ngày trên lịch" })).toBeNull();
     fireEvent.change(date(), { target: { value: "15/12/2026" } });
-
     expect(date().value).toBe("15/12/2026");
   });
+});
 
-  it("plan K10: a date picked on the calendar is written day/month/year", () => {
+describe("NewSubjectForm calendar (plan K10, where showPicker exists)", () => {
+  const showPicker = vi.fn();
+  beforeEach(() => {
+    showPicker.mockReset();
+    Object.defineProperty(HTMLInputElement.prototype, "showPicker", { value: showPicker, configurable: true });
+    render(<NewSubjectForm />);
+  });
+  afterEach(() => {
+    delete (HTMLInputElement.prototype as { showPicker?: unknown }).showPicker;
+  });
+
+  it("the button opens the calendar of a hidden, unnamed date input", () => {
+    fireEvent.click(screen.getByRole("button", { name: "Chọn ngày trên lịch" }));
+
+    expect(showPicker).toHaveBeenCalledTimes(1);
     const picker = document.querySelector('input[type="date"]') as HTMLInputElement;
     expect(picker.getAttribute("aria-hidden")).toBe("true");
     expect(picker.tabIndex).toBe(-1);
+    expect(picker.hasAttribute("name")).toBe(false); // the text field is the only value sent
+    expect(picker.hasAttribute("min")).toBe(false); // the learning day, not the clock, decides
+  });
+
+  it("a picked date is written day/month/year and focus returns to the field", () => {
+    const picker = document.querySelector('input[type="date"]') as HTMLInputElement;
 
     fireEvent.change(picker, { target: { value: "2026-12-15" } });
 
     expect(date().value).toBe("15/12/2026");
+    expect(document.activeElement).toBe(date());
+  });
+
+  it("a typed date opens the calendar on that date", () => {
+    fireEvent.change(date(), { target: { value: "15/12/2026" } });
+
+    expect((document.querySelector('input[type="date"]') as HTMLInputElement).value).toBe("2026-12-15");
+  });
+
+  it("a calendar that refuses to open sends focus back to the field, with no error shown", () => {
+    showPicker.mockImplementation(() => {
+      throw new DOMException("no", "NotAllowedError");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Chọn ngày trên lịch" }));
+
+    expect(document.activeElement).toBe(date());
   });
 });
 
@@ -134,7 +171,8 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
   it("no subject yet: DESIGN.md §6.8's empty state with a way to create one", () => {
     render(<SubjectList subjects={[]} />);
     expect(screen.getByText("Chưa có môn nào.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Tạo môn" }).getAttribute("href")).toBe("/subjects/new");
+    // The project's link-as-button (Button render={<a/>}), as on the verify-email screen.
+    expect(screen.getByText("Tạo môn").closest("a")?.getAttribute("href")).toBe("/subjects/new");
   });
 
   it("plan K2: \"Sửa\" edits in place and sends only what changed, then says \"Đã lưu.\"", async () => {
