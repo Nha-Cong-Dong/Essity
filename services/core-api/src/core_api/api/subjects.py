@@ -28,6 +28,7 @@ from core_api.db.models import Exam, Subject, User
 from core_api.db.session import DbSession
 from core_api.domain.subjects import (
     ExamDateNotInFutureError,
+    ExamDateTooFarError,
     days_until_exam,
     normalize_subject_name,
     validate_exam_date,
@@ -116,6 +117,10 @@ def _check_exam_date(exam_date: date, user: User, now: datetime) -> None:
     except ExamDateNotInFutureError:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="exam_date_not_in_future"
+        ) from None
+    except ExamDateTooFarError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="exam_date_too_far"
         ) from None
 
 

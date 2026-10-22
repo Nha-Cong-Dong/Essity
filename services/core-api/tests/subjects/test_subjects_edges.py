@@ -87,7 +87,7 @@ def test_b12_patch_name_is_normalized_like_create(client: TestClient, db_session
 
 def test_malformed_unicode_name_is_422_not_500(client: TestClient, db_session: Session) -> None:
     _, headers = signed_in(db_session)
-    body = b'{"name": "a\\ud800b", "exam_date": "2099-01-01"}'
+    body = b'{"name": "a\\ud800b", "exam_date": "2027-01-01"}'
     response = client.post(
         "/v1/subjects", content=body, headers={**headers, "content-type": "application/json"}
     )
@@ -97,9 +97,9 @@ def test_malformed_unicode_name_is_422_not_500(client: TestClient, db_session: S
 def test_malformed_unicode_name_in_patch_is_422_not_500(
     client: TestClient, db_session: Session
 ) -> None:
-    _, headers = signed_in(db_session)
+    user, headers = signed_in(db_session)
     subject_id = client.post(
-        "/v1/subjects", json={"name": "Mạng", "exam_date": "2099-01-01"}, headers=headers
+        "/v1/subjects", json={"name": "Mạng", "exam_date": in_days(user, 30)}, headers=headers
     ).json()["id"]
     body = b'{"name": "a\\ud800b"}'
     response = client.patch(
@@ -141,12 +141,12 @@ def test_b21_patch_number_is_not_read_as_a_timestamp(
 
 @pytest.mark.parametrize(
     ("exam_date", "status"),
-    [("9999-12-31", 201), ("0001-01-01", 422), ("10000-01-01", 422), ("2099-13-01", 422)],
+    [("9999-12-31", 422), ("0001-01-01", 422), ("10000-01-01", 422), ("2099-13-01", 422)],
 )
 def test_exam_date_extremes_never_give_a_500(
     client: TestClient, db_session: Session, exam_date: str, status: int
 ) -> None:
-    """The range of `date`: no upper limit in M1 (B13), no crash at either end."""
+    """The range of `date`: refused at both ends (the far one by plan K17's cap), never a crash."""
     _, headers = signed_in(db_session)
     assert create(client, headers, "Mạng máy tính", exam_date).status_code == status
 
@@ -275,14 +275,14 @@ def test_control_characters_in_a_name_are_422_not_500(
     client: TestClient, db_session: Session, name: str, method: str
 ) -> None:
     """Red if `_name` lets control characters through: Postgres text refuses NUL (a 500)."""
-    _, headers = signed_in(db_session)
+    user, headers = signed_in(db_session)
     if method == "POST":
         response = client.post(
-            "/v1/subjects", json={"name": name, "exam_date": "2099-01-01"}, headers=headers
+            "/v1/subjects", json={"name": name, "exam_date": in_days(user, 30)}, headers=headers
         )
     else:
         subject_id = client.post(
-            "/v1/subjects", json={"name": "Mạng", "exam_date": "2099-01-01"}, headers=headers
+            "/v1/subjects", json={"name": "Mạng", "exam_date": in_days(user, 30)}, headers=headers
         ).json()["id"]
         response = client.patch(f"/v1/subjects/{subject_id}", json={"name": name}, headers=headers)
     assert response.status_code == 422
@@ -294,8 +294,8 @@ def test_a_name_that_shows_as_nothing_is_422(
     client: TestClient, db_session: Session, name: str
 ) -> None:
     """Red if a name of only invisible characters passes: the subject list would show a blank."""
-    _, headers = signed_in(db_session)
-    body = {"name": name, "exam_date": "2099-01-01"}
+    user, headers = signed_in(db_session)
+    body = {"name": name, "exam_date": in_days(user, 30)}
     response = client.post("/v1/subjects", json=body, headers=headers)
     assert response.status_code == 422
 
@@ -304,6 +304,6 @@ def test_a_name_with_a_joiner_inside_visible_text_is_kept(
     client: TestClient, db_session: Session
 ) -> None:
     """Red if format characters are refused outright: they are only a problem when alone."""
-    _, headers = signed_in(db_session)
-    body = {"name": "Mạng‍máy", "exam_date": "2099-01-01"}
+    user, headers = signed_in(db_session)
+    body = {"name": "Mạng‍máy", "exam_date": in_days(user, 30)}
     assert client.post("/v1/subjects", json=body, headers=headers).status_code == 201

@@ -10,7 +10,9 @@ from hypothesis import strategies as st
 
 from core_api.domain.learning_day import learning_day
 from core_api.domain.subjects import (
+    MAX_DAYS_AHEAD,
     ExamDateNotInFutureError,
+    ExamDateTooFarError,
     normalize_subject_name,
     validate_exam_date,
 )
@@ -53,6 +55,27 @@ def test_ac2_uses_the_users_time_zone_and_day_start() -> None:
     validate_exam_date(date(2026, 10, 22), now, ZoneInfo("UTC"), 4)
     # The same instant with a day starting at 06:00 is still the 21st in Ho Chi Minh City.
     validate_exam_date(date(2026, 10, 22), now, HCM, 6)
+
+
+def test_k17_two_years_ahead_is_the_last_accepted_day() -> None:
+    now = at("2026-10-21T20:00")
+    assert MAX_DAYS_AHEAD == 730
+    validate_exam_date(date(2026, 10, 21) + timedelta(days=730), now, HCM, 4)
+    with pytest.raises(ExamDateTooFarError):
+        validate_exam_date(date(2026, 10, 21) + timedelta(days=731), now, HCM, 4)
+
+
+def test_k17_a_mistyped_year_is_refused() -> None:
+    with pytest.raises(ExamDateTooFarError):
+        validate_exam_date(date(2062, 12, 15), at("2026-10-21T20:00"), HCM, 4)
+
+
+def test_k17_the_cap_counts_from_the_learning_day() -> None:
+    # 03:59 on the 22nd is still the 21st's learning day: day 730 counts from the 21st.
+    now = at("2026-10-22T03:59")
+    validate_exam_date(date(2026, 10, 21) + timedelta(days=730), now, HCM, 4)
+    with pytest.raises(ExamDateTooFarError):
+        validate_exam_date(date(2026, 10, 21) + timedelta(days=731), now, HCM, 4)
 
 
 @given(
