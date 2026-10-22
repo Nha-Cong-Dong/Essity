@@ -1,4 +1,5 @@
 import ipaddress
+from email.utils import parseaddr
 from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlsplit
@@ -21,7 +22,7 @@ def _is_dev(info: ValidationInfo) -> bool:
 
 def _is_loopback(host: str) -> bool:
     """localhost, 127.0.0.0/8, ::1 or 0.0.0.0: a value that only works on one machine."""
-    host = host.strip("[]").lower()
+    host = host.strip("[]").lower().rstrip(".")
     if host == "localhost" or host.endswith(".localhost"):
         return True
     try:
@@ -102,19 +103,19 @@ class Settings(DatabaseSettings):
             raise ValueError("smtp_host must be a real mail server outside local and test")
         return host
 
-    # On smtp_starttls, declared after smtp_username: a field validator sees only the fields
-    # before it, and a model validator would print the input, secrets included (review P2).
+    # Outside local and test, always: verification and reset emails carry one-time links, and a
+    # login would otherwise go in clear (review 8489155; Mailpit from .env.example has no TLS).
     @field_validator("smtp_starttls")
     @classmethod
-    def _login_needs_starttls(cls, starttls: bool, info: ValidationInfo) -> bool:
-        if not _is_dev(info) and info.data.get("smtp_username") and not starttls:
-            raise ValueError("smtp_starttls must be on when an SMTP login is set outside local")
+    def _starttls_fits_environment(cls, starttls: bool, info: ValidationInfo) -> bool:
+        if not _is_dev(info) and not starttls:
+            raise ValueError("smtp_starttls must be on outside local and test")
         return starttls
 
     @field_validator("email_from")
     @classmethod
     def _email_from_fits_environment(cls, address: str, info: ValidationInfo) -> str:
-        domain = address.rpartition("@")[2]
+        domain = parseaddr(address)[1].rpartition("@")[2]  # "Essity <a@b>" and "a@b" alike
         if not _is_dev(info) and _is_loopback(domain):
             raise ValueError("email_from must be on a real domain outside local and test")
         return address
@@ -124,7 +125,7 @@ class Settings(DatabaseSettings):
     def _web_url_fits_environment(cls, url: str, info: ValidationInfo) -> str:
         if _is_dev(info):
             return url or LOCAL_WEB_BASE_URL
-        if not url.startswith("https://"):
+        if not url.startswith("https://") or _is_loopback(urlsplit(url).hostname or ""):
             raise ValueError("web_base_url must be set to an https:// URL outside local and test")
         return url
 

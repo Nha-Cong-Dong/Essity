@@ -109,6 +109,10 @@ def test_r04_an_unknown_environment_is_treated_as_production() -> None:
         ("smtp_host", "::1"),
         ("smtp_host", "0.0.0.0"),
         ("email_from", "no-reply@localhost"),
+        ("email_from", "Essity <no-reply@localhost>"),
+        ("email_from", "no-reply@localhost."),
+        ("web_base_url", "https://localhost:3000"),
+        ("web_base_url", "https://127.0.0.1/"),
         ("smtp_starttls", "false"),  # a password sent in clear
         ("ai_service_url", "http://127.0.0.1:8001"),
         ("ai_service_url", "http://localhost:8001"),
@@ -125,10 +129,21 @@ def test_r04_staging_follows_the_production_rules() -> None:
         settings(**{**PRODUCTION, "environment": "staging", "smtp_host": "127.0.0.1"})
 
 
-def test_r04_without_a_login_starttls_is_not_required() -> None:
+def test_r04_starttls_is_required_even_without_a_login() -> None:
+    # Red when: a server without login (Mailpit, from .env.example) passes outside local: the
+    # one-time links in verification and reset emails would travel in clear (review 8489155).
     values = {**PRODUCTION, "smtp_starttls": "false"}
     del values["smtp_username"], values["smtp_password"]
-    assert settings(**values).smtp_starttls is False
+    with pytest.raises(ValidationError, match="smtp_starttls"):
+        settings(**values)
+
+
+def test_r04_env_example_values_are_refused_in_production() -> None:
+    # The SMTP lines of .env.example with only the environment changed.
+    with pytest.raises(ValidationError, match="smtp_starttls"):
+        settings(
+            **{**PRODUCTION, "smtp_host": "mailpit", "smtp_port": "1025", "smtp_starttls": "false"}
+        )
 
 
 def test_r04_local_keeps_its_defaults() -> None:
