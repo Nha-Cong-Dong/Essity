@@ -14,6 +14,7 @@ def service_token() -> str:
 
 @pytest.fixture(autouse=True)
 def service_token_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    monkeypatch.setenv("AI_ENVIRONMENT", "test")
     monkeypatch.setenv("AI_SERVICE_TOKEN", TEST_SERVICE_TOKEN)
     get_settings.cache_clear()
     yield
