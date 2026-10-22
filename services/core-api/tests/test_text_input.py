@@ -21,6 +21,8 @@ from core_api.repositories.user import UserRepository
 from core_api.security.rate_limit import RateLimit, RateLimiter, RateLimitResult
 
 PASSWORD = "ngựa vằn ăn cỏ buổi sáng"
+# \x85 (NEL) is whitespace to the email pattern, so for the three paths that keep the pattern it
+# was refused before the shared check; the other four test that check there.
 CONTROL = ["\x00", "\x01", "\x1f", "\x7f", "\x85"]
 EMAIL_PATHS = ["/v1/auth/register", "/v1/auth/verify-email/resend", "/v1/auth/password-reset"]
 
@@ -104,6 +106,16 @@ def test_email_is_checked_as_it_is_stored(client: TestClient, db_session: Sessio
     sent = {"email": f"{email}\x1f", "password": PASSWORD}
     assert client.post("/v1/auth/register", json=sent).status_code == 202
     assert db_session.scalars(select(User.email).where(User.email == email)).one() == email
+
+
+def test_login_email_is_checked_as_it_is_stored(client: TestClient, db_session: Session) -> None:
+    """Reviewer commit 393c02d #2: the address registered from "<email>\\x1f" signs in with it."""
+    email = new_email()
+    user = UserRepository(db_session).create(email, hash_password(PASSWORD))
+    user.email_verified_at = user.created_at
+    db_session.flush()
+    response = client.post("/v1/auth/login", json={"email": f"{email}\x1f", "password": PASSWORD})
+    assert response.status_code == 200
 
 
 def test_login_with_surrounding_whitespace_still_signs_in(

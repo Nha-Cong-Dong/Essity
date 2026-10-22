@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from core_api.api.deps import CurrentSession
+from core_api.api.text import Email, LoginEmail
 from core_api.config import get_settings
 from core_api.db.models import User
 from core_api.db.session import DbSession
@@ -71,8 +72,7 @@ class TokenBody(BaseModel):
 
 
 class EmailBody(BaseModel):
-    # A light shape check; whether the address works is proven by the verification link.
-    email: str = Field(max_length=320, pattern=r"^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$")
+    email: Email
 
 
 class RegisterBody(EmailBody):
@@ -136,7 +136,7 @@ def verify_email(body: TokenBody, session: DbSession) -> dict[str, str]:
 
 
 class LoginBody(BaseModel):
-    email: str = Field(max_length=320)
+    email: LoginEmail
     password: str = Field(max_length=1024)
 
 
