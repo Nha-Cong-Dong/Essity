@@ -19,7 +19,7 @@ export function TodayNote({ hasSubjects }: { hasSubjects: boolean }) {
         Lịch ôn hôm nay sẽ hiện ở đây sớm.
       </p>
       <Button render={<a href="/subjects" />} nativeButton={false} variant="secondary">
-        Các môn
+        Môn học
       </Button>
     </div>
   );

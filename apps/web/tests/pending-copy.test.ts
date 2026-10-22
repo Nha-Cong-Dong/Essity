@@ -1,6 +1,8 @@
 // Risk register R09: every placeholder sentence (data-copy="tam") is listed here, so a new one
 // cannot slip in unnoticed. Adding one means adding it below and to the PR description; the user
-// approving one means removing the attribute and its line. Deploy refuses any left (T0.13).
+// approving one means removing the attribute and its line. T0.13's deploy refuses any left.
+// Convention: data-copy="tam" goes on the leaf element that holds exactly the sentence (the regex
+// below reads the text right after the tag; a wrapper around <b> or {…} would read wrong).
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
