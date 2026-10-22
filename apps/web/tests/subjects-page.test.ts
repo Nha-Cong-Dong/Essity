@@ -16,11 +16,15 @@ vi.mock("@/lib/subjects", async (importOriginal) => {
       if (failure) throw failure;
       return [];
     },
+    findSubject: async () => {
+      if (failure) throw failure;
+      return null;
+    },
   };
 });
 
 const { CoreStatusError } = await import("@/lib/subjects");
-const { Subjects } = await import("@/components/subjects/subjects-loader");
+const { Subjects, subjectForUpload } = await import("@/components/subjects/subjects-loader");
 
 describe("/subjects when the list fails", () => {
   beforeEach(() => {
@@ -40,5 +44,12 @@ describe("/subjects when the list fails", () => {
 
     expect(markup).toContain('role="alert"');
     expect(logged).toHaveBeenCalledWith("core-api call failed", { route: "subjects", status: 500, error: "CoreStatusError" });
+  });
+});
+
+describe("/subjects/[id]/upload when the list fails (review 796071c #1)", () => {
+  it("a session core-api no longer knows goes to /login", async () => {
+    failure = new CoreStatusError("/v1/subjects", 401);
+    await expect(subjectForUpload("3f2b8c1e-7a4d-4e5f-9b6a-1c2d3e4f5a6b")).rejects.toThrow("redirect:/login");
   });
 });

@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
 import { AppShell } from "@/components/shells";
+import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { UploadStep } from "@/components/subjects/upload-step";
 import { requireVerifiedSession } from "@/lib/session";
-import { findSubject } from "@/lib/subjects";
 
 export const metadata: Metadata = { title: "Tải tài liệu · Essity" };
 
@@ -16,8 +15,7 @@ export const metadata: Metadata = { title: "Tải tài liệu · Essity" };
 async function Upload({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   await requireVerifiedSession();
-  const subject = await findSubject((await params).id);
-  if (subject === null) notFound();
+  const subject = await subjectForUpload((await params).id);
   return <UploadStep name={subject.name} />;
 }
 

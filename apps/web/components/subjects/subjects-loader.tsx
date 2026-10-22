@@ -1,8 +1,29 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { SubjectList } from "@/components/subjects/subject-list";
 import { Button } from "@/components/ui/button";
-import { CoreStatusError, listSubjects, type Subject } from "@/lib/subjects";
+import { CoreStatusError, findSubject, listSubjects, type Subject } from "@/lib/subjects";
+
+/** A session that ended between the page's check and core-api's answer is a sign-in, not a failure. */
+function redirectIfSignedOut(error: unknown): void {
+  if (error instanceof CoreStatusError && error.status === 401) redirect("/login");
+}
+
+/**
+ * The subject of /subjects/[id]/upload (plan K5): someone else's, a missing one or an id that is
+ * not one is a 404; a session that ended goes to /login (review 796071c #1).
+ */
+export async function subjectForUpload(id: string): Promise<Subject> {
+  let subject: Subject | null;
+  try {
+    subject = await findSubject(id);
+  } catch (error) {
+    redirectIfSignedOut(error);
+    throw error;
+  }
+  if (subject === null) notFound();
+  return subject;
+}
 
 /**
  * The list part of /subjects (T1.20, DESIGN.md §6.8), for a page that has checked the session. One
@@ -13,8 +34,7 @@ export async function Subjects() {
   try {
     subjects = await listSubjects();
   } catch (error) {
-    // A session that ended between the two calls is a sign-in, not a network error.
-    if (error instanceof CoreStatusError && error.status === 401) redirect("/login");
+    redirectIfSignedOut(error);
     // The status and the error's type only: nothing the user wrote (ADR-0013).
     console.error("core-api call failed", {
       route: "subjects",
