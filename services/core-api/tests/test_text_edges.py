@@ -84,7 +84,7 @@ def test_register_email_with_a_format_character_is_not_refused_as_control(
 def test_register_with_a_control_character_creates_no_user(
     client: TestClient, db_session: Session
 ) -> None:
-    """Catches: the check moved after the insert (the 422 would leave a row, or 500)."""
+    """Catches: the check moved after the insert (a refused sign-up would leave a row)."""
     prefix = f"edge-{uuid.uuid4().hex[:12]}"
     response = client.post(
         "/v1/auth/register", json={"email": f"{prefix}\x00@example.com", "password": PASSWORD}

@@ -1,10 +1,9 @@
 """Request text that Postgres cannot store, or that has no place in an email address.
 
-Postgres text cannot hold NUL, so an email carrying one reached the query and failed there.
-Emails refuse every control character (after the surrounding whitespace that was always
-accepted is stripped); passwords and tokens are only hashed, never stored, so they keep
-taking any character (plan D4, D5). A login refused this way is a 422 that depends on the
-shape of the text alone, never on whether an account exists (US-12 AC5).
+Postgres text cannot hold NUL. Emails refuse every control character (after the surrounding
+whitespace that was always accepted is stripped); passwords and tokens are only hashed, never
+stored, so they keep taking any character (plan D4, D5). A login refused this way is a 422
+that depends on the shape of the text alone, never on whether an account exists (US-12 AC5).
 """
 
 import uuid
@@ -45,7 +44,7 @@ def post_raw(client: TestClient, path: str, raw: bytes) -> int:
 
 
 @pytest.mark.parametrize("char", CONTROL)
-def test_login_email_with_a_control_character_is_422_not_500(client: TestClient, char: str) -> None:
+def test_login_email_with_a_control_character_is_422(client: TestClient, char: str) -> None:
     email = f"a{char}{new_email()}"
     response = client.post("/v1/auth/login", json={"email": email, "password": PASSWORD})
     assert response.status_code == 422
@@ -53,9 +52,7 @@ def test_login_email_with_a_control_character_is_422_not_500(client: TestClient,
 
 @pytest.mark.parametrize("path", EMAIL_PATHS)
 @pytest.mark.parametrize("char", CONTROL)
-def test_email_with_a_control_character_is_422_not_500(
-    client: TestClient, path: str, char: str
-) -> None:
+def test_email_with_a_control_character_is_422(client: TestClient, path: str, char: str) -> None:
     response = client.post(path, json=body_for(path, f"a{char}{new_email()}"))
     assert response.status_code == 422
 
