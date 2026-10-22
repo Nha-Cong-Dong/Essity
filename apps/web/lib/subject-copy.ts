@@ -3,6 +3,7 @@
 // rest are placeholders (data-copy="tam" where shown) listed in the PR for the user to approve.
 export const SUBJECT_MESSAGES = {
   exam_date_not_in_future: "Ngày thi phải sau hôm nay.",
+  exam_date_too_far: "Ngày thi cách quá xa (tối đa 2 năm). Kiểm tra lại năm nhé.",
   date_format: "Nhập ngày theo dạng ngày/tháng/năm, ví dụ 15/12/2026.",
   name_empty: "Nhập tên môn, ví dụ Mạng máy tính.",
   name_invalid: "Tên môn dài tối đa 200 ký tự.",
@@ -14,4 +15,8 @@ export const SUBJECT_MESSAGES = {
 export type SubjectMessage = keyof typeof SUBJECT_MESSAGES;
 
 /** Sentences no document has yet: shown with data-copy="tam". */
-export const PLACEHOLDER_MESSAGES = new Set<SubjectMessage>(["name_invalid", "subject_not_found"]);
+export const PLACEHOLDER_MESSAGES = new Set<SubjectMessage>([
+  "exam_date_too_far",
+  "name_invalid",
+  "subject_not_found",
+]);

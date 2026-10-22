@@ -55,6 +55,17 @@ describe("POST /api/subjects (T1.20)", () => {
     expect(await response.json()).toEqual({ error: "exam_date_not_in_future" });
   });
 
+  it("plan K17: exam_date_too_far is passed on as its code", async () => {
+    fakeCoreApi(() => Response.json({ detail: "exam_date_too_far" }, { status: 422 }));
+
+    const response = await POST(
+      browserPost("/api/subjects", { name: "Mạng", exam_date: "2062-12-15" }, SIGNED_IN),
+    );
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({ error: "exam_date_too_far" });
+  });
+
   it.each([
     [["body", "name"], ["name"]],
     [["body", "exam_date"], ["exam_date"]],
@@ -161,6 +172,14 @@ describe("PATCH /api/subjects/[id] (T1.20, plan K2)", () => {
     const response = await patch(ID, { exam_date: "2026-10-01" });
 
     expect(await response.json()).toEqual({ error: "exam_date_not_in_future" });
+  });
+
+  it("plan K17: exam_date_too_far is passed on", async () => {
+    fakeCoreApi(() => Response.json({ detail: "exam_date_too_far" }, { status: 422 }));
+
+    const response = await patch(ID, { exam_date: "2062-12-15" });
+
+    expect(await response.json()).toEqual({ error: "exam_date_too_far" });
   });
 
   it.each([{}, { name: "Mạng", extra: 1 }, { name: null }, { exam_date: 20261220 }])(

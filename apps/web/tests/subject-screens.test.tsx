@@ -82,6 +82,32 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
     expect(go).not.toHaveBeenCalled();
   });
 
+  it("plan K17: core-api's exam_date_too_far shows a placeholder sentence under the date", async () => {
+    fakeWeb(() => Response.json({ error: "exam_date_too_far" }, { status: 422 }));
+    fireEvent.change(name(), { target: { value: "Mạng" } });
+    fireEvent.change(date(), { target: { value: "15/12/2062" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+
+    const sentence = await screen.findByText("Ngày thi cách quá xa (tối đa 2 năm). Kiểm tra lại năm nhé.");
+    expect(sentence.getAttribute("data-copy")).toBe("tam");
+    expect(date().getAttribute("aria-invalid")).toBe("true");
+    expect(date().value).toBe("15/12/2062");
+    expect(go).not.toHaveBeenCalled();
+  });
+
+  // Red when: the form treats a 401 as a network failure instead of sending the user to sign in
+  // (review final 🟡).
+  it("a session that ended sends the user to /login", async () => {
+    fakeWeb(() => Response.json({ error: "signed_out" }, { status: 401 }));
+    fireEvent.change(name(), { target: { value: "Mạng" } });
+    fireEvent.change(date(), { target: { value: "15/12/2026" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+
+    await waitFor(() => expect(go).toHaveBeenCalledWith("/login"));
+  });
+
   it("plan K10: 31/02/2027 is refused before sending", () => {
     const sent = fakeWeb(() => Response.json({ id: ID }, { status: 201 }));
     fireEvent.change(name(), { target: { value: "Mạng" } });
@@ -214,6 +240,43 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
 
     await waitFor(() => expect(screen.queryByRole("button", { name: "Lưu" })).toBeNull());
     expect(sent).toHaveLength(0);
+  });
+
+  it("plan K17: editing to a date too far shows the placeholder sentence under the date", async () => {
+    fakeWeb(() => Response.json({ error: "exam_date_too_far" }, { status: 422 }));
+    render(<SubjectList subjects={[MMT]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    fireEvent.change(date(), { target: { value: "15/12/2062" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
+
+    expect(await screen.findByText("Ngày thi cách quá xa (tối đa 2 năm). Kiểm tra lại năm nhé.")).toBeTruthy();
+  });
+
+  // Red when: a 404 (someone else's or a deleted subject, ADR-0001) is shown as a network failure
+  // (review final 🟡).
+  it("ADR-0001: a subject that is not found says so under the name", async () => {
+    fakeWeb(() => Response.json({ error: "subject_not_found" }, { status: 404 }));
+    render(<SubjectList subjects={[MMT]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    fireEvent.change(name(), { target: { value: "Mạng máy tính 2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
+
+    expect(await screen.findByText("Không tìm thấy môn này. Tải lại trang rồi thử lại.")).toBeTruthy();
+    expect(name().getAttribute("aria-invalid")).toBe("true");
+  });
+
+  // Red when: saving after the session ended stays on the page with a network sentence.
+  it("editing after the session ended sends the user to /login", async () => {
+    fakeWeb(() => Response.json({ error: "signed_out" }, { status: 401 }));
+    render(<SubjectList subjects={[MMT]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    fireEvent.change(name(), { target: { value: "Mạng máy tính 2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
+
+    await waitFor(() => expect(go).toHaveBeenCalledWith("/login"));
   });
 
   it("US-01 AC2: editing to a past date shows the sentence under the date", async () => {

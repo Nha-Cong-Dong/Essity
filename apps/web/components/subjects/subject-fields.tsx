@@ -134,6 +134,7 @@ export function checkSubject(name: string, examDate: string): { errors: SubjectE
 export function refusalErrors(status: number, body: Record<string, unknown> | undefined): SubjectErrors | null {
   if (status !== 422 && status !== 404) return null;
   if (body?.error === "exam_date_not_in_future") return { examDate: "exam_date_not_in_future" };
+  if (body?.error === "exam_date_too_far") return { examDate: "exam_date_too_far" };
   const fields = Array.isArray(body?.fields) ? body.fields : [];
   if (fields.includes("name")) return { name: "name_invalid" };
   if (fields.includes("exam_date")) return { examDate: "date_format" };

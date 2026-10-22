@@ -22,8 +22,10 @@ export function subjectError(route: string, response: Response, error: unknown):
   if (response.status === 401) return errorResponse("signed_out", 401);
   if (response.status === 404) return errorResponse("subject_not_found", 404);
   if (response.status === 422) {
-    // US-01 AC2: a business refusal is a string code (plan B20).
-    if (detail === "exam_date_not_in_future") return errorResponse("exam_date_not_in_future", 422);
+    // US-01 AC2, plan K17: a business refusal is a string code (plan B20).
+    if (detail === "exam_date_not_in_future" || detail === "exam_date_too_far") {
+      return errorResponse(detail, 422);
+    }
     return Response.json({ error: "invalid", fields: invalidFields(detail) }, { status: 422 });
   }
   return unavailable(route);
