@@ -86,8 +86,8 @@ def test_b12_patch_name_is_normalized_like_create(client: TestClient, db_session
 
 
 def test_malformed_unicode_name_is_422_not_500(client: TestClient, db_session: Session) -> None:
-    _, headers = signed_in(db_session)
-    body = b'{"name": "a\\ud800b", "exam_date": "2027-01-01"}'
+    user, headers = signed_in(db_session)
+    body = b'{"name": "a\\ud800b", "exam_date": "%s"}' % in_days(user, 10).encode()
     response = client.post(
         "/v1/subjects", content=body, headers={**headers, "content-type": "application/json"}
     )
@@ -149,6 +149,15 @@ def test_exam_date_extremes_never_give_a_500(
     """The range of `date`: refused at both ends (the far one by plan K17's cap), never a crash."""
     _, headers = signed_in(db_session)
     assert create(client, headers, "Mạng máy tính", exam_date).status_code == status
+
+
+def test_k17_the_last_date_python_knows_is_refused_by_the_cap(
+    client: TestClient, db_session: Session
+) -> None:
+    """Red if 9999-12-31 is refused for another reason than plan K17's cap."""
+    _, headers = signed_in(db_session)
+    response = create(client, headers, "Mạng máy tính", "9999-12-31")
+    assert (response.status_code, response.json()) == (422, {"detail": "exam_date_too_far"})
 
 
 @pytest.mark.parametrize("days", [1, 2, 365])

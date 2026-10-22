@@ -368,8 +368,8 @@ def test_adr_0001_bob_cannot_see_or_change_alices_subject(
 def test_t1_9_unverified_account_is_refused(
     client: TestClient, db_session: Session, method: str, path: str
 ) -> None:
-    _, headers = signed_in(db_session, verified=False)
-    body = {"name": "Mạng máy tính", "exam_date": "2027-01-01"}
+    user, headers = signed_in(db_session, verified=False)
+    body = {"name": "Mạng máy tính", "exam_date": in_days(user, 10)}
     response = client.request(method, path, json=body, headers=headers)
     assert (response.status_code, response.json()) == (403, {"detail": "email_not_verified"})
 
