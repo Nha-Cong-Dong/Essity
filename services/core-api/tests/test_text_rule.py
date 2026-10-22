@@ -18,14 +18,26 @@ from fastapi.routing import APIRoute, iter_route_contexts
 from pydantic import AfterValidator, BaseModel, ValidationError
 from starlette.routing import BaseRoute
 
-from core_api.api import subjects, text
+from core_api.api import auth, subjects, text
 from core_api.api.text import DbText, Email, LoginEmail, storable_text
 from core_api.main import app
 
 # Checked by one of these, or exempt below.
 CHECKS: set[Callable[..., Any]] = {text.storable_text, text.storable_email, subjects._name}  # pyright: ignore[reportPrivateUsage]
-# Only hashed, never stored or sent to a query: any character is allowed (plan D4, D5).
-EXEMPT = {"password", "token"}
+# Only hashed, never stored or sent to a query: any character is allowed (plan D4, D5). By model
+# and field, not by name alone: a stored `token` (a device's push token, say) must be checked.
+EXEMPT: set[tuple[type[BaseModel], str]] = {
+    (auth.RegisterBody, "password"),
+    (auth.LoginBody, "password"),
+    (auth.ResetBody, "password"),
+    (auth.TokenBody, "token"),
+    (auth.ResetBody, "token"),
+}
+
+
+def _exempt(model: type[BaseModel], field: str) -> bool:
+    # Exact classes: a subclass may add a meaning the exemption never looked at.
+    return (model, field) in EXEMPT
 
 
 # --- storable_text --------------------------------------------------------------------------------
@@ -100,7 +112,7 @@ def _unchecked(tp: object, where: str, checks: set[Callable[..., Any]]) -> Itera
             yield where
     elif isinstance(tp, type) and issubclass(tp, BaseModel):
         for name, field in tp.model_fields.items():
-            if name in EXEMPT:
+            if _exempt(tp, name):
                 continue
             annotated = (
                 Annotated[field.annotation, *field.metadata] if field.metadata else field.annotation
@@ -125,8 +137,6 @@ def unchecked_text(routes: list[BaseRoute]) -> list[str]:
         if not isinstance(context.original_route, APIRoute):
             continue
         for name, annotation, metadata in _params(context.dependant):
-            if name in EXEMPT:
-                continue
             tp = Annotated[annotation, *metadata] if metadata else annotation
             found += [f"{context.path} {p}" for p in _unchecked(tp, name, set())]
     return found
@@ -154,6 +164,7 @@ def test_the_scan_finds_a_bare_str() -> None:
 
     assert sorted(unchecked_text(probe_app.routes)) == [
         "/careless/{slug} body.nested.note",
+        "/careless/{slug} body.password",  # exempt only in the auth bodies it was checked for
         "/careless/{slug} body.tags",
         "/careless/{slug} body.title",
         "/careless/{slug} q",

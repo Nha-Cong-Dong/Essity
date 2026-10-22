@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from core_api.api.deps import CurrentSession
@@ -67,11 +67,15 @@ Limiter = Annotated[RateLimiter, Depends(get_rate_limiter)]
 
 
 class TokenBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     # In the body, never the URL: request paths are logged and traced, bodies are not.
     token: str = Field(min_length=1, max_length=100)
 
 
 class EmailBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     email: Email
 
 
@@ -136,6 +140,8 @@ def verify_email(body: TokenBody, session: DbSession) -> dict[str, str]:
 
 
 class LoginBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     email: LoginEmail
     password: str = Field(max_length=1024)
 
