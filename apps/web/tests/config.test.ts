@@ -69,7 +69,9 @@ describe("webConfig (ADR-0022)", () => {
     });
 
     it("r04: CORE_API_URL must be an http(s) URL", () => {
-      expect(() => webConfig({ ...production, CORE_API_URL: "core-api:8000" })).toThrow(/CORE_API_URL/);
+      for (const url of ["core-api:8000", "http://", "ftp://core-api"]) {
+        expect(() => webConfig({ ...production, CORE_API_URL: url })).toThrow(/CORE_API_URL/);
+      }
     });
 
     it("accepts hops = 0 only when set explicitly (web reached directly, as in Compose)", () => {

@@ -18,6 +18,15 @@ export type WebConfig = {
 
 type Env = Record<string, string | undefined>;
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (url.protocol === "http:" || url.protocol === "https:") && url.hostname !== "";
+  } catch {
+    return false; // "http://" alone, or not a URL at all
+  }
+}
+
 export function webConfig(env: Env = process.env): WebConfig {
   const production = env.NODE_ENV === "production";
 
@@ -46,7 +55,7 @@ export function webConfig(env: Env = process.env): WebConfig {
   // R04: required in production, where 127.0.0.1 would silently be a different machine.
   const coreApiUrl = env.CORE_API_URL || (production ? undefined : "http://127.0.0.1:8000");
   if (coreApiUrl === undefined) throw new WebConfigError("CORE_API_URL is required in production");
-  if (!/^https?:\/\//.test(coreApiUrl)) throw new WebConfigError("CORE_API_URL must be an http(s) URL");
+  if (!isHttpUrl(coreApiUrl)) throw new WebConfigError("CORE_API_URL must be an http(s) URL");
 
   return { origin: new URL(origin).origin, serviceToken, trustedProxyHops, coreApiUrl };
 }

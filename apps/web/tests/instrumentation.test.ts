@@ -19,13 +19,36 @@ function stub(env: Record<string, string | undefined>) {
   for (const [name, value] of Object.entries(env)) vi.stubEnv(name, value);
 }
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
+
+/** process.exit, stopped so the test run goes on; it throws like a real exit would end. */
+function spyOnExit() {
+  return vi.spyOn(process, "exit").mockImplementation((code) => {
+    throw new Error(`exit:${code}`);
+  });
+}
 
 describe("register (R04)", () => {
-  // Red when: register() starts the server without checking webConfig.
-  it("refuses to start without CORE_API_URL in production", async () => {
+  // Red when: register() only throws. Next logs "Failed to prepare server" and keeps serving
+  // 500s (checked by hand on the standalone build, review 3882431), so it must end the process.
+  it("ends the process without CORE_API_URL in production, naming it", async () => {
     stub({ ...PRODUCTION, CORE_API_URL: undefined });
-    await expect(register()).rejects.toThrow(/CORE_API_URL/);
+    const exit = spyOnExit();
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await expect(register()).rejects.toThrow("exit:1");
+    expect(exit).toHaveBeenCalledWith(1);
+    expect(String(logged.mock.calls[0])).toMatch(/CORE_API_URL/);
+  });
+
+  it("never prints a setting's value", async () => {
+    stub({ ...PRODUCTION, WEB_TO_CORE_TOKEN: "short-secret-value" });
+    spyOnExit();
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await expect(register()).rejects.toThrow("exit:1");
+    expect(JSON.stringify(logged.mock.calls)).not.toContain("short-secret-value");
   });
 
   it("starts with a complete configuration", async () => {
