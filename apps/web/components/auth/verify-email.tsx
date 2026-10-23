@@ -30,6 +30,11 @@ function show(token: string, result: AuthResult<VerifyResult>): State {
   return { view: "failed", token }; // the token stays in memory for "Thử lại"
 }
 
+/** The person asked for less motion: the page then waits for the button (plan E5). */
+function prefersLessMotion(): boolean {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+}
+
 function verify(token: string) {
   return postJson<VerifyResult>("/api/auth/verify-email", { token });
 }
@@ -63,15 +68,17 @@ export function VerifyEmail() {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
     if (state.view !== "ok" || !state.signedIn) return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true) return;
+    if (prefersLessMotion()) return;
     timer.current = setTimeout(() => go(dest), 1500);
     return () => clearTimeout(timer.current);
   }, [state, dest]);
 
-  // The anchor would load the page while the timer still runs: go once, from here.
+  // The anchor would load the page while the timer still runs: go once, from here. A click that
+  // opens a new tab (a modifier key, a middle click) stays the browser's and only stops the timer.
   function goNow(event: MouseEvent) {
-    event.preventDefault();
     clearTimeout(timer.current);
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
     go(dest);
   }
 
@@ -93,7 +100,8 @@ export function VerifyEmail() {
         </p>
         {state.signedIn ? (
           <>
-            <p className="m-0 text-ink-soft">Đang chuyển tiếp…</p>
+            {/* "ok" exists only after the effect, so reading matchMedia here cannot split hydration. */}
+            {!prefersLessMotion() && <p className="m-0 text-ink-soft">Đang chuyển tiếp…</p>}
             {dest === "/subjects/new" ? (
               <Button render={<a href="/subjects/new" />} nativeButton={false} onClick={goNow} className="w-full">
                 Tạo môn đầu tiên

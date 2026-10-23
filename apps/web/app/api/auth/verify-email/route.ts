@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { sessionUser } from "@/lib/account";
+import { sessionUser, sessionUserOrNull } from "@/lib/account";
 import { EXPIRED_COOKIE, PENDING_EMAIL_COOKIE } from "@/lib/cookies";
 import { coreClientFor } from "@/lib/core-client";
 import { withOrigin } from "@/lib/csrf";
@@ -31,7 +31,7 @@ export const POST = withOrigin(async (request) => {
     }
     // The token is spent: /v1/me failing now must not read as a failed link (T1.22 plan E4). Its
     // owner is then not proven, so no page is named; "Đăng nhập" goes on from /login.
-    const owner = await sessionUser(request).catch(() => null);
+    const owner = await sessionUserOrNull(request, "verify-email");
     const signedIn = before?.email_verified === false && owner?.email_verified === true;
     const verified = NextResponse.json(
       signedIn && owner ? { verified: true, signedIn, next: afterBaseline(owner) } : { verified: true, signedIn },

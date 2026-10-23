@@ -75,10 +75,23 @@ describe("VerifyEmail after the link is verified", () => {
     await verified({ verified: true, signedIn: true, next: "/today" });
 
     await act(() => vi.advanceTimersByTimeAsync(500));
-    fireEvent.click(screen.getByRole("button", { name: "Vào hôm nay" }));
+    // fireEvent answers false when the anchor's own navigation was prevented.
+    expect(fireEvent.click(screen.getByRole("button", { name: "Vào hôm nay" }))).toBe(false);
     await act(() => vi.advanceTimersByTimeAsync(1500));
     expect(go).toHaveBeenCalledExactlyOnceWith("/today");
   });
+
+  // Red when: a Ctrl/Cmd/Shift or middle click (a new tab) is turned into a load of this tab.
+  it.each([{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { button: 1 }])(
+    "AC11: a click with %o is left to the browser and stops the timer",
+    async (modifier) => {
+      await verified({ verified: true, signedIn: true, next: "/today" });
+
+      expect(fireEvent.click(screen.getByRole("button", { name: "Vào hôm nay" }), modifier)).toBe(true);
+      await act(() => vi.advanceTimersByTimeAsync(2000));
+      expect(go).not.toHaveBeenCalled();
+    },
+  );
 
   it("AC11: leaving the page cancels the timer", async () => {
     await verified({ verified: true, signedIn: true, next: "/today" });
@@ -111,6 +124,8 @@ describe("VerifyEmail after the link is verified", () => {
       await verified({ verified: true, signedIn: true, next: "/subjects/new" });
 
       expect(screen.getByRole("button", { name: "Tạo môn đầu tiên" }).getAttribute("href")).toBe("/subjects/new");
+      // Red when: the page says it is moving on while it stays (review 9d51d23 #3).
+      expect(screen.queryByText("Đang chuyển tiếp…")).toBeNull();
       await act(() => vi.advanceTimersByTimeAsync(2000));
       expect(go).not.toHaveBeenCalled();
     });
@@ -118,6 +133,7 @@ describe("VerifyEmail after the link is verified", () => {
     it("AC11: no-preference goes on", async () => {
       prefers(false);
       await verified({ verified: true, signedIn: true, next: "/today" });
+      expect(screen.getByText("Đang chuyển tiếp…")).toBeTruthy();
 
       await act(() => vi.advanceTimersByTimeAsync(1500));
       expect(go).toHaveBeenCalledExactlyOnceWith("/today");
