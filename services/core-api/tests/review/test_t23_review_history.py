@@ -28,6 +28,7 @@ from core_api.repositories.review import (
     GradeRepository,
     MemoryStateRepository,
     ReviewLogRepository,
+    ReviewSessionEndedError,
     ReviewSessionRepository,
     UnitsMismatchError,
 )
@@ -383,6 +384,48 @@ def test_us08_a_session_ends_once(db_session: Session, history: History) -> None
     assert sessions.end(history.review.id, NOW, reason="completed")
     db_session.flush()
     assert not sessions.end(history.review.id, NOW, reason="user_stopped")
+
+
+@pytest.mark.parametrize("reason", ["completed", "user_stopped"])
+@pytest.mark.parametrize("write", ["create_draft", "save_draft", "submit"])
+def test_us08_an_ended_session_takes_no_more_answers(
+    db_session: Session, history: History, reason: str, write: str
+) -> None:
+    # Its summary and study time were already shown; a second tab writing late would change them
+    # (final ce93f48 #5, plan D14). The draft left open stays as it was. Red when: the repository
+    # writes an attempt without checking that its session is still open.
+    sessions = ReviewSessionRepository(db_session, history.user.id)
+    attempts = AttemptRepository(db_session, history.user.id)
+    review = sessions.start(DAY, NOW)
+    draft = attempts.create_draft(review.id, history.question.id)
+    attempts.save_draft(draft.id, answer_text="dở", dont_remember=False)
+    other = QuestionRepository(db_session, history.user.id).add_idempotent(
+        history.question.subject_id, level=1, prompt="UDP là gì?", reference_answer="a", run_id=RUN
+    )
+    assert sessions.end(review.id, NOW + timedelta(minutes=5), reason=reason)
+    with pytest.raises(ReviewSessionEndedError):
+        if write == "create_draft":
+            attempts.create_draft(review.id, other.id)
+        elif write == "save_draft":
+            attempts.save_draft(draft.id, answer_text="muộn", dont_remember=False)
+        else:
+            attempts.submit(draft.id, NOW + timedelta(minutes=10))
+    kept = db_session.execute(
+        text("SELECT answer_text, status FROM attempt WHERE review_session_id = :s"),
+        {"s": review.id},
+    ).all()
+    assert [tuple(row) for row in kept] == [("dở", "draft")]
+
+
+def test_us08_a_submitted_answer_in_an_ended_session_reports_the_session(
+    db_session: Session, history: History
+) -> None:
+    # The order of the errors is fixed: not found, then session ended, then not a draft.
+    assert ReviewSessionRepository(db_session, history.user.id).end(
+        history.review.id, NOW, reason="completed"
+    )
+    with pytest.raises(ReviewSessionEndedError):
+        AttemptRepository(db_session, history.user.id).submit(history.attempt.id, NOW)
 
 
 # --- The CHECKs follow the domain enums (review plan P3) ----------------------------------------

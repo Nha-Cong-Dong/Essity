@@ -9,7 +9,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from datetime import date, datetime
 
-from sqlalchemy import delete, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from core_api.db.models import Attempt, Grade, GradeUnit, MemoryState, ReviewLog, ReviewSession
@@ -39,6 +39,10 @@ class AttemptNotDraftError(ValueError):
 
 class AttemptNotSubmittedError(ValueError):
     """The attempt is still a draft: it can be graded only once submitted."""
+
+
+class ReviewSessionEndedError(ValueError):
+    """The session has ended: its answers no longer change (plan D14)."""
 
 
 class UnitsMismatchError(ValueError):
@@ -72,8 +76,7 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
     model = Attempt
 
     def create_draft(self, review_session_id: uuid.UUID, question_id: uuid.UUID) -> Attempt:
-        if ReviewSessionRepository(self.session, self.user_id).get(review_session_id) is None:
-            raise ReviewSessionNotFoundError(review_session_id)
+        self._lock_open_session(review_session_id)
         if QuestionRepository(self.session, self.user_id).get(question_id) is None:
             raise QuestionNotFoundError(question_id)
         attempt = self.add(Attempt(review_session_id=review_session_id, question_id=question_id))
@@ -86,7 +89,26 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
     def submit(self, id: uuid.UUID, submitted_at: datetime) -> None:
         self._change_draft(id, status="submitted", submitted_at=submitted_at)
 
+    def _lock_open_session(self, review_session_id: uuid.UUID) -> None:
+        """Hold the session row FOR SHARE until commit, so `end` waits for this write or this
+        write sees the session ended (plan D14); the FOR KEY SHARE of the foreign key alone does
+        not stop `end`. Anything that later touches attempts while ending a session (T2.9) must
+        lock the session first, then the attempts."""
+        ended_at = self.session.execute(
+            select(ReviewSession.ended_at)
+            .where(ReviewSession.user_id == self.user_id, ReviewSession.id == review_session_id)
+            .with_for_update(read=True)
+        ).one_or_none()
+        if ended_at is None:
+            raise ReviewSessionNotFoundError(review_session_id)
+        if ended_at[0] is not None:
+            raise ReviewSessionEndedError(review_session_id)
+
     def _change_draft(self, id: uuid.UUID, **values: object) -> None:
+        attempt = self.get(id)
+        if attempt is None:
+            raise AttemptNotFoundError(id)
+        self._lock_open_session(attempt.review_session_id)
         changed = self.session.execute(
             update(Attempt)
             .where(Attempt.user_id == self.user_id, Attempt.id == id, Attempt.status == "draft")
@@ -95,8 +117,6 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
             .execution_options(synchronize_session="fetch")
         ).first()
         if changed is None:
-            if self.get(id) is None:
-                raise AttemptNotFoundError(id)
             raise AttemptNotDraftError(id)
 
 
