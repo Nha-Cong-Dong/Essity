@@ -15,7 +15,7 @@ export function TodayNote({ hasSubjects }: { hasSubjects: boolean }) {
   }
   return (
     <div className="flex flex-col items-start gap-3">
-      <p className="m-0" data-copy="tam">
+      <p className="m-0">
         Lịch ôn hôm nay sẽ hiện ở đây sớm.
       </p>
       <Button render={<a href="/subjects" />} nativeButton={false} variant="secondary">

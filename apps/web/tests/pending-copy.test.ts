@@ -8,26 +8,10 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { PLACEHOLDER_MESSAGES, SUBJECT_MESSAGES } from "@/lib/subject-copy";
-
 const ROOT = path.resolve(import.meta.dirname, "..");
 
-const PENDING_COPY: [file: string, text: string][] = [
-  ["components/subjects/subject-fields.tsx", "{text}"],
-  ["components/subjects/subject-list.tsx", "Lưu"],
-  ["components/subjects/subject-list.tsx", "Hủy"],
-  ["components/subjects/subject-list.tsx", "{daysLeftText(subject.days_until_exam)}"],
-  ["app/subjects/page.tsx", "Đang tải danh sách môn."],
-  ["components/subjects/subjects-loader.tsx", "Không tải được danh sách môn."],
-  ["components/subjects/upload-step.tsx", "Tải tài liệu sẽ có ở bản sau."],
-  ["components/today-note.tsx", "Lịch ôn hôm nay sẽ hiện ở đây sớm."],
-];
-
-const PENDING_MESSAGES = [
-  "Ngày thi cách quá xa (tối đa 2 năm). Kiểm tra lại năm nhé.",
-  "Tên môn dài tối đa 200 ký tự.",
-  "Không tìm thấy môn này. Tải lại trang rồi thử lại.",
-];
+// Empty since T1.22: the user approved the eleven sentences of T1.18/T1.20 on 23/10 (R09).
+const PENDING_COPY: [file: string, text: string][] = [];
 
 function sources(dir: string): string[] {
   return readdirSync(path.join(ROOT, dir), { recursive: true, encoding: "utf-8" })
@@ -50,7 +34,4 @@ describe("placeholder sentences (risk register R09)", () => {
     expect(tagged().sort()).toEqual([...PENDING_COPY].sort());
   });
 
-  it("every placeholder message is listed", () => {
-    expect([...PLACEHOLDER_MESSAGES].map((code) => SUBJECT_MESSAGES[code]).sort()).toEqual([...PENDING_MESSAGES].sort());
-  });
 });

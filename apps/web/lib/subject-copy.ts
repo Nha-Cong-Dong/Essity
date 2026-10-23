@@ -1,6 +1,6 @@
 // The subject screens' sentences (DESIGN.md §6.8). "Ngày thi phải sau hôm nay." is DESIGN's; the
-// format, empty-name and "Đã lưu." sentences were chosen by the user on 22/10 (plan K7). The
-// rest are placeholders (data-copy="tam" where shown) listed in the PR for the user to approve.
+// format, empty-name and "Đã lưu." sentences were chosen by the user on 22/10 (plan K7), the rest
+// approved on 23/10 (risk register R09).
 export const SUBJECT_MESSAGES = {
   exam_date_not_in_future: "Ngày thi phải sau hôm nay.",
   exam_date_too_far: "Ngày thi cách quá xa (tối đa 2 năm). Kiểm tra lại năm nhé.",
@@ -23,10 +23,3 @@ export function subjectMessage(code: SubjectMessage, example: string): string {
 
 /** The user's sentence (plan K7) with this example (R24, D12). */
 export const dateFormatMessage = (example: string) => subjectMessage("date_format", example);
-
-/** Sentences no document has yet: shown with data-copy="tam". */
-export const PLACEHOLDER_MESSAGES = new Set<SubjectMessage>([
-  "exam_date_too_far",
-  "name_invalid",
-  "subject_not_found",
-]);

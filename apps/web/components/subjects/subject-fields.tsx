@@ -6,7 +6,7 @@ import { useRef, useSyncExternalStore } from "react";
 import { AuthField } from "@/components/auth/fields";
 import { FieldError } from "@/components/field-error";
 import { formatExamDate, parseExamDate } from "@/lib/exam-date";
-import { PLACEHOLDER_MESSAGES, type SubjectMessage, subjectMessage } from "@/lib/subject-copy";
+import { type SubjectMessage, subjectMessage } from "@/lib/subject-copy";
 
 // The two fields of a subject, and nothing else (US-01 AC1). The exam date is a text field
 // typed day/month/year; the calendar button only helps fill it (plan K10).
@@ -18,8 +18,7 @@ const noSubscribe = () => () => undefined;
 const canPick = () => "showPicker" in HTMLInputElement.prototype;
 
 function Message({ id, code, example }: { id: string; code: SubjectMessage; example: string }) {
-  const text = subjectMessage(code, example);
-  return <FieldError id={id}>{PLACEHOLDER_MESSAGES.has(code) ? <span data-copy="tam">{text}</span> : text}</FieldError>;
+  return <FieldError id={id}>{subjectMessage(code, example)}</FieldError>;
 }
 
 export function SubjectFields({
