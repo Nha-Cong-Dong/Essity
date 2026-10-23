@@ -74,11 +74,11 @@ export function VerifyEmail() {
   }, [state, dest]);
 
   // The anchor would load the page while the timer still runs: go once, from here. A click that
-  // opens a new tab (a modifier key, a middle click) stays the browser's and only stops the timer.
+  // opens a new tab (a modifier key) stays the browser's, and this tab still goes on by itself.
   function goNow(event: MouseEvent) {
-    clearTimeout(timer.current);
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
+    clearTimeout(timer.current);
     go(dest);
   }
 

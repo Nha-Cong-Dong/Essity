@@ -81,15 +81,17 @@ describe("VerifyEmail after the link is verified", () => {
     expect(go).toHaveBeenCalledExactlyOnceWith("/today");
   });
 
-  // Red when: a Ctrl/Cmd/Shift or middle click (a new tab) is turned into a load of this tab.
-  it.each([{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { button: 1 }])(
-    "AC11: a click with %o is left to the browser and stops the timer",
+  // Red when: a Ctrl/Cmd/Shift click (a new tab) is turned into a load of this tab, or stops this
+  // tab from going on while it still says "Đang chuyển tiếp…" (review 418b592).
+  it.each([{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }])(
+    "AC11: a click with %o is left to the browser; this tab still goes on",
     async (modifier) => {
       await verified({ verified: true, signedIn: true, next: "/today" });
 
       expect(fireEvent.click(screen.getByRole("button", { name: "Vào hôm nay" }), modifier)).toBe(true);
-      await act(() => vi.advanceTimersByTimeAsync(2000));
       expect(go).not.toHaveBeenCalled();
+      await act(() => vi.advanceTimersByTimeAsync(1500));
+      expect(go).toHaveBeenCalledExactlyOnceWith("/today");
     },
   );
 
