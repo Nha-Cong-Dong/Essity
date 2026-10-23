@@ -7,7 +7,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const WEB = path.resolve(import.meta.dirname, "..");
-const FORBIDDEN = [/gpa/i, /mốc ban đầu/iu, /điểm xuất phát/iu, /prior_ready_days/];
+// "gpa" in any case a name would write it (GPA, priorGpa, gpa_before, prior_gpa), but not inside
+// a word (configPath, debugPage): review b398bd3 #1.
+const FORBIDDEN = [/GPA|Gpa|(?<![a-z])gpa/, /mốc ban đầu/iu, /điểm xuất phát/iu, /prior_ready_days/];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(path.join(WEB, dir), { recursive: true, withFileTypes: true })
@@ -42,10 +44,12 @@ describe("no grade or starting-point questions (US-11 dropped)", () => {
   });
 
   // Red when: the scan is too narrow (misses a cased or joined name) or too wide (catches CSS).
-  it("catches 'GPA hiện tại', gpa_before, priorGpa and the old copy; leaves items-baseline", () => {
+  it("catches 'GPA hiện tại', gpa_before, priorGpa, prior_gpa and the old copy; leaves items-baseline, configPath", () => {
     expect(gradeWords('label="GPA hiện tại"')).toEqual(["GPA"]);
     expect(gradeWords("const gpa_before = 1")).toEqual(["gpa"]);
     expect(gradeWords("let priorGpa")).toEqual(["Gpa"]);
+    expect(gradeWords("prior_gpa")).toEqual(["gpa"]);
+    expect(gradeWords("const configPath = debugPage")).toEqual([]);
     expect(gradeWords("Ghi điểm xuất phát · Mốc ban đầu")).toHaveLength(2);
     expect(gradeWords('className="items-baseline"')).toEqual([]);
   });

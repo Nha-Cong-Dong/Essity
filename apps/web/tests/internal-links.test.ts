@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest";
 import { LANDINGS, NEXT_PAGES } from "@/lib/landing";
 import { PUBLIC_PAGES } from "@/proxy";
 
+import { appRoutes } from "./app-routes";
+
 const WEB = path.resolve(import.meta.dirname, "..");
 
 function files(dir: string, pattern: RegExp): string[] {
@@ -17,13 +19,7 @@ function files(dir: string, pattern: RegExp): string[] {
     .map((entry) => path.relative(WEB, path.join(entry.parentPath, entry.name)));
 }
 
-/** Each page as its URL segments: route groups "(x)" dropped, "[id]" kept to match anything. */
-const PAGES = files("app", /^page\.tsx$/).map((file) =>
-  path
-    .dirname(path.relative("app", file))
-    .split(path.sep)
-    .filter((segment) => segment !== "." && !/^\(.*\)$/.test(segment)),
-);
+const PAGES = appRoutes("page");
 
 export function isPage(url: string, pages: string[][] = PAGES): boolean {
   const segments = url.split(/[?#]/)[0].split("/").filter(Boolean);
@@ -39,7 +35,7 @@ export function isPage(url: string, pages: string[][] = PAGES): boolean {
  * path handed to core-api (coreFetch("/healthz"), client.GET("/v1/me")).
  */
 export function appPaths(source: string): string[] {
-  return [...source.matchAll(/(["'`])(\/[a-z][\w\-/[\]]*)\1/g)]
+  return [...source.matchAll(/(["'`])(\/[a-z][\w\-/[\]]*(?:[?#][^"'`]*)?)\1/g)]
     .filter((match) => !/(coreFetch|\.(GET|POST|PUT|PATCH|DELETE))\(\s*$/.test(source.slice(0, match.index)))
     .map((match) => match[2])
     .filter((url) => !/^\/(api|v1|_next)\//.test(url) && !url.includes("."));
@@ -71,6 +67,9 @@ describe("internal links", () => {
     expect(appPaths('safeNext(next, ["/subjects/new", \'/today\'])')).toEqual(["/subjects/new", "/today"]);
     expect(appPaths('"/api/x" "#a" "https://x.example/y" `/subjects/${id}` "/logo.svg"')).toEqual([]);
     expect(appPaths('coreFetch("/healthz"); core.GET("/me"); go("/today")')).toEqual(["/today"]);
+    // A query or an anchor does not hide a dead page (review b398bd3 #3).
+    expect(appPaths('"/onboarding?from=verify"')).toEqual(["/onboarding?from=verify"]);
+    expect(isPage("/onboarding?from=verify")).toBe(false);
   });
 
   it("matches a route group and a dynamic segment", () => {
