@@ -19,6 +19,7 @@ from core_api.domain.question_hash import content_hash
 from core_api.repositories.question import (
     QuestionConflictError,
     QuestionRepository,
+    QuestionRetiredError,
     QuestionUnitRepository,
     SubjectMismatchError,
 )
@@ -446,3 +447,29 @@ def test_t21_question_text_cannot_be_blank(
         QuestionRepository(db_session, alice.id).add_idempotent(
             of.id, level=1, run_id=RUN, **values
         )
+
+
+@pytest.mark.parametrize("answer", ["Giao thức tin cậy", "Một đáp án khác"])
+def test_t21_add_idempotent_refuses_a_retired_question(
+    db_session: Session, two_users: tuple[User, User], answer: str
+) -> None:
+    # Seeding a retired question again, with its old answer or a new one, is refused instead of
+    # handing back the retired row as if it were active (final ce93f48 #2, plan D13). Red when:
+    # the status check goes, so the same answer returns the retired row and a new one conflicts.
+    alice, _ = two_users
+    of = subject(db_session, alice)
+    questions = QuestionRepository(db_session, alice.id)
+    retired = questions.add_idempotent(
+        of.id, level=1, prompt="TCP là gì?", reference_answer="Giao thức tin cậy", run_id=RUN
+    )
+    db_session.execute(
+        text("UPDATE question SET status = 'retired' WHERE id = :id"), {"id": retired.id}
+    )
+    with pytest.raises(QuestionRetiredError):
+        questions.add_idempotent(
+            of.id, level=1, prompt="TCP là gì?", reference_answer=answer, run_id=RUN
+        )
+    count = db_session.execute(
+        text("SELECT count(*) FROM question WHERE user_id = :u"), {"u": alice.id}
+    ).scalar_one()
+    assert count == 1

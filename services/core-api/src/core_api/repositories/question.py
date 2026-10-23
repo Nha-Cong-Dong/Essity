@@ -17,7 +17,13 @@ class QuestionNotFoundError(LookupError):
 
 class QuestionConflictError(ValueError):
     """The subject already has this question with another level, answer or rubric: adding it
-    again would keep the old one in silence (review 8a92b17). Retire and re-add instead."""
+    again would keep the old one in silence (review 8a92b17). Changing a seeded question is not
+    supported yet (T2.2 decides how)."""
+
+
+class QuestionRetiredError(ValueError):
+    """The subject had this question and retired it: adding it again would bring it back in
+    silence (plan D13)."""
 
 
 class SubjectMismatchError(ValueError):
@@ -60,10 +66,15 @@ class QuestionRepository(UserScopedRepository[Question]):
             .on_conflict_do_nothing(index_elements=["user_id", "subject_id", "content_hash"])
         )
         self.session.execute(statement)
-        # The row just added, or the one already there: one per user, subject and hash.
+        # The row just added, or the one already there: one per user, subject and hash. Read
+        # afresh, so a status changed since the session loaded it is seen.
         question = self.session.scalars(
-            self._select().where(Question.subject_id == subject_id, Question.content_hash == digest)
+            self._select()
+            .where(Question.subject_id == subject_id, Question.content_hash == digest)
+            .execution_options(populate_existing=True)
         ).one()
+        if question.status != "active":
+            raise QuestionRetiredError(question.id)
         if (question.level, question.reference_answer, question.rubric) != (
             level,
             reference_answer,
