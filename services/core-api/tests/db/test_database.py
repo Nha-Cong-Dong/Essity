@@ -20,9 +20,51 @@ from core_api.repositories.subject import SubjectRepository
 # --- Migrations ------------------------------------------------------------------------------
 
 
+HISTORY_TRIGGERS = {
+    "grade_needs_submitted_attempt",
+    "grade_unit_with_its_grade",
+    "grade_append_only",
+    "grade_unit_append_only",
+    "review_log_append_only",
+    "attempt_guard",
+    "review_session_guard",
+    "grade_no_truncate",
+    "grade_unit_no_truncate",
+    "review_log_no_truncate",
+    "attempt_no_truncate",
+    "review_session_no_truncate",
+}
+HISTORY_FUNCTIONS = {
+    "append_only_refuse",
+    "attempt_guard",
+    "review_session_guard",
+    "grade_needs_submitted_attempt",
+    "grade_unit_with_its_grade",
+}
+
+
 def test_migrations_go_down_to_base_and_back_up(engine: Engine, alembic_cfg: Config) -> None:
     command.downgrade(alembic_cfg, "base")
     command.upgrade(alembic_cfg, "head")
+    # The append-only guards of 0008 come back with their tables (review final fed95f2).
+    with engine.connect() as connection:
+        triggers = connection.execute(
+            text("SELECT tgname FROM pg_trigger WHERE NOT tgisinternal")
+        ).scalars()
+        functions = {
+            name: config
+            for name, config in connection.execute(
+                text(
+                    "SELECT proname, proconfig FROM pg_proc"
+                    " WHERE pronamespace = 'public'::regnamespace"
+                )
+            )
+        }
+    assert HISTORY_TRIGGERS <= set(triggers)
+    assert HISTORY_FUNCTIONS <= set(functions)
+    for name in HISTORY_FUNCTIONS:
+        # pg_temp last: a temporary table never stands in for a real one.
+        assert functions[name] == ["search_path=public, pg_temp"], name
 
 
 def test_models_and_migrations_match(engine: Engine, alembic_cfg: Config) -> None:

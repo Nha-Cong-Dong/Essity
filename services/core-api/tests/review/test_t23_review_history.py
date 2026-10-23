@@ -684,3 +684,55 @@ def test_us08_a_session_cannot_end_before_it_started(db_session: Session, histor
         ReviewSessionRepository(db_session, history.user.id).end(
             history.review.id, NOW - timedelta(hours=1), reason="completed"
         )
+
+
+# --- Trigger functions resolve the real tables (review final fed95f2) ----------------------------
+
+
+def test_t23_a_temporary_table_cannot_stand_in_for_attempt(
+    db_session: Session, history: History
+) -> None:
+    # Red when: the trigger functions look tables up on the caller's search_path, where pg_temp
+    # comes first, so a temporary "attempt" saying "submitted" lets a draft be graded.
+    draft = AttemptRepository(db_session, history.user.id).create_draft(
+        ReviewSessionRepository(db_session, history.user.id).start(DAY, NOW).id,
+        history.question.id,
+    )
+    with pytest.raises(IntegrityError, match="is refused"), db_session.begin_nested():
+        db_session.execute(text("CREATE TEMP TABLE attempt (id uuid, status text)"))
+        db_session.execute(
+            text("INSERT INTO attempt (id, status) VALUES (:id, 'submitted')"), {"id": draft.id}
+        )
+        db_session.execute(
+            text(
+                "INSERT INTO public.grade (id, user_id, attempt_id, source, overall) VALUES"
+                " (gen_random_uuid(), :user, :attempt, 'ai', 'correct')"
+            ),
+            {"user": history.user.id, "attempt": draft.id},
+        )
+
+
+def test_t23_a_temporary_table_cannot_stand_in_for_grade(
+    db_session: Session, history: History
+) -> None:
+    # Red when: a temporary "grade" dated now() lets verdicts join an old grade.
+    old = db_session.execute(
+        text(
+            "INSERT INTO grade (id, user_id, attempt_id, source, overall, created_at) VALUES"
+            " (gen_random_uuid(), :user, :attempt, 'user_override', 'partial',"
+            " now() - interval '1 day') RETURNING id"
+        ),
+        {"user": history.user.id, "attempt": history.attempt.id},
+    ).scalar_one()
+    with pytest.raises(IntegrityError, match="is refused"), db_session.begin_nested():
+        db_session.execute(text("CREATE TEMP TABLE grade (id uuid, created_at timestamptz)"))
+        db_session.execute(
+            text("INSERT INTO grade (id, created_at) VALUES (:id, now())"), {"id": old}
+        )
+        db_session.execute(
+            text(
+                "INSERT INTO public.grade_unit (id, user_id, grade_id, unit_id, verdict)"
+                " VALUES (gen_random_uuid(), :user, :grade, :unit, 'partial')"
+            ),
+            {"user": history.user.id, "grade": old, "unit": history.unit.id},
+        )

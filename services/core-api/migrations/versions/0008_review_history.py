@@ -28,16 +28,20 @@ depends_on: str | Sequence[str] | None = None
 # The append-only rules of layer 3 (ARCH §6.1, ADR-0012, plan D1/D5/D8, review plan P1). BEFORE
 # ... FOR EACH ROW also catches INSERT ... ON CONFLICT DO UPDATE and the deletes of a cascade:
 # there is no way around them yet, not even deleting the account; T6.3 opens one for a database
-# role of its own (CREATE OR REPLACE FUNCTION).
+# role of its own (CREATE OR REPLACE FUNCTION). Each function sets its search_path with pg_temp
+# last: otherwise pg_temp comes first and a temporary "attempt" or "grade" would stand in for the
+# real table in the lookups below (review final fed95f2).
 GUARDS = """
-CREATE FUNCTION append_only_refuse() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION append_only_refuse() RETURNS trigger LANGUAGE plpgsql
+  SET search_path = public, pg_temp AS $$
 BEGIN
   RAISE EXCEPTION '% on % is refused: review history is append-only', TG_OP, TG_TABLE_NAME
     USING ERRCODE = 'restrict_violation';
 END;
 $$;
 
-CREATE FUNCTION attempt_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION attempt_guard() RETURNS trigger LANGUAGE plpgsql
+  SET search_path = public, pg_temp AS $$
 BEGIN
   IF TG_OP = 'DELETE' OR OLD.status <> 'draft'
      OR NEW.id <> OLD.id OR NEW.created_at <> OLD.created_at
@@ -51,7 +55,8 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION review_session_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION review_session_guard() RETURNS trigger LANGUAGE plpgsql
+  SET search_path = public, pg_temp AS $$
 BEGIN
   IF TG_OP = 'DELETE' OR OLD.ended_at IS NOT NULL
      OR NEW.id <> OLD.id OR NEW.created_at <> OLD.created_at
@@ -66,7 +71,8 @@ END;
 $$;
 
 -- Only a submitted attempt is graded (review 31074ea): a draft could still change under its grade.
-CREATE FUNCTION grade_needs_submitted_attempt() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION grade_needs_submitted_attempt() RETURNS trigger LANGUAGE plpgsql
+  SET search_path = public, pg_temp AS $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM attempt WHERE id = NEW.attempt_id AND status = 'submitted') THEN
     RAISE EXCEPTION 'INSERT on grade is refused: the attempt is not submitted'
@@ -77,7 +83,8 @@ END;
 $$;
 
 -- A grade's verdicts are written with it, in its transaction; a later judgement is a new grade.
-CREATE FUNCTION grade_unit_with_its_grade() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION grade_unit_with_its_grade() RETURNS trigger LANGUAGE plpgsql
+  SET search_path = public, pg_temp AS $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM grade WHERE id = NEW.grade_id AND created_at = now()) THEN
     RAISE EXCEPTION 'INSERT on grade_unit is refused: verdicts go with a new grade'
