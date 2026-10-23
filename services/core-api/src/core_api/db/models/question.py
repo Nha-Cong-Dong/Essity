@@ -13,7 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core_api.db.base import Base, UserOwned
+from core_api.db.base import Base, UserOwned, not_blank
 
 QUESTION_STATUSES = frozenset({"active", "retired"})
 
@@ -31,8 +31,8 @@ class Question(UserOwned, Base):
             ["subject_id", "user_id"], ["subject.id", "subject.user_id"], ondelete="CASCADE"
         ),
         CheckConstraint("level BETWEEN 1 AND 3", name="level_range"),
-        CheckConstraint("length(trim(prompt)) > 0", name="prompt_not_blank"),
-        CheckConstraint("length(trim(reference_answer)) > 0", name="answer_not_blank"),
+        CheckConstraint(not_blank("prompt"), name="prompt_not_blank"),
+        CheckConstraint(not_blank("reference_answer"), name="answer_not_blank"),
         CheckConstraint("status IN ('active', 'retired')", name="status_known"),
         CheckConstraint("length(content_hash) = 64", name="content_hash_length"),
         UniqueConstraint("user_id", "subject_id", "content_hash"),

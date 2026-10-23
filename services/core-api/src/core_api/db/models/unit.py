@@ -13,7 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core_api.db.base import Base, UserOwned, one_of
+from core_api.db.base import Base, UserOwned, not_blank, one_of
 
 # PRD US-02b: the five kinds of knowledge unit (plan D4).
 UNIT_KINDS = frozenset({"concept", "mechanism", "comparison", "formula", "example"})
@@ -34,7 +34,7 @@ class KnowledgeUnit(UserOwned, Base):
         ForeignKeyConstraint(
             ["subject_id", "user_id"], ["subject.id", "subject.user_id"], ondelete="CASCADE"
         ),
-        CheckConstraint("length(trim(title)) > 0", name="title_not_blank"),
+        CheckConstraint(not_blank("title"), name="title_not_blank"),
         CheckConstraint(one_of("kind", UNIT_KINDS), name="kind_known"),
         CheckConstraint(one_of("status", UNIT_STATUSES), name="status_known"),
         # Targets of the composite foreign keys below and in question_unit (plan D9).
@@ -66,7 +66,7 @@ class Anchor(UserOwned, Base):
             ondelete="CASCADE",
         ),
         CheckConstraint(one_of("source", ANCHOR_SOURCES), name="source_known"),
-        CheckConstraint("length(trim(quote_text)) > 0", name="quote_not_blank"),
+        CheckConstraint(not_blank("quote_text"), name="quote_not_blank"),
         CheckConstraint("page_no IS NULL OR page_no >= 1", name="page_from_one"),
         CheckConstraint(
             "(char_start IS NULL) = (char_end IS NULL)", name="char_range_both_or_neither"

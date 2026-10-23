@@ -18,6 +18,13 @@ down_revision: str | Sequence[str] | None = "0006"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+# Copied from core_api.db.base.not_blank, so this migration stays as written when the code moves.
+_WHITESPACE = r" \t\n\v\f\r\u0085   -     　"
+
+
+def _not_blank(column: str) -> str:
+    return f"{column} ~ '[^{_WHITESPACE}]'"
+
 
 def upgrade() -> None:
     """Upgrade schema."""
@@ -46,9 +53,7 @@ def upgrade() -> None:
             "status IN ('active', 'merged', 'retired', 'split')",
             name=op.f("ck_knowledge_unit_status_known"),
         ),
-        sa.CheckConstraint(
-            "length(trim(title)) > 0", name=op.f("ck_knowledge_unit_title_not_blank")
-        ),
+        sa.CheckConstraint(_not_blank("title"), name=op.f("ck_knowledge_unit_title_not_blank")),
         sa.ForeignKeyConstraint(
             ["subject_id", "user_id"],
             ["subject.id", "subject.user_id"],
@@ -99,9 +104,9 @@ def upgrade() -> None:
             "length(content_hash) = 64", name=op.f("ck_question_content_hash_length")
         ),
         sa.CheckConstraint("level BETWEEN 1 AND 3", name=op.f("ck_question_level_range")),
-        sa.CheckConstraint("length(trim(prompt)) > 0", name=op.f("ck_question_prompt_not_blank")),
+        sa.CheckConstraint(_not_blank("prompt"), name=op.f("ck_question_prompt_not_blank")),
         sa.CheckConstraint(
-            "length(trim(reference_answer)) > 0", name=op.f("ck_question_answer_not_blank")
+            _not_blank("reference_answer"), name=op.f("ck_question_answer_not_blank")
         ),
         sa.ForeignKeyConstraint(
             ["subject_id", "user_id"],
@@ -161,7 +166,7 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "char_start IS NULL OR char_start >= 0", name=op.f("ck_anchor_char_start_not_negative")
         ),
-        sa.CheckConstraint("length(trim(quote_text)) > 0", name=op.f("ck_anchor_quote_not_blank")),
+        sa.CheckConstraint(_not_blank("quote_text"), name=op.f("ck_anchor_quote_not_blank")),
         sa.CheckConstraint("page_no IS NULL OR page_no >= 1", name=op.f("ck_anchor_page_from_one")),
         sa.ForeignKeyConstraint(
             ["unit_id", "user_id"],

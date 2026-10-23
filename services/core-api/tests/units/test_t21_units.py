@@ -27,6 +27,9 @@ from core_api.repositories.unit import AnchorRepository, KnowledgeUnitRepository
 from isolation import assert_isolated
 
 RUN = uuid.uuid4()
+# Text made only of whitespace: spaces, line breaks, tabs, no-break and ideographic spaces.
+# Postgres trim() strips only the space, and its [:space:] skips the no-break space.
+BLANKS = ["   ", "\n\t", "\r\n\x0b\x0c", "\u00a0", "\u3000 \u2028", "\u2009\u202f\u205f"]
 
 
 def subject(session: Session, user: User, name: str = "Mạng máy tính") -> Subject:
@@ -98,13 +101,14 @@ def test_t21_anchor_range_checks(
         db_session.flush()
 
 
+@pytest.mark.parametrize("blank", BLANKS)
 def test_us02b_ac3_anchor_requires_quote_text(
-    db_session: Session, two_users: tuple[User, User]
+    db_session: Session, two_users: tuple[User, User], blank: str
 ) -> None:
     alice, _ = two_users
     owner = unit(db_session, alice, subject(db_session, alice))
     with pytest.raises(IntegrityError), db_session.begin_nested():
-        anchor(db_session, alice, owner, quote_text="   ")
+        anchor(db_session, alice, owner, quote_text=blank)
         db_session.flush()
 
 
@@ -147,14 +151,15 @@ def test_us02b_ac1_kind_accepts_the_five_and_refuses_others(
         db_session.flush()
 
 
+@pytest.mark.parametrize("blank", BLANKS)
 def test_us02b_ac1_unit_has_title_and_summary(
-    db_session: Session, two_users: tuple[User, User]
+    db_session: Session, two_users: tuple[User, User], blank: str
 ) -> None:
     alice, _ = two_users
     of = subject(db_session, alice)
     with pytest.raises(IntegrityError), db_session.begin_nested():
         KnowledgeUnitRepository(db_session, alice.id).create(
-            of.id, title="  ", summary="s", kind="concept", run_id=RUN
+            of.id, title=blank, summary="s", kind="concept", run_id=RUN
         )
         db_session.flush()
 
@@ -429,13 +434,14 @@ def test_t21_same_prompt_with_other_fields_changed_is_a_conflict(
         )
 
 
+@pytest.mark.parametrize("blank", BLANKS)
 @pytest.mark.parametrize("column", ["prompt", "reference_answer"])
 def test_t21_question_text_cannot_be_blank(
-    db_session: Session, two_users: tuple[User, User], column: str
+    db_session: Session, two_users: tuple[User, User], column: str, blank: str
 ) -> None:
     alice, _ = two_users
     of = subject(db_session, alice)
-    values = {"prompt": "TCP là gì?", "reference_answer": "a"} | {column: "   "}
+    values = {"prompt": "TCP là gì?", "reference_answer": "a"} | {column: blank}
     with pytest.raises(IntegrityError), db_session.begin_nested():
         QuestionRepository(db_session, alice.id).add_idempotent(
             of.id, level=1, run_id=RUN, **values
