@@ -18,6 +18,22 @@ NAMING_CONVENTION = {
 }
 
 
+def one_of(column: str, values: frozenset[str]) -> str:
+    """SQL for a CHECK that `column` is one of `values`: a CHECK, not a Postgres ENUM, so adding
+    a value later is a migration that swaps the CHECK."""
+    return f"{column} IN ({', '.join(repr(value) for value in sorted(values))})"
+
+
+# Unicode White_Space, written out: Postgres trim() strips only the space, and its [:space:]
+# depends on the locale and skips the no-break space.
+_WHITESPACE = r" \t\n\v\f\r\u0085   -     　"
+
+
+def not_blank(column: str) -> str:
+    """SQL for a CHECK that `column` holds at least one character that is not whitespace."""
+    return f"{column} ~ '[^{_WHITESPACE}]'"
+
+
 class OwnerChangeError(Exception):
     """A row of user data would move to another user."""
 
