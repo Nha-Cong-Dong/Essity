@@ -3,6 +3,7 @@
 
 from typing import Any
 
+import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import Connection, Engine, text
@@ -13,13 +14,18 @@ TABLES = ("baseline", "user")
 def snapshot(connection: Connection) -> dict[str, Any]:
     """Columns, constraints and indexes of the two tables, by name (not by column order: a column
     added back sits last)."""
+    # The full type, numeric(3,2) not numeric (review 097fdad #1), the NOT NULL and the default.
     columns = {
-        (row.table_name, row.column_name): (row.data_type, row.is_nullable, row.column_default)
+        (row.table, row.column): (row.type, row.not_null, row.default)
         for row in connection.execute(
             text(
-                "SELECT table_name, column_name, data_type, is_nullable, column_default"
-                " FROM information_schema.columns"
-                " WHERE table_schema = 'public' AND table_name = ANY(:tables)"
+                "SELECT c.relname AS table, a.attname AS column,"
+                " format_type(a.atttypid, a.atttypmod) AS type, a.attnotnull AS not_null,"
+                " pg_get_expr(d.adbin, d.adrelid) AS default"
+                " FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid"
+                " LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum"
+                " WHERE c.relnamespace = 'public'::regnamespace AND c.relname = ANY(:tables)"
+                " AND a.attnum > 0 AND NOT a.attisdropped"
             ),
             {"tables": list(TABLES)},
         )
@@ -76,15 +82,25 @@ def test_0009_drop_and_restore_match_0005(engine: Engine, alembic_cfg: Config) -
         command.upgrade(alembic_cfg, "head")
 
 
-def test_the_snapshot_sees_a_missing_check(engine: Engine, alembic_cfg: Config) -> None:
-    # Red when: the snapshot leaves out constraints, so a downgrade missing one would pass.
+@pytest.mark.parametrize(
+    "change",
+    [
+        "ALTER TABLE baseline DROP CONSTRAINT ck_baseline_gpa_after_range",
+        # numeric(4,2) and numeric(3,2) are both "numeric" in information_schema.data_type.
+        "ALTER TABLE baseline ALTER COLUMN gpa_after TYPE numeric(4,2)",
+        "ALTER TABLE baseline ALTER COLUMN is_late SET DEFAULT false",
+    ],
+)
+def test_the_snapshot_sees_a_changed_schema(
+    engine: Engine, alembic_cfg: Config, change: str
+) -> None:
+    # Red when: the snapshot leaves out a constraint, a column's full type or its default, so a
+    # downgrade that got one wrong would pass (review 097fdad #1).
     try:
         command.downgrade(alembic_cfg, "0008")
         with engine.connect() as connection, connection.begin() as transaction:
             whole = snapshot(connection)
-            connection.execute(
-                text("ALTER TABLE baseline DROP CONSTRAINT ck_baseline_gpa_after_range")
-            )
+            connection.execute(text(change))
             assert snapshot(connection) != whole
             transaction.rollback()
     finally:
