@@ -19,12 +19,13 @@ export function afterBaseline(me: { has_subjects: boolean }): "/subjects/new" | 
   return me.has_subjects ? "/today" : "/subjects/new";
 }
 
-const AFTER_BASELINE = ["/subjects/new", "/today"] as const;
+/** The pages a verified, signed-in person goes on to (after the baseline screen, after verifying). */
+export const NEXT_PAGES = ["/subjects/new", "/today"] as const;
 
 /**
  * A `next` from one of web's routes, kept only when it is one of `pages`; anything else is
  * `fallback` (review plan R3: never follow a page the flow does not know, like "//evil.example").
  */
-export function safeNext(next: unknown, pages: readonly string[] = AFTER_BASELINE, fallback = "/today"): string {
+export function safeNext(next: unknown, pages: readonly string[] = NEXT_PAGES, fallback = "/today"): string {
   return typeof next === "string" && pages.includes(next) ? next : fallback;
 }

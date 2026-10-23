@@ -12,6 +12,7 @@ const ME = {
   email_verified: true,
   timezone: "Asia/Ho_Chi_Minh",
   day_start_hour: 4,
+  has_subjects: false,
 };
 
 /** `me` answers /v1/me in turn (the last one repeats): before the token is spent, then after. */
@@ -55,7 +56,56 @@ describe("POST /api/auth/verify-email (T1.13)", () => {
       browserPost("/api/auth/verify-email", { token: LINK_TOKEN }, { cookies: { [SESSION_COOKIE]: "tok" } }),
     );
 
-    expect(await response.json()).toEqual({ verified: true, signedIn: true });
+    expect(await response.json()).toEqual({ verified: true, signedIn: true, next: "/subjects/new" });
+  });
+
+  // Red when: the route names no page, or the wrong one, for the link owner (T1.22, decision A).
+  it.each([
+    [false, "/subjects/new"],
+    [true, "/today"],
+  ])("AC11: signed in with has_subjects %s → next %s", async (hasSubjects, next) => {
+    core(Response.json({ status: "verified" }), [
+      Response.json(UNVERIFIED),
+      Response.json({ ...ME, has_subjects: hasSubjects }),
+    ]);
+
+    const response = await POST(
+      browserPost("/api/auth/verify-email", { token: LINK_TOKEN }, { cookies: { [SESSION_COOKIE]: "tok" } }),
+    );
+
+    expect(await response.json()).toEqual({ verified: true, signedIn: true, next });
+  });
+
+  // Red when: /v1/me failing after the token is spent turns into 503, so "Thử lại" then says the
+  // link expired, or the route names a page for a session it could not prove (T1.22 plan E4).
+  it("AC11: /v1/me failing after verifying still says verified, not signed in, no next", async () => {
+    let asked = 0;
+    fakeCoreApi(async (call) => {
+      if (call.path !== "/v1/me") return Response.json({ status: "verified" });
+      if (asked++ === 0) return Response.json(UNVERIFIED);
+      throw new TypeError("fetch failed");
+    });
+
+    const response = await POST(
+      browserPost("/api/auth/verify-email", { token: LINK_TOKEN }, { cookies: { [SESSION_COOKIE]: "tok" } }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ verified: true, signedIn: false });
+  });
+
+  it("AC11: /v1/me answering 500 after verifying is the same: verified, not signed in", async () => {
+    core(Response.json({ status: "verified" }), [
+      Response.json(UNVERIFIED),
+      Response.json({ detail: "boom" }, { status: 500 }),
+    ]);
+
+    const response = await POST(
+      browserPost("/api/auth/verify-email", { token: LINK_TOKEN }, { cookies: { [SESSION_COOKIE]: "tok" } }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ verified: true, signedIn: false });
   });
 
   it("F4: someone else's session, verified all along, is not signed in (shared computer, review 822b3ea #2)", async () => {
