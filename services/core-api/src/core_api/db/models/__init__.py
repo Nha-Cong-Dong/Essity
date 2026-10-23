@@ -1,7 +1,6 @@
 """Every table model, imported here so Alembic autogenerate sees all of them."""
 
 from core_api.db.models.auth_session import AuthSession
-from core_api.db.models.baseline import Baseline
 from core_api.db.models.email_token import EmailToken
 from core_api.db.models.question import Question, QuestionUnit
 from core_api.db.models.review import (
@@ -20,7 +19,6 @@ __all__ = [
     "Anchor",
     "Attempt",
     "AuthSession",
-    "Baseline",
     "EmailToken",
     "Exam",
     "Grade",

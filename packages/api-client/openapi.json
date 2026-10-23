@@ -1,92 +1,6 @@
 {
   "components": {
     "schemas": {
-      "BaselineIn": {
-        "additionalProperties": false,
-        "properties": {
-          "gpa_before": {
-            "anyOf": [
-              {
-                "maximum": 4.0,
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "title": "Gpa Before"
-          },
-          "prior_days_unknown": {
-            "default": false,
-            "title": "Prior Days Unknown",
-            "type": "boolean"
-          },
-          "prior_ready_days": {
-            "anyOf": [
-              {
-                "maximum": 365.0,
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Prior Ready Days"
-          }
-        },
-        "required": [
-          "gpa_before"
-        ],
-        "title": "BaselineIn",
-        "type": "object"
-      },
-      "BaselineOut": {
-        "properties": {
-          "editable_until": {
-            "format": "date-time",
-            "title": "Editable Until",
-            "type": "string"
-          },
-          "entered_at": {
-            "format": "date-time",
-            "title": "Entered At",
-            "type": "string"
-          },
-          "gpa_before": {
-            "title": "Gpa Before",
-            "type": "string"
-          },
-          "is_late": {
-            "title": "Is Late",
-            "type": "boolean"
-          },
-          "locked": {
-            "title": "Locked",
-            "type": "boolean"
-          },
-          "prior_days_unknown": {
-            "title": "Prior Days Unknown",
-            "type": "boolean"
-          },
-          "prior_ready_days": {
-            "title": "Prior Ready Days",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "gpa_before",
-          "prior_ready_days",
-          "prior_days_unknown",
-          "entered_at",
-          "is_late",
-          "locked",
-          "editable_until"
-        ],
-        "title": "BaselineOut",
-        "type": "object"
-      },
       "EmailBody": {
         "additionalProperties": false,
         "properties": {
@@ -184,10 +98,6 @@
             "title": "Id",
             "type": "string"
           },
-          "needs_baseline": {
-            "title": "Needs Baseline",
-            "type": "boolean"
-          },
           "timezone": {
             "title": "Timezone",
             "type": "string"
@@ -199,7 +109,6 @@
           "email_verified",
           "timezone",
           "day_start_hour",
-          "needs_baseline",
           "has_subjects"
         ],
         "title": "Me",
@@ -273,19 +182,6 @@
           "password"
         ],
         "title": "ResetBody",
-        "type": "object"
-      },
-      "SkipOut": {
-        "properties": {
-          "needs_baseline": {
-            "title": "Needs Baseline",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "needs_baseline"
-        ],
-        "title": "SkipOut",
         "type": "object"
       },
       "SubjectChange": {
@@ -731,114 +627,6 @@
           }
         },
         "summary": "Resend Verification"
-      }
-    },
-    "/v1/baseline": {
-      "get": {
-        "operationId": "get_baseline_v1_baseline_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaselineOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Baseline"
-      },
-      "post": {
-        "operationId": "create_baseline_v1_baseline_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BaselineIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaselineOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Baseline"
-      },
-      "put": {
-        "operationId": "replace_baseline_v1_baseline_put",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BaselineIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaselineOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Replace Baseline"
-      }
-    },
-    "/v1/baseline/skip": {
-      "post": {
-        "operationId": "skip_baseline_v1_baseline_skip_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SkipOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Skip Baseline"
       }
     },
     "/v1/me": {
