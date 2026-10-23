@@ -10,8 +10,11 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
-// Empty since T1.22: the user approved the eleven sentences of T1.18/T1.20 on 23/10 (R09).
-const PENDING_COPY: [file: string, text: string][] = [];
+// T1.22: the user approved the sentences of T1.18/T1.20 on 23/10 (R09). "thi hôm nay" and "đã thi"
+// were listed only as the expression below, so they wait for the user's word (Guardian, T1.22).
+const PENDING_COPY: [file: string, text: string][] = [
+  ["components/subjects/subject-list.tsx", "{daysLeftText(subject.days_until_exam)}"],
+];
 
 function sources(dir: string): string[] {
   return readdirSync(path.join(ROOT, dir), { recursive: true, encoding: "utf-8" })
