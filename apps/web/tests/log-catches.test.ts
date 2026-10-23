@@ -21,7 +21,6 @@ vi.mock("next/navigation", () => ({
 let session: () => Promise<unknown> = async () => null;
 vi.mock("@/lib/session", () => ({ getSession: () => session() }));
 
-const { nextAfterBaseline } = await import("@/lib/onboarding");
 const { RedirectIfSignedIn } = await import("@/components/auth/redirect-if-signed-in");
 const { POST: verifyEmail } = await import("@/app/api/auth/verify-email/route");
 const { SESSION_COOKIE } = await import("@/lib/cookies");
@@ -29,13 +28,6 @@ const { SESSION_COOKIE } = await import("@/lib/cookies");
 afterEach(() => logError.mockReset());
 
 describe("recovered failures are logged (R12)", () => {
-  // Red when: the catch in nextAfterBaseline still swallows the error silently.
-  it("/v1/me failing after a baseline save", async () => {
-    const core = { GET: async () => Promise.reject(new TypeError("fetch failed: secret-host")) };
-    expect(await nextAfterBaseline(core as never)).toBe("/today");
-    expect(logError).toHaveBeenCalledWith("core-api call failed", { route: "baseline-next", error: "TypeError" });
-  });
-
   // Red when: getSession().catch(() => null) still hides a core-api outage on /login.
   it("core-api failing behind /login and /register", async () => {
     session = async () => Promise.reject(new Error("core-api answered /v1/me with 503"));

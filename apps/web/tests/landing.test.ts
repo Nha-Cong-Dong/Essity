@@ -1,30 +1,22 @@
 // T1.18, plan K4: where someone goes when they open the app, from core-api's /v1/me (plan B14).
 import { describe, expect, it } from "vitest";
 
-import { landingFor, safeNext } from "@/lib/landing";
+import { LANDINGS, landingFor, safeNext } from "@/lib/landing";
 
-const me = (over: { email_verified?: boolean; needs_baseline?: boolean; has_subjects?: boolean } = {}) => ({
-  email_verified: true,
-  needs_baseline: false,
-  has_subjects: true,
-  ...over,
-});
-
-describe("landingFor (US-11 AC1, AC2; plan K4b)", () => {
-  // Every combination: verified × needs_baseline × has_subjects (Guardian, step 1).
+describe("landingFor (plan K4b; T1.22: no baseline step)", () => {
+  // Every combination: verified × has_subjects.
   it.each([
-    [false, false, false, "/check-email"],
-    [false, false, true, "/check-email"],
-    [false, true, false, "/check-email"],
-    [false, true, true, "/check-email"],
-    [true, true, false, "/onboarding"],
-    [true, true, true, "/onboarding"],
-    [true, false, false, "/subjects/new"],
-    [true, false, true, "/today"],
-  ])("verified %s, needs_baseline %s, has_subjects %s → %s", (verified, needsBaseline, hasSubjects, to) => {
-    expect(landingFor(me({ email_verified: verified, needs_baseline: needsBaseline, has_subjects: hasSubjects }))).toBe(
-      to,
-    );
+    [false, false, "/check-email"],
+    [false, true, "/check-email"],
+    [true, false, "/subjects/new"],
+    [true, true, "/today"],
+  ])("verified %s, has_subjects %s → %s", (verified, hasSubjects, to) => {
+    expect(landingFor({ email_verified: verified, has_subjects: hasSubjects })).toBe(to);
+  });
+
+  // Red when: a landing is added back (like /onboarding) without its own decision.
+  it("names exactly three pages", () => {
+    expect([...LANDINGS]).toEqual(["/check-email", "/subjects/new", "/today"]);
   });
 });
 

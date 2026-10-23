@@ -69,7 +69,7 @@ describe("POST /api/auth/login (T1.12)", () => {
     expect(body).not.toContain(CREDENTIALS.password);
   });
 
-  // T1.18 plan K4: "/" picks the page from /v1/me (baseline, first subject or /today).
+  // T1.18 plan K4: "/" picks the page from /v1/me (first subject or /today).
   it("AC7: a verified user goes to /, which sends them on by landingFor", async () => {
     loginOk({ verified: true });
 

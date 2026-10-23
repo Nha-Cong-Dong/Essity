@@ -1,25 +1,21 @@
-// T1.18, plan K4: which page someone lands on when they open the app. core-api decides who still
-// needs a baseline (plan B14); web only follows its flags, and only at the ways in (/, sign-in,
-// /login while signed in, /onboarding itself). /today never sends anyone on: right after
-// "Nhập sau", needs_baseline is still true, and /today would send them straight back.
+// T1.18, plan K4; T1.22: which page someone lands on when they open the app. Asked only at the
+// ways in (/, sign-in, /login while signed in, after verifying an email); /today never sends
+// anyone on (CONVENTIONS).
 
-type Flags = { email_verified: boolean; needs_baseline: boolean; has_subjects: boolean };
+type Flags = { email_verified: boolean; has_subjects: boolean };
 
-export type Landing = "/check-email" | "/onboarding" | "/subjects/new" | "/today";
+/** Every page landingFor may name, for the check that each has a page (internal-links test). */
+export const LANDINGS = ["/check-email", "/subjects/new", "/today"] as const;
+
+export type Landing = (typeof LANDINGS)[number];
 
 export function landingFor(me: Flags): Landing {
   if (!me.email_verified) return "/check-email";
-  if (me.needs_baseline) return "/onboarding";
   if (!me.has_subjects) return "/subjects/new";
   return "/today";
 }
 
-/** Where to go after the baseline screen: past it, never back (plan K4c). */
-export function afterBaseline(me: { has_subjects: boolean }): "/subjects/new" | "/today" {
-  return me.has_subjects ? "/today" : "/subjects/new";
-}
-
-/** The pages a verified, signed-in person goes on to (after the baseline screen, after verifying). */
+/** The pages a verified, signed-in person goes on to (after verifying, after signing in). */
 export const NEXT_PAGES = ["/subjects/new", "/today"] as const;
 
 /**

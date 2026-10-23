@@ -5,7 +5,7 @@ import { EXPIRED_COOKIE, PENDING_EMAIL_COOKIE } from "@/lib/cookies";
 import { coreClientFor } from "@/lib/core-client";
 import { withOrigin } from "@/lib/csrf";
 import { errorResponse, rateLimited, readStrings, unavailable } from "@/lib/http";
-import { afterBaseline } from "@/lib/landing";
+import { landingFor } from "@/lib/landing";
 
 // T1.13: the link in the verification email. The page POSTs its token here after taking it
 // out of the URL (F8). `signedIn` tells the page whether to go on into the app or show
@@ -34,7 +34,7 @@ export const POST = withOrigin(async (request) => {
     const owner = await sessionUserOrNull(request, "verify-email");
     const signedIn = before?.email_verified === false && owner?.email_verified === true;
     const verified = NextResponse.json(
-      signedIn && owner ? { verified: true, signedIn, next: afterBaseline(owner) } : { verified: true, signedIn },
+      signedIn && owner ? { verified: true, signedIn, next: landingFor(owner) } : { verified: true, signedIn },
     );
     if (request.cookies.has(PENDING_EMAIL_COOKIE)) {
       verified.cookies.set(PENDING_EMAIL_COOKIE, "", EXPIRED_COOKIE);

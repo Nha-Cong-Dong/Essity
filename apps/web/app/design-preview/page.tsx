@@ -148,14 +148,14 @@ export default function DesignPreviewPage() {
             <Input id="preview-email" type="email" placeholder="ban@example.com" />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="preview-gpa">GPA hiện tại</Label>
-            <Input id="preview-gpa" aria-invalid aria-describedby="preview-gpa-error" defaultValue="4,5" />
-            <FieldError id="preview-gpa-error">GPA thang 4 nằm trong khoảng 0 đến 4.</FieldError>
+            <Label htmlFor="preview-subject">Tên môn</Label>
+            <Input id="preview-subject" aria-invalid aria-describedby="preview-subject-error" defaultValue="Mạng máy tính" />
+            <FieldError id="preview-subject-error">Tên môn dài tối đa 200 ký tự.</FieldError>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="preview-disabled">Không sửa được</Label>
-            <Input id="preview-disabled" disabled defaultValue="2.85" aria-describedby="preview-disabled-hint" />
-            <FieldHint id="preview-disabled-hint">Sau 7 ngày, mốc này sẽ không sửa được nữa.</FieldHint>
+            <Input id="preview-disabled" disabled defaultValue="ban@example.com" aria-describedby="preview-disabled-hint" />
+            <FieldHint id="preview-disabled-hint">Email đăng nhập không đổi được ở đây.</FieldHint>
           </div>
         </section>
 
