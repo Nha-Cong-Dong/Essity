@@ -6,6 +6,7 @@ The data side of us-04 AC2, us-05 AC9 and us-08; their behaviour comes with T2.9
 
 import uuid
 from datetime import UTC, date, datetime, timedelta
+from types import FunctionType
 from typing import Any
 
 import pytest
@@ -18,7 +19,7 @@ from core_api.db.models import Grade, User
 from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler, Phase
 from core_api.domain.scheduling.rating import ReviewRating, Verdict
 from core_api.jobs.purge_unverified import UNVERIFIED_LIFETIME, purge_unverified
-from core_api.repositories.base import AppendOnlyError
+from core_api.repositories.base import AppendOnlyError, UserScopedRepository
 from core_api.repositories.question import QuestionRepository, QuestionUnitRepository
 from core_api.repositories.review import (
     AttemptNotDraftError,
@@ -216,11 +217,11 @@ def test_t23_owner_cannot_delete_history_rows_directly(
     )
 
 
-def test_t23_user_with_history_cannot_be_deleted_until_t63(
+def test_t23_user_with_history_cannot_be_deleted_until_t222(
     db_session: Session, history: History
 ) -> None:
-    # Plan D1: no way around the triggers yet, not even deleting the account; T6.3 opens one
-    # for a database role of its own. Red when: a delete path slips through before then.
+    # Plan D1: no way around the triggers yet, not even deleting the account; T2.22 opens one
+    # for a database role of its own, core_eraser. Red when: a delete path slips through first.
     refused_by_trigger(db_session, 'DELETE FROM "user" WHERE id = :user', user=history.user.id)
     refused_by_trigger(db_session, 'TRUNCATE "user" CASCADE')
 
@@ -245,20 +246,27 @@ def test_t23_purge_still_runs_when_other_users_have_history(
 # --- Repositories of layer 3 change nothing (T2.3 "Xong khi") ------------------------------------
 
 APPEND_ONLY = [ReviewSessionRepository, AttemptRepository, GradeRepository, ReviewLogRepository]
-# What each may do besides reading and adding: closing a session, editing a draft.
-ALLOWED_WRITES = {"end", "save_draft", "submit"}
+# Every public method each adds to the base repository: closing a session, editing a draft, and
+# otherwise only adding and reading. A new name here is a change to the append-only rule.
+OWN_METHODS = {
+    ReviewSessionRepository: {"start", "end"},
+    AttemptRepository: {"create_draft", "save_draft", "submit"},
+    GradeRepository: {"add_with_units", "latest_for_attempt"},
+    ReviewLogRepository: {"append"},
+}
 
 
 @pytest.mark.parametrize("repository", APPEND_ONLY, ids=lambda cls: cls.__name__)
 def test_t23_append_only_repositories_have_no_mutators(repository: type) -> None:
-    names = {name for name in dir(repository) if not name.startswith("_")}
-    suspicious = {
+    # Red when: a method such as GradeRepository.amend() or ReviewLogRepository.correct() is
+    # added, whatever its name (final ce93f48 #4).
+    base = {name for name in dir(UserScopedRepository) if not name.startswith("_")}
+    names = {
         name
-        for name in names
-        if any(word in name for word in ("update", "delete", "remove", "set", "edit", "replace"))
+        for name in dir(repository)
+        if not name.startswith("_") and isinstance(getattr(repository, name), FunctionType)
     }
-    assert suspicious <= {"delete"}, suspicious  # `delete` exists only to raise
-    assert names & {"end", "save_draft", "submit"} <= ALLOWED_WRITES
+    assert names - base == OWN_METHODS[repository]
 
 
 @pytest.mark.parametrize("repository", APPEND_ONLY, ids=lambda cls: cls.__name__)

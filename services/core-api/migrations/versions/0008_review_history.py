@@ -27,10 +27,10 @@ depends_on: str | Sequence[str] | None = None
 #
 # The append-only rules of layer 3 (ARCH §6.1, ADR-0012, plan D1/D5/D8, review plan P1). BEFORE
 # ... FOR EACH ROW also catches INSERT ... ON CONFLICT DO UPDATE and the deletes of a cascade:
-# there is no way around them yet, not even deleting the account; T6.3 opens one for a database
-# role of its own (CREATE OR REPLACE FUNCTION). Each function sets its search_path with pg_temp
-# last: otherwise pg_temp comes first and a temporary "attempt" or "grade" would stand in for the
-# real table in the lookups below (review final fed95f2).
+# there is no way around them yet, not even deleting the account; T2.22 opens one for a database
+# role of its own, core_eraser (CREATE OR REPLACE FUNCTION). Each function sets its search_path
+# with pg_temp last: otherwise pg_temp comes first and a temporary "attempt" or "grade" would
+# stand in for the real table in the lookups below (review final fed95f2).
 GUARDS = """
 CREATE FUNCTION append_only_refuse() RETURNS trigger LANGUAGE plpgsql
   SET search_path = public, pg_temp AS $$

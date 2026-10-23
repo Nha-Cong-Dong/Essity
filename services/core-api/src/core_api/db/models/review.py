@@ -1,8 +1,9 @@
 """Review history (layer 3, append-only) and the schedule cache (layer 4), ARCH §6.2, T2.3.
 
 Layer 3 is the most valuable data in the system (PRD §6): triggers in migration 0008 refuse to
-change or delete it, even when an account is deleted, until T6.3 opens one way for a database
-role of its own (plan D1). `memory_state` is a cache rebuilt from `review_log` (T2.6).
+change or delete it, even when an account is deleted, until T2.22 opens one way for a database
+role of its own, `core_eraser` (plan D1). `memory_state` is a cache rebuilt from `review_log`
+(T2.6).
 """
 
 import uuid
