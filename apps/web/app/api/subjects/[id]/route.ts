@@ -36,3 +36,25 @@ export const PATCH = withOrigin(async (request, { params }: { params: Promise<{ 
   }
   return subjectError("subject", result.response, result.error);
 });
+
+// T2.3b, us-01 AC8: delete a subject with no review history. core-api answers 204 with no body,
+// so success is read from the status, not from `data`.
+export const DELETE = withOrigin(
+  async (request, { params }: { params: Promise<{ id: string }> }) => {
+    const token = request.cookies.get(SESSION_COOKIE)?.value;
+    if (!token) return errorResponse("signed_out", 401);
+    const { id } = await params;
+    if (!isSubjectId(id)) return errorResponse("subject_not_found", 404);
+
+    let result;
+    try {
+      result = await coreClientFor(request, token).DELETE("/v1/subjects/{subject_id}", {
+        params: { path: { subject_id: id } },
+      });
+    } catch (error) {
+      return unavailable("subject", error);
+    }
+    if (result.response.status === 204) return new Response(null, { status: 204 });
+    return subjectError("subject", result.response, result.error);
+  },
+);

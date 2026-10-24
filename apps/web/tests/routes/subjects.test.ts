@@ -1,7 +1,7 @@
 // T1.20: web's routes behind the subject screens (US-01 AC1, AC2; review plan R1).
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PATCH } from "@/app/api/subjects/[id]/route";
+import { DELETE, PATCH } from "@/app/api/subjects/[id]/route";
 import { POST } from "@/app/api/subjects/route";
 import { SESSION_COOKIE } from "@/lib/session";
 
@@ -201,5 +201,90 @@ describe("PATCH /api/subjects/[id] (T1.20, plan K2)", () => {
 
     expect(response.status).toBe(403);
     expect(calls).toHaveLength(0);
+  });
+});
+
+const remove = (id: string, options: Parameters<typeof browserPost>[2] = SIGNED_IN) =>
+  DELETE(browserPost(`/api/subjects/${id}`, undefined, { ...options, method: "DELETE" }), {
+    params: Promise.resolve({ id }),
+  });
+
+describe("DELETE /api/subjects/[id] (T2.3b, us-01 AC8)", () => {
+  beforeEach(() => {
+    vi.stubEnv("WEB_TO_CORE_TOKEN", SERVICE_TOKEN);
+  });
+
+  // Red when: the route reads core-api's empty 204 as data (it has none) and answers 503.
+  it("us-01 AC8: deletes with the session and answers 204 with no body", async () => {
+    const calls = fakeCoreApi(() => new Response(null, { status: 204 }));
+
+    const response = await remove(ID);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("DELETE");
+    expect(calls[0].path).toBe(`/v1/subjects/${ID}`);
+    expect(calls[0].headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
+    expect(response.status).toBe(204);
+    expect(await response.text()).toBe("");
+  });
+
+  it("us-01 AC8: a subject with review history (core-api 409) is subject_has_history", async () => {
+    fakeCoreApi(() => Response.json({ detail: "subject_has_history" }, { status: 409 }));
+
+    const response = await remove(ID);
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "subject_has_history" });
+  });
+
+  it("us-01 AC8: gone, someone else's or deleted twice (core-api 404) is subject_not_found", async () => {
+    fakeCoreApi(() => Response.json({ detail: "subject_not_found" }, { status: 404 }));
+
+    const response = await remove(ID);
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "subject_not_found" });
+  });
+
+  it.each(["..", "%2e%2e", "../me", "not-a-uuid", `${ID}/x`])(
+    "review plan R1: id %j is 404 subject_not_found, core-api not asked",
+    async (id) => {
+      const calls = fakeCoreApi(() => new Response(null, { status: 204 }));
+
+      const response = await remove(id);
+
+      expect(response.status).toBe(404);
+      expect(calls).toHaveLength(0);
+    },
+  );
+
+  it("without a session cookie: 401 signed_out, core-api not asked", async () => {
+    const calls = fakeCoreApi(() => new Response(null, { status: 204 }));
+
+    const response = await remove(ID, { cookies: {} });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "signed_out" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it.each([null, "https://evil.example"])(
+    "ADR-0014: origin %j is refused, core-api not asked",
+    async (origin) => {
+      const calls = fakeCoreApi(() => new Response(null, { status: 204 }));
+
+      const response = await remove(ID, { ...SIGNED_IN, origin });
+
+      expect(response.status).toBe(403);
+      expect(calls).toHaveLength(0);
+    },
+  );
+
+  it("core-api down → 503", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("fetch failed"))));
+
+    const response = await remove(ID);
+
+    expect(response.status).toBe(503);
   });
 });
