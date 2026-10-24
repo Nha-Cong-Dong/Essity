@@ -35,10 +35,11 @@ export function isPage(url: string, pages: string[][] = PAGES): boolean {
  * path handed to core-api (coreFetch("/healthz"), client.GET("/v1/me")).
  */
 export function appPaths(source: string): string[] {
+  // A file ("/logo.svg") never matches: the path part allows no dot. A dot after ? or # is kept.
   return [...source.matchAll(/(["'`])(\/[a-z][\w\-/[\]]*(?:[?#][^"'`]*)?)\1/g)]
     .filter((match) => !/(coreFetch|\.(GET|POST|PUT|PATCH|DELETE))\(\s*$/.test(source.slice(0, match.index)))
     .map((match) => match[2])
-    .filter((url) => !/^\/(api|v1|_next)\//.test(url) && !url.includes("."));
+    .filter((url) => !/^\/(api|v1|_next)\//.test(url));
 }
 
 describe("internal links", () => {
@@ -70,6 +71,12 @@ describe("internal links", () => {
     // A query or an anchor does not hide a dead page (review b398bd3 #3).
     expect(appPaths('"/onboarding?from=verify"')).toEqual(["/onboarding?from=verify"]);
     expect(isPage("/onboarding?from=verify")).toBe(false);
+    // Nor does a dot in the query or the anchor; only a file extension on the path is skipped.
+    expect(appPaths('"/onboarding?from=a.b" "/subjects/neww#step.2"')).toEqual([
+      "/onboarding?from=a.b",
+      "/subjects/neww#step.2",
+    ]);
+    expect(appPaths('"/logo.svg" "/logo.svg?v=2"')).toEqual([]);
   });
 
   it("matches a route group and a dynamic segment", () => {
