@@ -14,6 +14,12 @@ describe("landingFor (plan K4b; T1.22: no baseline step)", () => {
     expect(landingFor({ email_verified: verified, has_subjects: hasSubjects })).toBe(to);
   });
 
+  // us-01 AC8 (T2.3b): deleting the last subject turns has_subjects false (core-api test), and
+  // that alone sends the user back to creating one.
+  it("us-01 AC8: someone with no subject left goes to /subjects/new", () => {
+    expect(landingFor({ email_verified: true, has_subjects: false })).toBe("/subjects/new");
+  });
+
   // Red when: a landing is added back (like /onboarding) without its own decision.
   it("names exactly three pages", () => {
     expect([...LANDINGS]).toEqual(["/check-email", "/subjects/new", "/today"]);

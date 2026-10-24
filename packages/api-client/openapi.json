@@ -30,6 +30,47 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "ListedSubject": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "days_until_exam": {
+            "title": "Days Until Exam",
+            "type": "integer"
+          },
+          "exam_date": {
+            "format": "date",
+            "title": "Exam Date",
+            "type": "string"
+          },
+          "has_history": {
+            "title": "Has History",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "exam_date",
+          "days_until_exam",
+          "created_at",
+          "has_history"
+        ],
+        "title": "ListedSubject",
+        "type": "object"
+      },
       "LoginBody": {
         "additionalProperties": false,
         "properties": {
@@ -674,7 +715,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/SubjectOut"
+                    "$ref": "#/components/schemas/ListedSubject"
                   },
                   "title": "Response List Subjects V1 Subjects Get",
                   "type": "array"
@@ -724,6 +765,38 @@
       }
     },
     "/v1/subjects/{subject_id}": {
+      "delete": {
+        "description": "Soft-delete a subject with no review history (us-01 AC8, T2.3b). Its exam, questions and\nunits stay but are hidden; the name can be used again. A subject with an attempt, a draft\nincluded, answers 409 (deleting those comes with T6.3).",
+        "operationId": "delete_subject_v1_subjects__subject_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Subject"
+      },
       "patch": {
         "operationId": "change_subject_v1_subjects__subject_id__patch",
         "parameters": [

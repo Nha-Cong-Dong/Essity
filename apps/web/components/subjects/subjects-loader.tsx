@@ -28,7 +28,7 @@ export async function subjectForUpload(id: string): Promise<Subject> {
 
 /**
  * The list part of /subjects (T1.20, DESIGN.md §6.8), for a page that has checked the session. One
- * primary button: "Tạo môn" above the list, or in the empty state.
+ * primary button: "Tạo môn" above the list, or in the empty state (SubjectList, T2.3b plan F9).
  */
 export async function Subjects({ example }: { example: string }) {
   let subjects: Subject[];
@@ -54,17 +54,13 @@ export async function Subjects({ example }: { example: string }) {
       </div>
     );
   }
-  const listed = subjects.map(({ id, name, exam_date, days_until_exam }) => ({ id, name, exam_date, days_until_exam }));
-  return (
-    <>
-      {listed.length > 0 && (
-        <div className="-mt-16 mb-6 flex justify-end">
-          <Button render={<a href="/subjects/new" />} nativeButton={false}>
-            Tạo môn
-          </Button>
-        </div>
-      )}
-      <SubjectList subjects={listed} example={example} />
-    </>
-  );
+  const listed = subjects.map(({ id, name, exam_date, days_until_exam, has_history }) => ({
+    id,
+    name,
+    exam_date,
+    days_until_exam,
+    has_history,
+  }));
+  // "Tạo môn" lives in SubjectList: it moves to the empty state when the last subject is deleted.
+  return <SubjectList subjects={listed} example={example} />;
 }

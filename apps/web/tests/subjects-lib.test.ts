@@ -49,6 +49,15 @@ describe("subjects on the server", () => {
     expect(await findSubject("0f2b8c1e-7a4d-4e5f-9b6a-1c2d3e4f5a6b")).toBeNull();
   });
 
+  // core-api leaves a soft-deleted subject out of its list, so its upload page is not found
+  // (the not-found page, status 200 inside Suspense: risk register R19; T2.3b plan F4).
+  it("us-01 AC8: a deleted subject, which core-api no longer lists, is null", async () => {
+    const OTHER = { ...MMT, id: "0f2b8c1e-7a4d-4e5f-9b6a-1c2d3e4f5a6b", name: "Còn lại" };
+    fakeCoreApi(() => Response.json([OTHER]));
+
+    expect(await findSubject(ID)).toBeNull();
+  });
+
   // Red when: an id from the URL reaches core-api unchecked (review plan R1).
   it.each(["..", "%2e%2e", "abc", `${ID}/x`])("review plan R1: id %j is null without asking core-api", async (id) => {
     const calls = fakeCoreApi(() => Response.json([MMT]));

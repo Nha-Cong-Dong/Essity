@@ -12,7 +12,7 @@ const { SubjectList } = await import("@/components/subjects/subject-list");
 const { UploadStep } = await import("@/components/subjects/upload-step");
 
 const ID = "3f2b8c1e-7a4d-4e5f-9b6a-1c2d3e4f5a6b";
-const MMT = { id: ID, name: "Mạng máy tính", exam_date: "2026-12-15", days_until_exam: 54 };
+const MMT = { id: ID, name: "Mạng máy tính", exam_date: "2026-12-15", days_until_exam: 54, has_history: false };
 // A year no fixed text has: the field and its message must follow the page's example (R24).
 const EXAMPLE = "15/12/2031";
 

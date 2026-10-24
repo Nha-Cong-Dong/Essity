@@ -229,7 +229,13 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Subject
+         * @description Soft-delete a subject with no review history (us-01 AC8, T2.3b). Its exam, questions and
+         *     units stay but are hidden; the name can be used again. A subject with an attempt, a draft
+         *     included, answers 409 (deleting those comes with T6.3).
+         */
+        delete: operations["delete_subject_v1_subjects__subject_id__delete"];
         options?: never;
         head?: never;
         /** Change Subject */
@@ -249,6 +255,30 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ListedSubject */
+        ListedSubject: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Days Until Exam */
+            days_until_exam: number;
+            /**
+             * Exam Date
+             * Format: date
+             */
+            exam_date: string;
+            /** Has History */
+            has_history: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
         };
         /** LoginBody */
         LoginBody: {
@@ -701,7 +731,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SubjectOut"][];
+                    "application/json": components["schemas"]["ListedSubject"][];
                 };
             };
         };
@@ -727,6 +757,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SubjectOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_subject_v1_subjects__subject_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

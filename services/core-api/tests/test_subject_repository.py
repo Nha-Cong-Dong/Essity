@@ -3,7 +3,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from clock import future_exam
+from clock import FROZEN_NOW, future_exam
 from core_api.db.base import OwnerChangeError
 from core_api.db.models import Exam, Subject, User
 from core_api.repositories.subject import ExamRepository, SubjectNotFoundError, SubjectRepository
@@ -99,7 +99,7 @@ def test_soft_deleted_subject_is_hidden(db_session: Session, two_users: tuple[Us
     subjects = SubjectRepository(db_session, two_users[0].id)
     subject = subjects.create("Mạng máy tính")
     db_session.flush()
-    assert subjects.soft_delete(subject.id) is True
+    subjects.soft_delete(subject.id, FROZEN_NOW)
     db_session.flush()
     assert subjects.get(subject.id) is None
     assert subjects.list() == []
@@ -112,7 +112,8 @@ def test_soft_delete_of_another_users_subject_does_nothing(
     alice, bob = two_users
     subject = SubjectRepository(db_session, alice.id).create("Mạng máy tính")
     db_session.flush()
-    assert SubjectRepository(db_session, bob.id).soft_delete(subject.id) is False
+    with pytest.raises(SubjectNotFoundError):
+        SubjectRepository(db_session, bob.id).soft_delete(subject.id, FROZEN_NOW)
     assert subject.deleted_at is None
 
 

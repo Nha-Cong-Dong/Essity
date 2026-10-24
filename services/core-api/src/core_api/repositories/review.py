@@ -22,6 +22,7 @@ from core_api.repositories.question import (
     QuestionRepository,
     QuestionUnitRepository,
 )
+from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.unit import KnowledgeUnitRepository, UnitNotFoundError
 
 
@@ -76,9 +77,15 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
     model = Attempt
 
     def create_draft(self, review_session_id: uuid.UUID, question_id: uuid.UUID) -> Attempt:
+        """A draft answer. Locks in this order: the session, then the question's subject (FOR
+        SHARE, so a soft delete waits for this draft or this finds the subject gone: T2.3b plan
+        F3), then the attempt. Saving and submitting need no subject lock: a subject with an
+        attempt cannot be soft-deleted (that path comes with T6.3)."""
         self._lock_open_session(review_session_id)
-        if QuestionRepository(self.session, self.user_id).get(question_id) is None:
+        question = QuestionRepository(self.session, self.user_id).get(question_id)
+        if question is None:
             raise QuestionNotFoundError(question_id)
+        SubjectRepository(self.session, self.user_id).hold_for_share(question.subject_id)
         attempt = self.add(Attempt(review_session_id=review_session_id, question_id=question_id))
         self.session.flush()
         return attempt

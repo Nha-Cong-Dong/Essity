@@ -1,15 +1,20 @@
 import uuid
 from collections.abc import Sequence
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
-from sqlalchemy import Select, exists, select
+from sqlalchemy import Exists, Select, exists, select
+from sqlalchemy.orm import QueryableAttribute
 
-from core_api.db.models import Exam, Subject
+from core_api.db.models import Attempt, Exam, Question, Subject
 from core_api.repositories.base import UserScopedRepository
 
 
 class SubjectNotFoundError(LookupError):
     """No such subject for this user: missing, deleted, or someone else's."""
+
+
+class SubjectHasHistoryError(ValueError):
+    """The subject has an attempt, a draft included: it stays (us-01 AC8; T6.3 deletes those)."""
 
 
 class SubjectRepository(UserScopedRepository[Subject]):
@@ -37,19 +42,46 @@ class SubjectRepository(UserScopedRepository[Subject]):
         # Inner join: every subject made through the API has its exam (one, by the database).
         return self._select().add_columns(Exam).join(Exam, Exam.subject_id == Subject.id)
 
-    def list_with_exams(self) -> list[tuple[Subject, Exam]]:
-        """Soonest exam first; subjects created first come first on the same day."""
-        query = self._with_exam().order_by(Exam.exam_date, Subject.created_at, Subject.id)
-        return [(subject, exam) for subject, exam in self.session.execute(query)]
+    def _history_of(self, subject_id: QueryableAttribute[uuid.UUID] | uuid.UUID) -> Exists:
+        """Whether the subject has an attempt, a draft included (plan F2). Both user_id filters
+        stand guard though the attempt's foreign key already pairs them (plan F6)."""
+        return (
+            select(Attempt.id)
+            .join(Question, Question.id == Attempt.question_id)
+            .where(
+                Question.subject_id == subject_id,
+                Question.user_id == self.user_id,
+                Attempt.user_id == self.user_id,
+            )
+            .exists()
+        )
 
-    def get_with_exam(self, id: uuid.UUID) -> tuple[Subject, Exam] | None:
-        row = self.session.execute(self._with_exam().where(Subject.id == id)).one_or_none()
+    def list_with_exams(self) -> list[tuple[Subject, Exam, bool]]:
+        """Soonest exam first; subjects created first come first on the same day. The third item
+        says whether the subject has review history, so web hides its delete button."""
+        query = (
+            self._with_exam()
+            .add_columns(self._history_of(Subject.id))
+            .order_by(Exam.exam_date, Subject.created_at, Subject.id)
+        )
+        return [(subject, exam, history) for subject, exam, history in self.session.execute(query)]
+
+    def get_with_exam(self, id: uuid.UUID, *, lock: bool = False) -> tuple[Subject, Exam] | None:
+        """With `lock`, hold the subject FOR NO KEY UPDATE until commit (plan F10): a delete in
+        flight is waited for, and once it commits the subject is not found, so a change never
+        lands on a deleted subject. The exam row is not locked."""
+        query = self._with_exam().where(Subject.id == id)
+        if lock:
+            query = query.with_for_update(key_share=True, of=Subject)
+        row = self.session.execute(query).one_or_none()
         return None if row is None else (row[0], row[1])
 
     def update(
         self, id: uuid.UUID, *, name: str | None = None, exam_date: date | None = None
     ) -> tuple[Subject, Exam] | None:
-        """Change what is given. None if the subject is not this user's (or deleted)."""
+        """Change what is given. None if the subject is not this user's (or deleted). The caller
+        locks the subject first (`get_with_exam(id, lock=True)`, plan F10), in the same
+        transaction, so a delete in flight is waited for before this reads."""
         found = self.get_with_exam(id)
         if found is None:
             return None
@@ -65,12 +97,38 @@ class SubjectRepository(UserScopedRepository[Subject]):
         """Whether the user has a subject web lists: not deleted, with its exam."""
         return bool(self.session.scalar(select(exists(self._with_exam()))))
 
-    def soft_delete(self, id: uuid.UUID) -> bool:
-        subject = self.get(id)
+    def hold_for_share(self, id: uuid.UUID) -> None:
+        """Hold a visible subject FOR SHARE until commit, for a write that must not land on a
+        deleted subject (`AttemptRepository.create_draft`, plan F3). Pairs with `soft_delete`:
+        its FOR UPDATE waits for this lock, or this waits for it and then finds nothing.
+
+        FOR SHARE rather than FOR KEY SHARE (PLAN T2.9): it also stops a delete that would one
+        day be a plain UPDATE, at the cost of a rename waiting a moment. A transaction holding
+        this must not then change the subject (that would upgrade the lock)."""
+        held = self.session.execute(
+            self._select()
+            .with_only_columns(Subject.id)
+            .where(Subject.id == id)
+            .with_for_update(read=True)
+        ).one_or_none()
+        if held is None:
+            raise SubjectNotFoundError(id)
+
+    def soft_delete(self, id: uuid.UUID, now: datetime) -> None:
+        """Hide a subject with no review history (us-01 AC8), in the caller's transaction.
+
+        Lock the row FOR UPDATE first: an attempt being written holds the subject FOR SHARE
+        (`AttemptRepository.create_draft`), so this waits for it to commit. Only then, in a
+        statement of its own, look for history, which therefore sees that attempt (plan F3)."""
+        subject = self.session.scalars(
+            self._select().where(Subject.id == id).with_for_update()
+        ).one_or_none()
         if subject is None:
-            return False
-        subject.deleted_at = datetime.now(UTC)
-        return True
+            raise SubjectNotFoundError(id)
+        if self.session.scalar(select(self._history_of(id))):
+            raise SubjectHasHistoryError(id)
+        subject.deleted_at = now
+        self.session.flush()
 
 
 class ExamRepository(UserScopedRepository[Exam]):

@@ -22,6 +22,10 @@ export function subjectError(route: LogRoute, response: Response, error: unknown
   const detail = (error as { detail?: unknown } | undefined)?.detail;
   if (response.status === 401) return errorResponse("signed_out", 401);
   if (response.status === 404) return errorResponse("subject_not_found", 404);
+  // T2.3b, us-01 AC8: a subject with an attempt, a draft included, is not deleted here.
+  if (response.status === 409 && detail === "subject_has_history") {
+    return errorResponse("subject_has_history", 409);
+  }
   if (response.status === 422) {
     // US-01 AC2, plan K17: a business refusal is a string code (plan B20).
     if (detail === "exam_date_not_in_future" || detail === "exam_date_too_far") {
