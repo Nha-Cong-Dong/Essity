@@ -3,7 +3,8 @@
 Created with exactly two fields, name and exam date (AC1). The exam date must be after the
 user's current learning day (AC2): an exam today is refused. A subject whose exam is over can
 still be renamed: PATCH checks the date only when it changes. Someone else's subject, a deleted
-one and one that never existed all answer the same 404.
+one and one that never existed all answer the same 404. DELETE hides a subject with no review
+history (T2.3b).
 """
 
 import unicodedata
@@ -33,7 +34,11 @@ from core_api.domain.subjects import (
     normalize_subject_name,
     validate_exam_date,
 )
-from core_api.repositories.subject import SubjectRepository
+from core_api.repositories.subject import (
+    SubjectHasHistoryError,
+    SubjectNotFoundError,
+    SubjectRepository,
+)
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
@@ -99,6 +104,12 @@ class SubjectOut(BaseModel):
     created_at: datetime
 
 
+class ListedSubject(SubjectOut):
+    # Whether the subject has an attempt, a draft included: web hides its delete button
+    # (us-01 AC8, T2.3b plan F2). Only the list carries it; creating or renaming cannot change it.
+    has_history: bool
+
+
 def _out(subject: Subject, exam: Exam, user: User, now: datetime) -> SubjectOut:
     return SubjectOut(
         id=subject.id,
@@ -133,9 +144,12 @@ def create_subject(body: SubjectIn, user: VerifiedUser, session: DbSession, now:
 
 
 @router.get("/subjects")
-def list_subjects(user: VerifiedUser, session: DbSession, now: Now) -> list[SubjectOut]:
+def list_subjects(user: VerifiedUser, session: DbSession, now: Now) -> list[ListedSubject]:
     listed = SubjectRepository(session, user.id).list_with_exams()
-    return [_out(s, e, user, now) for s, e, _ in listed]
+    return [
+        ListedSubject(**_out(s, e, user, now).model_dump(), has_history=history)
+        for s, e, history in listed
+    ]
 
 
 @router.patch("/subjects/{subject_id}")
@@ -153,3 +167,20 @@ def change_subject(
     if updated is None:  # cannot happen while the lock above is held; 404 rather than 500
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="subject_not_found")
     return _out(*updated, user, now)
+
+
+@router.delete("/subjects/{subject_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_subject(subject_id: uuid.UUID, user: VerifiedUser, session: DbSession, now: Now) -> None:
+    """Soft-delete a subject with no review history (us-01 AC8, T2.3b). Its exam, questions and
+    units stay but are hidden; the name can be used again. A subject with an attempt, a draft
+    included, answers 409 (deleting those comes with T6.3)."""
+    try:
+        SubjectRepository(session, user.id).soft_delete(subject_id, now)
+    except SubjectNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="subject_not_found"
+        ) from None
+    except SubjectHasHistoryError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="subject_has_history"
+        ) from None
