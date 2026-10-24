@@ -8,26 +8,11 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { PLACEHOLDER_MESSAGES, SUBJECT_MESSAGES } from "@/lib/subject-copy";
-
 const ROOT = path.resolve(import.meta.dirname, "..");
 
-const PENDING_COPY: [file: string, text: string][] = [
-  ["components/subjects/subject-fields.tsx", "{text}"],
-  ["components/subjects/subject-list.tsx", "Lưu"],
-  ["components/subjects/subject-list.tsx", "Hủy"],
-  ["components/subjects/subject-list.tsx", "{daysLeftText(subject.days_until_exam)}"],
-  ["app/subjects/page.tsx", "Đang tải danh sách môn."],
-  ["components/subjects/subjects-loader.tsx", "Không tải được danh sách môn."],
-  ["components/subjects/upload-step.tsx", "Tải tài liệu sẽ có ở bản sau."],
-  ["components/today-note.tsx", "Lịch ôn hôm nay sẽ hiện ở đây sớm."],
-];
-
-const PENDING_MESSAGES = [
-  "Ngày thi cách quá xa (tối đa 2 năm). Kiểm tra lại năm nhé.",
-  "Tên môn dài tối đa 200 ký tự.",
-  "Không tìm thấy môn này. Tải lại trang rồi thử lại.",
-];
+// Empty since T1.22: the user approved the eleven sentences of T1.18/T1.20 on 23/10 (R09), and
+// "thi hôm nay" and "đã thi" on 24/10 (E14).
+const PENDING_COPY: [file: string, text: string][] = [];
 
 function sources(dir: string): string[] {
   return readdirSync(path.join(ROOT, dir), { recursive: true, encoding: "utf-8" })
@@ -35,13 +20,16 @@ function sources(dir: string): string[] {
     .map((file) => path.join(dir, file).replaceAll("\\", "/"));
 }
 
+function taggedIn(text: string): string[] {
+  return [...text.matchAll(/data-copy="tam"[^>]*>\s*([^<]+?)\s*</g)].map((match) =>
+    match[1].replace(/\s+/g, " "),
+  );
+}
+
 function tagged(): [string, string][] {
-  return ["app", "components"].flatMap(sources).flatMap((file) => {
-    const text = readFileSync(path.join(ROOT, file), "utf-8");
-    return [...text.matchAll(/data-copy="tam"[^>]*>\s*([^<]+?)\s*</g)].map(
-      (match): [string, string] => [file, match[1].replace(/\s+/g, " ")],
-    );
-  });
+  return ["app", "components"].flatMap(sources).flatMap((file) =>
+    taggedIn(readFileSync(path.join(ROOT, file), "utf-8")).map((text): [string, string] => [file, text]),
+  );
 }
 
 describe("placeholder sentences (risk register R09)", () => {
@@ -50,7 +38,20 @@ describe("placeholder sentences (risk register R09)", () => {
     expect(tagged().sort()).toEqual([...PENDING_COPY].sort());
   });
 
-  it("every placeholder message is listed", () => {
-    expect([...PLACEHOLDER_MESSAGES].map((code) => SUBJECT_MESSAGES[code]).sort()).toEqual([...PENDING_MESSAGES].sort());
+  // Red when: the scan stops reading the screens (wrong extension, a path joined wrongly on
+  // Windows), so the list above matches an empty scan whatever the sources hold.
+  it("the scan reads the screens", () => {
+    expect(sources("components")).toContain("components/subjects/subject-list.tsx");
+    expect(sources("app").length).toBeGreaterThan(0);
+  });
+
+  // Red when: the pattern no longer finds a tagged sentence, even one spread over lines.
+  it("the pattern finds a tagged sentence", () => {
+    expect(taggedIn('<p className="x" data-copy="tam">\n  Câu mới.\n</p>')).toEqual(["Câu mới."]);
+    expect(taggedIn('<p data-copy="tam" className="x">Nhãn đứng trước</p>')).toEqual(["Nhãn đứng trước"]);
+    expect(taggedIn('<p data-copy="tam">Hai   dòng\n  một câu</p><p>Không nhãn</p>')).toEqual([
+      "Hai dòng một câu",
+    ]);
+    expect(taggedIn('<p data-copy="final">Đã duyệt</p>')).toEqual([]);
   });
 });

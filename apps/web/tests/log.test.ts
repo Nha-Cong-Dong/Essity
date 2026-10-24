@@ -37,11 +37,11 @@ describe("logError (R12)", () => {
   // Red when: a field outside the list (an email, a body) reaches the line.
   it("keeps only the fields it allows", () => {
     const lines = captured();
-    const fields = { route: "baseline", email: "a@example.com", body: "gpa=3.2" };
+    const fields = { route: "subject", email: "a@example.com", body: "name=Mạng" };
     logError("core-api call failed", fields as Parameters<typeof logError>[1]);
     const [line] = lines();
-    expect(line.route).toBe("baseline");
-    expect(JSON.stringify(line)).not.toMatch(/a@example\.com|gpa=3\.2/);
+    expect(line.route).toBe("subject");
+    expect(JSON.stringify(line)).not.toMatch(/a@example\.com|name=/);
   });
 
   // Red when (pnpm typecheck): route takes any string again, so request data could be logged

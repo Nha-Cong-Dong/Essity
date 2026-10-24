@@ -44,7 +44,7 @@ export async function Subjects({ example }: { example: string }) {
     });
     return (
       <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
-        <p className="m-0 font-semibold" data-copy="tam">
+        <p className="m-0 font-semibold">
           Không tải được danh sách môn.
         </p>
         <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>

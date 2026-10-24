@@ -31,7 +31,7 @@ export default function SubjectsPage() {
             <div aria-busy="true" className="flex flex-col gap-4">
               <div className="h-20 rounded-sheet bg-sunken" />
               <div className="h-20 rounded-sheet bg-sunken" />
-              <p className="sr-only" role="status" data-copy="tam">
+              <p className="sr-only" role="status">
                 Đang tải danh sách môn.
               </p>
             </div>

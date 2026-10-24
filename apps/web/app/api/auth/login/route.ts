@@ -21,7 +21,7 @@ export const POST = withOrigin(async (request) => {
 
   if (data) {
     // AC7: core-api says whether the email is verified, so no second round trip (W3). "/" then
-    // picks baseline, first subject or /today (T1.18, plan K4).
+    // picks the first subject or /today (T1.18, plan K4).
     const next = NextResponse.json({ next: data.email_verified ? "/" : "/check-email" });
     next.cookies.set(SESSION_COOKIE, data.token, cookieOptions(new Date(data.expires_at)));
     if (request.cookies.has(PENDING_EMAIL_COOKIE)) {

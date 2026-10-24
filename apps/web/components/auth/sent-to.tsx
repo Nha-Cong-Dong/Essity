@@ -9,7 +9,7 @@ import { getPendingEmail, getSession } from "@/lib/session";
 
 // T1.13, /check-email: the address comes from the session, or from the sign-up cookie before
 // there is one (F1); it is masked here, on the server, so the full address never reaches the page.
-// A verified account is sent on by landingFor, so it does not skip the baseline (US-11 AC1).
+// A verified account is sent on by landingFor.
 export async function SentTo() {
   await connection();
   const me = await getSession();

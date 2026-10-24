@@ -26,7 +26,7 @@ export function UploadStep({ name }: { name: string }) {
         className="mt-6 flex flex-col items-center gap-2 rounded-sheet border-2 border-dashed border-line-strong bg-sunken px-6 py-10 text-center text-ink-soft"
       >
         <FileUp className="size-6" aria-hidden="true" />
-        <span className="text-small" data-copy="tam">
+        <span className="text-small">
           Tải tài liệu sẽ có ở bản sau.
         </span>
       </div>

@@ -21,7 +21,7 @@ describe("TodayNote (plan K16)", () => {
     render(<TodayNote hasSubjects />);
     expect(screen.queryByText(/Chưa có môn nào/)).toBeNull();
     const sentence = screen.getByText("Lịch ôn hôm nay sẽ hiện ở đây sớm.");
-    expect(sentence.getAttribute("data-copy")).toBe("tam");
+    expect(sentence.getAttribute("data-copy")).toBeNull(); // approved 23/10 (R09)
     expect(screen.getByText("Môn học").closest("a")?.getAttribute("href")).toBe("/subjects");
   });
 });

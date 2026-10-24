@@ -6,9 +6,6 @@ import { trace } from "@opentelemetry/api";
 
 /** Which call failed: a fixed name, never built from request data (review 501af99). */
 export type LogRoute =
-  | "baseline"
-  | "baseline-next"
-  | "baseline-skip"
   | "login"
   | "logout"
   | "password-reset"

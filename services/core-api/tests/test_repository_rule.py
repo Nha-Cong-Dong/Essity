@@ -54,7 +54,6 @@ def test_the_rule_actually_finds_repositories() -> None:
         "UserRepository",
         "SubjectRepository",
         "ExamRepository",
-        "BaselineRepository",
         "KnowledgeUnitRepository",
         "AnchorRepository",
         "QuestionRepository",

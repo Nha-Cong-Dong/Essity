@@ -84,7 +84,7 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
     expect(go).not.toHaveBeenCalled();
   });
 
-  it("plan K17: core-api's exam_date_too_far shows a placeholder sentence under the date", async () => {
+  it("plan K17: core-api's exam_date_too_far shows its sentence under the date (approved 23/10, R09)", async () => {
     fakeWeb(() => Response.json({ error: "exam_date_too_far" }, { status: 422 }));
     fireEvent.change(name(), { target: { value: "Mạng" } });
     fireEvent.change(date(), { target: { value: "15/12/2062" } });
@@ -92,7 +92,7 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
 
     const sentence = await screen.findByText("Ngày thi cách quá xa (tối đa 2 năm). Kiểm tra lại năm nhé.");
-    expect(sentence.getAttribute("data-copy")).toBe("tam");
+    expect(sentence.closest("[data-copy]")).toBeNull();
     expect(date().getAttribute("aria-invalid")).toBe("true");
     expect(date().value).toBe("15/12/2062");
     expect(go).not.toHaveBeenCalled();
@@ -323,13 +323,13 @@ describe("SubjectList day count (DESIGN.md §6.8)", () => {
     expect(screen.getByText("còn 54 ngày").getAttribute("data-copy")).toBeNull();
   });
 
-  // Red when: a sentence no document has is shown without data-copy="tam" (PM gate 23/10 #3).
+  // The user approved these word for word on 24/10 (T1.22 E14): no placeholder mark left.
   it.each([
     [0, "thi hôm nay"],
     [-3, "đã thi"],
-  ])("%i days: %s is marked as a placeholder", (days, text) => {
+  ])("%i days: %s is shown as approved copy", (days, text) => {
     render(<SubjectList subjects={[{ ...MMT, days_until_exam: days }]} example={EXAMPLE} />);
-    expect(screen.getByText(text).getAttribute("data-copy")).toBe("tam");
+    expect(screen.getByText(text).getAttribute("data-copy")).toBeNull();
   });
 });
 

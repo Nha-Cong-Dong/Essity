@@ -167,42 +167,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/baseline": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Baseline */
-        get: operations["get_baseline_v1_baseline_get"];
-        /** Replace Baseline */
-        put: operations["replace_baseline_v1_baseline_put"];
-        /** Create Baseline */
-        post: operations["create_baseline_v1_baseline_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/baseline/skip": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Skip Baseline */
-        post: operations["skip_baseline_v1_baseline_skip_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -276,41 +240,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** BaselineIn */
-        BaselineIn: {
-            /** Gpa Before */
-            gpa_before: number | string;
-            /**
-             * Prior Days Unknown
-             * @default false
-             */
-            prior_days_unknown: boolean;
-            /** Prior Ready Days */
-            prior_ready_days?: number | null;
-        };
-        /** BaselineOut */
-        BaselineOut: {
-            /**
-             * Editable Until
-             * Format: date-time
-             */
-            editable_until: string;
-            /**
-             * Entered At
-             * Format: date-time
-             */
-            entered_at: string;
-            /** Gpa Before */
-            gpa_before: string;
-            /** Is Late */
-            is_late: boolean;
-            /** Locked */
-            locked: boolean;
-            /** Prior Days Unknown */
-            prior_days_unknown: boolean;
-            /** Prior Ready Days */
-            prior_ready_days: number;
-        };
         /** EmailBody */
         EmailBody: {
             /** Email */
@@ -355,8 +284,6 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /** Needs Baseline */
-            needs_baseline: boolean;
             /** Timezone */
             timezone: string;
         };
@@ -386,11 +313,6 @@ export interface components {
             password: string;
             /** Token */
             token: string;
-        };
-        /** SkipOut */
-        SkipOut: {
-            /** Needs Baseline */
-            needs_baseline: boolean;
         };
         /** SubjectChange */
         SubjectChange: {
@@ -720,112 +642,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_baseline_v1_baseline_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BaselineOut"];
-                };
-            };
-        };
-    };
-    replace_baseline_v1_baseline_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BaselineIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BaselineOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_baseline_v1_baseline_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BaselineIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BaselineOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    skip_baseline_v1_baseline_skip_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SkipOut"];
                 };
             };
         };

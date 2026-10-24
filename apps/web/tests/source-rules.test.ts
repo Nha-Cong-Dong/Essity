@@ -48,7 +48,7 @@ describe("source rules", () => {
 
   // Red when: a <form> leaves out method="post". Put it first: the scan stops at the first ">",
   // even the one in "=>". Submitted before hydration, the browser falls back
-  // to GET and puts every field (password, GPA) in the URL, history and Referer (ADR-0013).
+  // to GET and puts every field (password, answer) in the URL, history and Referer (ADR-0013).
   it("ADR-0013: every form says method=\"post\", so a submit before hydration keeps fields out of the URL", () => {
     const getForms = SOURCES.flatMap((file) =>
       [...read(file).matchAll(/<form\b[^>]*>/g)]
@@ -90,8 +90,7 @@ describe("source rules", () => {
     const unchecked = pages.filter((file) => {
       // /design-preview has a gate of its own in proxy.ts, before any cookie (lib/design-preview.ts).
       if (PUBLIC_PAGES.has(route(file)) || route(file) === "/" || isDesignPreview(route(file))) return false;
-      // requireBaselineToEnter (lib/onboarding.ts) starts with requireVerifiedSession.
-      return !/\b(require(Verified)?Session|requireBaselineToEnter)\(/.test(read(file));
+      return !/\brequire(Verified)?Session\(/.test(read(file));
     });
     expect(pages.length).toBeGreaterThan(2);
     expect(unchecked).toEqual([]);

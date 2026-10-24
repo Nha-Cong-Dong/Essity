@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { type AuthResult, postJson } from "@/lib/auth-errors";
+import { NEXT_PAGES, safeNext } from "@/lib/landing";
 import { consumeLinkToken, postOnce } from "@/lib/link-token";
+import { go } from "@/lib/navigate";
 
-type VerifyResult = { verified: true; signedIn: boolean };
+type VerifyResult = { verified: true; signedIn: boolean; next?: string };
 type State =
   | { view: "checking" }
-  | { view: "ok"; signedIn: boolean }
+  | { view: "ok"; signedIn: boolean; next?: string }
   | { view: "expired"; signedIn: boolean }
   | { view: "failed"; token: string };
 
@@ -23,9 +25,14 @@ function Check() {
 }
 
 function show(token: string, result: AuthResult<VerifyResult>): State {
-  if (result.data) return { view: "ok", signedIn: result.data.signedIn };
+  if (result.data) return { view: "ok", signedIn: result.data.signedIn, next: result.data.next };
   if (result.status === 400) return { view: "expired", signedIn: result.body?.signedIn === true };
   return { view: "failed", token }; // the token stays in memory for "Thử lại"
+}
+
+/** The person asked for less motion: the page then waits for the button (plan E5). */
+function prefersLessMotion(): boolean {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 }
 
 function verify(token: string) {
@@ -55,14 +62,25 @@ export function VerifyEmail() {
     setState(show(token, await verify(token)));
   }
 
-  // F4: signed in, the app goes on by itself.
+  // F4, AC11: signed in, the app goes on by itself to the one page the button names (plan E5),
+  // unless the person asked for less motion; then the button alone moves on.
+  const dest = state.view === "ok" ? safeNext(state.next, NEXT_PAGES) : "/today";
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
     if (state.view !== "ok" || !state.signedIn) return;
-    // A full load, so every server component reads the now verified session.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    const timer = setTimeout(() => window.location.assign("/onboarding"), 1500);
-    return () => clearTimeout(timer);
-  }, [state]);
+    if (prefersLessMotion()) return;
+    timer.current = setTimeout(() => go(dest), 1500);
+    return () => clearTimeout(timer.current);
+  }, [state, dest]);
+
+  // The anchor would load the page while the timer still runs: go once, from here. A click that
+  // opens a new tab (a modifier key) stays the browser's, and this tab still goes on by itself.
+  function goNow(event: MouseEvent) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    clearTimeout(timer.current);
+    go(dest);
+  }
 
   if (state.view === "checking") {
     return (
@@ -82,10 +100,17 @@ export function VerifyEmail() {
         </p>
         {state.signedIn ? (
           <>
-            <p className="m-0 text-ink-soft">Đang chuyển tiếp…</p>
-            <Button render={<a href="/onboarding" />} nativeButton={false} className="w-full">
-              Ghi điểm xuất phát
-            </Button>
+            {/* "ok" exists only after the effect, so reading matchMedia here cannot split hydration. */}
+            {!prefersLessMotion() && <p className="m-0 text-ink-soft">Đang chuyển tiếp…</p>}
+            {dest === "/subjects/new" ? (
+              <Button render={<a href="/subjects/new" />} nativeButton={false} onClick={goNow} className="w-full">
+                Tạo môn đầu tiên
+              </Button>
+            ) : (
+              <Button render={<a href="/today" />} nativeButton={false} onClick={goNow} className="w-full">
+                Vào hôm nay
+              </Button>
+            )}
           </>
         ) : (
           <Button render={<a href="/login" />} nativeButton={false} className="w-full">
