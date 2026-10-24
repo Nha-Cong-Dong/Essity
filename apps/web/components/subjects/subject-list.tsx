@@ -275,20 +275,28 @@ function DeletedRow() {
 }
 
 export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; example: string }) {
-  const [rows, setRows] = useState(subjects);
   // One placeholder at a time (plan F7): a new delete, or "Sửa" on any row, drops the old one.
-  const [deletedId, setDeletedId] = useState<string | null>(null);
+  // One state, updated from its latest value: two deletes answered in turn must not bring the
+  // first subject back from a stale render (review 1ac2df7 #1).
+  const [{ rows, deletedId }, setList] = useState<{ rows: ListedSubject[]; deletedId: string | null }>({
+    rows: subjects,
+    deletedId: null,
+  });
   const remaining = rows.filter((subject) => subject.id !== deletedId);
 
   function dropPlaceholder() {
-    if (deletedId === null) return;
-    setRows((current) => current.filter((subject) => subject.id !== deletedId));
-    setDeletedId(null);
+    setList((list) =>
+      list.deletedId === null
+        ? list
+        : { rows: list.rows.filter((subject) => subject.id !== list.deletedId), deletedId: null },
+    );
   }
 
   function deleted(id: string) {
-    setRows((current) => current.filter((subject) => subject.id === id || subject.id !== deletedId));
-    setDeletedId(id);
+    setList((list) => ({
+      rows: list.rows.filter((subject) => subject.id === id || subject.id !== list.deletedId),
+      deletedId: id,
+    }));
   }
 
   if (remaining.length === 0) {

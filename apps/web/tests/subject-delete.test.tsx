@@ -132,6 +132,31 @@ describe("SubjectList delete (T2.3b, us-01 AC8)", () => {
     await waitFor(() => expect(document.activeElement).toBe(second));
   });
 
+  // Red when: the list drops the old placeholder from a stale render's state, so two deletes in
+  // flight at once bring the first subject back as a live row (review 1ac2df7 #1).
+  it("us-01 AC8: two deletes answered one after the other leave neither subject listed", async () => {
+    const answers: ((response: Response) => void)[] = [];
+    fakeWeb(() => new Promise<Response>((resolve) => answers.push(resolve)));
+    const X = { ...HDH, id: "9a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", name: "Xác suất" };
+    render(<SubjectList subjects={[MMT, HDH, X]} example={EXAMPLE} />);
+    openEdit(MMT.name);
+    openEdit(HDH.name);
+    fireEvent.click(deleteButton(row(MMT.name)));
+    fireEvent.click(deleteButton(row(HDH.name)));
+    const [first, second] = screen.getAllByRole("group");
+    fireEvent.click(deleteButton(first));
+    fireEvent.click(deleteButton(second));
+    expect(answers).toHaveLength(2);
+
+    await act(async () => answers[0](empty204()));
+    await act(async () => answers[1](empty204()));
+
+    expect(screen.queryByText(MMT.name)).toBeNull();
+    expect(screen.queryByText(HDH.name)).toBeNull();
+    expect(screen.getAllByText(DELETED)).toHaveLength(1);
+    expect(screen.getByText(X.name)).toBeTruthy();
+  });
+
   it("us-01 AC8: deleting the last subject shows the placeholder above the empty state, one \"Tạo môn\"", async () => {
     fakeWeb(empty204);
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
