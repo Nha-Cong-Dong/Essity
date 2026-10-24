@@ -97,6 +97,23 @@ class SubjectRepository(UserScopedRepository[Subject]):
         """Whether the user has a subject web lists: not deleted, with its exam."""
         return bool(self.session.scalar(select(exists(self._with_exam()))))
 
+    def hold_for_share(self, id: uuid.UUID) -> None:
+        """Hold a visible subject FOR SHARE until commit, for a write that must not land on a
+        deleted subject (`AttemptRepository.create_draft`, plan F3). Pairs with `soft_delete`:
+        its FOR UPDATE waits for this lock, or this waits for it and then finds nothing.
+
+        FOR SHARE rather than FOR KEY SHARE (PLAN T2.9): it also stops a delete that would one
+        day be a plain UPDATE, at the cost of a rename waiting a moment. A transaction holding
+        this must not then change the subject (that would upgrade the lock)."""
+        held = self.session.execute(
+            self._select()
+            .with_only_columns(Subject.id)
+            .where(Subject.id == id)
+            .with_for_update(read=True)
+        ).one_or_none()
+        if held is None:
+            raise SubjectNotFoundError(id)
+
     def soft_delete(self, id: uuid.UUID, now: datetime) -> None:
         """Hide a subject with no review history (us-01 AC8), in the caller's transaction.
 
