@@ -79,9 +79,10 @@ class SubjectRepository(UserScopedRepository[Subject]):
     def update(
         self, id: uuid.UUID, *, name: str | None = None, exam_date: date | None = None
     ) -> tuple[Subject, Exam] | None:
-        """Change what is given. None if the subject is not this user's (or deleted). Locks the
-        subject first, so a change waits for a delete in flight and then finds nothing."""
-        found = self.get_with_exam(id, lock=True)
+        """Change what is given. None if the subject is not this user's (or deleted). The caller
+        locks the subject first (`get_with_exam(id, lock=True)`, plan F10), in the same
+        transaction, so a delete in flight is waited for before this reads."""
+        found = self.get_with_exam(id)
         if found is None:
             return None
         subject, exam = found

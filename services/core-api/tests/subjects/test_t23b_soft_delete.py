@@ -4,10 +4,8 @@ Plan `docs/plans/t2.3b-subject-soft-delete.md` (F3, F6, F9, F10). A subject with
 a draft included (F2), keeps its place; deleting hides it and its exam, questions and units.
 """
 
-import threading
-import time
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
@@ -27,10 +25,10 @@ from core_api.repositories.subject import (
     SubjectRepository,
 )
 from core_api.repositories.user import UserRepository
+from races import finished, in_thread, wait_for_lock
 
 RUN = uuid.uuid4()
 DAY = date(2026, 10, 23)
-SECONDS_TO_WAIT = 5.0
 
 
 def with_attempt(session: Session, user: User, subject_id: uuid.UUID, *, submitted: bool) -> None:
@@ -183,41 +181,11 @@ def committed_subject(engine: Engine) -> Iterator[Committed]:
         connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": made.user_id})
 
 
-def wait_for_lock(engine: Engine, pid: int) -> None:
-    """Until backend `pid` waits on a lock; fail if it never does."""
-    deadline = time.monotonic() + SECONDS_TO_WAIT
-    with engine.connect() as watcher:
-        while time.monotonic() < deadline:
-            waiting = watcher.execute(
-                text("SELECT wait_event_type FROM pg_stat_activity WHERE pid = :pid"), {"pid": pid}
-            ).scalar_one_or_none()
-            if waiting == "Lock":
-                return
-            watcher.rollback()
-            time.sleep(0.05)
-    pytest.fail(f"backend {pid} never waited on the subject lock")
-
-
-def in_thread(work: Callable[[], object]) -> tuple[threading.Thread, list[object]]:
-    """Run `work` in a thread; its result or its exception lands in the returned list."""
-    outcome: list[object] = []
-
-    def run() -> None:
-        try:
-            outcome.append(work())
-        except BaseException as error:  # noqa: BLE001 - handed back to the test thread
-            outcome.append(error)
-
-    thread = threading.Thread(target=run, daemon=True)
-    thread.start()
-    return thread, outcome
-
-
 def test_us01_ac8_a_patch_waiting_on_a_delete_answers_404(
     engine: Engine, committed_subject: Committed
 ) -> None:
-    # Red when: PATCH reads the subject before locking it (it then waits in the update, finds the
-    # row gone and hits an assert: 500), or does not lock at all (it renames a deleted subject).
+    # Red when: PATCH reads the subject without locking it (the ORM UPDATE then waits on the
+    # delete and renames the deleted subject: name "Đổi tên").
     made = committed_subject
     with Session(engine) as deleter, Session(engine) as patcher:
         SubjectRepository(deleter, made.user_id).soft_delete(made.subject_id, FROZEN_NOW)
@@ -230,12 +198,10 @@ def test_us01_ac8_a_patch_waiting_on_a_delete_answers_404(
                 made.subject_id, SubjectChange(name="Đổi tên"), user, patcher, FROZEN_NOW
             )
         )
-        wait_for_lock(engine, pid)
+        wait_for_lock(engine, pid, outcome)
         deleter.commit()
-        thread.join(SECONDS_TO_WAIT * 3)
-        assert not thread.is_alive()
+        result = finished(thread, outcome)
         patcher.rollback()
-    [result] = outcome
     assert isinstance(result, HTTPException), result
     assert (result.status_code, result.detail) == (404, "subject_not_found")
     with Session(engine) as reader:
