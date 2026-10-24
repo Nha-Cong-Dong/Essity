@@ -10,9 +10,16 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
-// Empty since T1.22: the user approved the eleven sentences of T1.18/T1.20 on 23/10 (R09), and
-// "thi hôm nay" and "đã thi" on 24/10 (E14).
-const PENDING_COPY: [file: string, text: string][] = [];
+// T1.22 emptied it (the user approved T1.18/T1.20's sentences on 23/10 and 24/10). T2.3b adds
+// deleting a subject: six strings, five sentences ("Xóa môn" opens and confirms), awaiting review.
+const PENDING_COPY: [file: string, text: string][] = [
+  ["components/subjects/subject-list.tsx", "Xóa môn này khỏi danh sách và phiên ôn?"],
+  ["components/subjects/subject-list.tsx", "Xóa môn"],
+  ["components/subjects/subject-list.tsx", "Giữ môn"],
+  ["components/subjects/subject-list.tsx", "Môn này đã có bài ôn nên chưa xóa được ở đây."],
+  ["components/subjects/subject-list.tsx", "Xóa môn"],
+  ["components/subjects/subject-list.tsx", "Đã xóa môn."],
+];
 
 function sources(dir: string): string[] {
   return readdirSync(path.join(ROOT, dir), { recursive: true, encoding: "utf-8" })

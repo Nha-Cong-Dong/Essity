@@ -8,7 +8,8 @@ import { isSubjectId } from "@/lib/subject-id";
 
 // T1.20: the user's subjects, read on the server for /subjects and /subjects/[id]/upload.
 
-export type Subject = components["schemas"]["SubjectOut"];
+// The list carries has_history (T2.3b): the subject screens read subjects from it.
+export type Subject = components["schemas"]["ListedSubject"];
 
 export { isSubjectId } from "@/lib/subject-id";
 
