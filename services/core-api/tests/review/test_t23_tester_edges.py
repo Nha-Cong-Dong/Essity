@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from test_t23_review_history import DAY, NOW, RUN, History, refused, refused_by_trigger
 
-from clock import future_exam
+from clock import FROZEN_NOW, future_exam
 from core_api.db.models import User
 from core_api.domain.question_hash import content_hash
 from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler
@@ -26,7 +26,11 @@ from core_api.repositories.review import (
     ReviewSessionRepository,
     UnitsMismatchError,
 )
-from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
+from core_api.repositories.subject import (
+    SubjectHasHistoryError,
+    SubjectNotFoundError,
+    SubjectRepository,
+)
 from core_api.repositories.unit import KnowledgeUnitRepository
 
 
@@ -86,7 +90,7 @@ def test_tester_add_idempotent_refuses_a_soft_deleted_subject(
     existing = questions.add_idempotent(
         subject.id, level=1, prompt="Q?", reference_answer="A", run_id=RUN
     )
-    assert subjects.soft_delete(subject.id)
+    subjects.soft_delete(subject.id, FROZEN_NOW)
     db_session.flush()
     with pytest.raises(SubjectNotFoundError):
         questions.add_idempotent(subject.id, level=1, prompt="Q?", reference_answer="A", run_id=RUN)
@@ -101,7 +105,7 @@ def test_tester_add_idempotent_refuses_a_soft_deleted_subject(
     assert count == 1
 
 
-def test_tester_subject_with_history_cannot_be_hard_deleted(
+def test_tester_subject_with_history_cannot_be_deleted_hard_or_soft(
     db_session: Session, two_users: tuple[User, User]
 ) -> None:
     # Cascade from `subject` reaches knowledge_unit/question; tier 3 hangs on them with NO ACTION
@@ -111,9 +115,14 @@ def test_tester_subject_with_history_cannot_be_hard_deleted(
     refused(db_session, "DELETE FROM subject WHERE id = :id", id=h.unit.subject_id)
     refused(db_session, "DELETE FROM knowledge_unit WHERE subject_id = :id", id=h.unit.subject_id)
     refused(db_session, "DELETE FROM question WHERE subject_id = :id", id=h.unit.subject_id)
-    # The supported path, soft delete, keeps all of it.
-    assert SubjectRepository(db_session, h.user.id).soft_delete(h.unit.subject_id)
+    # Nor is it soft-deleted (us-01 AC8, T2.3b): it stays, history and all, until T6.3.
+    with pytest.raises(SubjectHasHistoryError):
+        SubjectRepository(db_session, h.user.id).soft_delete(h.unit.subject_id, FROZEN_NOW)
     db_session.flush()
+    deleted_at = db_session.execute(
+        text("SELECT deleted_at FROM subject WHERE id = :id"), {"id": h.unit.subject_id}
+    ).scalar_one()
+    assert deleted_at is None
     for table in ("review_log", "grade", "attempt", "knowledge_unit", "question"):
         n = db_session.execute(
             text(f"SELECT count(*) FROM {table} WHERE user_id = :u"),

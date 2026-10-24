@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from clock import future_exam
+from clock import FROZEN_NOW, future_exam
 from core_api.db.models import User
 from core_api.repositories.subject import ExamRepository, SubjectRepository
 
@@ -42,10 +42,10 @@ def test_list_with_exams_is_ordered_by_exam_date_and_hides_deleted(
     gone, _ = subjects.create_with_exam("Đã bỏ", future_exam(45))
     SubjectRepository(db_session, bob.id).create_with_exam("Của Bob", future_exam(46))
     db_session.flush()
-    subjects.soft_delete(gone.id)
+    subjects.soft_delete(gone.id, FROZEN_NOW)
     db_session.flush()
     listed = subjects.list_with_exams()
-    assert [(s.id, e.exam_date) for s, e in listed] == [
+    assert [(s.id, e.exam_date) for s, e, _ in listed] == [
         (sooner.id, future_exam(60)),
         (later.id, future_exam(77)),
     ]
@@ -97,5 +97,5 @@ def test_update_of_a_deleted_subject_finds_nothing(
     subjects = SubjectRepository(db_session, alice.id)
     subject, _ = subjects.create_with_exam("Mạng máy tính", EXAM_DAY)
     db_session.flush()
-    subjects.soft_delete(subject.id)
+    subjects.soft_delete(subject.id, FROZEN_NOW)
     assert subjects.update(subject.id, name="Mạng") is None

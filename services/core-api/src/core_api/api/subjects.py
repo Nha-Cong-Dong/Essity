@@ -134,7 +134,8 @@ def create_subject(body: SubjectIn, user: VerifiedUser, session: DbSession, now:
 
 @router.get("/subjects")
 def list_subjects(user: VerifiedUser, session: DbSession, now: Now) -> list[SubjectOut]:
-    return [_out(s, e, user, now) for s, e in SubjectRepository(session, user.id).list_with_exams()]
+    listed = SubjectRepository(session, user.id).list_with_exams()
+    return [_out(s, e, user, now) for s, e, _ in listed]
 
 
 @router.patch("/subjects/{subject_id}")
@@ -142,11 +143,13 @@ def change_subject(
     subject_id: uuid.UUID, body: SubjectChange, user: VerifiedUser, session: DbSession, now: Now
 ) -> SubjectOut:
     subjects = SubjectRepository(session, user.id)
-    found = subjects.get_with_exam(subject_id)
+    # Locked at the first read (T2.3b plan F10): a delete in flight is waited for, then 404.
+    found = subjects.get_with_exam(subject_id, lock=True)
     if found is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="subject_not_found")
     if body.exam_date is not None and body.exam_date != found[1].exam_date:
         _check_exam_date(body.exam_date, user, now)
     updated = subjects.update(subject_id, name=body.name, exam_date=body.exam_date)
-    assert updated is not None  # found above, in the same transaction
+    if updated is None:  # cannot happen while the lock above is held; 404 rather than 500
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="subject_not_found")
     return _out(*updated, user, now)

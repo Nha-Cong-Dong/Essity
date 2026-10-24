@@ -249,7 +249,7 @@ def test_list_with_exams_breaks_a_tie_on_the_exam_date_by_created_at(
         )
     db_session.expire_all()
     expected = [made[n].id for n in sorted(range(3), key=lambda n: created_order[n])]
-    assert [s.id for s, _ in subjects.list_with_exams()] == expected
+    assert [s.id for s, _, _ in subjects.list_with_exams()] == expected
 
 
 def test_has_any_counts_only_my_own_visible_subjects(
@@ -268,7 +268,7 @@ def test_has_any_counts_only_my_own_visible_subjects(
     assert mine.has_any() is False
     gone, _ = mine.create_with_exam("Đã xóa", future_exam(60))
     db_session.flush()
-    mine.soft_delete(gone.id)
+    mine.soft_delete(gone.id, FROZEN_NOW)
     db_session.flush()
     assert mine.has_any() is False
     mine.create_with_exam("Còn", future_exam(60))
