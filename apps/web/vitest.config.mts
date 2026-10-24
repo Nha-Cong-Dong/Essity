@@ -16,5 +16,8 @@ export default defineConfig({
     restoreMocks: true,
     unstubEnvs: true,
     unstubGlobals: true,
+    // Risk register R43: with every worker loading jsdom at once, a test that takes 0.4 s alone
+    // took up to 6.5 s, past the 5 s default. waitFor/findBy keep their own 1 s limit.
+    testTimeout: 15_000,
   },
 });
