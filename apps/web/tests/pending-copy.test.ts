@@ -20,13 +20,16 @@ function sources(dir: string): string[] {
     .map((file) => path.join(dir, file).replaceAll("\\", "/"));
 }
 
+function taggedIn(text: string): string[] {
+  return [...text.matchAll(/data-copy="tam"[^>]*>\s*([^<]+?)\s*</g)].map((match) =>
+    match[1].replace(/\s+/g, " "),
+  );
+}
+
 function tagged(): [string, string][] {
-  return ["app", "components"].flatMap(sources).flatMap((file) => {
-    const text = readFileSync(path.join(ROOT, file), "utf-8");
-    return [...text.matchAll(/data-copy="tam"[^>]*>\s*([^<]+?)\s*</g)].map(
-      (match): [string, string] => [file, match[1].replace(/\s+/g, " ")],
-    );
-  });
+  return ["app", "components"].flatMap(sources).flatMap((file) =>
+    taggedIn(readFileSync(path.join(ROOT, file), "utf-8")).map((text): [string, string] => [file, text]),
+  );
 }
 
 describe("placeholder sentences (risk register R09)", () => {
@@ -35,4 +38,20 @@ describe("placeholder sentences (risk register R09)", () => {
     expect(tagged().sort()).toEqual([...PENDING_COPY].sort());
   });
 
+  // Red when: the scan stops reading the screens (wrong extension, a path joined wrongly on
+  // Windows), so the list above matches an empty scan whatever the sources hold.
+  it("the scan reads the screens", () => {
+    expect(sources("components")).toContain("components/subjects/subject-list.tsx");
+    expect(sources("app").length).toBeGreaterThan(0);
+  });
+
+  // Red when: the pattern no longer finds a tagged sentence, even one spread over lines.
+  it("the pattern finds a tagged sentence", () => {
+    expect(taggedIn('<p className="x" data-copy="tam">\n  Câu mới.\n</p>')).toEqual(["Câu mới."]);
+    expect(taggedIn('<p data-copy="tam" className="x">Nhãn đứng trước</p>')).toEqual(["Nhãn đứng trước"]);
+    expect(taggedIn('<p data-copy="tam">Hai   dòng\n  một câu</p><p>Không nhãn</p>')).toEqual([
+      "Hai dòng một câu",
+    ]);
+    expect(taggedIn('<p data-copy="final">Đã duyệt</p>')).toEqual([]);
+  });
 });
