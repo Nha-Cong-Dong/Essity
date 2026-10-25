@@ -7,6 +7,7 @@ second close or an edit after submitting changes nothing and says so.
 
 import uuid
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import date, datetime
 from itertools import groupby
 from zoneinfo import ZoneInfo
@@ -21,9 +22,11 @@ from core_api.db.models import (
     GradeUnit,
     KnowledgeUnit,
     MemoryState,
+    Question,
     ReviewLog,
     ReviewSession,
     ReviewSessionItem,
+    Subject,
     User,
 )
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
@@ -91,6 +94,13 @@ class ReviewSessionRepository(AppendOnlyRepository[ReviewSession]):
         assert found is not None
         return found, made is not None
 
+    def hold_for_update(self, id: uuid.UUID) -> ReviewSession | None:
+        """The session, locked FOR UPDATE until commit: a submit holds it FOR SHARE, so stopping
+        waits for one in flight and then counts it (plan D14)."""
+        return self.session.scalars(
+            self._select().where(ReviewSession.id == id).with_for_update()
+        ).one_or_none()
+
     def open_on(self, learning_day: date) -> ReviewSession | None:
         """The session still open on `learning_day`, if any."""
         query = self._select().where(
@@ -113,6 +123,18 @@ class ReviewSessionRepository(AppendOnlyRepository[ReviewSession]):
         return closed is not None
 
 
+@dataclass(frozen=True)
+class SessionStep:
+    question: Question
+    subject: Subject
+    attempt: Attempt | None
+    askable: bool
+
+    @property
+    def answered(self) -> bool:
+        return self.attempt is not None and self.attempt.status == "submitted"
+
+
 class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
     """The questions of a session, in order (T2.9 plan C1); added once, when it starts."""
 
@@ -131,6 +153,41 @@ class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
         ]
         self.session.flush()
         return items
+
+    def progress(self, review_session_id: uuid.UUID) -> list[SessionStep]:
+        """Each item of the session in order, with its question, its subject, whether it can
+        still be asked (question active, subject not deleted) and its attempt, if any."""
+        rows = self.session.execute(
+            select(ReviewSessionItem, Question, Subject, Attempt)
+            .join(
+                Question,
+                (Question.id == ReviewSessionItem.question_id) & (Question.user_id == self.user_id),
+            )
+            .join(
+                Subject,
+                (Subject.id == Question.subject_id) & (Subject.user_id == self.user_id),
+            )
+            .outerjoin(
+                Attempt,
+                (Attempt.review_session_id == ReviewSessionItem.review_session_id)
+                & (Attempt.question_id == ReviewSessionItem.question_id)
+                & (Attempt.user_id == self.user_id),
+            )
+            .where(
+                ReviewSessionItem.user_id == self.user_id,
+                ReviewSessionItem.review_session_id == review_session_id,
+            )
+            .order_by(ReviewSessionItem.position)
+        ).all()
+        return [
+            SessionStep(
+                question=question,
+                subject=subject,
+                attempt=attempt,
+                askable=question.status == "active" and subject.deleted_at is None,
+            )
+            for _, question, subject, attempt in rows
+        ]
 
     def of_session(self, review_session_id: uuid.UUID) -> Sequence[ReviewSessionItem]:
         query = (

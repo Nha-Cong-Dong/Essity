@@ -258,8 +258,8 @@ APPEND_ONLY = [
 # otherwise only adding and reading. A new name here is a change to the append-only rule.
 OWN_METHODS = {
     # T2.9: one open session per learning day (plan C4) is made or found, never changed.
-    ReviewSessionRepository: {"start", "end", "open_for_day", "open_on"},
-    ReviewSessionItemRepository: {"add_all", "of_session"},
+    ReviewSessionRepository: {"start", "end", "open_for_day", "open_on", "hold_for_update"},
+    ReviewSessionItemRepository: {"add_all", "of_session", "progress"},
     AttemptRepository: {"create_draft", "save_draft", "submit"},
     GradeRepository: {"add_with_units", "latest_for_attempt"},
     ReviewLogRepository: {"append"},
