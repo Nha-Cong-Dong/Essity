@@ -14,7 +14,7 @@ INVALID_ENVELOPE = "invalid_envelope"
 UNKNOWN_TYPE = "unknown_type"
 USER_MISMATCH = "user_mismatch"
 NO_HANDLER = "no_handler"
-TOO_MANY_DELIVERIES = "too_many_deliveries"
+MAX_DELIVERIES = "max_deliveries"
 
 
 def send_to_dead(
