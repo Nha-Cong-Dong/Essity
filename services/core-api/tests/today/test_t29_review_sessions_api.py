@@ -13,7 +13,7 @@ from test_t28_today_api import Space
 
 from accounts import signed_in
 from clock import FROZEN_NOW
-from core_api.db.models import Attempt, Question
+from core_api.db.models import Attempt, Question, ReviewSession
 from core_api.repositories.subject import SubjectRepository
 
 Headers = dict[str, str]
@@ -315,6 +315,10 @@ def test_t29_a_finished_open_session_does_not_block_a_new_one(
     assert again.status_code == 201, again.text
     assert again.json()["id"] != first
     assert current(client, headers, first) == {"done": True}
+    db_session.expire_all()
+    closed = db_session.get(ReviewSession, uuid.UUID(first))
+    assert closed is not None and closed.ended_at is not None
+    assert closed.stop_reason == "completed"
 
 
 # PLAN T2.9 (23/10b), plan C11. Red when: a subject deleted between reading the session's steps

@@ -358,6 +358,10 @@ class ReviewLogRepository(AppendOnlyRepository[ReviewLog]):
         return log
 
 
+REBUILD_BATCH = 1000
+_STATE_FIELDS = ("phase", "step", "stability", "difficulty", "due", "last_review")
+
+
 class MemoryStateRepository(UserScopedRepository[MemoryState]):
     """Layer 4: a cache of FSRS state, changed freely and rebuilt from review_log (T2.6)."""
 
@@ -452,25 +456,16 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
             )
         # One insert, not one upsert per unit: the rows were just deleted, and every unit comes
         # from this user's own review_log joined to knowledge_unit (rebuild at real size, #20).
-        if rows:
-            # Still one statement: a review written meanwhile (T2.13, or a CLI rebuild) updates
-            # the row instead of failing the rebuild on the unique key.
-            statement = insert(MemoryState).values(rows)
+        # One upsert per batch, not per unit: a review written meanwhile (T2.13, or a CLI
+        # rebuild) updates the row instead of failing the rebuild on the unique key. Batches keep
+        # each statement under Postgres's 65 535 parameters (10 a row; review final #21).
+        for start in range(0, len(rows), REBUILD_BATCH):
+            statement = insert(MemoryState).values(rows[start : start + REBUILD_BATCH])
             excluded = statement.excluded
             self.session.execute(
                 statement.on_conflict_do_update(
                     index_elements=["user_id", "unit_id", "facet"],
-                    set_={
-                        name: getattr(excluded, name)
-                        for name in (
-                            "phase",
-                            "step",
-                            "stability",
-                            "difficulty",
-                            "due",
-                            "last_review",
-                        )
-                    },
+                    set_={name: getattr(excluded, name) for name in _STATE_FIELDS},
                 )
             )
         self.session.expire_all()
