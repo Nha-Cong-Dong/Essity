@@ -25,7 +25,9 @@ MAX_QUESTION_CHARS = 4000
 # Where the fake grader's answer may be stored (R41 layer 2).
 FAKE_ENVIRONMENTS = frozenset({"local", "test"})
 
-Source = Literal["ai", "fake"]
+# "system": "Không nhớ", graded without the AI (US-04 AC2).
+Source = Literal["ai", "fake", "system"]
+Overall = Literal["correct", "partial", "incorrect", "forgot"]
 
 
 class RequestRefused(ValueError):
@@ -59,12 +61,12 @@ class QuestionIn:
 @dataclass(frozen=True)
 class CheckedGrade:
     source: Source
-    overall: Verdict
+    overall: Overall
     understanding: int | None
     missing: list[str]
     units: Mapping[uuid.UUID, Verdict]
     anchors_used: list[uuid.UUID]
-    run_id: uuid.UUID
+    run_id: uuid.UUID | None
 
 
 def build_request(

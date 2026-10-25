@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 from core_api.db.models import Anchor, KnowledgeUnit
@@ -26,6 +27,18 @@ class KnowledgeUnitRepository(UserScopedRepository[KnowledgeUnit]):
         self.session.flush()  # gives the unit its id, for the anchors and links that follow
         return unit
 
+    def lock(self, ids: Sequence[uuid.UUID]) -> None:
+        """Hold these units FOR NO KEY UPDATE until commit, in id order (T2.13): two answers on
+        one unit graded at once write its schedule one after the other, never over each other.
+        NO KEY: review_log's and memory_state's foreign keys take KEY SHARE, which this allows."""
+        self.session.execute(
+            self._select()
+            .with_only_columns(KnowledgeUnit.id)
+            .where(KnowledgeUnit.id.in_(ids))
+            .order_by(KnowledgeUnit.id)
+            .with_for_update(key_share=True)
+        ).all()
+
 
 class AnchorRepository(UserScopedRepository[Anchor]):
     model = Anchor
@@ -36,3 +49,12 @@ class AnchorRepository(UserScopedRepository[Anchor]):
         anchor = self.add(Anchor(unit_id=unit_id, **fields))
         self.session.flush()
         return anchor
+
+    def of_units(self, unit_ids: Sequence[uuid.UUID]) -> Sequence[Anchor]:
+        """The anchors of these units, oldest first (the sources sent for grading, US-05 AC8)."""
+        query = (
+            self._select()
+            .where(Anchor.unit_id.in_(unit_ids))
+            .order_by(Anchor.unit_id, Anchor.created_at, Anchor.id)
+        )
+        return self.session.scalars(query).all()

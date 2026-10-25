@@ -12,7 +12,7 @@ from datetime import date, datetime
 from itertools import groupby
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from core_api.db.models import (
@@ -327,6 +327,22 @@ class GradeRepository(AppendOnlyRepository[Grade]):
         self.session.flush()
         return grade
 
+    def try_lock_attempt(self, attempt_id: uuid.UUID) -> bool:
+        """Take the attempt's grading lock for this transaction, or say someone holds it (T2.13
+        plan D-2): one grading at a time, without a row lock held while the AI answers. The key
+        is a 64-bit hash of the id in a namespace of its own; a collision only gives a false
+        "in progress". Check the attempt is this user's first: otherwise anyone knowing an id
+        could hold a victim's lock (plan 🟡16)."""
+        return bool(
+            self.session.scalar(
+                select(
+                    func.pg_try_advisory_xact_lock(
+                        func.hashtextextended(str(attempt_id), GRADING_LOCK_NAMESPACE)
+                    )
+                )
+            )
+        )
+
     def latest_for_attempt(self, attempt_id: uuid.UUID) -> Grade | None:
         """The attempt's current judgement: its newest grade (plan D2)."""
         query = self._select().where(Grade.attempt_id == attempt_id).order_by(Grade.seq.desc())
@@ -359,6 +375,7 @@ class ReviewLogRepository(AppendOnlyRepository[ReviewLog]):
 
 
 REBUILD_BATCH = 1000
+GRADING_LOCK_NAMESPACE = 7213  # T2.13: advisory locks on attempts being graded
 _STATE_FIELDS = ("phase", "step", "stability", "difficulty", "due", "last_review")
 
 
@@ -370,7 +387,10 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
     def state(self, unit_id: uuid.UUID, facet: str = "core") -> State | None:
         """The FSRS state of (unit, facet), or None for a unit never reviewed."""
         row = self.session.scalars(
-            self._select().where(MemoryState.unit_id == unit_id, MemoryState.facet == facet)
+            self._select().where(MemoryState.unit_id == unit_id, MemoryState.facet == facet),
+            # A fresh read, not the object an earlier statement left in the session (T2.13
+            # reads it after locking the unit; plan 🟡12).
+            execution_options={"populate_existing": True},
         ).one_or_none()
         if row is None:
             return None
@@ -413,7 +433,9 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         )
         return deleted.rowcount  # type: ignore[attr-defined]
 
-    def rebuild(self, subject_id: uuid.UUID | None = None) -> int:
+    def rebuild(
+        self, subject_id: uuid.UUID | None = None, unit_ids: Sequence[uuid.UUID] | None = None
+    ) -> int:
         """Rebuild the cache from review_log (T2.6), for one subject or all of them: drop it,
         then replay each (unit, facet) through `schedule_review` with its subject's exam date
         as it is now. A moved exam reaches the schedule this way (US-01 AC3). Returns the number
@@ -424,6 +446,8 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         units = select(KnowledgeUnit.id).where(KnowledgeUnit.user_id == self.user_id)
         if subject_id is not None:
             units = units.where(KnowledgeUnit.subject_id == subject_id)
+        if unit_ids is not None:  # T2.13: only the units an older answer touches
+            units = units.where(KnowledgeUnit.id.in_(unit_ids))
         self.session.execute(
             delete(MemoryState).where(
                 MemoryState.user_id == self.user_id, MemoryState.unit_id.in_(units)
@@ -431,7 +455,8 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         )
         rows: list[dict[str, object]] = []
         for (unit_id, facet, exam_day), reviews in groupby(
-            self._current_reviews(subject_id), key=lambda row: (row[0], row[1], row[4])
+            self._current_reviews(subject_id, unit_ids),
+            key=lambda row: (row[0], row[1], row[4]),
         ):
             state = replay(
                 ((ReviewRating(row[2]), row[3]) for row in reviews),
@@ -472,7 +497,7 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         return len(rows)
 
     def _current_reviews(
-        self, subject_id: uuid.UUID | None
+        self, subject_id: uuid.UUID | None, unit_ids: Sequence[uuid.UUID] | None = None
     ) -> Sequence[tuple[uuid.UUID, str, int, datetime, date]]:
         """(unit, facet, rating, reviewed_at, exam date) of every review that counts: the rows of
         each attempt's latest grade (plan D7), in the order they happened."""
@@ -507,4 +532,6 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         )
         if subject_id is not None:
             query = query.where(KnowledgeUnit.subject_id == subject_id)
+        if unit_ids is not None:
+            query = query.where(ReviewLog.unit_id.in_(unit_ids))
         return [tuple(row) for row in self.session.execute(query)]  # type: ignore[misc]
