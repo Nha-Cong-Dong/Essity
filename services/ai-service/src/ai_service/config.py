@@ -4,6 +4,9 @@ from typing import Literal
 from pydantic import Field, SecretStr, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from ai_service.llm.pricing import PRICES
+from ai_service.llm.types import TASKS
+
 # Environments where the fake grader may run (R41).
 DEV_ENVIRONMENTS = frozenset({"local", "test"})
 
@@ -37,6 +40,12 @@ class Settings(DatabaseSettings):
         default=None, validation_alias="ANTHROPIC_API_KEY", validate_default=True
     )
 
+    # Task -> model for a real provider (ADR-0010), changeable without code: AI_LLM_MODELS as
+    # JSON. Every task needs a model and every model a price, or the service refuses to start.
+    llm_models: dict[str, str] = Field(
+        default_factory=lambda: {"grade": "claude-haiku-5-5"}, validate_default=True
+    )
+
     # Field validators, not a model one: a model validator's error prints the whole input,
     # secrets included, to the startup traceback.
     @field_validator("llm_provider")
@@ -61,6 +70,17 @@ class Settings(DatabaseSettings):
         if key is None and info.data.get("llm_provider") == "anthropic":
             raise ValueError("anthropic_api_key (ANTHROPIC_API_KEY) is required for anthropic")
         return key
+
+    @field_validator("llm_models")
+    @classmethod
+    def _every_task_has_a_priced_model(cls, models: dict[str, str]) -> dict[str, str]:
+        missing = [task for task in TASKS if task not in models]
+        if missing:
+            raise ValueError(f"llm_models has no model for {missing}")
+        unpriced = sorted({model for model in models.values() if model not in PRICES})
+        if unpriced:
+            raise ValueError(f"llm_models names models with no price: {unpriced}")
+        return models
 
     @property
     def grading_enabled(self) -> bool:

@@ -11,7 +11,8 @@ Personal data stays out of the logs by construction, not by care at each call si
 - The message itself is free text, so keep it constant and put data in allowed fields.
 - Libraries that format data into their messages are in `_DATA_IN_MESSAGE_LOGGERS`: their
   lines keep only the constant event name they pass as `action`, and none of their extras.
-  Procrastinate, for one, writes every job's arguments (email addresses) into its messages.
+  Procrastinate, for one, writes every job's arguments (email addresses) into its messages;
+  the Anthropic SDK writes whole requests and responses (a learner's answer) at DEBUG.
 - uvicorn's access log is replaced by `log_requests`, which logs the path without the query
   string (email verification links will carry tokens there, ADR-0014). httpx2's own
   "HTTP Request: GET <url>" lines are silenced for the same reason.
@@ -91,10 +92,12 @@ ALLOWED_FIELDS = frozenset(
         "jobs_stalled",
         "event",  # security events (security/audit.py)
         "ip_hash",  # keyed hash, never the IP itself
+        "llm_call_id",  # ai-service: the audit row holding the call itself (ADR-0013)
+        "provider",  # anthropic | fake
     }
 )
 # Top-level logger names; see the module docstring.
-_DATA_IN_MESSAGE_LOGGERS = frozenset({"procrastinate"})
+_DATA_IN_MESSAGE_LOGGERS = frozenset({"procrastinate", "anthropic"})
 
 _STANDARD_ATTRS = frozenset(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
 # Not personal data, just noise: uvicorn repeats the message with ANSI colors.
@@ -164,8 +167,9 @@ def configure_logging(service: str, level: str, stream: TextIO | None = None) ->
         logger.propagate = True
     # Replaced by log_requests: it would log query strings.
     logging.getLogger("uvicorn.access").disabled = True
-    # httpx2 logs every outgoing URL, query string included, at INFO.
-    for name in ("httpx2", "httpcore2"):
+    # httpx2 logs every outgoing URL, query string included, at INFO; the Anthropic SDK logs
+    # request and response bodies at DEBUG. httpx/httpcore in case a library brings them.
+    for name in ("httpx2", "httpcore2", "httpx", "httpcore", "anthropic"):
         logging.getLogger(name).setLevel(logging.WARNING)
 
 
