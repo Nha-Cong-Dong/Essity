@@ -2,6 +2,9 @@
 
 rebuild-memory-state --user-email EMAIL
     Rebuild one user's memory_state from review_log (layer 4 is a cache of layer 3).
+seed-demo --user-email EMAIL
+    Give one user a made-up subject to review by hand with the fake grader (T2.16, plan D-10).
+    Local and test only.
 """
 
 import argparse
@@ -10,7 +13,9 @@ from collections.abc import Sequence
 
 from sqlalchemy.orm import Session
 
+from core_api.config import DEV_ENVIRONMENTS, get_settings
 from core_api.db.engine import get_engine
+from core_api.demo import DEMO_SUBJECT, seed_demo
 from core_api.repositories.review import MemoryStateRepository
 from core_api.repositories.user import UserRepository
 
@@ -22,16 +27,28 @@ def _parser() -> argparse.ArgumentParser:
         "rebuild-memory-state", help="rebuild one user's memory_state from review_log"
     )
     rebuild.add_argument("--user-email", required=True)
+    demo = commands.add_parser("seed-demo", help="give one user a demo subject (local, test only)")
+    demo.add_argument("--user-email", required=True)
     return parser
 
 
-def run(session: Session, argv: Sequence[str]) -> int:
-    """Run one command in `session`; the caller commits. Returns the exit status."""
+def run(session: Session, argv: Sequence[str], *, environment: str | None = None) -> int:
+    """Run one command in `session`; the caller commits. Returns the exit status. `environment`
+    is the settings' unless given (tests)."""
     args = _parser().parse_args(argv)
+    if args.command == "seed-demo":
+        environment = environment or get_settings().environment
+        if environment not in DEV_ENVIRONMENTS:
+            print("seed-demo runs only in local and test", file=sys.stderr)
+            return 1
     user = UserRepository(session).get_by_email(args.user_email)
     if user is None:
         print(f"no user with email {args.user_email}", file=sys.stderr)
         return 1
+    if args.command == "seed-demo":
+        added = seed_demo(session, user)
+        print(f"added {added} questions to {DEMO_SUBJECT}" if added else f"{DEMO_SUBJECT} is there")
+        return 0
     written = MemoryStateRepository(session, user.id).rebuild()
     print(f"rebuilt {written} memory states")
     return 0
