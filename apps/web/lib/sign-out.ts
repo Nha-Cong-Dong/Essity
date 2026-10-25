@@ -1,4 +1,5 @@
 import { type AuthResult, postJson } from "@/lib/auth-errors";
+import { clearAllDrafts } from "@/lib/draft";
 import { safeNext } from "@/lib/landing";
 
 type Deps = {
@@ -6,6 +7,8 @@ type Deps = {
   assign?: (url: string) => void;
   /** Where to go instead of web's answer (F2: /register after "Sai email?"). */
   then?: string;
+  /** Drops the answers kept on this device (T2.15): the next person here must not see them. */
+  clearDrafts?: () => void;
 };
 
 /**
@@ -16,9 +19,11 @@ export async function signOut({
   post = postJson,
   assign = (url) => window.location.assign(url),
   then,
+  clearDrafts = clearAllDrafts,
 }: Deps = {}): Promise<boolean> {
   const result = await post("/api/auth/logout");
   if (!result.data) return false;
+  clearDrafts();
   assign(then ?? safeNext(result.data.next, ["/login"], "/login"));
   return true;
 }
