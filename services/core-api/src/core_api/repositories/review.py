@@ -8,14 +8,28 @@ second close or an edit after submitting changes nothing and says so.
 import uuid
 from collections.abc import Mapping, Sequence
 from datetime import date, datetime
+from itertools import groupby
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import aliased
 
-from core_api.db.models import Attempt, Grade, GradeUnit, MemoryState, ReviewLog, ReviewSession
+from core_api.db.models import (
+    Attempt,
+    Exam,
+    Grade,
+    GradeUnit,
+    KnowledgeUnit,
+    MemoryState,
+    ReviewLog,
+    ReviewSession,
+    User,
+)
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
 from core_api.domain.scheduling.fsrs_adapter import Phase
 from core_api.domain.scheduling.rating import ReviewRating, Verdict
+from core_api.domain.scheduling.replay import replay
 from core_api.repositories.base import AppendOnlyRepository, UserScopedRepository
 from core_api.repositories.question import (
     QuestionNotFoundError,
@@ -253,3 +267,69 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
             delete(MemoryState).where(MemoryState.user_id == self.user_id)
         )
         return deleted.rowcount  # type: ignore[attr-defined]
+
+    def rebuild(self, subject_id: uuid.UUID | None = None) -> int:
+        """Rebuild the cache from review_log (T2.6), for one subject or all of them: drop it,
+        then replay each (unit, facet) through `schedule_review` with its subject's exam date
+        as it is now. A moved exam reaches the schedule this way (US-01 AC3). Returns the number
+        of states written."""
+        user = self.session.get(User, self.user_id)
+        assert user is not None
+        tz = ZoneInfo(user.timezone)
+        units = select(KnowledgeUnit.id).where(KnowledgeUnit.user_id == self.user_id)
+        if subject_id is not None:
+            units = units.where(KnowledgeUnit.subject_id == subject_id)
+        self.session.execute(
+            delete(MemoryState).where(
+                MemoryState.user_id == self.user_id, MemoryState.unit_id.in_(units)
+            )
+        )
+        written = 0
+        for (unit_id, facet, exam_day), rows in groupby(
+            self._current_reviews(subject_id), key=lambda row: (row[0], row[1], row[4])
+        ):
+            state = replay(
+                ((ReviewRating(row[2]), row[3]) for row in rows),
+                exam_day=exam_day,
+                tz=tz,
+                day_start_hour=user.day_start_hour,
+            )
+            assert state is not None
+            self.upsert(unit_id, facet, state)
+            written += 1
+        return written
+
+    def _current_reviews(
+        self, subject_id: uuid.UUID | None
+    ) -> Sequence[tuple[uuid.UUID, str, int, datetime, date]]:
+        """(unit, facet, rating, reviewed_at, exam date) of every review that counts: the rows of
+        each attempt's latest grade (plan D7), in the order they happened."""
+        current = aliased(Grade)
+        latest = (
+            select(func.max(Grade.seq))
+            .where(Grade.user_id == self.user_id, Grade.attempt_id == current.attempt_id)
+            .scalar_subquery()
+        )
+        query = (
+            select(
+                ReviewLog.unit_id,
+                ReviewLog.facet,
+                ReviewLog.rating,
+                ReviewLog.reviewed_at,
+                Exam.exam_date,
+            )
+            .join(current, (current.id == ReviewLog.grade_id) & (current.user_id == self.user_id))
+            .join(
+                KnowledgeUnit,
+                (KnowledgeUnit.id == ReviewLog.unit_id) & (KnowledgeUnit.user_id == self.user_id),
+            )
+            .join(
+                Exam,
+                (Exam.subject_id == KnowledgeUnit.subject_id) & (Exam.user_id == self.user_id),
+            )
+            .where(ReviewLog.user_id == self.user_id, current.seq == latest)
+            .order_by(ReviewLog.unit_id, ReviewLog.facet, ReviewLog.reviewed_at, ReviewLog.seq)
+        )
+        if subject_id is not None:
+            query = query.where(KnowledgeUnit.subject_id == subject_id)
+        return [tuple(row) for row in self.session.execute(query)]  # type: ignore[misc]
