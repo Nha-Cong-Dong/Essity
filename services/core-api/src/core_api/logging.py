@@ -177,7 +177,11 @@ def configure_logging(service: str, level: str, stream: TextIO | None = None) ->
     logging.getLogger("uvicorn.access").disabled = True
     # httpx2 logs every outgoing URL, query string included, at INFO; the Anthropic SDK logs
     # request and response bodies at DEBUG. httpx/httpcore in case a library brings them.
-    for name in ("httpx2", "httpcore2", "httpx", "httpcore", "anthropic"):
+    # boto3, botocore and urllib3 log signed requests and object keys at DEBUG (T4.5).
+    for name in (
+        *("httpx2", "httpcore2", "httpx", "httpcore", "anthropic"),
+        *("boto3", "botocore", "s3transfer", "urllib3"),
+    ):
         logging.getLogger(name).setLevel(logging.WARNING)
 
 

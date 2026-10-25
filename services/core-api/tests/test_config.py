@@ -43,6 +43,8 @@ PRODUCTION = {
     "smtp_starttls": "true",
     "email_from": "no-reply@essity.example",
     "ai_service_url": "http://ai-service:8001",
+    "s3_endpoint": "https://account.r2.cloudflarestorage.example",
+    "s3_bucket": "essity-files",
 }
 
 

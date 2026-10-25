@@ -7,6 +7,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from core_api.api import auth, health, me, ping, review_sessions, subjects, today
 from core_api.api.errors import install_validation_handler
 from core_api.clients.ai_client import AiServiceClient
+from core_api.clients.storage import S3Storage
 from core_api.config import get_settings
 from core_api.logging import configure_logging, log_requests
 from core_api.security.rate_limit import install_rate_limit_handlers
@@ -20,6 +21,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_logging("core-api", settings.log_level)
     ai_client = AiServiceClient.from_settings(settings)
     app.state.ai_client = ai_client
+    # Builds the clients only: no call to the store, so startup does not wait on it.
+    app.state.storage = S3Storage.from_settings(settings)
     try:
         yield
     finally:
