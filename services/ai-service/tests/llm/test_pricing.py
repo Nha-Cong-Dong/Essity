@@ -28,6 +28,12 @@ def test_t210_long_prompts_cost_the_long_context_price() -> None:
     assert cost_usd(price, input_tokens=100_000, output_tokens=0) == Decimal("0.010000")
 
 
+def test_t210_long_price_starts_at_the_first_token_over_100k() -> None:
+    # Red when: the long-context threshold moves up by even one token (100_001 -> 100_002).
+    price = price_for("claude-haiku-5-5")
+    assert cost_usd(price, input_tokens=100_001, output_tokens=0) == Decimal("0.050001")
+
+
 def test_t210_unknown_model_has_no_price() -> None:
     # Red when: a model missing from the table costs 0, and its calls never count to a quota.
     with pytest.raises(UnknownModelPriceError):
