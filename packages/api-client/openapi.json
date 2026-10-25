@@ -1,6 +1,35 @@
 {
   "components": {
     "schemas": {
+      "BacklogOut": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject_id",
+          "subject_name",
+          "sessions",
+          "days"
+        ],
+        "title": "BacklogOut",
+        "type": "object"
+      },
       "EmailBody": {
         "additionalProperties": false,
         "properties": {
@@ -225,6 +254,32 @@
         "title": "ResetBody",
         "type": "object"
       },
+      "SessionOut": {
+        "properties": {
+          "minutes": {
+            "title": "Minutes",
+            "type": "integer"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/SubjectRef"
+            },
+            "title": "Subjects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_count",
+          "minutes",
+          "subjects"
+        ],
+        "title": "SessionOut",
+        "type": "object"
+      },
       "SubjectChange": {
         "additionalProperties": false,
         "properties": {
@@ -309,6 +364,125 @@
           "created_at"
         ],
         "title": "SubjectOut",
+        "type": "object"
+      },
+      "SubjectRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "SubjectRef",
+        "type": "object"
+      },
+      "TodayOut": {
+        "properties": {
+          "backlog": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BacklogOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "learning_day": {
+            "format": "date",
+            "title": "Learning Day",
+            "type": "string"
+          },
+          "next_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Day"
+          },
+          "session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "ready",
+              "in_progress",
+              "rested",
+              "no_questions",
+              "no_subjects",
+              "all_exams_over"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/TodaySubject"
+            },
+            "title": "Subjects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "learning_day",
+          "state",
+          "session",
+          "backlog",
+          "next_day",
+          "subjects"
+        ],
+        "title": "TodayOut",
+        "type": "object"
+      },
+      "TodaySubject": {
+        "properties": {
+          "days_until_exam": {
+            "title": "Days Until Exam",
+            "type": "integer"
+          },
+          "exam_date": {
+            "format": "date",
+            "title": "Exam Date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "exam_date",
+          "days_until_exam"
+        ],
+        "title": "TodaySubject",
         "type": "object"
       },
       "TokenBody": {
@@ -844,6 +1018,24 @@
           }
         },
         "summary": "Change Subject"
+      }
+    },
+    "/v1/today": {
+      "get": {
+        "operationId": "get_today_v1_today_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Today"
       }
     }
   }

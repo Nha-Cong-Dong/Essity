@@ -11,9 +11,8 @@ from datetime import date, datetime
 from itertools import groupby
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import aliased
 
 from core_api.db.models import (
     Attempt,
@@ -284,31 +283,51 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
                 MemoryState.user_id == self.user_id, MemoryState.unit_id.in_(units)
             )
         )
-        written = 0
-        for (unit_id, facet, exam_day), rows in groupby(
+        rows: list[dict[str, object]] = []
+        for (unit_id, facet, exam_day), reviews in groupby(
             self._current_reviews(subject_id), key=lambda row: (row[0], row[1], row[4])
         ):
             state = replay(
-                ((ReviewRating(row[2]), row[3]) for row in rows),
+                ((ReviewRating(row[2]), row[3]) for row in reviews),
                 exam_day=exam_day,
                 tz=tz,
                 day_start_hour=user.day_start_hour,
             )
             assert state is not None
-            self.upsert(unit_id, facet, state)
-            written += 1
-        return written
+            rows.append(
+                {
+                    "id": uuid.uuid4(),
+                    "user_id": self.user_id,
+                    "unit_id": unit_id,
+                    "facet": facet,
+                    "phase": state.phase.value,
+                    "step": state.step,
+                    "stability": state.stability,
+                    "difficulty": state.difficulty,
+                    "due": state.due,
+                    "last_review": state.last_review,
+                }
+            )
+        # One insert, not one upsert per unit: the rows were just deleted, and every unit comes
+        # from this user's own review_log joined to knowledge_unit (rebuild at real size, #20).
+        if rows:
+            self.session.execute(insert(MemoryState), rows)
+        self.session.expire_all()
+        return len(rows)
 
     def _current_reviews(
         self, subject_id: uuid.UUID | None
     ) -> Sequence[tuple[uuid.UUID, str, int, datetime, date]]:
         """(unit, facet, rating, reviewed_at, exam date) of every review that counts: the rows of
         each attempt's latest grade (plan D7), in the order they happened."""
-        current = aliased(Grade)
+        # Each attempt's latest grade, computed once as a set, then joined: a per-row MAX(seq)
+        # subquery ran once per grade per unit and grew with the square of the history.
         latest = (
-            select(func.max(Grade.seq))
-            .where(Grade.user_id == self.user_id, Grade.attempt_id == current.attempt_id)
-            .scalar_subquery()
+            select(Grade.id)
+            .where(Grade.user_id == self.user_id)
+            .order_by(Grade.attempt_id, Grade.seq.desc())
+            .distinct(Grade.attempt_id)
+            .subquery()
         )
         query = (
             select(
@@ -318,7 +337,7 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
                 ReviewLog.reviewed_at,
                 Exam.exam_date,
             )
-            .join(current, (current.id == ReviewLog.grade_id) & (current.user_id == self.user_id))
+            .join(latest, latest.c.id == ReviewLog.grade_id)
             .join(
                 KnowledgeUnit,
                 (KnowledgeUnit.id == ReviewLog.unit_id) & (KnowledgeUnit.user_id == self.user_id),
@@ -327,7 +346,7 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
                 Exam,
                 (Exam.subject_id == KnowledgeUnit.subject_id) & (Exam.user_id == self.user_id),
             )
-            .where(ReviewLog.user_id == self.user_id, current.seq == latest)
+            .where(ReviewLog.user_id == self.user_id)
             .order_by(ReviewLog.unit_id, ReviewLog.facet, ReviewLog.reviewed_at, ReviewLog.seq)
         )
         if subject_id is not None:

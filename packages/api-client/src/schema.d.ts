@@ -242,10 +242,41 @@ export interface paths {
         patch: operations["change_subject_v1_subjects__subject_id__patch"];
         trace?: never;
     };
+    "/v1/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Today */
+        get: operations["get_today_v1_today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** BacklogOut */
+        BacklogOut: {
+            /** Days */
+            days: number;
+            /** Sessions */
+            sessions: number;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /** Subject Name */
+            subject_name: string;
+        };
         /** EmailBody */
         EmailBody: {
             /** Email */
@@ -344,6 +375,15 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** SessionOut */
+        SessionOut: {
+            /** Minutes */
+            minutes: number;
+            /** Question Count */
+            question_count: number;
+            /** Subjects */
+            subjects: components["schemas"]["SubjectRef"][];
+        };
         /** SubjectChange */
         SubjectChange: {
             /** Exam Date */
@@ -368,6 +408,52 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Days Until Exam */
+            days_until_exam: number;
+            /**
+             * Exam Date
+             * Format: date
+             */
+            exam_date: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** SubjectRef */
+        SubjectRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** TodayOut */
+        TodayOut: {
+            backlog: components["schemas"]["BacklogOut"] | null;
+            /**
+             * Learning Day
+             * Format: date
+             */
+            learning_day: string;
+            /** Next Day */
+            next_day: string | null;
+            session: components["schemas"]["SessionOut"] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ready" | "in_progress" | "rested" | "no_questions" | "no_subjects" | "all_exams_over";
+            /** Subjects */
+            subjects: components["schemas"]["TodaySubject"][];
+        };
+        /** TodaySubject */
+        TodaySubject: {
             /** Days Until Exam */
             days_until_exam: number;
             /**
@@ -829,6 +915,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_today_v1_today_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayOut"];
                 };
             };
         };
