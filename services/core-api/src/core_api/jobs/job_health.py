@@ -9,6 +9,9 @@ needs a look, INFO otherwise. The deploy's alert (T0.13) watches for that ERROR.
 - failed_total: jobs left in `failed`, for context only (one old failure is not an alarm).
 - stalled: jobs `doing` whose worker stopped beating (plan D8). "Doing for N minutes" would
   report a long job (an LLM call, M4) that is still running fine.
+- outbox_unsent_stale: outbox rows still unsent 5 minutes after their event (T4.2, plan Y8).
+  The relay sends within a second or two, or backs off 30 s at most, so this means the relay
+  or Redis is down and events are piling up. The count includes no event, only rows.
 
 Only counts are read and logged, never a job's arguments: they hold email addresses (P5).
 """
@@ -28,6 +31,7 @@ JOB_HEALTH = "job_health"
 RECENT_FAILURES = timedelta(minutes=20)
 # Procrastinate beats every 10 s by default; minutes of silence means the worker is gone.
 STALLED_AFTER = timedelta(minutes=5)
+OUTBOX_STALE_AFTER = timedelta(minutes=5)
 
 _log = logging.getLogger("core_api.jobs")
 
@@ -37,10 +41,11 @@ class JobHealth:
     failed_recent: int
     failed_total: int
     stalled: int
+    outbox_unsent_stale: int
 
     @property
     def needs_a_look(self) -> bool:
-        return self.failed_recent > 0 or self.stalled > 0
+        return self.failed_recent > 0 or self.stalled > 0 or self.outbox_unsent_stale > 0
 
 
 def job_health(session: Session, now: datetime | None = None) -> JobHealth:
@@ -57,12 +62,22 @@ def job_health(session: Session, now: datetime | None = None) -> JobHealth:
               (SELECT count(*) FROM procrastinate_jobs j
                  LEFT JOIN procrastinate_workers w ON w.id = j.worker_id, t
                  WHERE j.status = 'doing'
-                   AND (w.id IS NULL OR w.last_heartbeat < t.now - :stalled)) AS stalled
+                   AND (w.id IS NULL OR w.last_heartbeat < t.now - :stalled)) AS stalled,
+              (SELECT count(*) FROM outbox, t
+                 WHERE sent_at IS NULL AND occurred_at < t.now - :outbox_stale)
+                 AS outbox_unsent_stale
             """
         ),
-        {"now": now, "recent": RECENT_FAILURES, "stalled": STALLED_AFTER},
+        {
+            "now": now,
+            "recent": RECENT_FAILURES,
+            "stalled": STALLED_AFTER,
+            "outbox_stale": OUTBOX_STALE_AFTER,
+        },
     ).one()
-    return JobHealth(counts.failed_recent, counts.failed_total, counts.stalled)
+    return JobHealth(
+        counts.failed_recent, counts.failed_total, counts.stalled, counts.outbox_unsent_stale
+    )
 
 
 def report_job_health(engine: Engine, now: datetime | None = None) -> JobHealth:
@@ -72,6 +87,7 @@ def report_job_health(engine: Engine, now: datetime | None = None) -> JobHealth:
         "jobs_failed_recent": health.failed_recent,
         "jobs_failed_total": health.failed_total,
         "jobs_stalled": health.stalled,
+        "outbox_unsent_stale": health.outbox_unsent_stale,
     }
     if health.needs_a_look:
         _log.error("job queue needs a look", extra=fields)
