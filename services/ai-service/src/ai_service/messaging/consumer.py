@@ -30,7 +30,10 @@ from typing import Annotated, Any, Union, cast, get_args, get_origin
 
 from pydantic import BaseModel, StringConstraints, ValidationError
 from redis import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import ResponseError
+from redis.exceptions import TimeoutError as RedisTimeoutError
+from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.orm import Session
 
 from ai_service.messaging.dead_letter import (
@@ -68,6 +71,30 @@ Handler = Callable[[Session, Event], None]
 - Takes the user from `event.user_id`, never from the payload: the consumer has checked that
   every object key in the payload belongs to that user (F2).
 """
+
+
+class Deferred(Exception):
+    """Raised by a handler to put its event back for later, without counting a failure.
+
+    For work that cannot run *now*: the user is over their AI quota (T2.11), or the LLM provider
+    answers 5xx or times out (T4.7). The consumer rolls back the handler's transaction (and
+    the claim), keeps the entry pending and resets its delivery count; XAUTOCLAIM brings it
+    back after `min_idle` (60 s). A deferred event never goes to the dead letter, so:
+
+    - check the quota before anything that costs money: a deferred event comes back every
+      minute, possibly for a whole day;
+    - an event deferred for ever stays pending for ever; T2.11 decides what to do about that.
+    """
+
+
+# Not the handler's fault: the database or Redis is unreachable. Handled like `Deferred`, so an
+# outage of a few minutes does not use up every event's attempts (review 🟠1).
+INFRASTRUCTURE_ERRORS: tuple[type[Exception], ...] = (
+    OperationalError,
+    InterfaceError,
+    RedisConnectionError,
+    RedisTimeoutError,
+)
 
 _log = logging.getLogger("ai_service.messaging")
 
@@ -223,6 +250,12 @@ class Consumer:
                 else:
                     handler(session, event)
                     outcome = "processed"
+        except Deferred:
+            self._put_back(entry_id, deliveries)
+            return "deferred"
+        except INFRASTRUCTURE_ERRORS:
+            self._put_back(entry_id, deliveries)
+            return "unavailable"
         except Exception as error:
             if deliveries >= self.max_attempts:
                 return self._dead(entry_id, envelope, type(error).__name__, deliveries)
@@ -257,6 +290,23 @@ class Consumer:
             0,
             [entry_id],
             idle=max(0, self.min_idle_ms - wait),
+            justid=True,
+        )
+
+    def _put_back(self, entry_id: str, deliveries: int) -> None:
+        """Keep the entry pending as if this delivery had not happened.
+
+        RETRYCOUNT sets the delivery count back to what it was before this delivery; the idle
+        time restarts at 0, so XAUTOCLAIM takes the entry again after `min_idle`. JUSTID only
+        returns the id; it does not override RETRYCOUNT (tests/messaging/test_deferred.py).
+        """
+        self.redis.xclaim(
+            self.stream,
+            self.group,
+            self.name,
+            0,
+            [entry_id],
+            retrycount=deliveries - 1,
             justid=True,
         )
 
