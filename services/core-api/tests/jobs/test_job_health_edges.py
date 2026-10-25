@@ -101,7 +101,7 @@ def test_r05_only_doing_jobs_can_be_stalled(engine: Engine) -> None:
 
 def test_r05_an_empty_queue_counts_zero(engine: Engine) -> None:
     # Red when: the counts become NULL or the query breaks without a single row to count.
-    assert health(engine) == JobHealth(0, 0, 0)
+    assert health(engine) == JobHealth(0, 0, 0, 0)
 
 
 def test_r05_a_stalled_job_alone_is_an_error(
