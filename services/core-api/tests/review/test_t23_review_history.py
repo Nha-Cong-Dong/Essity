@@ -806,3 +806,43 @@ def test_t23_a_temporary_table_cannot_stand_in_for_grade(
             ),
             {"user": history.user.id, "grade": old, "unit": history.unit.id},
         )
+
+
+# T2.13 (migration 0011, PLAN T2.13 23/10b, PR B B1): the fake grader's grades are stored as
+# source 'fake'; understanding is 1..3, never 0. Red when: the CHECKs are not changed.
+def test_t213_fake_grades_are_stored_as_fake(db_session: Session, history: History) -> None:
+    made = GradeRepository(db_session, history.user.id).add_with_units(
+        history.attempt.id,
+        source="fake",
+        overall=Verdict.CORRECT,
+        understanding=3,
+        units={history.unit.id: Verdict.CORRECT},
+        run_id=RUN,
+    )
+    db_session.flush()
+    assert made.source == "fake"
+
+
+@pytest.mark.parametrize(
+    ("understanding", "stored"), [(0, False), (1, True), (3, True), (4, False)]
+)
+def test_t213_understanding_is_one_to_three(
+    db_session: Session, history: History, understanding: int, stored: bool
+) -> None:
+    def add() -> None:
+        GradeRepository(db_session, history.user.id).add_with_units(
+            history.attempt.id,
+            source="ai",
+            overall=Verdict.CORRECT,
+            understanding=understanding,
+            units={history.unit.id: Verdict.CORRECT},
+            run_id=RUN,
+        )
+        db_session.flush()
+
+    if stored:
+        with db_session.begin_nested():
+            add()
+    else:
+        with pytest.raises(IntegrityError), db_session.begin_nested():
+            add()

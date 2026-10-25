@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from core_api.api.ping import get_ai_client
-from core_api.clients.ai_client import SERVICE_TOKEN_HEADER, AiServiceClient
+from core_api.clients.ai_client import PING_TIMEOUT_SECONDS, SERVICE_TOKEN_HEADER, AiServiceClient
 from core_api.config import Settings, get_settings
 from core_api.main import app
 
@@ -89,9 +89,12 @@ def test_ai_client_uses_configured_timeout(monkeypatch: pytest.MonkeyPatch) -> N
         return ai_ok(request)
 
     ai_client = AiServiceClient.from_settings(Settings(), httpx2.MockTransport(handler))  # pyright: ignore[reportCallIssue]
+    # The configured timeout is the client's default, for grading calls (T2.13 plan D-5); the
+    # ping keeps its own short one.
+    assert ai_client._http.timeout.read == 1.5  # pyright: ignore[reportPrivateUsage]
     ai_client.ping()
     ai_client.close()
-    assert seen[0].extensions["timeout"] == {"connect": 1.5, "read": 1.5, "write": 1.5, "pool": 1.5}
+    assert seen[0].extensions["timeout"]["read"] == PING_TIMEOUT_SECONDS
 
 
 def test_core_api_refuses_short_ai_service_token(monkeypatch: pytest.MonkeyPatch) -> None:

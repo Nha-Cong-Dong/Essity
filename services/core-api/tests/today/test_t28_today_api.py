@@ -17,7 +17,7 @@ from core_api.domain.scheduling.fsrs_adapter import MemoryState, Phase
 from core_api.repositories.question import QuestionRepository, QuestionUnitRepository
 from core_api.repositories.review import MemoryStateRepository
 from core_api.repositories.subject import SubjectRepository
-from core_api.repositories.unit import KnowledgeUnitRepository
+from core_api.repositories.unit import AnchorRepository, KnowledgeUnitRepository
 
 RUN = uuid.uuid4()
 
@@ -43,6 +43,14 @@ class Space:
             subject_id, level=1, prompt=f"{title}?", reference_answer="a", run_id=RUN
         )
         QuestionUnitRepository(self.session, self.user.id).link(question.id, unit.id)
+        # Grading needs at least one source per unit (T2.13, US-05 AC8).
+        AnchorRepository(self.session, self.user.id).create(
+            unit.id,
+            source="document",
+            quote_text=f"{title} là một khái niệm của môn.",
+            page_no=1,
+            run_id=RUN,
+        )
         self.session.flush()
         return unit.id, question
 

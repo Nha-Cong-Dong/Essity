@@ -75,9 +75,9 @@ class Settings(DatabaseSettings):
     # Sent to ai-service in X-Service-Token. No default: core-api refuses to start without one,
     # the same rule ai-service applies on its side.
     ai_service_token: SecretStr = Field(min_length=32)
-    # Below web's 3 s timeout for core-api, so a hung ai-service is reported as such
-    # instead of web timing out and blaming core-api.
-    ai_service_timeout_seconds: float = Field(default=2.0, gt=0)
+    # One grading call to ai-service (T2.13, plan D-5): its own 9 s deadline, then core gives
+    # up. The ping keeps a short timeout of its own (clients.ai_client.PING_TIMEOUT_SECONDS).
+    ai_service_timeout_seconds: float = Field(default=10.0, gt=0)
 
     # A field validator, not a model one: a model validator's error prints the whole input,
     # secrets included, to the startup traceback; this one prints only the URL.

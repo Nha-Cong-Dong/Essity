@@ -346,3 +346,17 @@ def test_t29_draft_on_a_subject_deleted_meanwhile_is_404_and_leaves_no_attempt(
         select(func.count()).select_from(Attempt).where(Attempt.user_id == space.user.id)
     )
     assert count == 0
+
+
+# T2.13 plan D-4. Red when: an answer ai-service would refuse (> 4000 characters) is stored, so it
+# could never be graded and "Chấm lại" would loop.
+def test_t213_an_answer_over_4000_characters_is_refused(
+    client: TestClient, db_session: Session
+) -> None:
+    _, headers, _ = ready(db_session)
+    session_id = start(client, headers).json()["id"]
+    attempt_id = open_attempt(client, headers, session_id).json()["id"]
+    for text, code in [("ệ" * 4000, 204), ("ệ" * 4000 + "x", 422)]:
+        body = {"answer_text": text, "dont_remember": False}
+        response = client.put(f"/v1/attempts/{attempt_id}/draft", json=body, headers=headers)
+        assert response.status_code == code

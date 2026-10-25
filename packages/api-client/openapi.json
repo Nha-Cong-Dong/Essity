@@ -5,7 +5,7 @@
         "additionalProperties": false,
         "properties": {
           "answer_text": {
-            "maxLength": 20000,
+            "maxLength": 4000,
             "title": "Answer Text",
             "type": "string"
           },

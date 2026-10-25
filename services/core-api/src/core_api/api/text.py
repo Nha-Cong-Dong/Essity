@@ -49,7 +49,9 @@ DbText = Annotated[str, AfterValidator(storable_text)]
 # A learner's answer keeps its lines and tabs; every other control character (NUL above all, which
 # Postgres text cannot hold) is still refused (T2.9).
 ANSWER_LAYOUT = frozenset("\n\r\t")
-ANSWER_MAX = 20_000  # review.MAX_ANSWER_CHARS, the database's own cap
+# What ai-service grades (plan D-4): an answer it would refuse could never be graded. The
+# database's own cap (review.MAX_ANSWER_CHARS, 20 000) stays as a wider safety net.
+ANSWER_MAX = 4_000
 
 
 def storable_answer(value: str) -> str:

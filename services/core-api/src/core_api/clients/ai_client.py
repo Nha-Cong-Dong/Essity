@@ -5,7 +5,15 @@ from core_api.config import Settings
 from core_api.logging import REQUEST_ID_HEADER, request_id_var
 from core_api.security.service_token import SERVICE_TOKEN_HEADER
 
-__all__ = ["SERVICE_TOKEN_HEADER", "AiServiceClient", "AiServiceUnavailableError"]
+__all__ = [
+    "PING_TIMEOUT_SECONDS",
+    "SERVICE_TOKEN_HEADER",
+    "AiServiceClient",
+    "AiServiceUnavailableError",
+]
+
+# Below web's 3 s timeout for core-api, so a hung ai-service is reported as such by /v1/ping.
+PING_TIMEOUT_SECONDS = 2.0
 
 
 class AiServiceUnavailableError(Exception):
@@ -36,7 +44,7 @@ class AiServiceClient:
 
     def ping(self) -> None:
         try:
-            response = self._http.get("/v1/ping")
+            response = self._http.get("/v1/ping", timeout=PING_TIMEOUT_SECONDS)
             response.raise_for_status()
         except httpx2.HTTPError as exc:
             raise AiServiceUnavailableError(str(exc)) from exc
