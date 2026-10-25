@@ -20,40 +20,8 @@ const MIN_GAP = 4;
 // see what fails and why.
 const SHOW_RED = process.env.LAYOUT_SHOW_RED === "1";
 const KNOWN_RED = new Set<string>([
-  // The page scrolls sideways until the subject rows are fixed (R44): C3 takes this out.
-  "R46-g with no fallback face, the page does not scroll and the current item shows@320",
-  "R44-a name, date and Sửa do not overlap@1440",
-  "R44-a name, date and Sửa do not overlap@320",
-  "R44-a name, date and Sửa do not overlap@390",
-  "R44-a name, date and Sửa do not overlap@639",
-  "R44-a name, date and Sửa do not overlap@640",
-  "R44-a name, date and Sửa do not overlap@768",
-  "R44-b a long name wraps inside its column@1440",
-  "R44-b a long name wraps inside its column@320",
-  "R44-b a long name wraps inside its column@390",
-  "R44-b a long name wraps inside its column@639",
-  "R44-b a long name wraps inside its column@640",
-  "R44-b a long name wraps inside its column@768",
-  "R44-c each half of the date line is one line, under the name below sm, beside it from sm@320",
-  "R44-c each half of the date line is one line, under the name below sm, beside it from sm@390",
-  "R44-c each half of the date line is one line, under the name below sm, beside it from sm@639",
-  "R44-d the cover lines up with the top of the name@320",
-  "R44-d the cover lines up with the top of the name@390",
-  "R44-e below sm the date line starts where the name starts@320",
-  "R44-e below sm the date line starts where the name starts@390",
-  "R44-e below sm the date line starts where the name starts@639",
+  // "Tạo môn" is pulled up beside the title by a fixed -mt-16: doubled text runs into it (C3b).
   "R44-f at 200% text the rows still fit@390",
-  "R44-h below sm Sửa stays on the first line, right of the name@320",
-  "R44-h below sm Sửa stays on the first line, right of the name@390",
-  "R44-h below sm Sửa stays on the first line, right of the name@639",
-  "page: no horizontal scroll@1440",
-  "page: no horizontal scroll@320",
-  "page: no horizontal scroll@359",
-  "page: no horizontal scroll@360",
-  "page: no horizontal scroll@390",
-  "page: no horizontal scroll@639",
-  "page: no horizontal scroll@640",
-  "page: no horizontal scroll@768",
 ]);
 
 type Box = { x: number; y: number; width: number; height: number };

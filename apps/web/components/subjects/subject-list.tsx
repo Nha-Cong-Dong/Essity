@@ -166,17 +166,29 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
 
   return (
     <li className="flex flex-col gap-4 border-b border-line py-5 last:border-b-0">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <span aria-hidden="true" className="h-14 w-11 shrink-0 rounded-slip bg-(color:--rose-200) shadow-sheet" />
-        <span id={ids.name} className="min-w-0 flex-1 text-section font-semibold">
+      {/* Below sm a grid (T2.3c, R44, plan G3): the cover spans both lines, the name wraps
+          anywhere beside it with "Sửa" on its first line, the date line starts under the name.
+          From sm, DESIGN.md §6.8's single line. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6">
+        <span
+          aria-hidden="true"
+          className="row-span-2 h-14 w-11 shrink-0 self-start rounded-slip bg-(color:--rose-200) shadow-sheet sm:self-auto"
+        />
+        <span id={ids.name} className="min-w-0 text-section font-semibold wrap-anywhere sm:flex-1">
           {subject.name}
         </span>
-        <span className="flex flex-col items-end text-small">
-          <span>thi {formatExamDate(subject.exam_date)}</span>
-          <span className="text-ink-soft">{daysLeftText(subject.days_until_exam)}</span>
+        {/* The space between the halves keeps them two words for a screen reader (plan G9). */}
+        <span className="col-span-2 col-start-2 row-start-2 flex flex-wrap gap-x-2 text-small sm:flex-col sm:items-end">
+          <span className="whitespace-nowrap">thi {formatExamDate(subject.exam_date)}</span>{" "}
+          <span className="whitespace-nowrap text-ink-soft">{daysLeftText(subject.days_until_exam)}</span>
         </span>
         {!editing && (
-          <Button variant="quiet" onClick={open} aria-label={`Sửa ${subject.name}`}>
+          <Button
+            variant="quiet"
+            onClick={open}
+            aria-label={`Sửa ${subject.name}`}
+            className="col-start-3 row-start-1 self-start sm:self-auto"
+          >
             Sửa
           </Button>
         )}
