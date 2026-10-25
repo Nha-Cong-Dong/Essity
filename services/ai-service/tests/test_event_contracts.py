@@ -1,20 +1,53 @@
 """Event contracts (T4.1, ADR-0006), checked from ai-service's side.
 
 Reads `contracts/events/` from the repository, never imports core-api (ADR-0003). ai-service's own
-Pydantic models must take every valid example and refuse every invalid one. The check of these
-models against the JSON Schemas themselves comes with the `jsonschema` dev dependency.
+Pydantic models must accept exactly what the JSON Schemas accept, on every example, and what they
+write must pass the schemas.
 """
 
 import json
+from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, cast, get_args
+from typing import Any, Protocol, cast, get_args
 
 import pytest
+from jsonschema import Draft202012Validator, FormatChecker
 from pydantic import BaseModel, ValidationError
+from referencing import Registry, Resource
 
 CONTRACTS = Path(__file__).resolve().parents[3] / "contracts" / "events"
 EXAMPLES = CONTRACTS / "examples"
+JSON = dict[str, Any]
+
+
+class SchemaValidator(Protocol):
+    """The part of jsonschema's validator the tests use, typed (its stubs leave it partial)."""
+
+    def validate(self, instance: Any) -> None: ...
+    def iter_errors(self, instance: Any) -> Iterator[Any]: ...
+    def is_valid(self, instance: Any) -> bool: ...
+
+
+def load(path: Path) -> JSON:
+    return cast(JSON, json.loads(path.read_text(encoding="utf-8")))
+
+
+def validator(name: str) -> SchemaValidator:
+    """Validator for `<name>.schema.json`, resolving `$ref`s to the other contract files."""
+    resources: list[tuple[str, Resource[Any]]] = [
+        (load(p)["$id"], Resource.from_contents(load(p)))
+        for p in sorted(CONTRACTS.glob("*.schema.json"))
+    ]
+    empty: Registry[Any] = Registry()
+    schema = load(CONTRACTS / f"{name}.schema.json")
+    return cast(
+        SchemaValidator,
+        Draft202012Validator(
+            schema, registry=empty.with_resources(resources), format_checker=FormatChecker()
+        ),
+    )
+
 
 # ARCHITECTURE §7.3.
 EVENTS_IN_ARCH = [
@@ -65,9 +98,7 @@ def test_models_cover_exactly_the_envelope_events() -> None:
 
     union = get_args(Event)[0]
     modelled = {get_args(m.model_fields["event_type"].annotation)[0] for m in get_args(union)}
-    envelope = cast(
-        dict[str, Any], json.loads((CONTRACTS / "envelope.schema.json").read_text(encoding="utf-8"))
-    )
+    envelope = load(CONTRACTS / "envelope.schema.json")
     assert modelled == set(envelope["properties"]["event_type"]["enum"]) == set(EVENTS_IN_ARCH)
 
 
@@ -90,6 +121,31 @@ def test_invalid_examples_rejected(path: Path) -> None:
         parse_event(path.read_text(encoding="utf-8"))
 
 
+@pytest.mark.parametrize("path", INVALID, ids=lambda p: p.name)
+def test_schema_rejects_invalid_examples(path: Path) -> None:
+    # Red when: the schema itself lets through what its invalid example shows, so the model
+    # check above would be the only guard.
+    assert list(validator(schema_name(path)).iter_errors(load(path)))
+
+
+@pytest.mark.parametrize("path", example_files(), ids=lambda p: p.name)
+def test_pydantic_envelope_agrees_with_schema(path: Path) -> None:
+    # Red when: ai-service's models accept what the schema rejects, or reject what it accepts.
+    from ai_service.messaging.envelope import parse_event
+
+    example = load(path)
+    schema_accepts = validator("envelope").is_valid(example)
+    event_type = example.get("event_type")
+    if schema_accepts and isinstance(event_type, str):
+        schema_accepts = validator(event_type).is_valid(example)
+    try:
+        parse_event(path.read_text(encoding="utf-8"))
+        pydantic_accepts = True
+    except ValidationError:
+        pydantic_accepts = False
+    assert pydantic_accepts == schema_accepts
+
+
 # --- Events built in code (what ai-service will send) --------------------------------------
 
 NOT_UTC = [
@@ -108,14 +164,14 @@ def example(name: str) -> str:
 
 
 @pytest.mark.parametrize("path", VALID, ids=lambda p: p.name)
-def test_dumped_event_parses_back(path: Path) -> None:
-    # Red when: what ai-service writes on the wire is refused by its own reader (a null field, a
-    # timestamp without Z). Checked against the JSON Schema once jsonschema is a dev dependency.
+def test_dumped_event_matches_schema_and_parses_back(path: Path) -> None:
+    # Red when: what ai-service writes on the wire drifts from the contract (a null field, a
+    # timestamp without Z), so core-api would refuse ai-service's events.
     from ai_service.messaging.envelope import dump_event, parse_event
 
     event = parse_event(path.read_text(encoding="utf-8"))
     wire = dump_event(event)
-    assert json.loads(wire)["occurred_at"].endswith("Z")
+    validator(event.event_type).validate(json.loads(wire))
     assert parse_event(wire) == event
 
 
@@ -126,6 +182,7 @@ def test_empty_trace_context_dumps_valid() -> None:
     event = parse_event(example("user.deleted.v1"))
     wire = dump_event(rebuilt(event, trace_context=TraceContext()))  # pyright: ignore[reportArgumentType]
     assert json.loads(wire)["trace_context"] == {}
+    validator("user.deleted.v1").validate(json.loads(wire))
     assert parse_event(wire).trace_context == TraceContext()
 
 
@@ -138,7 +195,7 @@ def test_required_null_payload_fields_are_dumped() -> None:
     no_document = {**payload, "document_id": None, "page_range": None}
     wire = dump_event(rebuilt(event, payload=no_document))  # pyright: ignore[reportArgumentType]
     assert json.loads(wire)["payload"]["document_id"] is None
-    parse_event(wire)
+    validator("session.confirmed.v1").validate(json.loads(wire))
 
 
 @pytest.mark.parametrize("occurred_at", NOT_UTC, ids=["naive", "plus-07"])
