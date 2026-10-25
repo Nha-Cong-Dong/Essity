@@ -263,19 +263,43 @@ rule("R46-g with no fallback face, the page does not scroll and the current item
 }, { brokenFallback: true });
 // 280 on purpose: the only width where two nav items must scroll, so it checks scrollIntoView
 // brings the current one into view without scrolling the page (it does not replace the 320 rule).
-// The focus ring of a pill is drawn inside it, so the scrolling nav cannot clip it (review C2 #1).
-rule("R46-h a focused pill keeps its ring inside the nav", [320], async (page) => {
-  const pill = nav(page).getByRole("link", { name: "Hôm nay" });
-  await pill.focus();
-  await page.keyboard.press("Shift+Tab");
-  await page.keyboard.press("Tab");
-  const ring = await pill.evaluate((el) => {
-    const style = getComputedStyle(el);
-    return { width: parseFloat(style.outlineWidth), offset: parseFloat(style.outlineOffset), style: style.outlineStyle };
+// The focus ring of a pill is drawn inside it, so the scrolling nav cannot clip it, and stands out
+// at 3:1 or more from the pill under it, in light and dark (review C2 #1, #5; plan G14).
+function luminance(rgb: string): number {
+  const [r, g, b] = (rgb.match(/[\d.]+/g) ?? []).slice(0, 3).map((v) => {
+    const c = Number(v) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   });
-  expect(ring.style).not.toBe("none");
-  expect(ring.offset + ring.width).toBeLessThanOrEqual(0);
-});
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+const contrast = (a: string, b: string) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+for (const scheme of ["light", "dark"] as const) {
+  for (const label of ["Hôm nay", "Môn học"]) {
+    rule(`R46-h a focused pill (${label}, ${scheme}) keeps a 3:1 ring inside the nav`, [320], async (page) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      const pill = nav(page).getByRole("link", { name: label });
+      await pill.focus();
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Tab");
+      const ring = await pill.evaluate((el) => {
+        const style = getComputedStyle(el);
+        // Under the ring: the pill's own fill, or the page behind a transparent pill.
+        let under = style.backgroundColor;
+        for (let node: Element | null = el; node && /rgba\(0, 0, 0, 0\)|transparent/.test(under); node = node.parentElement) {
+          under = getComputedStyle(node).backgroundColor;
+        }
+        if (/rgba\(0, 0, 0, 0\)|transparent/.test(under)) under = getComputedStyle(document.body).backgroundColor;
+        return { width: parseFloat(style.outlineWidth), offset: parseFloat(style.outlineOffset), style: style.outlineStyle, color: style.outlineColor, under };
+      });
+      expect(ring.style).not.toBe("none");
+      expect(ring.offset + ring.width).toBeLessThanOrEqual(0);
+      expect(contrast(ring.color, ring.under)).toBeGreaterThanOrEqual(3);
+    });
+  }
+}
 rule("R46-d the current item is scrolled into view, the page is not", [280], async (page) => {
   const current = nav(page).locator('[aria-current="page"]');
   await expect(async () => {

@@ -42,6 +42,14 @@ describe("MainNav (T2.3c, R46)", () => {
     for (const link of screen.getAllByRole("link")) expect(link.className).toMatch(/focus-visible:-outline-offset-2/);
   });
 
+  // Red when: the current (ink) pill keeps the pink ring, under 3:1 on ink (plan G14).
+  it("the current pill's ring is the page colour, 4px in", () => {
+    render(<MainNav current="/subjects" />);
+    const current = screen.getByRole("link", { name: "Môn học" });
+    expect(current.className).toMatch(/aria-\[current=page\]:\[--focus:var\(--bg\)\]/);
+    expect(current.className).toMatch(/aria-\[current=page\]:focus-visible:-outline-offset-4/);
+  });
+
   it("keeps the nav landmark that shrinks and scrolls (review of 96bebab)", () => {
     render(<MainNav current="/today" />);
     const nav = screen.getByRole("navigation", { name: "Chính" });

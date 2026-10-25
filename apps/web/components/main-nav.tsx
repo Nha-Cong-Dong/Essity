@@ -36,6 +36,9 @@ export function MainNav({ current }: { current?: NavItem }) {
             // The nav scrolls, so it clips anything drawn outside it: the focus ring goes inside the
             // pill (review C2 #1, WCAG 2.4.7).
             "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
+            // On the ink pill a pink ring is under 3:1: --focus turns to the page colour, as on other
+            // solid surfaces, 4px in so ink shows on both sides of it (plan G14, design-director).
+            "aria-[current=page]:[--focus:var(--bg)] aria-[current=page]:focus-visible:-outline-offset-4",
           )}
         >
           {item.label}
