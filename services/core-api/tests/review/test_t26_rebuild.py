@@ -65,6 +65,7 @@ class Learner:
         attempt = attempts.create_draft(sitting.id, question.id)
         attempts.submit(attempt.id, at)
         self.grade(attempt.id, unit.id, rating, at, exam)
+        sessions.end(sitting.id, at, reason="completed")
         return attempt.id
 
     def grade(

@@ -65,12 +65,45 @@ class ReviewSession(UserOwned, Base):
         CheckConstraint("ended_at IS NULL OR ended_at >= started_at", name="ends_after_start"),
         UniqueConstraint("id", "user_id"),
         Index(None, "user_id", "learning_day"),
+        # One open session per learning day (T2.9 plan C4): two tabs pressing "Bắt đầu" get the
+        # same one. A session left open on an earlier day does not block a new day's.
+        Index(
+            "uq_review_session_open_per_day",
+            "user_id",
+            "learning_day",
+            unique=True,
+            postgresql_where=text("ended_at IS NULL"),
+        ),
     )
 
     learning_day: Mapped[date] = mapped_column(Date)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     stop_reason: Mapped[str | None] = mapped_column(String(20))
+
+
+class ReviewSessionItem(UserOwned, Base):
+    """The questions of a session, in order, fixed when it starts (T2.9 plan C1): "7/14" keeps
+    its total, and a backlog does not keep refilling the session. Append-only (plan C3)."""
+
+    __tablename__ = "review_session_item"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["review_session_id", "user_id"],
+            ["review_session.id", "review_session.user_id"],
+            ondelete="NO ACTION",
+        ),
+        ForeignKeyConstraint(
+            ["question_id", "user_id"], ["question.id", "question.user_id"], ondelete="NO ACTION"
+        ),
+        CheckConstraint("position >= 1", name="position_from_one"),
+        UniqueConstraint("review_session_id", "position"),
+        UniqueConstraint("review_session_id", "question_id"),
+    )
+
+    review_session_id: Mapped[uuid.UUID]
+    position: Mapped[int] = mapped_column(SmallInteger)
+    question_id: Mapped[uuid.UUID] = mapped_column(index=True)
 
 
 class Attempt(UserOwned, Base):

@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from test_subjects_api import create, in_days
 
 from accounts import signed_in
-from clock import FROZEN_NOW
+from clock import FROZEN_NOW, spare_day
 from core_api.db.models import User
 from core_api.repositories.question import QuestionRepository
 from core_api.repositories.review import AttemptRepository, ReviewSessionRepository
@@ -31,7 +31,7 @@ def attempt_on(session: Session, user: User, subject_id: str, *, submitted: bool
     question = QuestionRepository(session, user.id).add_idempotent(
         uuid.UUID(subject_id), level=1, prompt="TCP?", reference_answer="a", run_id=uuid.uuid4()
     )
-    review = ReviewSessionRepository(session, user.id).start(DAY, FROZEN_NOW)
+    review = ReviewSessionRepository(session, user.id).start(spare_day(), FROZEN_NOW)
     attempts = AttemptRepository(session, user.id)
     attempt = attempts.create_draft(review.id, question.id)
     if submitted:

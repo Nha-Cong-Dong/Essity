@@ -14,7 +14,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from clock import future_exam
+from clock import future_exam, spare_day
 from core_api.db.models import Grade, User
 from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler, Phase
 from core_api.domain.scheduling.rating import ReviewRating, Verdict
@@ -29,6 +29,7 @@ from core_api.repositories.review import (
     MemoryStateRepository,
     ReviewLogRepository,
     ReviewSessionEndedError,
+    ReviewSessionItemRepository,
     ReviewSessionRepository,
     UnitsMismatchError,
 )
@@ -126,11 +127,11 @@ def test_t23_attempt_updatable_only_while_draft(
 
 def test_t23_a_draft_cannot_change_its_keys(db_session: Session, history: History) -> None:
     draft = AttemptRepository(db_session, history.user.id).create_draft(
-        ReviewSessionRepository(db_session, history.user.id).start(DAY, NOW).id,
+        ReviewSessionRepository(db_session, history.user.id).start(spare_day(), NOW).id,
         history.question.id,
     )
     db_session.flush()
-    other = ReviewSessionRepository(db_session, history.user.id).start(DAY, NOW)
+    other = ReviewSessionRepository(db_session, history.user.id).start(spare_day(), NOW)
     db_session.flush()
     refused_by_trigger(
         db_session,
@@ -142,7 +143,7 @@ def test_t23_a_draft_cannot_change_its_keys(db_session: Session, history: Histor
 
 def test_t23_text_of_an_answer_is_capped(db_session: Session, history: History) -> None:
     draft = AttemptRepository(db_session, history.user.id).create_draft(
-        ReviewSessionRepository(db_session, history.user.id).start(DAY, NOW).id,
+        ReviewSessionRepository(db_session, history.user.id).start(spare_day(), NOW).id,
         history.question.id,
     )
     db_session.flush()
@@ -246,11 +247,19 @@ def test_t23_purge_still_runs_when_other_users_have_history(
 
 # --- Repositories of layer 3 change nothing (T2.3 "Xong khi") ------------------------------------
 
-APPEND_ONLY = [ReviewSessionRepository, AttemptRepository, GradeRepository, ReviewLogRepository]
+APPEND_ONLY = [
+    ReviewSessionRepository,
+    ReviewSessionItemRepository,
+    AttemptRepository,
+    GradeRepository,
+    ReviewLogRepository,
+]
 # Every public method each adds to the base repository: closing a session, editing a draft, and
 # otherwise only adding and reading. A new name here is a change to the append-only rule.
 OWN_METHODS = {
-    ReviewSessionRepository: {"start", "end"},
+    # T2.9: one open session per learning day (plan C4) is made or found, never changed.
+    ReviewSessionRepository: {"start", "end", "open_for_day", "open_on"},
+    ReviewSessionItemRepository: {"add_all", "of_session"},
     AttemptRepository: {"create_draft", "save_draft", "submit"},
     GradeRepository: {"add_with_units", "latest_for_attempt"},
     ReviewLogRepository: {"append"},
@@ -396,7 +405,7 @@ def test_us08_an_ended_session_takes_no_more_answers(
     # writes an attempt without checking that its session is still open.
     sessions = ReviewSessionRepository(db_session, history.user.id)
     attempts = AttemptRepository(db_session, history.user.id)
-    review = sessions.start(DAY, NOW)
+    review = sessions.start(spare_day(), NOW)
     draft = attempts.create_draft(review.id, history.question.id)
     attempts.save_draft(draft.id, answer_text="dở", dont_remember=False)
     other = QuestionRepository(db_session, history.user.id).add_idempotent(
@@ -648,7 +657,7 @@ def test_t23_bob_cannot_overwrite_alices_memory_state(
 def test_t23_a_draft_cannot_be_graded(db_session: Session, history: History) -> None:
     # Red when: a draft gets a grade, then its text still changes under it (review 🟠).
     draft = AttemptRepository(db_session, history.user.id).create_draft(
-        ReviewSessionRepository(db_session, history.user.id).start(DAY, NOW).id,
+        ReviewSessionRepository(db_session, history.user.id).start(spare_day(), NOW).id,
         history.question.id,
     )
     with pytest.raises(AttemptNotSubmittedError):
@@ -723,7 +732,7 @@ def test_t23_ids_and_creation_times_never_change(
 ) -> None:
     alice, _ = two_users
     sessions = ReviewSessionRepository(db_session, alice.id)
-    review = sessions.start(DAY, NOW)
+    review = sessions.start(spare_day(), NOW)
     h = History(db_session, alice)
     draft = AttemptRepository(db_session, alice.id).create_draft(review.id, h.question.id)
     db_session.flush()
@@ -746,7 +755,7 @@ def test_t23_a_temporary_table_cannot_stand_in_for_attempt(
     # Red when: the trigger functions look tables up on the caller's search_path, where pg_temp
     # comes first, so a temporary "attempt" saying "submitted" lets a draft be graded.
     draft = AttemptRepository(db_session, history.user.id).create_draft(
-        ReviewSessionRepository(db_session, history.user.id).start(DAY, NOW).id,
+        ReviewSessionRepository(db_session, history.user.id).start(spare_day(), NOW).id,
         history.question.id,
     )
     with pytest.raises(IntegrityError, match="is refused"), db_session.begin_nested():

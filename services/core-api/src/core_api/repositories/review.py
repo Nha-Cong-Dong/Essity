@@ -23,6 +23,7 @@ from core_api.db.models import (
     MemoryState,
     ReviewLog,
     ReviewSession,
+    ReviewSessionItem,
     User,
 )
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
@@ -71,6 +72,32 @@ class ReviewSessionRepository(AppendOnlyRepository[ReviewSession]):
         self.session.flush()
         return session
 
+    def open_for_day(self, learning_day: date, now: datetime) -> tuple[ReviewSession, bool]:
+        """The open session of `learning_day`, made if there is none: (session, made now). Two
+        tabs pressing "Bắt đầu" at once get the same one (plan C4): the partial unique index
+        refuses the second insert, which then reads the first once it has committed."""
+        made = self.session.execute(
+            insert(ReviewSession)
+            .values(
+                id=uuid.uuid4(), user_id=self.user_id, learning_day=learning_day, started_at=now
+            )
+            .on_conflict_do_nothing(
+                index_elements=["user_id", "learning_day"],
+                index_where=ReviewSession.ended_at.is_(None),
+            )
+            .returning(ReviewSession.id)
+        ).scalar_one_or_none()
+        found = self.open_on(learning_day)
+        assert found is not None
+        return found, made is not None
+
+    def open_on(self, learning_day: date) -> ReviewSession | None:
+        """The session still open on `learning_day`, if any."""
+        query = self._select().where(
+            ReviewSession.learning_day == learning_day, ReviewSession.ended_at.is_(None)
+        )
+        return self.session.scalars(query).one_or_none()
+
     def end(self, id: uuid.UUID, ended_at: datetime, *, reason: str) -> bool:
         """Close the session once; False when it is not this user's or is already closed."""
         closed = self.session.execute(
@@ -84,6 +111,34 @@ class ReviewSessionRepository(AppendOnlyRepository[ReviewSession]):
             .returning(ReviewSession.id)
         ).first()
         return closed is not None
+
+
+class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
+    """The questions of a session, in order (T2.9 plan C1); added once, when it starts."""
+
+    model = ReviewSessionItem
+
+    def add_all(
+        self, review_session_id: uuid.UUID, question_ids: Sequence[uuid.UUID]
+    ) -> list[ReviewSessionItem]:
+        items = [
+            self.add(
+                ReviewSessionItem(
+                    review_session_id=review_session_id, position=n, question_id=question_id
+                )
+            )
+            for n, question_id in enumerate(question_ids, start=1)
+        ]
+        self.session.flush()
+        return items
+
+    def of_session(self, review_session_id: uuid.UUID) -> Sequence[ReviewSessionItem]:
+        query = (
+            self._select()
+            .where(ReviewSessionItem.review_session_id == review_session_id)
+            .order_by(ReviewSessionItem.position)
+        )
+        return self.session.scalars(query).all()
 
 
 class AttemptRepository(AppendOnlyRepository[Attempt]):

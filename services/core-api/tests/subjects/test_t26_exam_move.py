@@ -63,6 +63,7 @@ def remembered_units(
                 units={unit.id: Verdict.CORRECT},
                 run_id=RUN,
             )
+            ReviewSessionRepository(session, user_id).end(sitting.id, at, reason="completed")
             ReviewLogRepository(session, user_id).append(
                 unit.id, rating=ReviewRating.GOOD, reviewed_at=at, grade_id=grade.id
             )
