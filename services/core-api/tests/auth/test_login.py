@@ -9,7 +9,6 @@ ADR-0014 (rehash on login when the parameters have changed).
 """
 
 import json
-import random
 import uuid
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
@@ -32,6 +31,7 @@ from core_api.security import rate_limit
 from core_api.security.audit import hash_ip
 from core_api.security.client_ip import CLIENT_IP_HEADER
 from core_api.security.rate_limit import RateLimit, RateLimiter
+from ips import fresh_ip
 
 LOGIN = "/v1/auth/login"
 PASSWORD = "ngựa vằn ăn cỏ buổi sáng"
@@ -59,7 +59,7 @@ def login(
 
 
 def other_ip() -> str:
-    return f"172.16.{random.randrange(256)}.{random.randrange(1, 255)}"
+    return fresh_ip("172.16")
 
 
 # --- Answers ----------------------------------------------------------------------------------
