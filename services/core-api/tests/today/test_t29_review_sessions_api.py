@@ -319,7 +319,7 @@ def test_t29_a_finished_open_session_does_not_block_a_new_one(
 
 # PLAN T2.9 (23/10b), plan C11. Red when: a subject deleted between reading the session's steps
 # and writing the draft leaves an attempt on it, or answers anything but 404 subject_deleted. The
-# race is opened by deleting the subject just before create_draft runs.
+# race is opened by deleting the subject just before open_draft runs.
 def test_t29_draft_on_a_subject_deleted_meanwhile_is_404_and_leaves_no_attempt(
     client: TestClient, db_session: Session, monkeypatch: Any
 ) -> None:
@@ -327,14 +327,14 @@ def test_t29_draft_on_a_subject_deleted_meanwhile_is_404_and_leaves_no_attempt(
     session_id = start(client, headers).json()["id"]
     from core_api.repositories import review as review_repo
 
-    original = review_repo.AttemptRepository.create_draft
+    original = review_repo.AttemptRepository.open_draft
 
     def deleted_first(self: Any, review_session_id: uuid.UUID, question_id: uuid.UUID) -> Any:
         subject_id = db_session.get(Question, question_id).subject_id  # type: ignore[union-attr]
         SubjectRepository(db_session, space.user.id).soft_delete(subject_id, FROZEN_NOW)
         return original(self, review_session_id, question_id)
 
-    monkeypatch.setattr(review_repo.AttemptRepository, "create_draft", deleted_first)
+    monkeypatch.setattr(review_repo.AttemptRepository, "open_draft", deleted_first)
     response = open_attempt(client, headers, session_id)
     assert response.status_code == 404
     assert response.json() == {"detail": "subject_deleted"}

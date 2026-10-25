@@ -209,18 +209,41 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
     model = Attempt
 
     def create_draft(self, review_session_id: uuid.UUID, question_id: uuid.UUID) -> Attempt:
-        """A draft answer. Locks in this order: the session, then the question's subject (FOR
-        SHARE, so a soft delete waits for this draft or this finds the subject gone: T2.3b plan
-        F3), then the attempt. Saving and submitting need no subject lock: a subject with an
-        attempt cannot be soft-deleted (that path comes with T6.3)."""
+        """The draft of this question in this session: `open_draft` without saying who made it."""
+        return self.open_draft(review_session_id, question_id)[0]
+
+    def open_draft(
+        self, review_session_id: uuid.UUID, question_id: uuid.UUID
+    ) -> tuple[Attempt, bool]:
+        """The draft of this question in this session, made if there is none: (attempt, made now).
+        Locks in this order: the session, then the question's subject (FOR SHARE, so a soft delete
+        waits for this draft or this finds the subject gone: T2.3b plan F3), then the attempt.
+        Two tabs opening the same question at once (T2.15 (c)): the second insert waits on
+        UNIQUE(review_session_id, question_id), then reads the first draft instead of failing.
+        Saving and submitting need no subject lock: a subject with an attempt cannot be
+        soft-deleted (that path comes with T6.3)."""
         self._lock_open_session(review_session_id)
         question = QuestionRepository(self.session, self.user_id).get(question_id)
         if question is None:
             raise QuestionNotFoundError(question_id)
         SubjectRepository(self.session, self.user_id).hold_for_share(question.subject_id)
-        attempt = self.add(Attempt(review_session_id=review_session_id, question_id=question_id))
-        self.session.flush()
-        return attempt
+        made = self.session.execute(
+            insert(Attempt)
+            .values(
+                id=uuid.uuid4(),
+                user_id=self.user_id,
+                review_session_id=review_session_id,
+                question_id=question_id,
+            )
+            .on_conflict_do_nothing(index_elements=["review_session_id", "question_id"])
+            .returning(Attempt.id)
+        ).scalar_one_or_none()
+        found = self.session.scalars(
+            self._select().where(
+                Attempt.review_session_id == review_session_id, Attempt.question_id == question_id
+            )
+        ).one()
+        return found, made is not None
 
     def save_draft(self, id: uuid.UUID, *, answer_text: str, dont_remember: bool) -> None:
         self._change_draft(id, answer_text=answer_text, dont_remember=dont_remember)

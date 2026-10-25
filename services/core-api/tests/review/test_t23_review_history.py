@@ -99,10 +99,20 @@ def refused_by_trigger(session: Session, sql: str, /, **params: Any) -> None:
 
 
 def test_t23_attempt_unique_per_session_question(db_session: Session, history: History) -> None:
-    with pytest.raises(IntegrityError), db_session.begin_nested():
-        AttemptRepository(db_session, history.user.id).create_draft(
-            history.review.id, history.question.id
-        )
+    # One attempt per (session, question): opening it again returns that attempt (T2.15 (c)), and
+    # the database still refuses a second row inserted around the repository.
+    again, made = AttemptRepository(db_session, history.user.id).open_draft(
+        history.review.id, history.question.id
+    )
+    assert (again.id, made) == (history.attempt.id, False)
+    refused(
+        db_session,
+        "INSERT INTO attempt (id, user_id, review_session_id, question_id, status)"
+        " VALUES (gen_random_uuid(), :u, :s, :q, 'draft')",
+        u=history.user.id,
+        s=history.review.id,
+        q=history.question.id,
+    )
 
 
 def test_us04_attempt_submitted_requires_timestamp(db_session: Session, history: History) -> None:
@@ -260,7 +270,7 @@ OWN_METHODS = {
     # T2.9: one open session per learning day (plan C4) is made or found, never changed.
     ReviewSessionRepository: {"start", "end", "open_for_day", "open_on", "hold_for_update"},
     ReviewSessionItemRepository: {"add_all", "of_session", "progress"},
-    AttemptRepository: {"create_draft", "save_draft", "submit"},
+    AttemptRepository: {"create_draft", "open_draft", "save_draft", "submit"},
     GradeRepository: {"add_with_units", "latest_for_attempt"},
     ReviewLogRepository: {"append"},
 }

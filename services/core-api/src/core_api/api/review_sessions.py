@@ -203,13 +203,15 @@ def open_current_attempt(
         response.status_code = status.HTTP_200_OK
         return _attempt_out(step.attempt)
     try:
-        attempt = AttemptRepository(session, user.id).create_draft(session_id, step.question.id)
+        attempt, made = AttemptRepository(session, user.id).open_draft(session_id, step.question.id)
     except ReviewSessionEndedError as error:
         raise _error(status.HTTP_409_CONFLICT, "session_ended") from error
     except (SubjectNotFoundError, QuestionNotFoundError) as error:
         raise _error(status.HTTP_404_NOT_FOUND, "subject_deleted") from error
     except ReviewSessionNotFoundError as error:
         raise _error(status.HTTP_404_NOT_FOUND, "session_not_found") from error
+    if not made:  # another tab opened it a moment ago
+        response.status_code = status.HTTP_200_OK
     return _attempt_out(attempt)
 
 
