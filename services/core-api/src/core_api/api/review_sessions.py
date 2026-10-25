@@ -143,6 +143,8 @@ def start_session(
         found, made = sessions.open_for_day(day, now)
         if made:
             items.add_all(found.id, [item.question_id for item in plan.items])
+        else:  # another tab made it a moment ago: the open session, as when it already was
+            response.status_code = status.HTTP_200_OK
     else:
         response.status_code = status.HTTP_200_OK
     answered, total = session_counts(items.progress(found.id))

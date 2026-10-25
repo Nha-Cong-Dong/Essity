@@ -430,7 +430,26 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         # One insert, not one upsert per unit: the rows were just deleted, and every unit comes
         # from this user's own review_log joined to knowledge_unit (rebuild at real size, #20).
         if rows:
-            self.session.execute(insert(MemoryState), rows)
+            # Still one statement: a review written meanwhile (T2.13, or a CLI rebuild) updates
+            # the row instead of failing the rebuild on the unique key.
+            statement = insert(MemoryState).values(rows)
+            excluded = statement.excluded
+            self.session.execute(
+                statement.on_conflict_do_update(
+                    index_elements=["user_id", "unit_id", "facet"],
+                    set_={
+                        name: getattr(excluded, name)
+                        for name in (
+                            "phase",
+                            "step",
+                            "stability",
+                            "difficulty",
+                            "due",
+                            "last_review",
+                        )
+                    },
+                )
+            )
         self.session.expire_all()
         return len(rows)
 
