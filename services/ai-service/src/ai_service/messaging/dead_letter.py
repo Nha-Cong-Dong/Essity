@@ -19,12 +19,11 @@ when an account is deleted: the dead letter keeps unit titles and file keys for 
 """
 
 import argparse
-import json
 import sys
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import cast
 
 from pydantic import ValidationError
 from redis import Redis
@@ -129,23 +128,20 @@ def replay(redis: Redis, *, dead_stream: str, stream: str, ids: Sequence[str] | 
 
 
 def purge_user(redis: Redis, *, dead_stream: str, user_id: uuid.UUID) -> int:
-    """Delete every dead entry whose envelope names `user_id`, from any stream; return how many."""
-    doomed = [entry.id for entry in _entries(redis, dead_stream) if _owner(entry) == str(user_id)]
+    """Delete every dead entry whose envelope mentions `user_id`, from any stream; return how many.
+
+    Anywhere in the text, in any case (review 🟢E): as the envelope's user, and also in an
+    object key of an event someone else sent (user_mismatch), or in an entry that broke the
+    contract. Removing a stranger's entry along with it costs a replay nobody needed; keeping
+    the user's data does not meet T6.3.
+    """
+    needle = str(user_id)
+    doomed = [
+        entry.id for entry in _entries(redis, dead_stream) if needle in entry.envelope.lower()
+    ]
     if doomed:
         redis.xdel(dead_stream, *doomed)
     return len(doomed)
-
-
-def _owner(entry: DeadEntry) -> str | None:
-    # Not parse_event: an entry that broke the contract may still name its user.
-    try:
-        data: Any = json.loads(entry.envelope)
-    except ValueError:
-        return None
-    if isinstance(data, dict):
-        user_id = cast(dict[str, Any], data).get("user_id")
-        return user_id if isinstance(user_id, str) else None
-    return None
 
 
 def _parser() -> argparse.ArgumentParser:
