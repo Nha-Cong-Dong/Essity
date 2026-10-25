@@ -10,10 +10,12 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from redis import Redis
 from sqlalchemy import Engine, text
 from sqlalchemy.engine import make_url
 
 import ai_service.main  # noqa: F401  # pyright: ignore[reportUnusedImport]  # installs tracing
+from ai_service.clients.redis import redis_from_url
 from ai_service.config import get_settings
 from ai_service.db.engine import create_db_engine
 from ai_service.telemetry import RedactingSpanExporter
@@ -26,6 +28,9 @@ TEST_DATABASE_URL = os.environ.get("AI_TEST_DATABASE_URL", "")
 # What the app sees when the variable is missing: a valid URL nothing listens on, so tests that
 # do not touch the database still run, and those that do fail in `engine` with the reason.
 _UNSET_DATABASE_URL = "postgresql+psycopg://unset:unset@127.0.0.1:9/ai_test_unset"
+# The event consumer's tests (T4.3) run on a real Redis. Each test uses stream names of its own
+# (with a uuid), so a shared Redis is fine; never point this at a database holding real data.
+TEST_REDIS_URL = os.environ.get("AI_TEST_REDIS_URL", "redis://127.0.0.1:6379/14")
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -92,6 +97,13 @@ def engine(test_database_url: str) -> Iterator[Engine]:
     engine = create_db_engine(test_database_url)
     yield engine
     engine.dispose()
+
+
+@pytest.fixture
+def redis_client() -> Iterator[Redis]:
+    client = redis_from_url(TEST_REDIS_URL)
+    yield client
+    client.close()
 
 
 @pytest.fixture(scope="session")
