@@ -27,9 +27,10 @@ from ai_service.tasks.grade import GradeInvalidError, grade_answer
 from ai_service.tasks.grade_models import GradeRequest, GradeResponse
 
 # Above the largest valid request in any JSON encoding: about 29 000 characters of text, up to
-# 6 bytes each when escaped as \uXXXX. Below it nothing valid is refused; above it, nothing is
-# parsed further.
-MAX_BODY_BYTES = 256 * 1024
+# 12 bytes each when a character outside the BMP (an emoji) is escaped as a surrogate pair,
+# \ud83d\ude00 (Tester bcdc57f: about 348 KB). Below it nothing valid is refused; above it,
+# nothing is parsed further.
+MAX_BODY_BYTES = 512 * 1024
 
 _log = logging.getLogger(__name__)
 

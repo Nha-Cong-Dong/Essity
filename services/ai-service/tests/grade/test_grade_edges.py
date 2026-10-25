@@ -74,11 +74,6 @@ def test_g6_largest_valid_request_in_vietnamese_escaped_as_ascii_is_not_refused(
     assert response.status_code == 200, response.text[:200]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG: MAX_BODY_BYTES (256 KB) assumes 6 bytes per character, but a character outside "
-    "the BMP (emoji) is 12 bytes as \\ud83d\\ude00. A full valid request is about 348 KB.",
-)
 def test_g6_largest_valid_request_in_emoji_escaped_as_ascii_is_not_refused(
     app: FastAPI, sessions: sessionmaker[Session]
 ) -> None:
@@ -89,19 +84,17 @@ def test_g6_largest_valid_request_in_emoji_escaped_as_ascii_is_not_refused(
     assert response.status_code == 200, (response.status_code, response.text[:200])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG: U+0000 in any text field reaches llm_call.input (JSONB refuses it): the model "
-    "is paid, then 503 audit_unavailable, on every retry. Refuse it with 422 in GradeRequest.",
+@pytest.mark.parametrize(
+    "field", ["answer", "quote_text", "title", "text", "rubric", "reference_answer"]
 )
-@pytest.mark.parametrize("field", ["answer", "quote_text", "title", "text"])
 def test_t212_nul_character_in_text_is_not_an_audit_failure(
     app: FastAPI, sessions: sessionmaker[Session], engine: Engine, field: str
 ) -> None:
     # Red when: text with U+0000 reaches `llm_call.input` (JSONB refuses it) or `pipeline_run`:
     # the model has been paid for, then the learner gets 503 audit_unavailable on every retry.
-    # Either a 422 up front or a 200 with the text stored is acceptable; a 503 is not.
+    # Fixed by refusing it up front: 422 invalid_request, no run, no call.
     text = "TCP bắt tay\u0000 ba bước"
+    question = {"text": "Câu hỏi", "rubric": "Thang", "reference_answer": "Bắt tay ba bước"}
     if field == "answer":
         body = grade_body(answer=text)
     elif field == "quote_text":
@@ -109,15 +102,13 @@ def test_t212_nul_character_in_text_is_not_an_audit_failure(
     elif field == "title":
         body = grade_body(units=[unit(text)])
     else:
-        body = grade_body(
-            question={"text": text, "rubric": None, "reference_answer": "Bắt tay ba bước"}
-        )
+        body = grade_body(question={**question, field: text})
     adapter = Scripted(GOOD)
     response = client_with(app, adapter, sessions).post("/v1/grade", json=body)
-    assert response.status_code in {200, 422}, (response.status_code, response.text[:200])
-    if response.status_code == 422:
-        assert adapter.requests == []  # refused before any money was spent
-        assert calls_of(engine, body["user_id"]) == []
+    assert (response.status_code, response.json()["code"]) == (422, "invalid_request")
+    assert "bắt tay" not in response.text  # the input is not echoed back
+    assert adapter.requests == []  # refused before any money was spent
+    assert calls_of(engine, body["user_id"]) == []
 
 
 def test_t212_lone_surrogate_in_the_answer_is_not_an_audit_failure(

@@ -31,11 +31,26 @@ def _not_blank(text: str) -> str:
     return text
 
 
+def _no_nul(text: str) -> str:
+    # Postgres stores no U+0000 (text or JSONB): it would fail the llm_call write after the
+    # model was paid, then again on every retry. Refused here, before anything is called.
+    if "\x00" in text:
+        raise ValueError("must not contain U+0000")
+    return text
+
+
+NoNul = AfterValidator(_no_nul)
 QuestionText = Annotated[
-    str, Field(min_length=1, max_length=MAX_QUESTION_CHARS), AfterValidator(_not_blank)
+    str, Field(min_length=1, max_length=MAX_QUESTION_CHARS), AfterValidator(_not_blank), NoNul
 ]
-Title = Annotated[str, Field(min_length=1, max_length=MAX_TITLE_CHARS), AfterValidator(_not_blank)]
-Quote = Annotated[str, Field(min_length=1, max_length=MAX_QUOTE_CHARS), AfterValidator(_not_blank)]
+Title = Annotated[
+    str, Field(min_length=1, max_length=MAX_TITLE_CHARS), AfterValidator(_not_blank), NoNul
+]
+Quote = Annotated[
+    str, Field(min_length=1, max_length=MAX_QUOTE_CHARS), AfterValidator(_not_blank), NoNul
+]
+Rubric = Annotated[str, Field(max_length=MAX_QUESTION_CHARS), NoNul]
+Answer = Annotated[str, Field(max_length=MAX_ANSWER_CHARS), NoNul]
 
 
 class _Strict(BaseModel):
@@ -44,7 +59,7 @@ class _Strict(BaseModel):
 
 class GradeQuestion(_Strict):
     text: QuestionText
-    rubric: Annotated[str, Field(max_length=MAX_QUESTION_CHARS)] | None = None
+    rubric: Rubric | None = None
     reference_answer: QuestionText
 
 
@@ -65,7 +80,7 @@ class GradeRequest(_Strict):
     attempt_id: uuid.UUID | None = None
     question: GradeQuestion
     # May be empty: an empty answer is graded incorrect without calling a model (🟠6).
-    answer: str = Field(max_length=MAX_ANSWER_CHARS)
+    answer: Answer
     units: list[GradeUnit] = Field(min_length=1, max_length=MAX_UNITS)
 
     @model_validator(mode="after")
