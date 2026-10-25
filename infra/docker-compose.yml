@@ -155,6 +155,10 @@ services:
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?set in .env}
       AI_DATABASE_URL: postgresql+psycopg://${AI_DB_USER}:${AI_DB_PASSWORD}@postgres:5432/${AI_DB_NAME}
       AI_REDIS_URL: ${REDIS_URL}
+      # fake grades without a model (dev only, refused outside local/test); anthropic needs
+      # ANTHROPIC_API_KEY; disabled answers 503 grading_disabled.
+      AI_LLM_PROVIDER: ${AI_LLM_PROVIDER:-fake}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     ports:
       - "127.0.0.1:8001:8001"

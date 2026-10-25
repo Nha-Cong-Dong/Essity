@@ -31,6 +31,8 @@ Environment variables prefixed with `AI_` (see `config.py`).
 | Variable | Required | Notes |
 |---|---|---|
 | `AI_SERVICE_TOKEN` | yes | Shared secret, at least 32 characters. The service will not start without it. |
+| `AI_LLM_PROVIDER` | yes | `anthropic`, `fake` or `disabled`. `fake` grades without a model and is refused outside `local`/`test`. `disabled` starts without a key; `/v1/grade` answers 503 `grading_disabled` and `/healthz` reports `"grading": "disabled"`. |
+| `ANTHROPIC_API_KEY` | with `anthropic` | No `AI_` prefix. Empty counts as missing. |
 
 ## Service token
 
