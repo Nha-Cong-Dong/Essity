@@ -36,6 +36,12 @@ describe("MainNav (T2.3c, R46)", () => {
     expect(screen.getByRole("link", { name: "Hôm nay" }).getAttribute("aria-current")).toBe("page");
   });
 
+  // Red when: the ring is drawn outside the pill, where the scrolling nav clips it (review C2 #1).
+  it("draws the focus ring inside each pill", () => {
+    render(<MainNav current="/today" />);
+    for (const link of screen.getAllByRole("link")) expect(link.className).toMatch(/focus-visible:-outline-offset-2/);
+  });
+
   it("keeps the nav landmark that shrinks and scrolls (review of 96bebab)", () => {
     render(<MainNav current="/today" />);
     const nav = screen.getByRole("navigation", { name: "Chính" });

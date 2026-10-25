@@ -33,6 +33,9 @@ export function MainNav({ current }: { current?: NavItem }) {
           className={cn(
             "flex h-10 shrink-0 items-center rounded-full px-2.5 text-body font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink max-[360px]:px-1.5 min-[401px]:px-3 min-[901px]:px-4",
             "aria-[current=page]:bg-ink aria-[current=page]:font-semibold aria-[current=page]:text-bg",
+            // The nav scrolls, so it clips anything drawn outside it: the focus ring goes inside the
+            // pill (review C2 #1, WCAG 2.4.7).
+            "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
           )}
         >
           {item.label}

@@ -87,6 +87,14 @@ async function open(page: Page, width: number, options: OpenOptions = {}) {
   expect(response?.status()).toBe(200);
   await page.evaluate(() => document.fonts.ready);
   if (options.blockFonts) await rebuildFallbacks(page);
+  if (options.brokenFallback) {
+    // No web font and no fallback face: the font variables next/font sets on <html> name a font
+    // that does not exist, so the stack drops to the system's ui-sans-serif on every OS (review C2 #2).
+    await page.addStyleTag({
+      content: 'html{--font-be-vietnam-pro:"__no_such_font__"!important;--font-bricolage:"__no_such_font__"!important}',
+    });
+    await page.evaluate(() => document.fonts.ready);
+  }
 }
 
 /**
@@ -94,7 +102,7 @@ async function open(page: Page, width: number, options: OpenOptions = {}) {
  * with size-adjust and the overrides. A Linux runner has no font named Arial, so those faces fail
  * and the text drops to DejaVu, another case (the broken-fallback rule below). Each face is built
  * again with the same descriptors over Liberation Sans, which has Arial's widths, so Windows and
- * Linux measure the same fallback (T2.3c plan G13, tech-expert).
+ * Linux both draw Arial metrics, within ~1.5px (T2.3c plan G13, tech-expert).
  */
 async function rebuildFallbacks(page: Page) {
   await page.evaluate(async () => {
@@ -206,7 +214,7 @@ test("preconditions: blocking .woff2 leaves no web font loaded", async ({ page }
   for (const family of fallbacks) {
     expect(fonts.some((font) => font.family === family && font.status === "loaded"), family).toBe(true);
   }
-  // Recorded in the plan: the same widths on Windows (Arial) and Linux (Liberation Sans).
+  // Recorded in the plan: Arial metrics on Windows (Arial) and Linux (Liberation Sans), within ~1.5px.
   const widths = await nav(page).getByRole("link").evaluateAll((links) => links.map((a) => a.getBoundingClientRect().width));
   const spare = (await box(account(page))).x - right(await box(nav(page)));
   console.log(`fallback widths ${JSON.stringify(widths)} spare ${spare}`);
@@ -242,6 +250,9 @@ rule("R46-e without the web fonts, logo, nav and account do not touch", [320], h
 // the nav. No single-line target here: the nav may scroll, but the page must not, and the current
 // item must show whole (as at 280).
 rule("R46-g with no fallback face, the page does not scroll and the current item shows", [320], async (page) => {
+  const family = await nav(page).locator('[aria-current="page"]').evaluate((el) => getComputedStyle(el).fontFamily);
+  expect(family).not.toContain("Fallback");
+  expect(family).toContain("__no_such_font__");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   const current = nav(page).locator('[aria-current="page"]');
   await expect(async () => {
@@ -250,6 +261,19 @@ rule("R46-g with no fallback face, the page does not scroll and the current item
 }, { brokenFallback: true });
 // 280 on purpose: the only width where two nav items must scroll, so it checks scrollIntoView
 // brings the current one into view without scrolling the page (it does not replace the 320 rule).
+// The focus ring of a pill is drawn inside it, so the scrolling nav cannot clip it (review C2 #1).
+rule("R46-h a focused pill keeps its ring inside the nav", [320], async (page) => {
+  const pill = nav(page).getByRole("link", { name: "Hôm nay" });
+  await pill.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  const ring = await pill.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { width: parseFloat(style.outlineWidth), offset: parseFloat(style.outlineOffset), style: style.outlineStyle };
+  });
+  expect(ring.style).not.toBe("none");
+  expect(ring.offset + ring.width).toBeLessThanOrEqual(0);
+});
 rule("R46-d the current item is scrolled into view, the page is not", [280], async (page) => {
   const current = nav(page).locator('[aria-current="page"]');
   await expect(async () => {
