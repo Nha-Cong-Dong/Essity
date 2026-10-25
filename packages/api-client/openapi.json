@@ -159,6 +159,30 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "InProgressOut": {
+        "properties": {
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "session_id",
+          "position",
+          "total"
+        ],
+        "title": "InProgressOut",
+        "type": "object"
+      },
       "ListedSubject": {
         "properties": {
           "created_at": {
@@ -549,6 +573,16 @@
               }
             ]
           },
+          "in_progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InProgressOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "learning_day": {
             "format": "date",
             "title": "Learning Day",
@@ -600,6 +634,7 @@
           "learning_day",
           "state",
           "session",
+          "in_progress",
           "backlog",
           "next_day",
           "subjects"

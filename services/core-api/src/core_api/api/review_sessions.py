@@ -26,6 +26,7 @@ from core_api.repositories.review import (
     ReviewSessionNotFoundError,
     ReviewSessionRepository,
     SessionStep,
+    session_counts,
 )
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
 from core_api.repositories.today import TodayRepository
@@ -94,13 +95,6 @@ def _error(code: int, detail: str) -> HTTPException:
     return HTTPException(status_code=code, detail=detail)
 
 
-def _counts(steps: list[SessionStep]) -> tuple[int, int]:
-    """(answered, total): what can no longer be asked (a deleted subject, a retired question)
-    drops out of the total unless it was already answered."""
-    answered = sum(step.answered for step in steps)
-    return answered, answered + sum(step.askable and not step.answered for step in steps)
-
-
 def _attempt_out(attempt: Attempt) -> AttemptOut:
     return AttemptOut(
         id=attempt.id,
@@ -137,7 +131,7 @@ def start_session(
             items.add_all(found.id, [item.question_id for item in plan.items])
     else:
         response.status_code = status.HTTP_200_OK
-    answered, total = _counts(items.progress(found.id))
+    answered, total = session_counts(items.progress(found.id))
     return SessionOut(id=found.id, answered=answered, total=total)
 
 
@@ -164,7 +158,7 @@ def current_question(
     step = _current(steps)
     if ended or step is None:
         return DoneOut()
-    answered, total = _counts(steps)
+    answered, total = session_counts(steps)
     return CurrentOut(
         position=answered + 1,
         total=total,
@@ -256,7 +250,9 @@ def stop_session(
     held = sessions.hold_for_update(session_id)
     if held is None:
         raise _error(status.HTTP_404_NOT_FOUND, "session_not_found")
-    answered, total = _counts(ReviewSessionItemRepository(session, user.id).progress(session_id))
+    answered, total = session_counts(
+        ReviewSessionItemRepository(session, user.id).progress(session_id)
+    )
     if held.ended_at is None:
         sessions.end(session_id, now, reason="completed" if answered == total else "user_stopped")
     return StoppedOut(answered=answered, total=total)

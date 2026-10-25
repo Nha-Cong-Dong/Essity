@@ -135,6 +135,13 @@ class SessionStep:
         return self.attempt is not None and self.attempt.status == "submitted"
 
 
+def session_counts(steps: Sequence[SessionStep]) -> tuple[int, int]:
+    """(answered, total) of a session: what can no longer be asked (a deleted subject, a retired
+    question) drops out of the total unless it was already answered."""
+    answered = sum(step.answered for step in steps)
+    return answered, answered + sum(step.askable and not step.answered for step in steps)
+
+
 class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
     """The questions of a session, in order (T2.9 plan C1); added once, when it starts."""
 

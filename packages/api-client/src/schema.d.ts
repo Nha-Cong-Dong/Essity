@@ -447,6 +447,18 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** InProgressOut */
+        InProgressOut: {
+            /** Position */
+            position: number;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Total */
+            total: number;
+        };
         /** ListedSubject */
         ListedSubject: {
             /**
@@ -625,6 +637,7 @@ export interface components {
         /** TodayOut */
         TodayOut: {
             backlog: components["schemas"]["BacklogOut"] | null;
+            in_progress: components["schemas"]["InProgressOut"] | null;
             /**
              * Learning Day
              * Format: date

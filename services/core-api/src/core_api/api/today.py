@@ -17,6 +17,11 @@ from core_api.db.session import DbSession
 from core_api.domain.learning_day import learning_day
 from core_api.domain.subjects import days_until_exam
 from core_api.domain.today import compose_today
+from core_api.repositories.review import (
+    ReviewSessionItemRepository,
+    ReviewSessionRepository,
+    session_counts,
+)
 from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.today import TodayRepository
 
@@ -45,6 +50,12 @@ class BacklogOut(BaseModel):
     days: int
 
 
+class InProgressOut(BaseModel):
+    session_id: uuid.UUID
+    position: int
+    total: int
+
+
 class TodaySubject(BaseModel):
     id: uuid.UUID
     name: str
@@ -56,6 +67,7 @@ class TodayOut(BaseModel):
     learning_day: date
     state: TodayState
     session: SessionOut | None
+    in_progress: InProgressOut | None
     backlog: BacklogOut | None
     next_day: date | None
     subjects: list[TodaySubject]
@@ -87,8 +99,20 @@ def get_today(user: VerifiedUser, session: DbSession, now: Now) -> TodayOut:
         day_start_hour=user.day_start_hour,
     )
 
+    in_progress = None
+    open_session = ReviewSessionRepository(session, user.id).open_on(day)
+    if open_session is not None:
+        steps = ReviewSessionItemRepository(session, user.id).progress(open_session.id)
+        answered, total = session_counts(steps)
+        if answered < total:
+            in_progress = InProgressOut(
+                session_id=open_session.id, position=answered + 1, total=total
+            )
+
     state: TodayState
-    if not listed:
+    if in_progress is not None:
+        state = "in_progress"
+    elif not listed:
         state = "no_subjects"
     elif plan.items:
         state = "ready"
@@ -119,6 +143,7 @@ def get_today(user: VerifiedUser, session: DbSession, now: Now) -> TodayOut:
         learning_day=day,
         state=state,
         session=session_out,
+        in_progress=in_progress,
         backlog=backlog,
         next_day=plan.next_day,
         subjects=subjects,

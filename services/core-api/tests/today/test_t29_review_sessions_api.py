@@ -281,3 +281,19 @@ def test_t29_answer_text_not_logged(
     )
     submit(client, headers, attempt_id, secret)
     assert secret not in log_output()
+
+
+# US-03 / DESIGN §6.3: an open session today turns "Bắt đầu" into "Tiếp tục" with "7/14". Red
+# when: /v1/today does not report the session, or reports one from an earlier learning day.
+def test_t28_today_reports_the_session_in_progress(
+    client: TestClient, db_session: Session
+) -> None:
+    _, headers, _ = ready(db_session, 2)
+    session_id = start(client, headers).json()["id"]
+    attempt_id = open_attempt(client, headers, session_id).json()["id"]
+    submit(client, headers, attempt_id, "x")
+    body = client.get("/v1/today", headers=headers).json()
+    assert body["state"] == "in_progress"
+    assert body["in_progress"] == {"session_id": session_id, "position": 2, "total": 2}
+    client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers)
+    assert client.get("/v1/today", headers=headers).json()["in_progress"] is None
