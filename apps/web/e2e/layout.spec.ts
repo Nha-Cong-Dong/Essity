@@ -18,6 +18,8 @@ const SM = 640;
 // see what fails and why.
 const SHOW_RED = process.env.LAYOUT_SHOW_RED === "1";
 const KNOWN_RED = new Set<string>([
+  // The page scrolls sideways until the subject rows are fixed (R44): C3 takes this out.
+  "R46-g with no fallback face, the page does not scroll and the current item shows@320",
   "R44-a name, date and Sửa do not overlap@1440",
   "R44-a name, date and Sửa do not overlap@320",
   "R44-a name, date and Sửa do not overlap@390",
@@ -76,12 +78,45 @@ async function box(locator: Locator): Promise<Box> {
   return b;
 }
 
-async function open(page: Page, width: number, options: { blockFonts?: boolean } = {}) {
-  if (options.blockFonts) await page.route(/\.woff2$/, (route) => route.abort());
+type OpenOptions = { blockFonts?: boolean; brokenFallback?: boolean };
+
+async function open(page: Page, width: number, options: OpenOptions = {}) {
+  if (options.blockFonts || options.brokenFallback) await page.route(/\.woff2$/, (route) => route.abort());
   await page.setViewportSize({ width, height: 900 });
   const response = await page.goto(PAGE);
   expect(response?.status()).toBe(200);
   await page.evaluate(() => document.fonts.ready);
+  if (options.blockFonts) await rebuildFallbacks(page);
+}
+
+/**
+ * The web fonts did not load, so the browser draws next/font's "<family> Fallback" faces: Arial
+ * with size-adjust and the overrides. A Linux runner has no font named Arial, so those faces fail
+ * and the text drops to DejaVu, another case (the broken-fallback rule below). Each face is built
+ * again with the same descriptors over Liberation Sans, which has Arial's widths, so Windows and
+ * Linux measure the same fallback (T2.3c plan G13, tech-expert).
+ */
+async function rebuildFallbacks(page: Page) {
+  await page.evaluate(async () => {
+    // `family` may come quoted; sizeAdjust is not in TypeScript's DOM lib yet.
+    type Face = FontFace & { sizeAdjust: string };
+    const unquoted = (family: string) => family.replace(/["']/g, "");
+    const faces = [...document.fonts].filter((font) => unquoted(font.family).endsWith("Fallback")) as Face[];
+    const rebuilt = faces.map(
+      (font) =>
+        new FontFace(unquoted(font.family), 'local("Arial"), local("Liberation Sans"), local("LiberationSans")', {
+          style: font.style,
+          weight: font.weight,
+          sizeAdjust: font.sizeAdjust,
+          ascentOverride: font.ascentOverride,
+          descentOverride: font.descentOverride,
+          lineGapOverride: font.lineGapOverride,
+        } as FontFaceDescriptors),
+    );
+    for (const face of rebuilt) document.fonts.add(face);
+    await Promise.all(rebuilt.map((face) => face.load().catch(() => face)));
+    await document.fonts.ready;
+  });
 }
 
 const nav = (page: Page) => page.getByRole("navigation", { name: "Chính" });
@@ -101,7 +136,7 @@ function parts(row: Locator) {
   };
 }
 
-function rule(name: string, widths: number[], body: (page: Page, width: number) => Promise<void>, options: { blockFonts?: boolean } = {}) {
+function rule(name: string, widths: number[], body: (page: Page, width: number) => Promise<void>, options: OpenOptions = {}) {
   for (const width of widths) {
     test(`${name} @ ${width}px`, async ({ page }) => {
       test.fail(!SHOW_RED && KNOWN_RED.has(`${name}@${width}`), "R44/R46 on the old code: removed with the fix (C2/C3)");
@@ -158,11 +193,23 @@ test("preconditions: blocking .woff2 leaves no web font loaded", async ({ page }
     if (request.url().endsWith(".woff2")) blocked += 1;
   });
   await open(page, 320, { blockFonts: true });
-  const loaded = await page.evaluate(() =>
-    [...document.fonts].filter((font) => font.status === "loaded" && !font.family.endsWith("Fallback")).map((font) => font.family),
+  const fonts = await page.evaluate(() =>
+    [...document.fonts].map((font) => ({ family: font.family.replace(/["']/g, ""), status: font.status })),
   );
-  expect(loaded).toEqual([]);
+  const web = fonts.filter((font) => !font.family.endsWith("Fallback"));
+  expect(web.filter((font) => font.status === "loaded")).toEqual([]);
   expect(blocked).toBeGreaterThan(0);
+  // Every fallback family has a face that loaded (Arial, or Liberation Sans on Linux): otherwise
+  // R46-e measures DejaVu and would fail on the setup, not on the layout.
+  const fallbacks = [...new Set(fonts.filter((font) => font.family.endsWith("Fallback")).map((font) => font.family))];
+  expect(fallbacks.length).toBeGreaterThan(0);
+  for (const family of fallbacks) {
+    expect(fonts.some((font) => font.family === family && font.status === "loaded"), family).toBe(true);
+  }
+  // Recorded in the plan: the same widths on Windows (Arial) and Linux (Liberation Sans).
+  const widths = await nav(page).getByRole("link").evaluateAll((links) => links.map((a) => a.getBoundingClientRect().width));
+  const spare = (await box(account(page))).x - right(await box(nav(page)));
+  console.log(`fallback widths ${JSON.stringify(widths)} spare ${spare}`);
 });
 
 // --- Whole page
@@ -191,6 +238,16 @@ rule("R46-c the logo keeps its size", [320, 359], async (page) => {
 });
 rule("R46-e without the web fonts, nav labels are not clipped", [320], headerFits, { blockFonts: true });
 rule("R46-e without the web fonts, logo, nav and account do not touch", [320], headerApart, { blockFonts: true });
+// The fallback face itself missing (no Arial: Linux, some Android builds), so another font draws
+// the nav. No single-line target here: the nav may scroll, but the page must not, and the current
+// item must show whole (as at 280).
+rule("R46-g with no fallback face, the page does not scroll and the current item shows", [320], async (page) => {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  const current = nav(page).locator('[aria-current="page"]');
+  await expect(async () => {
+    expect(inside(await box(current), await box(nav(page)))).toBe(true);
+  }).toPass({ timeout: 5_000 });
+}, { brokenFallback: true });
 // 280 on purpose: the only width where two nav items must scroll, so it checks scrollIntoView
 // brings the current one into view without scrolling the page (it does not replace the 320 rule).
 rule("R46-d the current item is scrolled into view, the page is not", [280], async (page) => {
