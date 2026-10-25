@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/document.indexed.v1.schema.json",
+  "title": "document.indexed.v1",
+  "description": "ai → core: keys of the files ai-service derived from the document.",
+  "$ref": "envelope.schema.json",
+  "unevaluatedProperties": false,
+  "properties": {
+    "event_type": {
+      "const": "document.indexed.v1"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_id",
+        "run_id",
+        "page_count",
+        "toc_key",
+        "page_labels_key",
+        "page_text_key",
+        "thumbnails_prefix",
+        "unreadable_pages"
+      ],
+      "properties": {
+        "document_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "run_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "page_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000
+        },
+        "toc_key": {
+          "$ref": "envelope.schema.json#/$defs/object_key"
+        },
+        "page_labels_key": {
+          "$ref": "envelope.schema.json#/$defs/object_key"
+        },
+        "page_text_key": {
+          "$ref": "envelope.schema.json#/$defs/object_key"
+        },
+        "thumbnails_prefix": {
+          "$ref": "envelope.schema.json#/$defs/object_key"
+        },
+        "unreadable_pages": {
+          "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5000
+          }
+        }
+      }
+    }
+  }
+}

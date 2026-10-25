@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/document.uploaded.v1.schema.json",
+  "title": "document.uploaded.v1",
+  "description": "core → ai: a reference document was uploaded; ai-service indexes it.",
+  "$ref": "envelope.schema.json",
+  "unevaluatedProperties": false,
+  "properties": {
+    "event_type": {
+      "const": "document.uploaded.v1"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_id",
+        "subject_id",
+        "object_key"
+      ],
+      "properties": {
+        "document_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "subject_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "object_key": {
+          "$ref": "envelope.schema.json#/$defs/object_key"
+        }
+      }
+    }
+  }
+}

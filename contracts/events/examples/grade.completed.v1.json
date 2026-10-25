@@ -1,0 +1,14 @@
+{
+  "event_id": "6e5d4c3b-2a19-4807-a6b5-c4d3e2f1a008",
+  "event_type": "grade.completed.v1",
+  "schema_version": 1,
+  "occurred_at": "2026-10-25T08:30:00.123456Z",
+  "user_id": "3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11",
+  "trace_context": {
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+  },
+  "payload": {
+    "attempt_id": "2d3c4b5a-6f7e-4d8c-9b0a-1e2f3a4b5c6d",
+    "result_key": "users/3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11/grading/2d3c4b5a-6f7e-4d8c-9b0a-1e2f3a4b5c6d/result.json"
+  }
+}

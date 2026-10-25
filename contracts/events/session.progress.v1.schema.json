@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/session.progress.v1.schema.json",
+  "title": "session.progress.v1",
+  "description": "ai → core: progress while a confirmed session is processed.",
+  "$ref": "envelope.schema.json",
+  "unevaluatedProperties": false,
+  "properties": {
+    "event_type": {
+      "const": "session.progress.v1"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "study_session_id",
+        "run_id",
+        "step",
+        "percent"
+      ],
+      "properties": {
+        "study_session_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "run_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "step": {
+          "enum": [
+            "reading_notes",
+            "splitting_units",
+            "anchoring",
+            "writing_questions"
+          ]
+        },
+        "percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    }
+  }
+}

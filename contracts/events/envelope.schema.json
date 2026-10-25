@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/envelope.schema.json",
+  "title": "Event envelope",
+  "description": "Fields every event carries (ADR-0006, ARCHITECTURE §7.3). Each event schema references this one and closes `payload`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "occurred_at",
+    "user_id",
+    "trace_context",
+    "payload"
+  ],
+  "properties": {
+    "event_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "event_type": {
+      "enum": [
+        "document.uploaded.v1",
+        "document.indexed.v1",
+        "document.failed.v1",
+        "session.confirmed.v1",
+        "session.progress.v1",
+        "session.processed.v1",
+        "session.failed.v1",
+        "grade.requested.v1",
+        "grade.completed.v1",
+        "user.deleted.v1"
+      ]
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "occurred_at": {
+      "description": "UTC, RFC 3339, ending in Z.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$"
+    },
+    "user_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "trace_context": {
+      "description": "W3C trace context of the producer (ADR-0013). Empty when there was no active span.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "traceparent": {
+          "type": "string",
+          "pattern": "^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+        },
+        "tracestate": {
+          "type": "string",
+          "maxLength": 512
+        }
+      }
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "object_key": {
+      "description": "Object storage key inside the owner's prefix (claim-check). No '.' or '..' segments.",
+      "type": "string",
+      "maxLength": 1024,
+      "pattern": "^users/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(/[A-Za-z0-9_][A-Za-z0-9._-]*)+$"
+    }
+  }
+}

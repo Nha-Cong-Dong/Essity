@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/document.failed.v1.schema.json",
+  "title": "document.failed.v1",
+  "description": "ai → core: the document could not be indexed.",
+  "$ref": "envelope.schema.json",
+  "unevaluatedProperties": false,
+  "properties": {
+    "event_type": {
+      "const": "document.failed.v1"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_id",
+        "run_id",
+        "reason",
+        "unreadable_pages"
+      ],
+      "properties": {
+        "document_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "run_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "reason": {
+          "enum": [
+            "unreadable",
+            "unsupported",
+            "too_large",
+            "internal_error"
+          ]
+        },
+        "unreadable_pages": {
+          "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5000
+          }
+        }
+      }
+    }
+  }
+}

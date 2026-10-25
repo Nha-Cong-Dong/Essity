@@ -31,6 +31,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "hypothesis>=6.170.0",
+    "jsonschema[format-nongpl]>=4.23",
     "pyright>=1.1.390",
     "pytest>=8.3",
     "pytest-randomly>=5",
