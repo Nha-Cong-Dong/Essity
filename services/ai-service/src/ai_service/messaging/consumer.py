@@ -40,7 +40,7 @@ from redis import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import ResponseError
 from redis.exceptions import TimeoutError as RedisTimeoutError
-from sqlalchemy.exc import InterfaceError, OperationalError
+from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
 from sqlalchemy.orm import Session
 
 from ai_service.logging import user_id_var
@@ -96,18 +96,42 @@ class Deferred(Exception):
 
     - check the quota before anything that costs money: a deferred event comes back every
       minute, possibly for a whole day;
-    - an event deferred for ever stays pending for ever; T2.11 decides what to do about that.
+    - an event deferred for ever stays pending for ever; T2.11 decides what to do about that;
+    - a slow database (a statement timeout, a deadlock) is a failure, counted towards the dead
+      letter: a handler that would rather wait raises `Deferred` itself.
     """
 
 
-# Not the handler's fault: the database or Redis is unreachable. Handled like `Deferred`, so an
-# outage of a few minutes does not use up every event's attempts (review 🟠1).
-INFRASTRUCTURE_ERRORS: tuple[type[Exception], ...] = (
-    OperationalError,
-    InterfaceError,
-    RedisConnectionError,
-    RedisTimeoutError,
-)
+# SQLSTATEs of a lost or refused connection: class 08 (connection exception), and the server
+# shutting down or starting up (57P01-57P03).
+_OUTAGE_SQLSTATE_CLASS = "08"
+_OUTAGE_SQLSTATES = frozenset({"57P01", "57P02", "57P03"})
+
+
+def is_outage(error: BaseException) -> bool:
+    """Whether `error` means the database or Redis is unreachable, not that the work failed.
+
+    An outage is handled like `Deferred`, so a few minutes of downtime do not use up every
+    event's attempts (review 🟠1). Only a lost connection counts (review 🟠C): psycopg raises
+    OperationalError for a statement timeout, a deadlock or a row too large too, and those
+    would fail the same way every time, so they go towards the dead letter.
+    """
+    if isinstance(error, RedisConnectionError | RedisTimeoutError):
+        return True
+    if isinstance(error, DBAPIError):
+        if error.connection_invalidated:
+            return True
+        if not isinstance(error, OperationalError | InterfaceError):
+            return False
+        # No SQLSTATE: the error came from the client side (could not connect, socket closed).
+        sqlstate = getattr(error.orig, "sqlstate", None)
+        return (
+            sqlstate is None
+            or sqlstate.startswith(_OUTAGE_SQLSTATE_CLASS)
+            or sqlstate in _OUTAGE_SQLSTATES
+        )
+    return False
+
 
 _log = logging.getLogger("ai_service.messaging")
 _tracer = trace.get_tracer("ai_service.messaging")
@@ -328,7 +352,9 @@ class Consumer:
             try:
                 with self.session_factory() as session:
                     done = was_processed(session, self.group, event.event_id)
-            except INFRASTRUCTURE_ERRORS as error:
+            except Exception as error:
+                if not is_outage(error):
+                    raise
                 self._put_back(entry_id, deliveries)
                 return _Result("unavailable", error_type=type(error).__name__)
             if done:
@@ -345,10 +371,10 @@ class Consumer:
         except Deferred:
             self._put_back(entry_id, deliveries)
             return _Result("deferred")
-        except INFRASTRUCTURE_ERRORS as error:
-            self._put_back(entry_id, deliveries)
-            return _Result("unavailable", error_type=type(error).__name__)
         except Exception as error:
+            if is_outage(error):
+                self._put_back(entry_id, deliveries)
+                return _Result("unavailable", error_type=type(error).__name__)
             if deliveries >= self.max_attempts:
                 return self._dead(entry_id, envelope, type(error).__name__, deliveries)
             self._back_off(entry_id, deliveries)

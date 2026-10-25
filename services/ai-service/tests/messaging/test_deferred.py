@@ -7,6 +7,7 @@ so a few minutes of downtime do not send every event to the dead letter.
 
 from collections.abc import Callable
 
+import psycopg.errors
 import pytest
 from redis import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -107,7 +108,44 @@ def redis_down() -> Exception:
     return RedisConnectionError("Connection refused")
 
 
-@pytest.mark.parametrize("outage", [operational, interface, redis_down])
+def server_closed() -> Exception:
+    return OperationalError("SELECT 1", {}, psycopg.errors.AdminShutdown())
+
+
+def connection_lost() -> Exception:
+    return OperationalError("SELECT 1", {}, psycopg.errors.ConnectionFailure())
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        psycopg.errors.QueryCanceled,
+        psycopg.errors.DeadlockDetected,
+        psycopg.errors.ProgramLimitExceeded,
+    ],
+)
+def test_t43_operational_error_from_the_query_counts_as_a_failure(
+    redis_client: Redis,
+    names: Names,
+    session_factory: sessionmaker[Session],
+    error: type[Exception],
+) -> None:
+    # Review 🟠C. Red when: every OperationalError is an outage, and a statement that always
+    # times out is retried every minute for ever, paying for the LLM call each time.
+    publish(redis_client, names.stream, uploaded())
+    recorder = Recorder(fail_with=lambda: OperationalError("INSERT", {}, error()))
+    consumer = make_consumer(redis_client, names, session_factory, {DOCUMENT_UPLOADED: recorder})
+    consumer.ensure_group()
+    for _ in range(4):
+        assert consumer.run_once() == ["retry"]
+    assert consumer.run_once() == ["dead"]
+    [dead] = dead_entries(redis_client, names)
+    assert dead["reason"] == "OperationalError"
+
+
+@pytest.mark.parametrize(
+    "outage", [operational, interface, redis_down, server_closed, connection_lost]
+)
 def test_t43_db_outage_does_not_burn_attempts(
     redis_client: Redis,
     names: Names,
