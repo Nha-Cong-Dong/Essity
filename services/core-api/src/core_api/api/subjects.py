@@ -34,6 +34,7 @@ from core_api.domain.subjects import (
     normalize_subject_name,
     validate_exam_date,
 )
+from core_api.repositories.review import MemoryStateRepository
 from core_api.repositories.subject import (
     SubjectHasHistoryError,
     SubjectNotFoundError,
@@ -161,11 +162,15 @@ def change_subject(
     found = subjects.get_with_exam(subject_id, lock=True)
     if found is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="subject_not_found")
-    if body.exam_date is not None and body.exam_date != found[1].exam_date:
-        _check_exam_date(body.exam_date, user, now)
+    exam_moved = body.exam_date is not None and body.exam_date != found[1].exam_date
+    if exam_moved:
+        _check_exam_date(body.exam_date, user, now)  # type: ignore[arg-type]
     updated = subjects.update(subject_id, name=body.name, exam_date=body.exam_date)
     if updated is None:  # cannot happen while the lock above is held; 404 rather than 500
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="subject_not_found")
+    if exam_moved:
+        # US-01 AC3 (T2.6): the exam cap only pulls due dates in, so a moved exam is a replay.
+        MemoryStateRepository(session, user.id).rebuild(subject_id=subject_id)
     return _out(*updated, user, now)
 
 
