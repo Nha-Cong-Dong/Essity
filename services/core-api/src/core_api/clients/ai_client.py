@@ -113,7 +113,7 @@ class AiServiceClient:
             response = self._http.post("/v1/grade", json=dict(payload), timeout=timeout)
         except httpx2.TimeoutException:
             return _failed("unavailable", "timeout", None), True
-        except httpx2.TransportError:
+        except httpx2.RequestError:  # transport, decoding, redirects: may clear (review 🟡5)
             return _failed("unavailable", "connection_error", None), True
         status = response.status_code
         if 200 <= status < 300:

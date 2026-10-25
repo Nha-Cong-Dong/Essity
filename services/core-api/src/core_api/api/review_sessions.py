@@ -67,7 +67,8 @@ class AttemptOut(BaseModel):
 class CurrentOut(BaseModel):
     done: Literal[False] = False
     # Answers submitted in this session that have no grade yet (plan D-7): the screen offers
-    # "Chấm lại" for each. "Không nhớ" is graded by the system and never listed.
+    # "Chấm lại" for each. "Không nhớ" is graded by the system, so it is listed only when that
+    # grade could not be written.
     ungraded: list[uuid.UUID] = []
     position: int
     total: int

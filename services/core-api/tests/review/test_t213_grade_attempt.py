@@ -177,11 +177,15 @@ def test_us04_ac2_dont_remember_is_system_forgot_again_without_ai(desk: Desk) ->
 
 
 # R41 layer 2. Red when: the fake grader's answer is stored in production.
-def test_r41_fake_answer_in_production_writes_nothing(desk: Desk) -> None:
+def test_r41_fake_answer_in_production_writes_nothing(
+    desk: Desk, caplog: pytest.LogCaptureFixture
+) -> None:
     attempt = desk.submitted()
-    outcome = desk.grade(attempt, Stub(provider="fake"), environment="production")
+    with caplog.at_level("ERROR", logger="core_api.grading"):
+        outcome = desk.grade(attempt, Stub(provider="fake"), environment="production")
     assert (outcome.grading, outcome.failure) == ("failed", "invalid")
     assert desk.count(Grade) == 0
+    assert [r.levelname for r in caplog.records if r.message == "grade refused"] == ["ERROR"]
     local = desk.grade(desk.submitted(), Stub(provider="fake"), environment="local")
     assert local.grading == "graded" and local.grade is not None and local.grade.source == "fake"
 

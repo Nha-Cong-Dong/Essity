@@ -351,6 +351,7 @@ class GradeRepository(AppendOnlyRepository[Grade]):
         held = text(
             "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory'"
             " AND objsubid = 1 AND ((classid::bigint << 32) | objid::bigint) = :key"
+            " AND database = (SELECT oid FROM pg_database WHERE datname = current_database())"
             " AND pid <> pg_backend_pid())"
         )
         value = self.session.scalar(select(key))

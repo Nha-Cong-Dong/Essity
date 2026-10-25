@@ -140,7 +140,7 @@ def grade_attempt(
     except (UnitsMismatchError, SubjectNotFoundError):
         return _failed("invalid", "units_changed")
     except Exception as error:  # noqa: BLE001 - rolled back above; the answer stays submitted
-        _log.error("grade not recorded", extra={"error_type": type(error).__name__})
+        _log.error("grade not recorded", exc_info=error)
         return GradingOutcome("failed", "unavailable")
     return GradingOutcome("graded", grade=grade)
 
@@ -201,5 +201,8 @@ def record_grade(session: Session, user: User, attempt: Attempt, checked: Checke
 
 
 def _failed(failure: Failure, reason: str) -> GradingOutcome:
-    _log.warning("grade refused", extra={"outcome": reason})
+    """A grading core refuses: ERROR when the request or the answer is wrong (R41 layer 2, D-6),
+    WARNING when only the rate limit stood in the way."""
+    level = logging.ERROR if failure == "invalid" else logging.WARNING
+    _log.log(level, "grade refused", extra={"outcome": reason})
     return GradingOutcome("failed", failure)

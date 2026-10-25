@@ -75,8 +75,9 @@ class Settings(DatabaseSettings):
     # Sent to ai-service in X-Service-Token. No default: core-api refuses to start without one,
     # the same rule ai-service applies on its side.
     ai_service_token: SecretStr = Field(min_length=32)
-    # One grading call to ai-service (T2.13, plan D-5): its own 9 s deadline, then core gives
-    # up. The ping keeps a short timeout of its own (clients.ai_client.PING_TIMEOUT_SECONDS).
+    # The ai-service client's default timeout. Its two calls set their own (review T2.13 🟢8):
+    # grading GRADE_CALL_SECONDS a call within GRADE_TOTAL_SECONDS (plan D-5), the ping
+    # PING_TIMEOUT_SECONDS (clients.ai_client).
     ai_service_timeout_seconds: float = Field(default=10.0, gt=0)
 
     # A field validator, not a model one: a model validator's error prints the whole input,

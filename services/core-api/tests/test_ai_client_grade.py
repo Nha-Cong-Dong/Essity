@@ -59,6 +59,7 @@ def test_t213_a_graded_answer() -> None:
 
 TIMEOUT = httpx2.ReadTimeout("slow")
 REFUSED = httpx2.ConnectError("down")
+REDIRECTS = httpx2.TooManyRedirects("loop")
 
 
 # Plan 🟠2: every row of the retry table, with the number of calls and what the user is told.
@@ -69,6 +70,7 @@ REFUSED = httpx2.ConnectError("down")
         ([code(502, "llm_unavailable"), code(502, "llm_unavailable")], 2, "unavailable"),
         ([TIMEOUT, TIMEOUT], 2, "unavailable"),
         ([REFUSED, REFUSED], 2, "unavailable"),
+        ([REDIRECTS, REDIRECTS], 2, "unavailable"),
         ([httpx2.Response(500, text="Internal Server Error")] * 2, 2, "unavailable"),
         ([code(503, "something_new")] * 2, 2, "unavailable"),
         ([httpx2.Response(504, text="<html>gateway</html>")] * 2, 2, "unavailable"),
