@@ -141,3 +141,27 @@ def test_ac6_nothing_due_and_nothing_new_says_when_the_next_session_is() -> None
 def test_ac6_no_units_at_all_has_no_next_day() -> None:
     plan = compose([])
     assert plan.items == [] and plan.next_day is None and plan.backlog is None
+
+
+# Review PR #20 🟡1. Red when: on the exam day the weight jumps back to that of no exam, so a
+# subject examined in three days goes before the one examined today.
+def test_ac3_the_exam_today_comes_before_an_exam_in_three_days() -> None:
+    later, today = due(HDH), due(MMT)
+    plan = compose([later, today], exams={MMT: TODAY, HDH: TODAY + timedelta(days=3)})
+    assert plan.items[0].question_id == today.question_id
+
+
+# Review PR #20 🟡2. Red when: the backlog is judged subject by subject, though every subject
+# shares one session a day (AC7): three subjects that each fit can together overflow.
+def test_ac5_subjects_sharing_the_days_before_their_exams_add_up() -> None:
+    third = uuid.uuid4()
+    units = [due(s) for s in (MMT, HDH, third) for _ in range(90)]
+    exam = TODAY + timedelta(days=5)
+    plan = compose(units, exams={MMT: exam, HDH: exam, third: exam})
+    assert plan.backlog is not None
+    assert (plan.backlog.sessions, plan.backlog.days) == (14, 5)
+
+
+def test_minutes_round_up() -> None:
+    assert compose([due(MMT)]).minutes == 2
+    assert compose([due(MMT) for _ in range(3)]).minutes == 5

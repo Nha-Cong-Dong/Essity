@@ -10,8 +10,10 @@ Choices for what the spec leaves open (us-03 §9 #2–#5, plan `t2.6-t2.7-replay
   the room goes by risk alone.
 - New questions fill what is left, newest first: until documents arrive (M4) a question's
   creation time stands for "the latest document" (us-03 §9 #5).
-- Backlog (AC5): a subject needs ceil(due units / MAX_QUESTIONS) sessions; when that is more than
-  the learning days left before its exam, the plan carries a neutral note about it.
+- Backlog (AC5): before a subject's exam come the due units of every subject examined that day
+  or earlier (one shared session a day, AC7); ceil(units / MAX_QUESTIONS) sessions more than the
+  learning days left gives a neutral note. Units are counted, not questions: a question that
+  checks several units counts each. The wording ("cần thêm khoảng N phiên") is T2.8's.
 """
 
 import math
@@ -115,7 +117,7 @@ def compose_today(
         next_day = min(learning_day(u.state.due, tz, day_start_hour) for u in scheduled)
     return TodayPlan(
         items=items,
-        minutes=round(len(items) * MINUTES_PER_QUESTION),
+        minutes=math.ceil(len(items) * MINUTES_PER_QUESTION),
         backlog=_backlog(due, exams, today),
         next_day=next_day,
     )
@@ -130,7 +132,7 @@ def _add(items: list[PlannedQuestion], asked: set[uuid.UUID], item: PlannedQuest
 
 
 def _exam_weight(exam_day: date | None, today: date) -> float:
-    if exam_day is None or exam_day <= today:
+    if exam_day is None or exam_day < today:  # no exam, or it is over
         return 1.0
     days_left = (exam_day - today).days
     closeness = max(0.0, 1 - days_left / EXAM_WINDOW_DAYS)
@@ -140,15 +142,16 @@ def _exam_weight(exam_day: date | None, today: date) -> float:
 def _backlog(
     due: Sequence[DueUnit], exams: Mapping[uuid.UUID, date], today: date
 ) -> Backlog | None:
+    """Every subject shares the one session a day (AC7), so before a subject's exam come the due
+    units of every subject examined that day or earlier. The worst subject by sessions per day."""
     counts: dict[uuid.UUID, int] = {}
     for unit in due:
         counts[unit.subject_id] = counts.get(unit.subject_id, 0) + 1
+    upcoming = {s: exams[s] for s in counts if s in exams and exams[s] > today}
     worst: Backlog | None = None
-    for subject_id, count in counts.items():
-        exam_day = exams.get(subject_id)
-        if exam_day is None or exam_day <= today:
-            continue
-        sessions, days = math.ceil(count / MAX_QUESTIONS), (exam_day - today).days
+    for subject_id, exam_day in sorted(upcoming.items(), key=lambda item: item[1]):
+        units = sum(counts[s] for s, day in upcoming.items() if day <= exam_day)
+        sessions, days = math.ceil(units / MAX_QUESTIONS), (exam_day - today).days
         if sessions > days and (worst is None or sessions / days > worst.sessions / worst.days):
             worst = Backlog(subject_id, sessions, days)
     return worst
