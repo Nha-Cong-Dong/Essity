@@ -21,7 +21,7 @@ const MIN_GAP = 4;
 const SHOW_RED = process.env.LAYOUT_SHOW_RED === "1";
 const KNOWN_RED = new Set<string>([
   // "Tạo môn" is pulled up beside the title by a fixed -mt-16: doubled text runs into it (C3b).
-  "R44-f at 200% text the rows still fit@390",
+  "R44-i at 200% text the title and Tạo môn do not overlap@390",
 ]);
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -345,6 +345,13 @@ rule("R44-f at 200% text the rows still fit", [390], async (page) => {
     const [n, d, e] = [await box(name), await box(date), await box(edit)];
     expect(overlap(n, d) || overlap(n, e) || overlap(d, e)).toBe(false);
   });
-  expect(overlap(await box(titleText(page)), await box(page.getByText("Tạo môn", { exact: true })))).toBe(false);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+// The title row at 200%, apart from the rows: a red here says only "Tạo môn" runs into the title
+// (review 54953aa #1).
+rule("R44-i at 200% text the title and Tạo môn do not overlap", [390], async (page) => {
+  await page.addStyleTag({ content: DOUBLE });
+  await page.evaluate(() => document.fonts.ready);
+  expect(await titleText(page).evaluate((el) => getComputedStyle(el).fontSize)).toBe("72px");
+  expect(overlap(await box(titleText(page)), await box(page.getByText("Tạo môn", { exact: true })))).toBe(false);
 });
