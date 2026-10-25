@@ -10,6 +10,7 @@ from core_api.db.models.review import (
     MemoryState,
     ReviewLog,
     ReviewSession,
+    ReviewSessionItem,
 )
 from core_api.db.models.subject import Exam, Subject
 from core_api.db.models.unit import Anchor, KnowledgeUnit
@@ -29,6 +30,7 @@ __all__ = [
     "QuestionUnit",
     "ReviewLog",
     "ReviewSession",
+    "ReviewSessionItem",
     "Subject",
     "User",
 ]

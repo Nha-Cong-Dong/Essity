@@ -207,7 +207,7 @@ jobs:
           for _ in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:3101/login && break; sleep 1; done
           curl -sf -o /dev/null http://127.0.0.1:3101/login || { echo "server did not start"; exit 1; }
           status() { curl -s -o /dev/null -w "%{http_code}" "$@"; }
-          for path in /design-preview/subjects /design-preview/subjects.rsc; do
+          for path in /design-preview/subjects /design-preview/subjects.rsc /design-preview/today /design-preview/today.rsc; do
             test "$(status "http://127.0.0.1:3101$path")" = 404 || { echo "$path is served"; exit 1; }
           done
           test "$(status -H 'RSC: 1' 'http://127.0.0.1:3101/design-preview/subjects?_rsc=x')" = 404 || { echo "RSC request is served"; exit 1; }

@@ -23,7 +23,12 @@ from core_api.api.text import DbText, Email, LoginEmail, storable_text
 from core_api.main import app
 
 # Checked by one of these, or exempt below.
-CHECKS: set[Callable[..., Any]] = {text.storable_text, text.storable_email, subjects._name}  # pyright: ignore[reportPrivateUsage]
+CHECKS: set[Callable[..., Any]] = {
+    text.storable_text,
+    text.storable_email,
+    text.storable_answer,
+    subjects._name,  # pyright: ignore[reportPrivateUsage]
+}
 # Only hashed, never stored or sent to a query: any character is allowed (plan D4, D5). By model
 # and field, not by name alone: a stored `token` (a device's push token, say) must be checked.
 EXEMPT: set[tuple[type[BaseModel], str]] = {
@@ -52,6 +57,18 @@ def test_ordinary_text_is_kept_as_is(value: str) -> None:
 def test_control_characters_are_refused(value: str) -> None:
     with pytest.raises(ValueError, match="control characters"):
         storable_text(value)
+
+
+# T2.9: an answer keeps its lines and tabs, and nothing else of the kind.
+@pytest.mark.parametrize("value", ["dòng 1\ndòng 2", "a\tb", "a\r\nb"])
+def test_an_answer_keeps_its_lines(value: str) -> None:
+    assert text.storable_answer(value) == value
+
+
+@pytest.mark.parametrize("value", ["a\x00b", "a\x1fb", "a\x7fb", "a\x85b", "a\ud800b"])
+def test_an_answer_refuses_other_control_characters(value: str) -> None:
+    with pytest.raises(ValueError):
+        text.storable_answer(value)
 
 
 def test_a_lone_surrogate_is_refused() -> None:

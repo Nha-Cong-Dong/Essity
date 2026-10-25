@@ -3,15 +3,17 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
-import { NhanVo, NotebookCover } from "@/components/notebook";
 import { AppShell } from "@/components/shells";
-import { TodayNote } from "@/components/today-note";
+import { TodayFailed, TodayLoading, TodayScreen } from "@/components/today/today-screen";
+import { errorName, logError } from "@/lib/log";
 import { requireVerifiedSession } from "@/lib/session";
+import { getToday, type Today } from "@/lib/today";
 
 export const metadata: Metadata = { title: "Hôm nay · Essity" };
 
-// Placeholder for "Phiên hôm nay" (T2.14 fills it): where the app lands after signing in (AC7).
-// Plan K16: what it says follows has_subjects; a failing /v1/me throws, so it never guesses.
+// "Phiên hôm nay" (T2.14, US-03, DESIGN.md §6.3): where the app lands after signing in (US-12
+// AC7). The session is checked first, so a failing /v1/today never reads as signed out; it shows
+// a notice with Thử lại and never redirects (plan K4).
 
 async function Account() {
   await connection();
@@ -21,14 +23,15 @@ async function Account() {
 
 async function Today() {
   await connection();
-  const me = await requireVerifiedSession();
-  return (
-    <NotebookCover title="Hôm nay">
-      <NhanVo>
-        <TodayNote hasSubjects={me.has_subjects} />
-      </NhanVo>
-    </NotebookCover>
-  );
+  await requireVerifiedSession();
+  let today: Today;
+  try {
+    today = await getToday();
+  } catch (error) {
+    logError("core-api call failed", { route: "today", error: errorName(error) });
+    return <TodayFailed />;
+  }
+  return <TodayScreen today={today} />;
 }
 
 export default function TodayPage() {
@@ -41,16 +44,8 @@ export default function TodayPage() {
         </Suspense>
       }
     >
-      <div className="flex justify-center">
-        {/* Loading: a skeleton the shape of the cover (DESIGN.md §6.3), never a page spinner. */}
-        <Suspense
-          fallback={
-            <div
-              aria-busy="true"
-              className="h-65 w-full max-w-155 rounded-sheet bg-sunken"
-            />
-          }
-        >
+      <div className="mx-auto w-full max-w-280">
+        <Suspense fallback={<TodayLoading />}>
           <Today />
         </Suspense>
       </div>

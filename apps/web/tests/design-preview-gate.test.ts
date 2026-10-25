@@ -14,7 +14,7 @@ const status = (path: string, cookie?: string) =>
 describe("/design-preview gate: edges", () => {
   // Red when: isDesignPreview stops matching below the page (`startsWith` dropped or narrowed):
   // a nested route would skip the gate and reach core-api through ServiceChain-like children.
-  it.each(["/design-preview/x", "/design-preview/a/b", "/design-preview//", "/design-preview/subjects"])("%s is closed in production", (path) => {
+  it.each(["/design-preview/x", "/design-preview/a/b", "/design-preview//", "/design-preview/subjects", "/design-preview/today"])("%s is closed in production", (path) => {
     vi.stubEnv("NODE_ENV", "production");
     expect(status(path, "tok")).toBe(404);
     expect(status(path)).toBe(404);

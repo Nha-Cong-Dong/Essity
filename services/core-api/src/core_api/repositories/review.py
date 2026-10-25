@@ -7,13 +7,13 @@ second close or an edit after submitting changes nothing and says so.
 
 import uuid
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import date, datetime
 from itertools import groupby
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import aliased
 
 from core_api.db.models import (
     Attempt,
@@ -22,8 +22,11 @@ from core_api.db.models import (
     GradeUnit,
     KnowledgeUnit,
     MemoryState,
+    Question,
     ReviewLog,
     ReviewSession,
+    ReviewSessionItem,
+    Subject,
     User,
 )
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
@@ -72,6 +75,39 @@ class ReviewSessionRepository(AppendOnlyRepository[ReviewSession]):
         self.session.flush()
         return session
 
+    def open_for_day(self, learning_day: date, now: datetime) -> tuple[ReviewSession, bool]:
+        """The open session of `learning_day`, made if there is none: (session, made now). Two
+        tabs pressing "Bắt đầu" at once get the same one (plan C4): the partial unique index
+        refuses the second insert, which then reads the first once it has committed."""
+        made = self.session.execute(
+            insert(ReviewSession)
+            .values(
+                id=uuid.uuid4(), user_id=self.user_id, learning_day=learning_day, started_at=now
+            )
+            .on_conflict_do_nothing(
+                index_elements=["user_id", "learning_day"],
+                index_where=ReviewSession.ended_at.is_(None),
+            )
+            .returning(ReviewSession.id)
+        ).scalar_one_or_none()
+        found = self.open_on(learning_day)
+        assert found is not None
+        return found, made is not None
+
+    def hold_for_update(self, id: uuid.UUID) -> ReviewSession | None:
+        """The session, locked FOR UPDATE until commit: a submit holds it FOR SHARE, so stopping
+        waits for one in flight and then counts it (plan D14)."""
+        return self.session.scalars(
+            self._select().where(ReviewSession.id == id).with_for_update()
+        ).one_or_none()
+
+    def open_on(self, learning_day: date) -> ReviewSession | None:
+        """The session still open on `learning_day`, if any."""
+        query = self._select().where(
+            ReviewSession.learning_day == learning_day, ReviewSession.ended_at.is_(None)
+        )
+        return self.session.scalars(query).one_or_none()
+
     def end(self, id: uuid.UUID, ended_at: datetime, *, reason: str) -> bool:
         """Close the session once; False when it is not this user's or is already closed."""
         closed = self.session.execute(
@@ -85,6 +121,88 @@ class ReviewSessionRepository(AppendOnlyRepository[ReviewSession]):
             .returning(ReviewSession.id)
         ).first()
         return closed is not None
+
+
+@dataclass(frozen=True)
+class SessionStep:
+    question: Question
+    subject: Subject
+    attempt: Attempt | None
+    askable: bool
+
+    @property
+    def answered(self) -> bool:
+        return self.attempt is not None and self.attempt.status == "submitted"
+
+
+def session_counts(steps: Sequence[SessionStep]) -> tuple[int, int]:
+    """(answered, total) of a session: what can no longer be asked (a deleted subject, a retired
+    question) drops out of the total unless it was already answered."""
+    answered = sum(step.answered for step in steps)
+    return answered, answered + sum(step.askable and not step.answered for step in steps)
+
+
+class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
+    """The questions of a session, in order (T2.9 plan C1); added once, when it starts."""
+
+    model = ReviewSessionItem
+
+    def add_all(
+        self, review_session_id: uuid.UUID, question_ids: Sequence[uuid.UUID]
+    ) -> list[ReviewSessionItem]:
+        items = [
+            self.add(
+                ReviewSessionItem(
+                    review_session_id=review_session_id, position=n, question_id=question_id
+                )
+            )
+            for n, question_id in enumerate(question_ids, start=1)
+        ]
+        self.session.flush()
+        return items
+
+    def progress(self, review_session_id: uuid.UUID) -> list[SessionStep]:
+        """Each item of the session in order, with its question, its subject, whether it can
+        still be asked (question active, subject not deleted) and its attempt, if any."""
+        rows = self.session.execute(
+            select(ReviewSessionItem, Question, Subject, Attempt)
+            .join(
+                Question,
+                (Question.id == ReviewSessionItem.question_id) & (Question.user_id == self.user_id),
+            )
+            .join(
+                Subject,
+                (Subject.id == Question.subject_id) & (Subject.user_id == self.user_id),
+            )
+            .outerjoin(
+                Attempt,
+                (Attempt.review_session_id == ReviewSessionItem.review_session_id)
+                & (Attempt.question_id == ReviewSessionItem.question_id)
+                & (Attempt.user_id == self.user_id),
+            )
+            .where(
+                ReviewSessionItem.user_id == self.user_id,
+                ReviewSessionItem.review_session_id == review_session_id,
+            )
+            .order_by(ReviewSessionItem.position)
+        ).all()
+        return [
+            SessionStep(
+                question=question,
+                subject=subject,
+                attempt=attempt,
+                askable=question.status == "active" and subject.deleted_at is None,
+            )
+            for _, question, subject, attempt in rows
+        ]
+
+    def of_session(self, review_session_id: uuid.UUID) -> Sequence[ReviewSessionItem]:
+        query = (
+            self._select()
+            .where(ReviewSessionItem.review_session_id == review_session_id)
+            .order_by(ReviewSessionItem.position)
+        )
+        return self.session.scalars(query).all()
 
 
 class AttemptRepository(AppendOnlyRepository[Attempt]):
@@ -284,31 +402,70 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
                 MemoryState.user_id == self.user_id, MemoryState.unit_id.in_(units)
             )
         )
-        written = 0
-        for (unit_id, facet, exam_day), rows in groupby(
+        rows: list[dict[str, object]] = []
+        for (unit_id, facet, exam_day), reviews in groupby(
             self._current_reviews(subject_id), key=lambda row: (row[0], row[1], row[4])
         ):
             state = replay(
-                ((ReviewRating(row[2]), row[3]) for row in rows),
+                ((ReviewRating(row[2]), row[3]) for row in reviews),
                 exam_day=exam_day,
                 tz=tz,
                 day_start_hour=user.day_start_hour,
             )
             assert state is not None
-            self.upsert(unit_id, facet, state)
-            written += 1
-        return written
+            rows.append(
+                {
+                    "id": uuid.uuid4(),
+                    "user_id": self.user_id,
+                    "unit_id": unit_id,
+                    "facet": facet,
+                    "phase": state.phase.value,
+                    "step": state.step,
+                    "stability": state.stability,
+                    "difficulty": state.difficulty,
+                    "due": state.due,
+                    "last_review": state.last_review,
+                }
+            )
+        # One insert, not one upsert per unit: the rows were just deleted, and every unit comes
+        # from this user's own review_log joined to knowledge_unit (rebuild at real size, #20).
+        if rows:
+            # Still one statement: a review written meanwhile (T2.13, or a CLI rebuild) updates
+            # the row instead of failing the rebuild on the unique key.
+            statement = insert(MemoryState).values(rows)
+            excluded = statement.excluded
+            self.session.execute(
+                statement.on_conflict_do_update(
+                    index_elements=["user_id", "unit_id", "facet"],
+                    set_={
+                        name: getattr(excluded, name)
+                        for name in (
+                            "phase",
+                            "step",
+                            "stability",
+                            "difficulty",
+                            "due",
+                            "last_review",
+                        )
+                    },
+                )
+            )
+        self.session.expire_all()
+        return len(rows)
 
     def _current_reviews(
         self, subject_id: uuid.UUID | None
     ) -> Sequence[tuple[uuid.UUID, str, int, datetime, date]]:
         """(unit, facet, rating, reviewed_at, exam date) of every review that counts: the rows of
         each attempt's latest grade (plan D7), in the order they happened."""
-        current = aliased(Grade)
+        # Each attempt's latest grade, computed once as a set, then joined: a per-row MAX(seq)
+        # subquery ran once per grade per unit and grew with the square of the history.
         latest = (
-            select(func.max(Grade.seq))
-            .where(Grade.user_id == self.user_id, Grade.attempt_id == current.attempt_id)
-            .scalar_subquery()
+            select(Grade.id)
+            .where(Grade.user_id == self.user_id)
+            .order_by(Grade.attempt_id, Grade.seq.desc())
+            .distinct(Grade.attempt_id)
+            .subquery()
         )
         query = (
             select(
@@ -318,7 +475,7 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
                 ReviewLog.reviewed_at,
                 Exam.exam_date,
             )
-            .join(current, (current.id == ReviewLog.grade_id) & (current.user_id == self.user_id))
+            .join(latest, latest.c.id == ReviewLog.grade_id)
             .join(
                 KnowledgeUnit,
                 (KnowledgeUnit.id == ReviewLog.unit_id) & (KnowledgeUnit.user_id == self.user_id),
@@ -327,7 +484,7 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
                 Exam,
                 (Exam.subject_id == KnowledgeUnit.subject_id) & (Exam.user_id == self.user_id),
             )
-            .where(ReviewLog.user_id == self.user_id, current.seq == latest)
+            .where(ReviewLog.user_id == self.user_id)
             .order_by(ReviewLog.unit_id, ReviewLog.facet, ReviewLog.reviewed_at, ReviewLog.seq)
         )
         if subject_id is not None:

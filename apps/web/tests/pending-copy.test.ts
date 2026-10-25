@@ -11,8 +11,18 @@ import { describe, expect, it } from "vitest";
 const ROOT = path.resolve(import.meta.dirname, "..");
 
 // T1.22 emptied it (the user approved T1.18/T1.20's sentences on 23/10 and 24/10); T2.3c emptied it
-// again (the user approved T2.3b's six delete strings on 25/10).
-const PENDING_COPY: [file: string, text: string][] = [];
+// again (the user approved T2.3b's six delete strings on 25/10). T2.14 adds /today's: the backlog
+// note and "Ôn thêm" (US-03 AC5), the two states with nothing to ask, and a start that failed.
+const PENDING_COPY: [file: string, text: string][] = [
+  ["components/today/today-screen.tsx", "Các môn của bạn đều đã thi xong."],
+  ["components/today/today-screen.tsx", "Môn của bạn chưa có câu hỏi nào để ôn."],
+  [
+    "components/today/today-screen.tsx",
+    'Để kịp thi {today.backlog.subject_name} cần thêm khoảng{" "} {extraSessions(today.backlog.sessions, today.backlog.days)} phiên trong{" "} {today.backlog.days} ngày.',
+  ],
+  ["components/today/today-screen.tsx", "Ôn thêm"],
+  ["components/today/start-button.tsx", "Chưa mở được phiên. Thử lại sau giây lát."],
+];
 
 function sources(dir: string): string[] {
   return readdirSync(path.join(ROOT, dir), { recursive: true, encoding: "utf-8" })

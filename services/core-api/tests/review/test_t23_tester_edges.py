@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from test_t23_review_history import DAY, NOW, RUN, History, refused, refused_by_trigger
 
-from clock import FROZEN_NOW, future_exam
+from clock import FROZEN_NOW, future_exam, spare_day
 from core_api.db.models import User
 from core_api.domain.question_hash import content_hash
 from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler
@@ -155,10 +155,10 @@ def test_tester_session_cannot_end_in_the_past_of_its_start_boundary(
     # before is not. Red when: CHECK `ended_at >= started_at` becomes `>` or is dropped.
     alice, _ = two_users
     sessions = ReviewSessionRepository(db_session, alice.id)
-    zero = sessions.start(DAY, NOW)
+    zero = sessions.start(spare_day(), NOW)
     assert sessions.end(zero.id, NOW, reason="completed")
     db_session.flush()
-    early = sessions.start(DAY, NOW)
+    early = sessions.start(spare_day(), NOW)
     with pytest.raises(IntegrityError), db_session.begin_nested():
         sessions.end(early.id, NOW - timedelta(microseconds=1), reason="completed")
         db_session.flush()
@@ -168,7 +168,7 @@ def test_tester_answer_length_boundary(db_session: Session, two_users: tuple[Use
     # Boundary of D9: exactly 20000 characters is accepted (counted in characters, not bytes).
     # Red when: CHECK becomes `< 20000`, or `octet_length` is used for non-ASCII text.
     h = History(db_session, two_users[0])
-    review = ReviewSessionRepository(db_session, h.user.id).start(DAY, NOW)
+    review = ReviewSessionRepository(db_session, h.user.id).start(spare_day(), NOW)
     draft = AttemptRepository(db_session, h.user.id).create_draft(review.id, h.question.id)
     db_session.flush()
     AttemptRepository(db_session, h.user.id).save_draft(
@@ -200,7 +200,7 @@ def test_tester_grade_cannot_reach_a_draft_by_raw_sql_even_in_the_same_second(
     # `grade_needs_submitted_attempt` must also fire for an attempt in the same transaction.
     # Red when: the trigger is dropped or its `status = 'submitted'` test is removed.
     h = History(db_session, two_users[0])
-    review = ReviewSessionRepository(db_session, h.user.id).start(DAY, NOW)
+    review = ReviewSessionRepository(db_session, h.user.id).start(spare_day(), NOW)
     draft = AttemptRepository(db_session, h.user.id).create_draft(review.id, h.question.id)
     db_session.flush()
     refused_by_trigger(
@@ -216,7 +216,7 @@ def test_tester_grade_cannot_reach_a_draft_by_raw_sql_even_in_the_same_second(
 
 
 def _open_session_and_draft(session: Session, h: History) -> tuple[uuid.UUID, uuid.UUID]:
-    review = ReviewSessionRepository(session, h.user.id).start(DAY, NOW)
+    review = ReviewSessionRepository(session, h.user.id).start(spare_day(), NOW)
     draft = AttemptRepository(session, h.user.id).create_draft(review.id, h.question.id)
     session.flush()
     return review.id, draft.id

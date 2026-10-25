@@ -14,7 +14,7 @@ from fastapi import HTTPException
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
-from clock import FROZEN_NOW, future_exam
+from clock import FROZEN_NOW, future_exam, spare_day
 from core_api.api.subjects import SubjectChange, change_subject
 from core_api.db.models import User
 from core_api.repositories.question import QuestionRepository
@@ -35,7 +35,7 @@ def with_attempt(session: Session, user: User, subject_id: uuid.UUID, *, submitt
     question = QuestionRepository(session, user.id).add_idempotent(
         subject_id, level=1, prompt=f"Câu {uuid.uuid4()}?", reference_answer="a", run_id=RUN
     )
-    review = ReviewSessionRepository(session, user.id).start(DAY, FROZEN_NOW)
+    review = ReviewSessionRepository(session, user.id).start(spare_day(), FROZEN_NOW)
     attempts = AttemptRepository(session, user.id)
     attempt = attempts.create_draft(review.id, question.id)
     if submitted:
@@ -91,7 +91,7 @@ def test_us01_ac8_a_subject_with_questions_but_no_attempt_is_deleted(
     QuestionRepository(db_session, alice.id).add_idempotent(
         subject.id, level=1, prompt="TCP?", reference_answer="a", run_id=RUN
     )
-    ReviewSessionRepository(db_session, alice.id).start(DAY, FROZEN_NOW)
+    ReviewSessionRepository(db_session, alice.id).start(spare_day(), FROZEN_NOW)
     db_session.flush()
     subjects.soft_delete(subject.id, FROZEN_NOW)
     db_session.flush()

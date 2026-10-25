@@ -21,6 +21,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/attempts/{attempt_id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Draft */
+        put: operations["save_draft_v1_attempts__attempt_id__draft_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/attempts/{attempt_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Attempt
+         * @description Save the last text and submit, in one write: nothing typed after the last draft save is
+         *     lost. Submitting again returns the first submission, even once the session has ended.
+         */
+        post: operations["submit_attempt_v1_attempts__attempt_id__submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/login": {
         parameters: {
             query?: never;
@@ -201,6 +239,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/review-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Session */
+        post: operations["start_session_v1_review_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/review-sessions/{session_id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Current Attempt
+         * @description The draft of the current question, made on first call. The server picks the question:
+         *     a client cannot open an attempt on a question outside the session.
+         */
+        post: operations["open_current_attempt_v1_review_sessions__session_id__attempts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/review-sessions/{session_id}/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current Question */
+        get: operations["current_question_v1_review_sessions__session_id__current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/review-sessions/{session_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop Session
+         * @description Close the session: "completed" when every question it can still ask is answered, else
+         *     "user_stopped". The session is locked first, so a submit in flight is counted (plan D14).
+         *     Stopping again changes nothing and answers the same.
+         */
+        post: operations["stop_session_v1_review_sessions__session_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects": {
         parameters: {
             query?: never;
@@ -242,10 +357,86 @@ export interface paths {
         patch: operations["change_subject_v1_subjects__subject_id__patch"];
         trace?: never;
     };
+    "/v1/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Today */
+        get: operations["get_today_v1_today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AnswerIn */
+        AnswerIn: {
+            /** Answer Text */
+            answer_text: string;
+            /** Dont Remember */
+            dont_remember: boolean;
+        };
+        /** AttemptOut */
+        AttemptOut: {
+            /** Answer Text */
+            answer_text: string;
+            /** Dont Remember */
+            dont_remember: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Status */
+            status: string;
+        };
+        /** BacklogOut */
+        BacklogOut: {
+            /** Days */
+            days: number;
+            /** Sessions */
+            sessions: number;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /** Subject Name */
+            subject_name: string;
+        };
+        /** CurrentOut */
+        CurrentOut: {
+            attempt: components["schemas"]["AttemptOut"] | null;
+            /**
+             * Done
+             * @default false
+             * @constant
+             */
+            done: false;
+            /** Position */
+            position: number;
+            question: components["schemas"]["QuestionOut"];
+            /** Total */
+            total: number;
+        };
+        /** DoneOut */
+        DoneOut: {
+            /**
+             * Done
+             * @default true
+             * @constant
+             */
+            done: true;
+        };
         /** EmailBody */
         EmailBody: {
             /** Email */
@@ -255,6 +446,18 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** InProgressOut */
+        InProgressOut: {
+            /** Position */
+            position: number;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Total */
+            total: number;
         };
         /** ListedSubject */
         ListedSubject: {
@@ -330,6 +533,17 @@ export interface components {
              */
             core_api: "ok" | "unavailable";
         };
+        /** QuestionOut */
+        QuestionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Prompt */
+            prompt: string;
+            subject: components["schemas"]["SubjectRef"];
+        };
         /** RegisterBody */
         RegisterBody: {
             /** Email */
@@ -343,6 +557,18 @@ export interface components {
             password: string;
             /** Token */
             token: string;
+        };
+        /** StartIn */
+        StartIn: {
+            /** Subject Id */
+            subject_id?: string | null;
+        };
+        /** StoppedOut */
+        StoppedOut: {
+            /** Answered */
+            answered: number;
+            /** Total */
+            total: number;
         };
         /** SubjectChange */
         SubjectChange: {
@@ -383,6 +609,68 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** SubjectRef */
+        SubjectRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** SubmittedOut */
+        SubmittedOut: {
+            /**
+             * Grading
+             * @default pending
+             * @constant
+             */
+            grading: "pending";
+            /**
+             * Status
+             * @default submitted
+             * @constant
+             */
+            status: "submitted";
+        };
+        /** TodayOut */
+        TodayOut: {
+            backlog: components["schemas"]["BacklogOut"] | null;
+            in_progress: components["schemas"]["InProgressOut"] | null;
+            /**
+             * Learning Day
+             * Format: date
+             */
+            learning_day: string;
+            /** Next Day */
+            next_day: string | null;
+            session: components["schemas"]["core_api__api__today__SessionOut"] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ready" | "in_progress" | "rested" | "no_questions" | "no_subjects" | "all_exams_over";
+            /** Subjects */
+            subjects: components["schemas"]["TodaySubject"][];
+        };
+        /** TodaySubject */
+        TodaySubject: {
+            /** Days Until Exam */
+            days_until_exam: number;
+            /**
+             * Exam Date
+             * Format: date
+             */
+            exam_date: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
         /** TokenBody */
         TokenBody: {
             /** Token */
@@ -400,6 +688,27 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** SessionOut */
+        core_api__api__review_sessions__SessionOut: {
+            /** Answered */
+            answered: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Total */
+            total: number;
+        };
+        /** SessionOut */
+        core_api__api__today__SessionOut: {
+            /** Minutes */
+            minutes: number;
+            /** Question Count */
+            question_count: number;
+            /** Subjects */
+            subjects: components["schemas"]["SubjectRef"][];
         };
     };
     responses: never;
@@ -428,6 +737,74 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    save_draft_v1_attempts__attempt_id__draft_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_attempt_v1_attempts__attempt_id__submit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmittedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -716,6 +1093,132 @@ export interface operations {
             };
         };
     };
+    start_session_v1_review_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["core_api__api__review_sessions__SessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_current_attempt_v1_review_sessions__session_id__attempts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    current_question_v1_review_sessions__session_id__current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentOut"] | components["schemas"]["DoneOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_session_v1_review_sessions__session_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoppedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_subjects_v1_subjects_get: {
         parameters: {
             query?: never;
@@ -829,6 +1332,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_today_v1_today_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayOut"];
                 };
             };
         };

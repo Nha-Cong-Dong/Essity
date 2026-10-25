@@ -1,6 +1,135 @@
 {
   "components": {
     "schemas": {
+      "AnswerIn": {
+        "additionalProperties": false,
+        "properties": {
+          "answer_text": {
+            "maxLength": 20000,
+            "title": "Answer Text",
+            "type": "string"
+          },
+          "dont_remember": {
+            "title": "Dont Remember",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "answer_text",
+          "dont_remember"
+        ],
+        "title": "AnswerIn",
+        "type": "object"
+      },
+      "AttemptOut": {
+        "properties": {
+          "answer_text": {
+            "title": "Answer Text",
+            "type": "string"
+          },
+          "dont_remember": {
+            "title": "Dont Remember",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "answer_text",
+          "dont_remember"
+        ],
+        "title": "AttemptOut",
+        "type": "object"
+      },
+      "BacklogOut": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject_id",
+          "subject_name",
+          "sessions",
+          "days"
+        ],
+        "title": "BacklogOut",
+        "type": "object"
+      },
+      "CurrentOut": {
+        "properties": {
+          "attempt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttemptOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "done": {
+            "const": false,
+            "default": false,
+            "title": "Done",
+            "type": "boolean"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "question": {
+            "$ref": "#/components/schemas/QuestionOut"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "position",
+          "total",
+          "question",
+          "attempt"
+        ],
+        "title": "CurrentOut",
+        "type": "object"
+      },
+      "DoneOut": {
+        "properties": {
+          "done": {
+            "const": true,
+            "default": true,
+            "title": "Done",
+            "type": "boolean"
+          }
+        },
+        "title": "DoneOut",
+        "type": "object"
+      },
       "EmailBody": {
         "additionalProperties": false,
         "properties": {
@@ -28,6 +157,30 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "InProgressOut": {
+        "properties": {
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "session_id",
+          "position",
+          "total"
+        ],
+        "title": "InProgressOut",
         "type": "object"
       },
       "ListedSubject": {
@@ -181,6 +334,29 @@
         "title": "PingResponse",
         "type": "object"
       },
+      "QuestionOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/SubjectRef"
+          }
+        },
+        "required": [
+          "id",
+          "prompt",
+          "subject"
+        ],
+        "title": "QuestionOut",
+        "type": "object"
+      },
       "RegisterBody": {
         "additionalProperties": false,
         "properties": {
@@ -223,6 +399,43 @@
           "password"
         ],
         "title": "ResetBody",
+        "type": "object"
+      },
+      "StartIn": {
+        "additionalProperties": false,
+        "properties": {
+          "subject_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Id"
+          }
+        },
+        "title": "StartIn",
+        "type": "object"
+      },
+      "StoppedOut": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "answered",
+          "total"
+        ],
+        "title": "StoppedOut",
         "type": "object"
       },
       "SubjectChange": {
@@ -311,6 +524,154 @@
         "title": "SubjectOut",
         "type": "object"
       },
+      "SubjectRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "SubjectRef",
+        "type": "object"
+      },
+      "SubmittedOut": {
+        "properties": {
+          "grading": {
+            "const": "pending",
+            "default": "pending",
+            "title": "Grading",
+            "type": "string"
+          },
+          "status": {
+            "const": "submitted",
+            "default": "submitted",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "SubmittedOut",
+        "type": "object"
+      },
+      "TodayOut": {
+        "properties": {
+          "backlog": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BacklogOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "in_progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InProgressOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "learning_day": {
+            "format": "date",
+            "title": "Learning Day",
+            "type": "string"
+          },
+          "next_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Day"
+          },
+          "session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/core_api__api__today__SessionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "ready",
+              "in_progress",
+              "rested",
+              "no_questions",
+              "no_subjects",
+              "all_exams_over"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/TodaySubject"
+            },
+            "title": "Subjects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "learning_day",
+          "state",
+          "session",
+          "in_progress",
+          "backlog",
+          "next_day",
+          "subjects"
+        ],
+        "title": "TodayOut",
+        "type": "object"
+      },
+      "TodaySubject": {
+        "properties": {
+          "days_until_exam": {
+            "title": "Days Until Exam",
+            "type": "integer"
+          },
+          "exam_date": {
+            "format": "date",
+            "title": "Exam Date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "exam_date",
+          "days_until_exam"
+        ],
+        "title": "TodaySubject",
+        "type": "object"
+      },
       "TokenBody": {
         "additionalProperties": false,
         "properties": {
@@ -366,6 +727,56 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "core_api__api__review_sessions__SessionOut": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "answered",
+          "total"
+        ],
+        "title": "SessionOut",
+        "type": "object"
+      },
+      "core_api__api__today__SessionOut": {
+        "properties": {
+          "minutes": {
+            "title": "Minutes",
+            "type": "integer"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/SubjectRef"
+            },
+            "title": "Subjects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_count",
+          "minutes",
+          "subjects"
+        ],
+        "title": "SessionOut",
+        "type": "object"
       }
     }
   },
@@ -395,6 +806,100 @@
           }
         },
         "summary": "Healthz"
+      }
+    },
+    "/v1/attempts/{attempt_id}/draft": {
+      "put": {
+        "operationId": "save_draft_v1_attempts__attempt_id__draft_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Draft"
+      }
+    },
+    "/v1/attempts/{attempt_id}/submit": {
+      "post": {
+        "description": "Save the last text and submit, in one write: nothing typed after the last draft save is\nlost. Submitting again returns the first submission, even once the session has ended.",
+        "operationId": "submit_attempt_v1_attempts__attempt_id__submit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmittedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Attempt"
       }
     },
     "/v1/auth/login": {
@@ -706,6 +1211,174 @@
         "summary": "Ping"
       }
     },
+    "/v1/review-sessions": {
+      "post": {
+        "operationId": "start_session_v1_review_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/core_api__api__review_sessions__SessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Session"
+      }
+    },
+    "/v1/review-sessions/{session_id}/attempts": {
+      "post": {
+        "description": "The draft of the current question, made on first call. The server picks the question:\na client cannot open an attempt on a question outside the session.",
+        "operationId": "open_current_attempt_v1_review_sessions__session_id__attempts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Open Current Attempt"
+      }
+    },
+    "/v1/review-sessions/{session_id}/current": {
+      "get": {
+        "operationId": "current_question_v1_review_sessions__session_id__current_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CurrentOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DoneOut"
+                    }
+                  ],
+                  "title": "Response Current Question V1 Review Sessions  Session Id  Current Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Current Question"
+      }
+    },
+    "/v1/review-sessions/{session_id}/stop": {
+      "post": {
+        "description": "Close the session: \"completed\" when every question it can still ask is answered, else\n\"user_stopped\". The session is locked first, so a submit in flight is counted (plan D14).\nStopping again changes nothing and answers the same.",
+        "operationId": "stop_session_v1_review_sessions__session_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoppedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop Session"
+      }
+    },
     "/v1/subjects": {
       "get": {
         "operationId": "list_subjects_v1_subjects_get",
@@ -844,6 +1517,24 @@
           }
         },
         "summary": "Change Subject"
+      }
+    },
+    "/v1/today": {
+      "get": {
+        "operationId": "get_today_v1_today_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Today"
       }
     }
   }

@@ -45,6 +45,19 @@ def storable_email(value: str) -> str:
 
 
 DbText = Annotated[str, AfterValidator(storable_text)]
+
+# A learner's answer keeps its lines and tabs; every other control character (NUL above all, which
+# Postgres text cannot hold) is still refused (T2.9).
+ANSWER_LAYOUT = frozenset("\n\r\t")
+ANSWER_MAX = 20_000  # review.MAX_ANSWER_CHARS, the database's own cap
+
+
+def storable_answer(value: str) -> str:
+    storable_text("".join(c for c in value if c not in ANSWER_LAYOUT))
+    return value
+
+
+AnswerText = Annotated[str, Field(max_length=ANSWER_MAX), AfterValidator(storable_answer)]
 # A light shape check; whether the address works is proven by the verification link.
 Email = Annotated[
     str,
