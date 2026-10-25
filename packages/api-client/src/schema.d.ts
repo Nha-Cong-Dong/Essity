@@ -21,6 +21,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/attempts/{attempt_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Attempt
+         * @description The attempt as the answer and result screens show it (after a reload too). Never grades.
+         */
+        get: operations["read_attempt_v1_attempts__attempt_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/attempts/{attempt_id}/draft": {
         parameters: {
             query?: never;
@@ -38,6 +58,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/attempts/{attempt_id}/regrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Regrade Attempt
+         * @description "Chấm lại": grade a submitted answer that has no grade yet; a graded one is returned as it
+         *     is, never paid for twice.
+         */
+        post: operations["regrade_attempt_v1_attempts__attempt_id__regrade_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/attempts/{attempt_id}/submit": {
         parameters: {
             query?: never;
@@ -49,8 +90,8 @@ export interface paths {
         put?: never;
         /**
          * Submit Attempt
-         * @description Save the last text and submit, in one write: nothing typed after the last draft save is
-         *     lost. Submitting again returns the first submission, even once the session has ended.
+         * @description Save the last text and submit (nothing typed after the last draft save is lost), commit,
+         *     then grade. Submitting again, or from a second tab, grades what was submitted first.
          */
         post: operations["submit_attempt_v1_attempts__attempt_id__submit_post"];
         delete?: never;
@@ -399,6 +440,24 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** AttemptView */
+        AttemptView: {
+            /** Answer Text */
+            answer_text: string | null;
+            /** Failure */
+            failure: ("unavailable" | "invalid" | "disabled") | null;
+            /** Grading */
+            grading: ("graded" | "failed" | "in_progress") | null;
+            question: components["schemas"]["QuestionRef"] | null;
+            result: components["schemas"]["ResultOut"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "submitted";
+            /** Submitted At */
+            submitted_at: string | null;
+        };
         /** BacklogOut */
         BacklogOut: {
             /** Days */
@@ -427,6 +486,11 @@ export interface components {
             question: components["schemas"]["QuestionOut"];
             /** Total */
             total: number;
+            /**
+             * Ungraded
+             * @default []
+             */
+            ungraded: string[];
         };
         /** DoneOut */
         DoneOut: {
@@ -436,6 +500,11 @@ export interface components {
              * @constant
              */
             done: true;
+            /**
+             * Ungraded
+             * @default []
+             */
+            ungraded: string[];
         };
         /** EmailBody */
         EmailBody: {
@@ -544,6 +613,11 @@ export interface components {
             prompt: string;
             subject: components["schemas"]["SubjectRef"];
         };
+        /** QuestionRef */
+        QuestionRef: {
+            /** Prompt */
+            prompt: string;
+        };
         /** RegisterBody */
         RegisterBody: {
             /** Email */
@@ -557,6 +631,40 @@ export interface components {
             password: string;
             /** Token */
             token: string;
+        };
+        /** ResultOut */
+        ResultOut: {
+            /** Missing */
+            missing: string[];
+            /**
+             * Overall
+             * @enum {string}
+             */
+            overall: "correct" | "partial" | "incorrect" | "forgot";
+            /** Practice */
+            practice: boolean;
+            /** Reference Answer */
+            reference_answer: string;
+            /** Sources */
+            sources: components["schemas"]["Source"][];
+            /** Understanding */
+            understanding: number | null;
+            /** Units */
+            units: components["schemas"]["UnitResult"][];
+        };
+        /** Source */
+        Source: {
+            /**
+             * Anchor Id
+             * Format: uuid
+             */
+            anchor_id: string;
+            /** Kind */
+            kind: string;
+            /** Page No */
+            page_no: number | null;
+            /** Quote Text */
+            quote_text: string;
         };
         /** StartIn */
         StartIn: {
@@ -619,21 +727,6 @@ export interface components {
             /** Name */
             name: string;
         };
-        /** SubmittedOut */
-        SubmittedOut: {
-            /**
-             * Grading
-             * @default pending
-             * @constant
-             */
-            grading: "pending";
-            /**
-             * Status
-             * @default submitted
-             * @constant
-             */
-            status: "submitted";
-        };
         /** TodayOut */
         TodayOut: {
             backlog: components["schemas"]["BacklogOut"] | null;
@@ -675,6 +768,21 @@ export interface components {
         TokenBody: {
             /** Token */
             token: string;
+        };
+        /** UnitResult */
+        UnitResult: {
+            /** Title */
+            title: string;
+            /**
+             * Unit Id
+             * Format: uuid
+             */
+            unit_id: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "correct" | "partial" | "incorrect";
         };
         /** ValidationError */
         ValidationError: {
@@ -741,6 +849,37 @@ export interface operations {
             };
         };
     };
+    read_attempt_v1_attempts__attempt_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     save_draft_v1_attempts__attempt_id__draft_put: {
         parameters: {
             query?: never;
@@ -774,6 +913,37 @@ export interface operations {
             };
         };
     };
+    regrade_attempt_v1_attempts__attempt_id__regrade_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     submit_attempt_v1_attempts__attempt_id__submit_post: {
         parameters: {
             query?: never;
@@ -795,7 +965,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SubmittedOut"];
+                    "application/json": components["schemas"]["AttemptView"];
                 };
             };
             /** @description Validation Error */

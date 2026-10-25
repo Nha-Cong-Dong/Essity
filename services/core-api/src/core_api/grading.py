@@ -14,7 +14,7 @@ Then, in the caller's transaction:
 
 import logging
 import uuid
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Literal, Protocol
 from zoneinfo import ZoneInfo
@@ -66,10 +66,17 @@ class GradingOutcome:
 
 
 def grade_attempt(
-    session: Session, user: User, attempt_id: uuid.UUID, grader: Grader, *, environment: str
+    session: Session,
+    user: User,
+    attempt_id: uuid.UUID,
+    grader: Grader,
+    *,
+    environment: str,
+    may_call_ai: Callable[[], bool] = lambda: True,
 ) -> GradingOutcome:
     """Grade a submitted attempt of `user`. AttemptNotFoundError when it is not theirs,
-    AttemptNotSubmittedError while it is a draft."""
+    AttemptNotSubmittedError while it is a draft. `may_call_ai` is asked just before paying the
+    AI (the rate limit, plan 🟠4): it never stands between the user and a saved answer."""
     attempt = AttemptRepository(session, user.id).get(attempt_id)
     if attempt is None:
         raise AttemptNotFoundError(attempt_id)
@@ -117,6 +124,8 @@ def grade_attempt(
             )
         except RequestRefused as refused:
             return _failed("invalid", f"request_{refused}")
+        if not may_call_ai():
+            return _failed("unavailable", "rate_limited")
         answered = grader.grade(payload)
         if isinstance(answered, NotGraded):
             return GradingOutcome("failed", answered.failure)

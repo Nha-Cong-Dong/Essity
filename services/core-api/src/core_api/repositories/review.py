@@ -12,7 +12,7 @@ from datetime import date, datetime
 from itertools import groupby
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 
 from core_api.db.models import (
@@ -342,6 +342,37 @@ class GradeRepository(AppendOnlyRepository[Grade]):
                 )
             )
         )
+
+    def is_being_graded(self, attempt_id: uuid.UUID) -> bool:
+        """Whether another transaction holds the attempt's grading lock, read from pg_locks
+        without taking it (plan 🟡9): a read taking it could make a submit arriving at that
+        moment answer "in progress" with nobody grading."""
+        key = func.hashtextextended(str(attempt_id), GRADING_LOCK_NAMESPACE)
+        held = text(
+            "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory'"
+            " AND objsubid = 1 AND ((classid::bigint << 32) | objid::bigint) = :key"
+            " AND pid <> pg_backend_pid())"
+        )
+        value = self.session.scalar(select(key))
+        return bool(self.session.scalar(held, {"key": value}))
+
+    def graded(self, attempt_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+        """Which of these attempts have a grade (plan D-7: the others are offered "Chấm lại")."""
+        if not attempt_ids:
+            return set()
+        query = select(Grade.attempt_id).where(
+            Grade.user_id == self.user_id, Grade.attempt_id.in_(attempt_ids)
+        )
+        return set(self.session.scalars(query))
+
+    def unit_verdicts(self, grade_id: uuid.UUID) -> dict[uuid.UUID, str]:
+        """A grade's verdict on each unit it judged (US-05 AC9)."""
+        rows = self.session.execute(
+            select(GradeUnit.unit_id, GradeUnit.verdict).where(
+                GradeUnit.user_id == self.user_id, GradeUnit.grade_id == grade_id
+            )
+        ).all()
+        return {unit_id: verdict for unit_id, verdict in rows}
 
     def latest_for_attempt(self, attempt_id: uuid.UUID) -> Grade | None:
         """The attempt's current judgement: its newest grade (plan D2)."""

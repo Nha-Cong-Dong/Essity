@@ -271,7 +271,14 @@ OWN_METHODS = {
     ReviewSessionRepository: {"start", "end", "open_for_day", "open_on", "hold_for_update"},
     ReviewSessionItemRepository: {"add_all", "of_session", "progress"},
     AttemptRepository: {"create_draft", "open_draft", "save_draft", "submit"},
-    GradeRepository: {"add_with_units", "latest_for_attempt", "try_lock_attempt"},
+    GradeRepository: {
+        "add_with_units",
+        "latest_for_attempt",
+        "try_lock_attempt",
+        "is_being_graded",
+        "unit_verdicts",
+        "graded",
+    },
     ReviewLogRepository: {"append"},
 }
 
