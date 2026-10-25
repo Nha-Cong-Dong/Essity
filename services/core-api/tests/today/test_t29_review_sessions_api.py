@@ -7,11 +7,13 @@ from datetime import datetime
 from typing import Any
 
 from fastapi.testclient import TestClient
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from test_t28_today_api import Space
 
 from accounts import signed_in
 from clock import FROZEN_NOW
+from core_api.db.models import Attempt, Question
 from core_api.repositories.subject import SubjectRepository
 
 Headers = dict[str, str]
@@ -201,6 +203,9 @@ def test_t29_double_submit_returns_the_first(client: TestClient, db_session: Ses
     assert submit(client, headers, attempt_id, "lần hai").status_code == 200
     client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers)
     assert submit(client, headers, attempt_id, "sau khi dừng").status_code == 200
+    db_session.expire_all()
+    stored = db_session.get(Attempt, uuid.UUID(attempt_id))
+    assert stored is not None and stored.answer_text == "lần một"
 
 
 # --- stopping -------------------------------------------------------------------------------
@@ -310,3 +315,30 @@ def test_t29_a_finished_open_session_does_not_block_a_new_one(
     assert again.status_code == 201, again.text
     assert again.json()["id"] != first
     assert current(client, headers, first) == {"done": True}
+
+
+# PLAN T2.9 (23/10b), plan C11. Red when: a subject deleted between reading the session's steps
+# and writing the draft leaves an attempt on it, or answers anything but 404 subject_deleted. The
+# race is opened by deleting the subject just before create_draft runs.
+def test_t29_draft_on_a_subject_deleted_meanwhile_is_404_and_leaves_no_attempt(
+    client: TestClient, db_session: Session, monkeypatch: Any
+) -> None:
+    space, headers, _ = ready(db_session, 1)
+    session_id = start(client, headers).json()["id"]
+    from core_api.repositories import review as review_repo
+
+    original = review_repo.AttemptRepository.create_draft
+
+    def deleted_first(self: Any, review_session_id: uuid.UUID, question_id: uuid.UUID) -> Any:
+        subject_id = db_session.get(Question, question_id).subject_id  # type: ignore[union-attr]
+        SubjectRepository(db_session, space.user.id).soft_delete(subject_id, FROZEN_NOW)
+        return original(self, review_session_id, question_id)
+
+    monkeypatch.setattr(review_repo.AttemptRepository, "create_draft", deleted_first)
+    response = open_attempt(client, headers, session_id)
+    assert response.status_code == 404
+    assert response.json() == {"detail": "subject_deleted"}
+    count = db_session.scalar(
+        select(func.count()).select_from(Attempt).where(Attempt.user_id == space.user.id)
+    )
+    assert count == 0
