@@ -12,20 +12,37 @@ A crash before 2 leaves nothing behind and the entry is delivered again. A crash
 read but never acknowledged are taken back with XAUTOCLAIM once they have been idle
 `min_idle_ms`.
 
+When the handler fails, the entry stays pending and comes back after a backoff (5, 15, 45,
+then 60 s); on its `max_attempts`-th delivery it goes to the dead letter instead. An entry that
+can never succeed goes there at once: one that does not parse, an event type outside the
+contract, a known type without a handler yet (replayable once there is one), or an object key
+belonging to another user than the envelope's (F2).
+
 Same pattern as core-api's consumer (T4.4) but not shared by import (ADR-0003, PLAN T4.4).
 """
 
+import json
 import logging
 import socket
-from collections.abc import Callable, Mapping
-from typing import Any, cast
+from collections.abc import Callable, Iterator, Mapping
+from types import UnionType
+from typing import Annotated, Any, Union, cast, get_args, get_origin
 
+from pydantic import BaseModel, StringConstraints, ValidationError
 from redis import Redis
 from redis.exceptions import ResponseError
 from sqlalchemy.orm import Session
 
-from ai_service.messaging.envelope import Event, parse_event
-from ai_service.messaging.idempotency import claim
+from ai_service.messaging.dead_letter import (
+    INVALID_ENVELOPE,
+    NO_HANDLER,
+    TOO_MANY_DELIVERIES,
+    UNKNOWN_TYPE,
+    USER_MISMATCH,
+    send_to_dead,
+)
+from ai_service.messaging.envelope import OBJECT_KEY_PATTERN, Event, parse_event
+from ai_service.messaging.idempotency import claim, was_processed
 
 STREAM = "events.core"
 # Also the `consumer` column of `processed_event`.
@@ -35,8 +52,9 @@ DEAD_STREAM = "events.dead"
 MAX_ATTEMPTS = 5
 # An entry read and not acknowledged for this long is taken back (plan E9). Must exceed the
 # longest handler when several consumers run, or two of them handle the same entry at once
-# (the claim then makes the second wait and skip).
+# (the claim then makes the second wait and skip). Also the longest backoff.
 MIN_IDLE_MS = 60_000
+BACKOFF_BASE_MS = 5_000
 BATCH = 10
 BLOCK_MS = 1_000
 
@@ -52,6 +70,70 @@ Handler = Callable[[Session, Event], None]
 """
 
 _log = logging.getLogger("ai_service.messaging")
+
+# Every event_type in the contract, to tell an unknown type from a malformed known one.
+EVENT_TYPES = frozenset(
+    get_args(model.model_fields["event_type"].annotation)[0]
+    for model in get_args(get_args(Event)[0])
+)
+
+
+def backoff_ms(failures: int, *, base_ms: int, cap_ms: int) -> int:
+    """How long an entry waits after its `failures`-th failed delivery: 5, 15, 45, 60 s."""
+    return min(base_ms * 3 ** (failures - 1), cap_ms)
+
+
+def keys_belong_to_user(event: Event) -> bool:
+    """F2: every object key in the payload is under `users/<event.user_id>/`.
+
+    Found by type (the contract's ObjectKey), through lists, optionals and nested models, not by
+    field name: a key added to the contract under any name is checked too.
+    """
+    owner = f"users/{event.user_id}/"
+    return all(key.startswith(owner) for key in _object_keys(event.payload, None))
+
+
+def _object_keys(value: Any, annotation: Any) -> Iterator[str]:
+    if value is None:
+        return
+    if isinstance(value, BaseModel):
+        for name, info in type(value).model_fields.items():
+            field_type = (
+                Annotated[info.annotation, *info.metadata] if info.metadata else info.annotation
+            )
+            yield from _object_keys(getattr(value, name), field_type)
+        return
+    origin = get_origin(annotation)
+    if origin is Annotated:
+        base, *metadata = get_args(annotation)
+        if isinstance(value, str) and any(_is_object_key(item) for item in metadata):
+            yield value
+            return
+        yield from _object_keys(value, base)
+    elif origin in (Union, UnionType):
+        for option in get_args(annotation):
+            yield from _object_keys(value, option)
+    elif isinstance(value, list | tuple):
+        item_type = get_args(annotation)[0] if get_args(annotation) else None
+        for item in cast(list[Any], value):
+            yield from _object_keys(item, item_type)
+
+
+def _is_object_key(metadata: Any) -> bool:
+    return isinstance(metadata, StringConstraints) and metadata.pattern == OBJECT_KEY_PATTERN
+
+
+def _rejection_reason(envelope: str) -> str:
+    """`unknown_type` for a well-formed event of a type outside the contract, else invalid."""
+    try:
+        data = json.loads(envelope)
+    except ValueError:
+        return INVALID_ENVELOPE
+    if isinstance(data, dict):
+        event_type = cast(dict[str, Any], data).get("event_type")
+        if isinstance(event_type, str) and event_type not in EVENT_TYPES:
+            return UNKNOWN_TYPE
+    return INVALID_ENVELOPE
 
 
 class Consumer:
@@ -69,6 +151,7 @@ class Consumer:
         name: str | None = None,
         max_attempts: int = MAX_ATTEMPTS,
         min_idle_ms: int = MIN_IDLE_MS,
+        backoff_base_ms: int = BACKOFF_BASE_MS,
         batch: int = BATCH,
         block_ms: int | None = BLOCK_MS,
     ) -> None:
@@ -83,6 +166,7 @@ class Consumer:
         self.name = name or socket.gethostname()
         self.max_attempts = max_attempts
         self.min_idle_ms = min_idle_ms
+        self.backoff_base_ms = backoff_base_ms
         self.batch = batch
         self.block_ms = block_ms
         self._cursor = "0-0"
@@ -112,8 +196,26 @@ class Consumer:
 
     def handle(self, entry_id: str, fields: Mapping[str, str], deliveries: int) -> str:
         """Handle one entry delivered `deliveries` times; return its outcome."""
-        event = parse_event(fields["envelope"])
-        handler = self.handlers[event.event_type]
+        envelope = fields.get("envelope")
+        if envelope is None:
+            return self._dead(entry_id, "", INVALID_ENVELOPE, deliveries)
+        try:
+            event = parse_event(envelope)
+        except ValidationError:
+            return self._dead(entry_id, envelope, _rejection_reason(envelope), deliveries)
+        if not keys_belong_to_user(event):
+            return self._dead(entry_id, envelope, USER_MISMATCH, deliveries)
+        handler = self.handlers.get(event.event_type)
+        if handler is None:
+            return self._dead(entry_id, envelope, NO_HANDLER, deliveries)
+        if deliveries > self.max_attempts:
+            # Delivered again and again without a recorded failure: it crashes the consumer,
+            # or it was handled and only its acknowledgement kept failing.
+            with self.session_factory() as session:
+                if was_processed(session, self.group, event.event_id):
+                    self.redis.xack(self.stream, self.group, entry_id)
+                    return "duplicate"
+            return self._dead(entry_id, envelope, TOO_MANY_DELIVERIES, deliveries)
         try:
             with self.session_factory() as session, session.begin():
                 if not claim(session, self.group, event.event_id):
@@ -121,10 +223,42 @@ class Consumer:
                 else:
                     handler(session, event)
                     outcome = "processed"
-        except Exception:
+        except Exception as error:
+            if deliveries >= self.max_attempts:
+                return self._dead(entry_id, envelope, type(error).__name__, deliveries)
+            self._back_off(entry_id, deliveries)
             return "retry"
         self.redis.xack(self.stream, self.group, entry_id)
         return outcome
+
+    def _dead(self, entry_id: str, envelope: str, reason: str, deliveries: int) -> str:
+        send_to_dead(
+            self.redis,
+            dead_stream=self.dead_stream,
+            stream=self.stream,
+            group=self.group,
+            entry_id=entry_id,
+            envelope=envelope,
+            reason=reason,
+            deliveries=deliveries,
+        )
+        return "dead"
+
+    def _back_off(self, entry_id: str, failures: int) -> None:
+        """Make the entry look idle for `min_idle - backoff`: XAUTOCLAIM takes it after backoff.
+
+        JUSTID leaves the delivery count alone; IDLE is clamped, Redis refuses a negative one.
+        """
+        wait = backoff_ms(failures, base_ms=self.backoff_base_ms, cap_ms=self.min_idle_ms)
+        self.redis.xclaim(
+            self.stream,
+            self.group,
+            self.name,
+            0,
+            [entry_id],
+            idle=max(0, self.min_idle_ms - wait),
+            justid=True,
+        )
 
     def _reclaim(self) -> list[tuple[str, Mapping[str, str], int]]:
         """Entries idle for `min_idle_ms`, with how many times each has now been delivered."""
