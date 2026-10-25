@@ -10,9 +10,17 @@ DEV_ENVIRONMENTS = frozenset({"local", "test"})
 LlmProvider = Literal["anthropic", "fake", "disabled"]
 
 
-class Settings(BaseSettings):
+class DatabaseSettings(BaseSettings):
+    """What migrations need, and nothing more: `alembic upgrade` must not need API secrets."""
+
     model_config = SettingsConfigDict(env_prefix="AI_", env_file=".env", extra="ignore")
 
+    # postgresql+psycopg://user:password@host:5432/ai. Secret because it holds the password;
+    # no default, so a missing database is a startup error rather than a surprise later.
+    database_url: SecretStr
+
+
+class Settings(DatabaseSettings):
     # No default (R04): a forgotten AI_ENVIRONMENT is a startup error. Compose sets local.
     environment: Literal["local", "test", "staging", "production"]
     log_level: str = "INFO"

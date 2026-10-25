@@ -6,11 +6,20 @@ LLM tasks, PDF/image processing and evals. Internal only: never exposed to the i
 
 ```sh
 uv sync                  # install dependencies
-uv run pytest            # tests
+uv run pytest            # tests (needs AI_TEST_DATABASE_URL, below)
 uv run ruff check .      # lint
 uv run ruff format .     # format
 uv run pyright           # type check (strict)
 uv run uvicorn ai_service.main:app --reload --port 8001
+```
+
+Database tests run on a real PostgreSQL, in a database of their own that the tests create if
+missing. `AI_TEST_DATABASE_URL` has no default; without it those tests fail and say so. A
+throwaway server that leaves the local Compose data alone:
+
+```sh
+docker run -d --name pg-ai-test -e POSTGRES_PASSWORD=x -p 127.0.0.1:55432:5432 postgres:18-alpine
+export AI_TEST_DATABASE_URL=postgresql+psycopg://postgres:x@127.0.0.1:55432/ai_test
 ```
 
 ## Layout
@@ -31,6 +40,7 @@ Environment variables prefixed with `AI_` (see `config.py`).
 | Variable | Required | Notes |
 |---|---|---|
 | `AI_SERVICE_TOKEN` | yes | Shared secret, at least 32 characters. The service will not start without it. |
+| `AI_DATABASE_URL` | yes | `postgresql+psycopg://…/ai`. Holds `pipeline_run` and `llm_call` (the audit log of AI work). Migrations: `just migrate-ai`, or `uv run alembic upgrade head` here. |
 | `AI_LLM_PROVIDER` | yes | `anthropic`, `fake` or `disabled`. `fake` grades without a model and is refused outside `local`/`test`. `disabled` starts without a key; `/v1/grade` answers 503 `grading_disabled` and `/healthz` reports `"grading": "disabled"`. |
 | `ANTHROPIC_API_KEY` | with `anthropic` | No `AI_` prefix. Empty counts as missing. |
 

@@ -98,6 +98,13 @@ def test_t210_api_key_is_not_in_the_settings_repr(monkeypatch: pytest.MonkeyPatc
     assert FAKE_KEY not in str(settings.model_dump())
 
 
+def test_t210_database_url_is_required(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Red when: the database URL has a default, and llm_call rows go to the wrong database.
+    monkeypatch.delenv("AI_DATABASE_URL")
+    with pytest.raises(ValidationError, match="database_url"):
+        Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
+
+
 def test_t210_disabled_starts_anywhere_without_a_key(monkeypatch: pytest.MonkeyPatch) -> None:
     # T0.13 must be able to deploy before the user turns a key on.
     assert settings_for(monkeypatch, "production", "disabled", None).llm_provider == "disabled"

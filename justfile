@@ -47,3 +47,7 @@ gen-api:
 # Chạy migration của core-api lên database local (cần `just up` trước)
 migrate:
     {{compose}} run --rm --no-deps core-api uv run --no-sync alembic upgrade head
+
+# Chạy migration của ai-service lên database `ai` local (cần `just up` trước)
+migrate-ai:
+    {{compose}} run --rm --no-deps ai-service uv run --no-sync alembic upgrade head

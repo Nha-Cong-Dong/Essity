@@ -39,13 +39,13 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
-src = ["src", "tests"]
+src = ["src", "tests", "migrations"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
 
 [tool.pyright]
-include = ["src", "tests"]
+include = ["src", "tests", "migrations"]
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"
