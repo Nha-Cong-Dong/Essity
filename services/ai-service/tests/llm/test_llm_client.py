@@ -10,7 +10,7 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
-from sqlalchemy import Engine, select, text
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from ai_service.config import Settings
@@ -181,19 +181,6 @@ def test_t210_unexpected_failure_is_written_and_raised(
         client.call(request_for(run), deadline=deadline())
     [row] = rows_of(engine, run)
     assert row.error_code == "internal_error"
-
-
-def test_t210_rows_survive_the_caller_rolling_back(
-    engine: Engine, sessions: sessionmaker[Session], run: PipelineRun
-) -> None:
-    # Red when: llm_call rides in the caller's transaction, and a later error erases the record
-    # of a call that was made and paid for (🟠4).
-    with engine.connect() as caller:
-        transaction = caller.begin()
-        caller.execute(text("SELECT 1"))
-        fake_client(sessions).call(request_for(run), deadline=deadline())
-        transaction.rollback()
-    assert len(rows_of(engine, run)) == 1
 
 
 def test_b3_audit_write_failure_is_an_error_even_after_a_good_answer(

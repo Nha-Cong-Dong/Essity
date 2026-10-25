@@ -15,20 +15,37 @@ How a request becomes a prompt:
 """
 
 import hashlib
+import json
+import logging
 import secrets
+import time
 import uuid
+from contextlib import suppress
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
+from pydantic import BaseModel, ConfigDict, ValidationError
+from sqlalchemy import func, update
+
+from ai_service.db.models import PipelineRun
+from ai_service.db.session import SessionFactory
+from ai_service.llm.client import AuditUnavailableError, LlmClient, LlmUnavailableError
 from ai_service.llm.types import LlmRequest
 from ai_service.tasks.grade_models import (
     MAX_ANCHORS_PER_UNIT,
+    MAX_MISSING_CHARS,
+    MAX_MISSING_ITEMS,
     MAX_UNITS,
     GradeRequest,
+    GradeResponse,
     GradeUnit,
+    UnitVerdict,
+    Verdict,
 )
+
+_log = logging.getLogger(__name__)
 
 PROMPT_VERSION = "v1"
 # services/ai-service/prompts, wherever the process runs from (the image copies it to /app).
@@ -182,3 +199,254 @@ def build_llm_request(
         output_schema=OUTPUT_SCHEMA,
         payload={"answer": request.answer, "units": payload_units},
     )
+
+
+# --- R03: the model's output is checked by code -------------------------------------------
+
+
+class OutputViolation(Exception):
+    """The output broke rule `rule` (schema, units, anchors_used, understanding, missing).
+
+    Carries the rule name only, never the output: it is logged.
+    """
+
+    def __init__(self, rule: str) -> None:
+        super().__init__(rule)
+        self.rule = rule
+
+
+class _LlmUnit(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    unit: str
+    verdict: Verdict
+
+
+class _LlmGrade(BaseModel):
+    # Strict: "2" or true is not an understanding of 2 (rule 7).
+    model_config = ConfigDict(extra="forbid", strict=True)
+    units: list[_LlmUnit]
+    missing: list[str]
+    anchors_used: list[str]
+    understanding: int | None
+
+
+@dataclass(frozen=True)
+class GradeOutcome:
+    overall: Verdict
+    understanding: Literal[1, 2, 3] | None
+    missing: list[str]
+    units: list[UnitVerdict]  # in the request's order
+    anchors_used: list[uuid.UUID]
+
+
+def derive_overall(verdicts: list[Verdict]) -> Verdict:
+    """Rule 4: all correct -> correct, all incorrect -> incorrect, anything else -> partial.
+    `forgot` never comes from here: it is core's "Không nhớ", without the AI."""
+    if all(verdict == "correct" for verdict in verdicts):
+        return "correct"
+    if all(verdict == "incorrect" for verdict in verdicts):
+        return "incorrect"
+    return "partial"
+
+
+def check_output(text: str, labels: Labels) -> GradeOutcome:
+    """The rules of R03, in order; the first broken one raises `OutputViolation`."""
+    try:
+        parsed = _LlmGrade.model_validate_json(text)
+    except ValidationError:
+        raise OutputViolation("schema") from None  # 7: broken JSON, extra or missing fields
+
+    # 1, 2: exactly the request's units, each once.
+    out_units = [unit.unit for unit in parsed.units]
+    if len(out_units) != len(set(out_units)) or set(out_units) != set(labels.units):
+        raise OutputViolation("units")
+    # 3: anchors that were sent for this request's units, each once.
+    anchors = parsed.anchors_used
+    if len(anchors) != len(set(anchors)) or not set(anchors) <= set(labels.anchors):
+        raise OutputViolation("anchors_used")
+
+    verdicts: dict[str, Verdict] = {unit.unit: unit.verdict for unit in parsed.units}
+    ordered: list[Verdict] = [verdicts[label] for label in labels.units]
+    overall = derive_overall(ordered)
+
+    # 5: understanding 1..3 when right, null when wrong (core's understanding_when_right).
+    understanding = parsed.understanding
+    if overall == "incorrect":
+        if understanding is not None:
+            raise OutputViolation("understanding")
+    elif understanding not in (1, 2, 3):
+        raise OutputViolation("understanding")
+
+    # 6: none when correct; otherwise 1..3 short, non-blank points.
+    missing = parsed.missing
+    if overall == "correct":
+        if missing:
+            raise OutputViolation("missing")
+    elif not 1 <= len(missing) <= MAX_MISSING_ITEMS or any(
+        not point.strip() or len(point) > MAX_MISSING_CHARS for point in missing
+    ):
+        raise OutputViolation("missing")
+
+    return GradeOutcome(
+        overall=overall,
+        understanding=understanding,
+        missing=missing,
+        units=[
+            UnitVerdict(unit_id=unit_id, verdict=verdicts[label])
+            for label, unit_id in labels.units.items()
+        ],
+        anchors_used=[labels.anchors[label] for label in anchors],
+    )
+
+
+def missing_points(titles: list[str]) -> list[str]:
+    """Rule 6 for answers graded by code: the first three titles, cut to the length limit."""
+    return [title[:MAX_MISSING_CHARS] for title in titles[:MAX_MISSING_ITEMS]]
+
+
+def empty_answer_output(request: GradeRequest, labels: Labels) -> str:
+    """What an empty answer gets, as an output, so it passes the same checks (🟠6)."""
+    return json.dumps(
+        {
+            "units": [{"unit": label, "verdict": "incorrect"} for label in labels.units],
+            "missing": missing_points([unit.title for unit in request.units]),
+            "anchors_used": [],
+            "understanding": None,
+        }
+    )
+
+
+# --- One grading run ------------------------------------------------------------------------
+
+# The whole request, every call included (B2): core cuts at 10 s.
+DEADLINE_SECONDS = 9.0
+
+
+class GradeInvalidError(Exception):
+    """The output broke R03 twice: 502 grade_invalid."""
+
+
+def grade_answer(
+    request: GradeRequest, *, llm: LlmClient, sessions: SessionFactory
+) -> GradeResponse:
+    """Grade one answer: record the run, ask the model (at most twice), check, answer."""
+    deadline = time.monotonic() + DEADLINE_SECONDS
+    prompt = load_prompt()
+    run_id = _start_run(sessions, request, prompt)
+    labels = Labels.of(request)
+    try:
+        if not request.answer.strip():
+            outcome = check_output(empty_answer_output(request, labels), labels)
+            response = _response(outcome, run_id, prompt, provider="none", model=None, call=None)
+        else:
+            response = _ask_model(request, labels, run_id, prompt, llm, deadline)
+    except AuditUnavailableError:
+        raise
+    except GradeInvalidError:
+        _finish_run(sessions, run_id, "grade_invalid")
+        raise
+    except LlmUnavailableError:
+        _finish_run(sessions, run_id, "llm_unavailable")
+        raise
+    except Exception:
+        with suppress(AuditUnavailableError):
+            _finish_run(sessions, run_id, "internal_error")
+        raise
+    _finish_run(sessions, run_id, None)
+    return response
+
+
+def _ask_model(
+    request: GradeRequest,
+    labels: Labels,
+    run_id: uuid.UUID,
+    prompt: Prompt,
+    llm: LlmClient,
+    deadline: float,
+) -> GradeResponse:
+    nonce = new_nonce()
+    for attempt in (1, 2):
+        llm_request = build_llm_request(request, run_id=run_id, attempt=attempt, nonce=nonce)
+        result = llm.call(llm_request, deadline=deadline)
+        try:
+            outcome = check_output(result.text, labels)
+        except OutputViolation as violation:
+            _log.warning(
+                "grade output refused",
+                extra={
+                    "outcome": violation.rule,
+                    "attempt": attempt,
+                    "llm_call_id": str(result.llm_call_id),
+                },
+            )
+            continue
+        return _response(
+            outcome,
+            run_id,
+            prompt,
+            provider=result.provider,
+            model=result.model,
+            call=result.llm_call_id,
+        )
+    raise GradeInvalidError
+
+
+def _response(
+    outcome: GradeOutcome,
+    run_id: uuid.UUID,
+    prompt: Prompt,
+    *,
+    provider: str,
+    model: str | None,
+    call: uuid.UUID | None,
+) -> GradeResponse:
+    return GradeResponse(
+        provider=provider,
+        model=model,
+        prompt_version=prompt.version,
+        run_id=run_id,
+        llm_call_id=call,
+        overall=outcome.overall,
+        understanding=outcome.understanding,
+        missing=outcome.missing,
+        units=outcome.units,
+        anchors_used=outcome.anchors_used,
+    )
+
+
+def _start_run(sessions: SessionFactory, request: GradeRequest, prompt: Prompt) -> uuid.UUID:
+    """Committed before any call: no paid call without its run (🟡d)."""
+    run = PipelineRun(
+        user_id=request.user_id,
+        subject_id=request.subject_id,
+        attempt_id=request.attempt_id,
+        task="grade",
+        prompt_version=prompt.version,
+        prompt_sha256=prompt.sha256,
+    )
+    try:
+        with sessions() as session:
+            session.add(run)
+            session.commit()
+    except Exception as error:
+        _log.exception("pipeline_run not written")
+        raise AuditUnavailableError from error
+    return run.id
+
+
+def _finish_run(sessions: SessionFactory, run_id: uuid.UUID, error_code: str | None) -> None:
+    try:
+        with sessions() as session:
+            session.execute(
+                update(PipelineRun)
+                .where(PipelineRun.id == run_id)
+                .values(
+                    status="failed" if error_code else "succeeded",
+                    error_code=error_code,
+                    finished_at=func.now(),
+                )
+            )
+            session.commit()
+    except Exception as error:
+        _log.exception("pipeline_run not closed")
+        raise AuditUnavailableError from error

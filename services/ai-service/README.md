@@ -56,6 +56,16 @@ Generate a token:
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
+## Grading: `POST /v1/grade`
+
+Grades one answer against the learner's sources (T2.12). The contract and its limits are in `tasks/grade_models.py`, the error codes in `api/grade.py`. In short:
+
+- Each request writes a `pipeline_run` before any model call. Each call writes an `llm_call` row in its own transaction, including calls that fail. If either write fails, the response is 503 `audit_unavailable` and no grade is returned.
+- Every untrusted field is escaped and wrapped in a nonce-tagged data block (`wrap_untrusted`). The system prompt (`prompts/grade/v1.md`) holds instructions only.
+- The output is checked by code (R03). On a violation the model is asked once more; a second violation is 502 `grade_invalid`. `overall` is derived by the code, never taken from the model.
+- An empty answer is graded `incorrect` without a model call.
+- The whole request has 9 s.
+
 ## Sync vs async convention (ADR-0005)
 
 - Routes are **synchronous** by default: use `def`, not `async def`. FastAPI runs `def` routes in a threadpool.
