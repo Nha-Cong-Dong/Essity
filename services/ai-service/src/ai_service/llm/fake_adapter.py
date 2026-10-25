@@ -5,6 +5,7 @@ Each task registers a responder that computes a deterministic answer from the re
 """
 
 from collections.abc import Callable, Mapping
+from typing import Any
 
 from ai_service.llm.pricing import FAKE_MODEL
 from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError
@@ -15,6 +16,7 @@ Responder = Callable[[LlmRequest], str]
 class FakeAdapter:
     provider = "fake"
     fixed_model: str | None = FAKE_MODEL
+    params: dict[str, Any] = {}  # never mutated
 
     def __init__(self, responders: Mapping[str, Responder]) -> None:
         self._responders = dict(responders)

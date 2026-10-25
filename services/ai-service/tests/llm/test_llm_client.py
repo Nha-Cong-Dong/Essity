@@ -79,6 +79,7 @@ class Scripted:
 
     provider = "anthropic"
     fixed_model: str | None = None
+    params: dict[str, Any] = {}
 
     def __init__(self, *results: AdapterResult | Exception) -> None:
         self.results = list(results)
@@ -130,6 +131,21 @@ def test_t210_row_keeps_the_request_as_sent(
     assert row.input["system"] == request.system
     assert row.input["messages"] == [{"role": "user", "content": request.user}]
     assert row.input["output_schema"] == request.output_schema
+    assert row.input["params"] == {}  # the fake sends nothing else
+
+
+def test_t210_row_keeps_the_provider_params_and_stop_reason(
+    engine: Engine, sessions: sessionmaker[Session], run: PipelineRun
+) -> None:
+    # Red when: max_tokens/thinking are not recorded, and a call cannot be run again as it was
+    # (review 🟡2); or the stop reason is lost (🟢4).
+    adapter = AnthropicAdapter(api_key=FAKE_KEY, http_client=answering().client())
+    LlmClient(adapter, sessions, models={"grade": MODEL}).call(
+        request_for(run), deadline=deadline()
+    )
+    [row] = rows_of(engine, run)
+    assert row.input["params"] == {"max_tokens": 800, "thinking": {"type": "disabled"}}
+    assert row.stop_reason == "end_turn"
 
 
 def test_t210_cost_is_computed_from_the_price_table(

@@ -39,6 +39,7 @@ class AdapterResult:
     text: str
     input_tokens: int | None
     output_tokens: int | None
+    stop_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -67,5 +68,10 @@ class Adapter(Protocol):
     # A model the adapter always uses, whatever the task table says (the fake), or None.
     @property
     def fixed_model(self) -> str | None: ...
+
+    # Constant request parameters besides the prompt (max_tokens, thinking, ...), written to
+    # llm_call so a call can be run again exactly as it was.
+    @property
+    def params(self) -> dict[str, Any]: ...
 
     def complete(self, request: LlmRequest, *, model: str, timeout: float) -> AdapterResult: ...

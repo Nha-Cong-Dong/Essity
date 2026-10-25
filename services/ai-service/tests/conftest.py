@@ -6,11 +6,17 @@ import pytest
 import sqlalchemy
 from alembic import command
 from alembic.config import Config
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from sqlalchemy import Engine, text
 from sqlalchemy.engine import make_url
 
+import ai_service.main  # noqa: F401  # pyright: ignore[reportUnusedImport]  # installs tracing
 from ai_service.config import get_settings
 from ai_service.db.engine import create_db_engine
+from ai_service.telemetry import RedactingSpanExporter
 
 TEST_SERVICE_TOKEN = "test-service-token-0123456789abcdef"
 # Tests run on a real PostgreSQL, in a database of their own (`ai_test`), never on local data.
@@ -86,3 +92,21 @@ def engine(test_database_url: str) -> Iterator[Engine]:
     engine = create_db_engine(test_database_url)
     yield engine
     engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def exporter() -> InMemorySpanExporter:
+    """One in-memory exporter on the global provider for the whole run. Added once and kept:
+    the SDK cannot remove a span processor, so tests share this one and clear it (`spans`)."""
+    provider = trace.get_tracer_provider()
+    assert isinstance(provider, TracerProvider)  # installed when ai_service.main was imported
+    exporter = InMemorySpanExporter()
+    provider.add_span_processor(SimpleSpanProcessor(RedactingSpanExporter(exporter)))
+    return exporter
+
+
+@pytest.fixture
+def spans(exporter: InMemorySpanExporter) -> Iterator[InMemorySpanExporter]:
+    exporter.clear()
+    yield exporter
+    exporter.clear()

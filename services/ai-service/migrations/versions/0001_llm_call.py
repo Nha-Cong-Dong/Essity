@@ -68,6 +68,7 @@ def upgrade() -> None:
         sa.Column("attempt", sa.SmallInteger(), nullable=False),
         sa.Column("input", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("output", sa.String(), nullable=True),
+        sa.Column("stop_reason", sa.String(), nullable=True),
         sa.Column("input_tokens", sa.Integer(), nullable=True),
         sa.Column("output_tokens", sa.Integer(), nullable=True),
         sa.Column("cost_usd", sa.Numeric(precision=12, scale=6), nullable=False),
@@ -94,7 +95,7 @@ def upgrade() -> None:
             ["pipeline_run_id"],
             ["pipeline_run.id"],
             name=op.f("fk_llm_call_pipeline_run_id_pipeline_run"),
-            ondelete="CASCADE",
+            ondelete="RESTRICT",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_llm_call")),
     )

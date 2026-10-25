@@ -65,8 +65,9 @@ class LlmCall(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    # RESTRICT: a run with calls cannot be deleted, so paid calls never vanish with it.
     pipeline_run_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("pipeline_run.id", ondelete="CASCADE"), index=True
+        ForeignKey("pipeline_run.id", ondelete="RESTRICT"), index=True
     )
     user_id: Mapped[uuid.UUID]
     subject_id: Mapped[uuid.UUID]
@@ -79,6 +80,9 @@ class LlmCall(Base):
     # The request as sent (system, messages, schema) and the model's text as received.
     input: Mapped[dict[str, Any]] = mapped_column(JSONB)
     output: Mapped[str | None]
+    # The provider's own reason (end_turn, max_tokens, refusal, ...): tells an output cut short
+    # from a malformed one.
+    stop_reason: Mapped[str | None]
     input_tokens: Mapped[int | None]
     output_tokens: Mapped[int | None]
     # Exact: summed per user for quotas (T2.11). USD, six decimals.

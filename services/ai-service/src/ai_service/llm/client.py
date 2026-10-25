@@ -112,8 +112,10 @@ class LlmClient:
                 "system": request.system,
                 "messages": [{"role": "user", "content": request.user}],
                 "output_schema": request.output_schema,
+                "params": self._adapter.params,
             },
             output=result.text if result else None,
+            stop_reason=result.stop_reason if result else None,
             input_tokens=result.input_tokens if result else None,
             output_tokens=result.output_tokens if result else None,
             cost_usd=cost_usd(

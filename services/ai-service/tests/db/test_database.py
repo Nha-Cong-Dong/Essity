@@ -8,18 +8,13 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from alembic.util.exc import CommandError
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-import ai_service.main  # noqa: F401  # pyright: ignore[reportUnusedImport]  # installs tracing
 from ai_service.db.base import NAMING_CONVENTION, Base
 from ai_service.db.models import LlmCall, PipelineRun
-from ai_service.telemetry import RedactingSpanExporter
 
 TABLES = {"pipeline_run", "llm_call"}
 
@@ -128,12 +123,37 @@ def test_t210_llm_call_checks_its_values(engine: Engine, column: str, value: obj
         session.rollback()
 
 
-def test_t210_query_creates_a_span(engine: Engine) -> None:
+def test_t210_query_creates_a_span(engine: Engine, spans: InMemorySpanExporter) -> None:
     # Red when: SQLAlchemy is not instrumented, and slow audit writes are invisible in Jaeger.
-    provider = trace.get_tracer_provider()
-    assert isinstance(provider, TracerProvider)
-    exporter = InMemorySpanExporter()
-    provider.add_span_processor(SimpleSpanProcessor(RedactingSpanExporter(exporter)))
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
-    assert any(span.name.startswith("SELECT") for span in exporter.get_finished_spans())
+    assert any(span.name.startswith("SELECT") for span in spans.get_finished_spans())
+
+
+def test_t210_run_with_calls_cannot_be_deleted(engine: Engine) -> None:
+    # Red when: deleting a pipeline_run cascades, and a run's paid calls vanish from the audit
+    # and from T2.11's sums (review 🟡1: RESTRICT, not CASCADE).
+    with Session(engine) as session:
+        run = new_run()
+        session.add(run)
+        session.flush()
+        session.add(new_call(run))
+        session.flush()
+        with pytest.raises(IntegrityError):
+            session.execute(text("DELETE FROM pipeline_run WHERE id = :id"), {"id": run.id})
+        session.rollback()
+
+
+def test_t210_llm_call_keeps_the_stop_reason(engine: Engine) -> None:
+    # Review 🟢4: an output cut at max_tokens is told apart from a malformed one.
+    with Session(engine) as session:
+        run = new_run()
+        session.add(run)
+        session.flush()
+        call = new_call(run, stop_reason="max_tokens")
+        session.add(call)
+        session.flush()
+        session.expire_all()
+        stored = session.get(LlmCall, call.id)
+        assert stored is not None and stored.stop_reason == "max_tokens"
+        session.rollback()

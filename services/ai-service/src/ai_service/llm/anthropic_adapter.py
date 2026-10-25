@@ -11,6 +11,8 @@
   request, are never passed on.
 """
 
+from typing import Any
+
 import anthropic
 import httpx2
 
@@ -22,6 +24,10 @@ MAX_TOKENS = 800
 class AnthropicAdapter:
     provider = "anthropic"
     fixed_model: str | None = None
+
+    @property
+    def params(self) -> dict[str, Any]:
+        return {"max_tokens": MAX_TOKENS, "thinking": {"type": "disabled"}}
 
     def __init__(self, api_key: str, http_client: httpx2.Client | None = None) -> None:
         self._client = anthropic.Anthropic(api_key=api_key, max_retries=0, http_client=http_client)
@@ -54,4 +60,5 @@ class AnthropicAdapter:
             text=text,
             input_tokens=message.usage.input_tokens,
             output_tokens=message.usage.output_tokens,
+            stop_reason=message.stop_reason,
         )

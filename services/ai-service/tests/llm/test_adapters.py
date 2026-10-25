@@ -56,6 +56,14 @@ def test_g6_anthropic_turns_thinking_off() -> None:
     assert "temperature" not in api.body()  # refused by the API since 2026-10-21
 
 
+def test_t210_anthropic_params_are_what_it_sends() -> None:
+    # Red when: params (written to llm_call) drift from the request the SDK actually sends.
+    api = answering()
+    adapter = adapter_on(api)
+    adapter.complete(make_request(), model=MODEL, timeout=5.0)
+    assert {key: api.body()[key] for key in adapter.params} == adapter.params
+
+
 def test_t210_anthropic_returns_the_text_and_the_token_counts() -> None:
     result = adapter_on(answering('{"ok": false}')).complete(
         make_request(), model=MODEL, timeout=5.0

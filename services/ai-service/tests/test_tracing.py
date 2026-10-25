@@ -1,37 +1,16 @@
 import json
-from collections.abc import Iterator
 
-import pytest
 from fastapi.testclient import TestClient
-from opentelemetry import trace
-from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import SpanKind
 
 from ai_service.main import create_app
 from ai_service.security import SERVICE_TOKEN_HEADER
-from ai_service.telemetry import RedactingSpanExporter
 
 TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736"
 PARENT_SPAN_ID = "00f067aa0ba902b7"
 SECRET = "token-that-must-not-be-traced"
-
-
-@pytest.fixture(scope="session")
-def exporter() -> InMemorySpanExporter:
-    provider = trace.get_tracer_provider()
-    assert isinstance(provider, TracerProvider)  # installed when ai_service.main was imported
-    exporter = InMemorySpanExporter()
-    provider.add_span_processor(SimpleSpanProcessor(RedactingSpanExporter(exporter)))
-    return exporter
-
-
-@pytest.fixture
-def spans(exporter: InMemorySpanExporter) -> Iterator[InMemorySpanExporter]:
-    exporter.clear()
-    yield exporter
-    exporter.clear()
 
 
 def server_span(spans: InMemorySpanExporter) -> ReadableSpan:
