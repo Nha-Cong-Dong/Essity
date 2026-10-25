@@ -113,6 +113,16 @@ def test_a_pdf_with_only_an_owner_password_opens(algorithm: str) -> None:
         assert doc.get_page_labels() == ["i"]
 
 
+def test_a_broken_file_after_an_encrypted_one_is_still_malformed() -> None:
+    """PDFium keeps its last error when a later load fails without setting one: a page-less
+    file read right after a password-protected one must not be called encrypted."""
+    locked = _encrypted(make_pdf([Page(text="a")]), user_password="pw", algorithm="RC4-128")
+    assert _code(locked) == "encrypted"
+    buffer = io.BytesIO()
+    PdfWriter().write(buffer)
+    assert _code(buffer.getvalue()) == "malformed"
+
+
 @pytest.mark.parametrize("algorithm", ["RC4-128", "AES-256"])
 def test_a_pdf_that_needs_a_password_to_open_is_encrypted(algorithm: str) -> None:
     data = _encrypted(make_pdf([Page(text="a")]), user_password="pw", algorithm=algorithm)

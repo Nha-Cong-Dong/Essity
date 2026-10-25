@@ -175,7 +175,10 @@ def open_pdf(data: bytes, *, limits: PdfLimits | None = None) -> PdfDocument:
     try:
         document = pdfium.PdfDocument(data)
     except pdfium.PdfiumError as error:
-        if error.err_code == pdfium_c.FPDF_ERR_PASSWORD:
+        # PDFium keeps its previous error when a load fails without setting one, so a
+        # password error alone may be stale; an encrypted file always names /Encrypt in its
+        # trailer, which is never compressed.
+        if error.err_code == pdfium_c.FPDF_ERR_PASSWORD and b"/Encrypt" in data:
             raise PdfError("encrypted") from error
         raise PdfError("malformed") from error
     page_count = int(len(document))
