@@ -4,6 +4,7 @@ import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 
 
 import { FieldError } from "@/components/field-error";
 import { checkSubject, refusalErrors, type SubjectErrors, SubjectFields } from "@/components/subjects/subject-fields";
+import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 import { Button } from "@/components/ui/button";
 import { daysLeftText, formatExamDate } from "@/lib/exam-date";
 import { go } from "@/lib/navigate";
@@ -311,47 +312,51 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
     }));
   }
 
-  if (remaining.length === 0) {
-    return (
-      <>
-        {deletedId !== null && (
-          <ul className="m-0 flex list-none flex-col p-0">
-            <DeletedRow key={deletedId} />
-          </ul>
-        )}
-        <div className="flex flex-col items-start gap-3 py-8">
-          <p className="m-0 text-section font-semibold">Chưa có môn nào.</p>
-          <p className="m-0 text-body text-ink-soft">Tạo môn đầu tiên bằng tên và ngày thi.</p>
-          <Button render={<a href="/subjects/new" />} nativeButton={false} className="mt-3">
+  // One frame at the root, the branch inside it: deleting the last subject keeps the same h1 node
+  // and drops only "Tạo môn" from its row (T2.3c plan G15). One primary button per screen: "Tạo
+  // môn" beside the title, or in the empty state (plan F9).
+  return (
+    <SubjectsFrame
+      action={
+        remaining.length > 0 ? (
+          <Button render={<a href="/subjects/new" />} nativeButton={false}>
             Tạo môn
           </Button>
-        </div>
-      </>
-    );
-  }
-  // One primary button per screen: "Tạo môn" above the list, or in the empty state (plan F9).
-  return (
-    <>
-      <div className="-mt-16 mb-6 flex justify-end">
-        <Button render={<a href="/subjects/new" />} nativeButton={false}>
-          Tạo môn
-        </Button>
-      </div>
-      <ul className="m-0 flex list-none flex-col p-0">
-        {rows.map((subject) =>
-          subject.id === deletedId ? (
-            <DeletedRow key={subject.id} />
-          ) : (
-            <SubjectRow
-              key={subject.id}
-              initial={subject}
-              example={example}
-              onOpen={dropPlaceholder}
-              onDeleted={() => deleted(subject.id)}
-            />
-          ),
-        )}
-      </ul>
-    </>
+        ) : undefined
+      }
+    >
+      {remaining.length === 0 ? (
+        <>
+          {deletedId !== null && (
+            <ul className="m-0 flex list-none flex-col p-0">
+              <DeletedRow key={deletedId} />
+            </ul>
+          )}
+          <div className="flex flex-col items-start gap-3 py-8">
+            <p className="m-0 text-section font-semibold">Chưa có môn nào.</p>
+            <p className="m-0 text-body text-ink-soft">Tạo môn đầu tiên bằng tên và ngày thi.</p>
+            <Button render={<a href="/subjects/new" />} nativeButton={false} className="mt-3">
+              Tạo môn
+            </Button>
+          </div>
+        </>
+      ) : (
+        <ul className="m-0 flex list-none flex-col p-0">
+          {rows.map((subject) =>
+            subject.id === deletedId ? (
+              <DeletedRow key={subject.id} />
+            ) : (
+              <SubjectRow
+                key={subject.id}
+                initial={subject}
+                example={example}
+                onOpen={dropPlaceholder}
+                onDeleted={() => deleted(subject.id)}
+              />
+            ),
+          )}
+        </ul>
+      )}
+    </SubjectsFrame>
   );
 }

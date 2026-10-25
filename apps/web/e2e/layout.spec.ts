@@ -19,10 +19,7 @@ const MIN_GAP = 4;
 // (rows) take their entries out (T2.3c plan G8, G10.4). LAYOUT_SHOW_RED=1 runs them plainly, to
 // see what fails and why.
 const SHOW_RED = process.env.LAYOUT_SHOW_RED === "1";
-const KNOWN_RED = new Set<string>([
-  // "Tạo môn" is pulled up beside the title by a fixed -mt-16: doubled text runs into it (C3b).
-  "R44-i at 200% text the title and Tạo môn do not overlap@390",
-]);
+const KNOWN_RED = new Set<string>([]);
 
 type Box = { x: number; y: number; width: number; height: number };
 const right = (b: Box) => b.x + b.width;
@@ -326,10 +323,24 @@ rule("R44-h below sm Sửa stays on the first line, right of the name", [...NARR
 });
 // The words of the title, not the h1 (a block as wide as the column, which "Tạo môn" sits in).
 const titleText = (page: Page) => page.getByRole("heading", { level: 1 }).getByText("Môn học", { exact: true });
-rule("R44-i the title and Tạo môn do not overlap", NARROW, async (page) => {
-  const title = titleText(page);
-  const create = page.getByText("Tạo môn", { exact: true });
-  expect(overlap(await box(title), await box(create))).toBe(false);
+// "Tạo môn" shares a wrapping row with the title: beside it where both fit, under it where not
+// (plan G15). Never over it, at any width or text size.
+const createButton = (page: Page) => page.getByText("Tạo môn", { exact: true });
+const TITLE_ROW = [320, 390, 768, 1440];
+rule("R44-i the title and Tạo môn do not overlap", TITLE_ROW, async (page) => {
+  expect(overlap(await box(titleText(page)), await box(createButton(page)))).toBe(false);
+});
+// At 320 the title and the button fit side by side with a few px to spare (design-critic): the
+// spare is the row's width less both and the 16px gap, kept at MIN_GAP or more as in the header,
+// so a lost margin shows here before the button starts to jump rows as fonts load (review G15 #1).
+rule("R44-j at 320 Tạo môn stays beside the title, MIN_GAP to spare", [320], async (page) => {
+  const heading = page.getByRole("heading", { level: 1 });
+  const [title, create, row] = [await box(heading), await box(createButton(page)), await box(heading.locator("xpath=.."))];
+  expect(create.y).toBeLessThan(bottom(title));
+  expect(title.y).toBeLessThan(bottom(create));
+  const spare = row.width - title.width - create.width - 16;
+  console.log(`title row spare ${spare}`);
+  expect(spare).toBeGreaterThanOrEqual(MIN_GAP);
 });
 
 rule("R44-f at 200% text the rows still fit", [390], async (page) => {
@@ -349,9 +360,10 @@ rule("R44-f at 200% text the rows still fit", [390], async (page) => {
 });
 // The title row at 200%, apart from the rows: a red here says only "Tạo môn" runs into the title
 // (review 54953aa #1).
-rule("R44-i at 200% text the title and Tạo môn do not overlap", [390], async (page) => {
+rule("R44-i at 200% text the title and Tạo môn do not overlap", TITLE_ROW, async (page) => {
   await page.addStyleTag({ content: DOUBLE });
   await page.evaluate(() => document.fonts.ready);
   expect(await titleText(page).evaluate((el) => getComputedStyle(el).fontSize)).toBe("72px");
-  expect(overlap(await box(titleText(page)), await box(page.getByText("Tạo môn", { exact: true })))).toBe(false);
+  expect(overlap(await box(titleText(page)), await box(createButton(page)))).toBe(false);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

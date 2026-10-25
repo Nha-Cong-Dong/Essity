@@ -3,13 +3,13 @@ import type { Metadata } from "next";
 import { AccountMenu } from "@/components/account-menu";
 import { AppShell } from "@/components/shells";
 import { type ListedSubject, SubjectList } from "@/components/subjects/subject-list";
-import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 
 export const metadata: Metadata = { title: "Design preview: môn học · Essity" };
 
 // The /subjects screen with fixed data, for the layout test (ADR-0025, T2.3c plan G4): the real
-// shell, frame and SubjectList, no core-api call and no session. Closed outside development unless
-// WEB_DESIGN_PREVIEW=1 (proxy.ts, lib/design-preview.ts). Dates are fixed strings, not today's.
+// shell and SubjectList, which draws the frame (plan G15), no core-api call and no session. Closed
+// outside development unless WEB_DESIGN_PREVIEW=1 (proxy.ts, lib/design-preview.ts). Dates are
+// fixed strings, not today's.
 
 // A word with no space, as a user may type one (CSDL_nâng_cao_…): it must wrap, never spill.
 const LONG_WORD = "Kiếntrúcmáytínhvàhệđiềuhànhnângcaohọckỳhainămhaingànhaimươisáu".repeat(2) + "_kếtthúc";
@@ -32,9 +32,7 @@ const SUBJECTS: ListedSubject[] = [
 export default function SubjectsLayoutFixture() {
   return (
     <AppShell current="/subjects" account={<AccountMenu email="xem-thu@example.com" />}>
-      <SubjectsFrame>
-        <SubjectList subjects={SUBJECTS} example="15/12/2026" />
-      </SubjectsFrame>
+      <SubjectList subjects={SUBJECTS} example="15/12/2026" />
     </AppShell>
   );
 }

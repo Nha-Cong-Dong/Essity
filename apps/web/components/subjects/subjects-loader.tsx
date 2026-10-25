@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { SubjectList } from "@/components/subjects/subject-list";
+import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 import { Button } from "@/components/ui/button";
 import { CoreStatusError, findSubject, listSubjects, type Subject } from "@/lib/subjects";
 import { errorName, logError } from "@/lib/log";
@@ -27,8 +28,9 @@ export async function subjectForUpload(id: string): Promise<Subject> {
 }
 
 /**
- * The list part of /subjects (T1.20, DESIGN.md §6.8), for a page that has checked the session. One
- * primary button: "Tạo môn" above the list, or in the empty state (SubjectList, T2.3b plan F9).
+ * /subjects below its shell (T1.20, DESIGN.md §6.8), for a page that has checked the session: the
+ * frame with its title, then the list or the error. One primary button: "Tạo môn" beside the title,
+ * or in the empty state (SubjectList, T2.3b plan F9, T2.3c plan G15).
  */
 export async function Subjects({ example }: { example: string }) {
   let subjects: Subject[];
@@ -43,15 +45,15 @@ export async function Subjects({ example }: { example: string }) {
       error: errorName(error),
     });
     return (
-      <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
-        <p className="m-0 font-semibold">
-          Không tải được danh sách môn.
-        </p>
-        <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
-        <Button render={<a href="/subjects" />} nativeButton={false} variant="secondary" className="mt-3">
-          Thử lại
-        </Button>
-      </div>
+      <SubjectsFrame>
+        <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
+          <p className="m-0 font-semibold">Không tải được danh sách môn.</p>
+          <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
+          <Button render={<a href="/subjects" />} nativeButton={false} variant="secondary" className="mt-3">
+            Thử lại
+          </Button>
+        </div>
+      </SubjectsFrame>
     );
   }
   const listed = subjects.map(({ id, name, exam_date, days_until_exam, has_history }) => ({
