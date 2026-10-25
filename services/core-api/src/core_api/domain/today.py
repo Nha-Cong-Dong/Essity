@@ -1,0 +1,154 @@
+"""Compose today's session (T2.7, ARCH §5.3, US-03 AC3–AC6). Pure: no database, no AI.
+
+Choices for what the spec leaves open (us-03 §9 #2–#5, plan `t2.6-t2.7-replay-today.md`):
+
+- Every question takes `MINUTES_PER_QUESTION`; at MVP every question is "nhận biết" (T5.2 adds
+  the ladder), so the 20-question cap and the 30-minute cap meet.
+- Risk = probability of recall now, times a weight that falls from 1 to `NEAR_EXAM_WEIGHT` over
+  the `EXAM_WINDOW_DAYS` before the exam: a close exam makes its units count as riskier.
+- Nobody starves (Q5): each subject with a due unit gets its riskiest one in first; the rest of
+  the room goes by risk alone.
+- New questions fill what is left, newest first: until documents arrive (M4) a question's
+  creation time stands for "the latest document" (us-03 §9 #5).
+- Backlog (AC5): a subject needs ceil(due units / MAX_QUESTIONS) sessions; when that is more than
+  the learning days left before its exam, the plan carries a neutral note about it.
+"""
+
+import math
+import uuid
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
+from datetime import date, datetime
+from typing import Literal
+from zoneinfo import ZoneInfo
+
+from core_api.domain.learning_day import day_bounds, learning_day
+from core_api.domain.scheduling.exam_constraint import EXAM_WINDOW_DAYS
+from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler, MemoryState
+
+MAX_QUESTIONS = 20
+MAX_MINUTES = 30
+MINUTES_PER_QUESTION = 1.5
+NEAR_EXAM_WEIGHT = 0.5
+
+_SCHEDULER = FsrsScheduler()
+
+
+@dataclass(frozen=True)
+class DueUnit:
+    """A (unit, core facet) with its schedule, and the question that asks about it."""
+
+    unit_id: uuid.UUID
+    subject_id: uuid.UUID
+    question_id: uuid.UUID
+    state: MemoryState
+
+
+@dataclass(frozen=True)
+class NewQuestion:
+    """A question none of whose units has been reviewed yet."""
+
+    question_id: uuid.UUID
+    subject_id: uuid.UUID
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class PlannedQuestion:
+    question_id: uuid.UUID
+    subject_id: uuid.UUID
+    kind: Literal["due", "new"]
+
+
+@dataclass(frozen=True)
+class Backlog:
+    """More due units than sessions left before the exam (AC5): `sessions` in `days`."""
+
+    subject_id: uuid.UUID
+    sessions: int
+    days: int
+
+
+@dataclass(frozen=True)
+class TodayPlan:
+    items: list[PlannedQuestion]
+    minutes: int
+    backlog: Backlog | None
+    next_day: date | None  # the next learning day something is due, when nothing is today
+
+
+def compose_today(
+    units: Iterable[DueUnit],
+    new_questions: Iterable[NewQuestion],
+    exams: Mapping[uuid.UUID, date],
+    *,
+    now: datetime,
+    tz: ZoneInfo,
+    day_start_hour: int,
+) -> TodayPlan:
+    """Today's session from every scheduled unit (due or not), the new questions and each
+    subject's exam day."""
+    today = learning_day(now, tz, day_start_hour)
+    end_of_today = day_bounds(today, tz, day_start_hour)[1]
+    scheduled = list(units)
+    due = [unit for unit in scheduled if unit.state.due < end_of_today]
+
+    def risk(unit: DueUnit) -> float:
+        recall = _SCHEDULER.retrievability(unit.state, now)
+        return recall * _exam_weight(exams.get(unit.subject_id), today)
+
+    ranked = sorted(due, key=risk)
+    first_of_each: dict[uuid.UUID, DueUnit] = {}
+    for unit in ranked:
+        first_of_each.setdefault(unit.subject_id, unit)
+    ordered = [*first_of_each.values(), *(u for u in ranked if u not in first_of_each.values())]
+
+    items: list[PlannedQuestion] = []
+    asked: set[uuid.UUID] = set()
+    for unit in ordered:
+        _add(items, asked, PlannedQuestion(unit.question_id, unit.subject_id, "due"))
+    for question in sorted(new_questions, key=lambda q: q.created_at, reverse=True):
+        _add(items, asked, PlannedQuestion(question.question_id, question.subject_id, "new"))
+
+    next_day = None
+    if not items and scheduled:
+        next_day = min(learning_day(u.state.due, tz, day_start_hour) for u in scheduled)
+    return TodayPlan(
+        items=items,
+        minutes=round(len(items) * MINUTES_PER_QUESTION),
+        backlog=_backlog(due, exams, today),
+        next_day=next_day,
+    )
+
+
+def _add(items: list[PlannedQuestion], asked: set[uuid.UUID], item: PlannedQuestion) -> None:
+    room = min(MAX_QUESTIONS, math.floor(MAX_MINUTES / MINUTES_PER_QUESTION))
+    if item.question_id in asked or len(items) >= room:
+        return
+    asked.add(item.question_id)
+    items.append(item)
+
+
+def _exam_weight(exam_day: date | None, today: date) -> float:
+    if exam_day is None or exam_day <= today:
+        return 1.0
+    days_left = (exam_day - today).days
+    closeness = max(0.0, 1 - days_left / EXAM_WINDOW_DAYS)
+    return 1 - (1 - NEAR_EXAM_WEIGHT) * closeness
+
+
+def _backlog(
+    due: Sequence[DueUnit], exams: Mapping[uuid.UUID, date], today: date
+) -> Backlog | None:
+    counts: dict[uuid.UUID, int] = {}
+    for unit in due:
+        counts[unit.subject_id] = counts.get(unit.subject_id, 0) + 1
+    worst: Backlog | None = None
+    for subject_id, count in counts.items():
+        exam_day = exams.get(subject_id)
+        if exam_day is None or exam_day <= today:
+            continue
+        sessions, days = math.ceil(count / MAX_QUESTIONS), (exam_day - today).days
+        if sessions > days and (worst is None or sessions / days > worst.sessions / worst.days):
+            worst = Backlog(subject_id, sessions, days)
+    return worst
