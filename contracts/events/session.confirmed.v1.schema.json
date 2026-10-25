@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/session.confirmed.v1.schema.json",
+  "title": "session.confirmed.v1",
+  "description": "core → ai: a study session was confirmed; ai-service reads the notes and splits units. Carries the subject's existing units so duplicates merge without a call back (ADR-0006 point 6). Never the learner's description (layer 1).",
+  "$ref": "envelope.schema.json",
+  "unevaluatedProperties": false,
+  "properties": {
+    "event_type": {
+      "const": "session.confirmed.v1"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "study_session_id",
+        "subject_id",
+        "document_id",
+        "page_range",
+        "note_image_keys",
+        "existing_units"
+      ],
+      "properties": {
+        "study_session_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "subject_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "document_id": {
+          "anyOf": [
+            {
+              "$ref": "envelope.schema.json#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "page_range": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "first",
+                "last"
+              ],
+              "properties": {
+                "first": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5000
+                },
+                "last": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5000
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note_image_keys": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "envelope.schema.json#/$defs/object_key"
+          }
+        },
+        "existing_units": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "unit_id",
+              "title",
+              "summary"
+            ],
+            "properties": {
+              "unit_id": {
+                "$ref": "envelope.schema.json#/$defs/uuid"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "summary": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

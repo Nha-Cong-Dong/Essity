@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/grade.requested.v1.schema.json",
+  "title": "grade.requested.v1",
+  "description": "core → ai: grade an attempt asynchronously after the synchronous call failed. The request (question, rubric, answer, anchors) is a file, never inside the event.",
+  "$ref": "envelope.schema.json",
+  "unevaluatedProperties": false,
+  "properties": {
+    "event_type": {
+      "const": "grade.requested.v1"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attempt_id",
+        "request_key"
+      ],
+      "properties": {
+        "attempt_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "request_key": {
+          "$ref": "envelope.schema.json#/$defs/object_key"
+        }
+      }
+    }
+  }
+}

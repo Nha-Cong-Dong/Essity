@@ -33,11 +33,13 @@ jobs:
           filters: |
             core-api:
               - services/core-api/**
+              - contracts/**
               - packages/api-client/openapi.json
               - scripts/check_licenses.py
               - .github/workflows/ci.yml
             ai-service:
               - services/ai-service/**
+              - contracts/**
               - scripts/check_licenses.py
               - .github/workflows/ci.yml
             web:

@@ -1,0 +1,30 @@
+{
+  "event_id": "6e5d4c3b-2a19-4807-a6b5-c4d3e2f1a0ff",
+  "event_type": "session.confirmed.v1",
+  "schema_version": 1,
+  "occurred_at": "2026-10-25T08:30:00.123456Z",
+  "user_id": "3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11",
+  "trace_context": {
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+  },
+  "payload": {
+    "study_session_id": "5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f",
+    "subject_id": "7a1c2e3f-4b5d-4c6e-8f70-91a2b3c4d5e6",
+    "document_id": "0b9e8d7c-6f5a-4b3c-9d2e-1f0a9b8c7d6e",
+    "page_range": {
+      "first": 12,
+      "last": 18
+    },
+    "note_image_keys": [
+      "users/3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11/subjects/7a1c2e3f-4b5d-4c6e-8f70-91a2b3c4d5e6/notes/5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f/1.jpg"
+    ],
+    "existing_units": [
+      {
+        "unit_id": "8f7e6d5c-4b3a-4291-8a0b-c1d2e3f4a5b6",
+        "title": "Định tuyến tĩnh",
+        "summary": "Bảng định tuyến được cấu hình bằng tay."
+      }
+    ],
+    "description_raw": "hôm nay học chương 3"
+  }
+}

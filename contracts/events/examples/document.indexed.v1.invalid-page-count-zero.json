@@ -1,0 +1,22 @@
+{
+  "event_id": "6e5d4c3b-2a19-4807-a6b5-c4d3e2f1a0ff",
+  "event_type": "document.indexed.v1",
+  "schema_version": 1,
+  "occurred_at": "2026-10-25T08:30:00.123456Z",
+  "user_id": "3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11",
+  "trace_context": {
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+  },
+  "payload": {
+    "document_id": "0b9e8d7c-6f5a-4b3c-9d2e-1f0a9b8c7d6e",
+    "run_id": "9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b",
+    "page_count": 0,
+    "toc_key": "users/3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11/subjects/7a1c2e3f-4b5d-4c6e-8f70-91a2b3c4d5e6/derived/9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b/toc.json",
+    "page_labels_key": "users/3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11/subjects/7a1c2e3f-4b5d-4c6e-8f70-91a2b3c4d5e6/derived/9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b/page_labels.json",
+    "page_text_key": "users/3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11/subjects/7a1c2e3f-4b5d-4c6e-8f70-91a2b3c4d5e6/derived/9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b/page_text.json",
+    "thumbnails_prefix": "users/3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11/subjects/7a1c2e3f-4b5d-4c6e-8f70-91a2b3c4d5e6/derived/9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b/thumbnails",
+    "unreadable_pages": [
+      7
+    ]
+  }
+}
