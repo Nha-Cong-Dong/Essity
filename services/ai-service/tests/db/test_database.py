@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from ai_service.db.base import NAMING_CONVENTION, Base
 from ai_service.db.models import LlmCall, PipelineRun
 
-TABLES = {"pipeline_run", "llm_call"}
+TABLES = {"pipeline_run", "llm_call", "processed_event"}
 
 
 def table_names(engine: Engine) -> set[str]:
