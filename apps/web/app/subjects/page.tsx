@@ -3,8 +3,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
-import { Marker } from "@/components/notebook";
 import { AppShell } from "@/components/shells";
+import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 import { Subjects } from "@/components/subjects/subjects-loader";
 import { exampleFor } from "@/lib/exam-date";
 import { requireVerifiedSession } from "@/lib/session";
@@ -22,10 +22,7 @@ async function SignedInSubjects() {
 export default function SubjectsPage() {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <div className="mx-auto flex w-full max-w-220 flex-col">
-        <h1 className="m-0 mb-8 font-display text-title">
-          <Marker>Môn học</Marker>
-        </h1>
+      <SubjectsFrame>
         <Suspense
           fallback={
             <div aria-busy="true" className="flex flex-col gap-4">
@@ -39,7 +36,7 @@ export default function SubjectsPage() {
         >
           <SignedInSubjects />
         </Suspense>
-      </div>
+      </SubjectsFrame>
     </AppShell>
   );
 }
