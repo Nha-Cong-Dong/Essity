@@ -38,6 +38,14 @@ def test_every_repository_is_scoped_to_a_user() -> None:
     assert unscoped == set(), "repositories that can read data without a user_id"
 
 
+# Tables whose user_id is not a foreign key to `user`, and why.
+USER_ID_WITHOUT_FOREIGN_KEY = {
+    # T4.2 plan E2: `user.deleted.v1` must outlive the user it announces, so the row cannot be
+    # deleted with them. Read by the relay only, never through a repository.
+    "outbox": "events about a user, kept after the user is deleted",
+}
+
+
 def test_every_user_id_column_references_the_user_table() -> None:
     missing = {
         table.name
@@ -45,7 +53,7 @@ def test_every_user_id_column_references_the_user_table() -> None:
         if "user_id" in table.c
         and not any(fk.column.table.name == "user" for fk in table.c.user_id.foreign_keys)
     }
-    assert missing == set()
+    assert missing == set(USER_ID_WITHOUT_FOREIGN_KEY)
 
 
 def test_the_rule_actually_finds_repositories() -> None:
