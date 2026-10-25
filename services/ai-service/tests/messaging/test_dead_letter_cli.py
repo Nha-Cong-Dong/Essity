@@ -83,7 +83,14 @@ def test_t43_purge_removes_every_entry_of_that_user_only(redis_client: Redis, na
     add_dead(redis_client, names, stream="events.ai", envelope=json.dumps(uploaded(gone)))
     add_dead(redis_client, names, stream=names.stream, envelope=json.dumps(uploaded(kept)))
     add_dead(redis_client, names, stream=names.stream, envelope="not json")
-    assert purge_user(redis_client, dead_stream=names.dead, user_id=gone) == 2
+    # Review 🟢E: someone else's event holding a key of the deleted user (user_mismatch), and
+    # one that broke the contract with the id in capitals.
+    add_dead(
+        redis_client, names, stream=names.stream, envelope=json.dumps(uploaded(key_owner=gone))
+    )
+    upper = {**uploaded(), "user_id": str(gone).upper()}
+    add_dead(redis_client, names, stream=names.stream, envelope=json.dumps(upper))
+    assert purge_user(redis_client, dead_stream=names.dead, user_id=gone) == 4
     left = dead_entries(redis_client, names)
     assert len(left) == 2
     assert str(gone) not in json.dumps(left)

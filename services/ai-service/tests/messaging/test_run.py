@@ -50,9 +50,12 @@ class Scripted(Consumer):
         self.script = script
         self.stop = stop
         self.groups = 0
+        self.group_failures = 0
 
     def ensure_group(self) -> None:
         self.groups += 1
+        if self.groups <= self.group_failures:
+            raise RedisConnectionError("Connection refused")
 
     def run_once(self) -> list[str]:
         self.stop.tick()
@@ -105,9 +108,13 @@ def test_t43_run_backoff_is_capped(
 def test_t43_run_retries_creating_the_group(
     redis_client: Redis, session_factory: sessionmaker[Session]
 ) -> None:
-    consumer, stop = scripted(redis_client, session_factory, [["processed"]])
+    # Review 🟢D. Red when: a Redis still starting when the consumer does ends the process, or
+    # the group is created again every round.
+    consumer, stop = scripted(redis_client, session_factory, [["processed"], ["processed"]])
+    consumer.group_failures = 1
     run(consumer, stop)  # pyright: ignore[reportArgumentType]
-    assert consumer.groups == 1
+    assert consumer.groups == 2
+    assert stop.waits == [1.0]
 
 
 def test_t43_run_handles_events_until_stopped(
