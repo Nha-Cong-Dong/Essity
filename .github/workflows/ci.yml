@@ -107,9 +107,26 @@ jobs:
           --health-interval 2s
           --health-timeout 3s
           --health-retries 15
+      # Upload tests (T4.5) presign, PUT and read back on a real S3-compatible store, the
+      # image Compose runs. The tests create and delete a bucket of their own.
+      storage:
+        image: rustfs/rustfs:1.0.1
+        env:
+          RUSTFS_ACCESS_KEY: ci-only-access-key
+          RUSTFS_SECRET_KEY: ci-only-secret-key
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -fs http://localhost:9000/health || wget -qO- http://localhost:9000/health"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
     env:
       CORE_TEST_DATABASE_URL: postgresql+psycopg://core:ci-only-password@localhost:5432/core_test
       CORE_TEST_REDIS_URL: redis://localhost:6379/15
+      CORE_TEST_S3_ENDPOINT: http://127.0.0.1:9000
+      CORE_TEST_S3_ACCESS_KEY: ci-only-access-key
+      CORE_TEST_S3_SECRET_KEY: ci-only-secret-key
       # ai-service's tests use a database of their own on the same server (T2.10).
       AI_TEST_DATABASE_URL: postgresql+psycopg://core:ci-only-password@localhost:5432/ai_test
       # ...and its event consumer's tests (T4.3) a Redis database of their own.
