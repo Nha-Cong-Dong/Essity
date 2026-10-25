@@ -56,7 +56,7 @@ describe("/subjects frame (T2.3c, R44, plan G15)", () => {
     expect(creates()).toHaveLength(1);
     expect(header().contains(create)).toBe(true);
     expect(title().compareDocumentPosition(create) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(header().className).toMatch(/\bflex-wrap\b/);
+    expect(header().className).toMatch(/(^| )flex-wrap( |$)/);
     expect(document.body.innerHTML).not.toMatch(/-mt-16/);
   });
 
@@ -70,8 +70,9 @@ describe("/subjects frame (T2.3c, R44, plan G15)", () => {
     expect(header().className).toMatch(/(^| )min-h-13( |$)/);
   });
 
-  // Red when: the list and the empty state each return their own frame, so React mounts a new h1
-  // and focus or the screen reader's place is lost when the last subject goes (tech-expert).
+  // Red when: the empty branch wraps the frame differently from the list (a fragment around it, as
+  // before G15, or a key per branch), so React mounts a new h1 and focus or the screen reader's
+  // place is lost when the last subject goes (tech-expert).
   it("deleting the last subject keeps the same h1 node and drops only Tạo môn from its row", async () => {
     vi.stubGlobal(
       "fetch",

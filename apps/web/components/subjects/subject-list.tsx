@@ -312,8 +312,9 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
     }));
   }
 
-  // One frame at the root, the branch inside it: deleting the last subject keeps the same h1 node
-  // and drops only "Tạo môn" from its row (T2.3c plan G15). One primary button per screen: "Tạo
+  // One frame at the root, the branch inside it, so both branches render the same tree above the
+  // list: deleting the last subject keeps the same h1 node and drops only "Tạo môn" from its row
+  // (T2.3c plan G15). One primary button per screen: "Tạo
   // môn" beside the title, or in the empty state (plan F9).
   return (
     <SubjectsFrame

@@ -331,17 +331,29 @@ rule("R44-i the title and Tạo môn do not overlap", TITLE_ROW, async (page) =>
   expect(overlap(await box(titleText(page)), await box(createButton(page)))).toBe(false);
 });
 // At 320 the title and the button fit side by side with a few px to spare (design-critic): the
-// spare is the row's width less both and the 16px gap, kept at MIN_GAP or more as in the header,
-// so a lost margin shows here before the button starts to jump rows as fonts load (review G15 #1).
-rule("R44-j at 320 Tạo môn stays beside the title, MIN_GAP to spare", [320], async (page) => {
+// spare is the row's width less both and the row's column gap, read from the page so a wider gap
+// shows here too (review 8803ebf #3). Kept at MIN_GAP or more as in the header, so a lost margin
+// shows before the button starts to jump rows as fonts load (review G15 #1).
+const titleRowSpare = async (page: Page, label: string) => {
   const heading = page.getByRole("heading", { level: 1 });
-  const [title, create, row] = [await box(heading), await box(createButton(page)), await box(heading.locator("xpath=.."))];
+  const rowEl = heading.locator("xpath=..");
+  const [title, create, row] = [await box(heading), await box(createButton(page)), await box(rowEl)];
   expect(create.y).toBeLessThan(bottom(title));
   expect(title.y).toBeLessThan(bottom(create));
-  const spare = row.width - title.width - create.width - 16;
-  console.log(`title row spare ${spare}`);
-  expect(spare).toBeGreaterThanOrEqual(MIN_GAP);
+  const gap = parseFloat(await rowEl.evaluate((el) => getComputedStyle(el).columnGap));
+  const spare = row.width - title.width - create.width - gap;
+  console.log(`title row spare ${label} ${spare}`);
+  return spare;
+};
+rule("R44-j at 320 Tạo môn stays beside the title, MIN_GAP to spare", [320], async (page) => {
+  expect(await titleRowSpare(page, "web fonts")).toBeGreaterThanOrEqual(MIN_GAP);
 });
+// Before the web fonts arrive the title is drawn in its metric-matched fallback: the button must
+// already sit beside it, or it would jump up and move the list when the fonts swap in (review
+// 8803ebf #1).
+rule("R44-j without the web fonts, Tạo môn stays beside the title", [320], async (page) => {
+  expect(await titleRowSpare(page, "fallback")).toBeGreaterThanOrEqual(0);
+}, { blockFonts: true });
 
 rule("R44-f at 200% text the rows still fit", [390], async (page) => {
   await page.addStyleTag({ content: DOUBLE });
