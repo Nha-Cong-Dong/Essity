@@ -11,6 +11,8 @@ const HEADER = [...BASE, 359, 360]; // both sides of `max-[360px]:` (width < 360
 const ROW = [...BASE, 639, 640]; // both sides of `sm` (width >= 40rem)
 const NARROW = [320, 390]; // below `sm`
 const SM = 640;
+// Room to spare beside the account button at every header width, web or fallback fonts (plan G12, G13).
+const MIN_GAP = 4;
 
 // Rules known to fail on the code before the fix: `test.fail` passes only while they still fail,
 // so CI proves "red on the old code". Filled from a local run without it; C2 (header) and C3
@@ -234,7 +236,7 @@ const headerApart = async (page: Page) => {
   expect(right(l)).toBeLessThanOrEqual(n.x + 0.5);
   // At least 4px to spare beside the account button, with the web fonts or the fallback ones
   // (T2.3c plan G12, design-director): exactly fitting would turn red on the next font change.
-  expect(a.x - right(n)).toBeGreaterThanOrEqual(4);
+  expect(a.x - right(n)).toBeGreaterThanOrEqual(MIN_GAP);
   for (const pill of await nav(page).getByRole("link").all()) expect(inside(await box(pill), n)).toBe(true);
 };
 rule("R46-a nav labels are not clipped", HEADER, headerFits);
