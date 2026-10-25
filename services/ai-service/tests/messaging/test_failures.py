@@ -237,7 +237,7 @@ def test_t43_entry_delivered_more_than_max_without_result_goes_dead_without_hand
     assert consumer.run_once() == ["dead"]  # delivered a sixth time
     assert recorder.calls == []
     [dead] = dead_entries(redis_client, names)
-    assert (dead["reason"], dead["deliveries"]) == ("too_many_deliveries", "6")
+    assert (dead["reason"], dead["deliveries"]) == ("max_deliveries", "6")
 
 
 def test_t43_entry_delivered_too_often_but_already_handled_is_acked(

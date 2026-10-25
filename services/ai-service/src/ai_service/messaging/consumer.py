@@ -43,8 +43,8 @@ from sqlalchemy.orm import Session
 from ai_service.logging import user_id_var
 from ai_service.messaging.dead_letter import (
     INVALID_ENVELOPE,
+    MAX_DELIVERIES,
     NO_HANDLER,
-    TOO_MANY_DELIVERIES,
     UNKNOWN_TYPE,
     USER_MISMATCH,
     send_to_dead,
@@ -326,7 +326,7 @@ class Consumer:
             if done:
                 self.redis.xack(self.stream, self.group, entry_id)
                 return _Result("duplicate")
-            return self._dead(entry_id, envelope, TOO_MANY_DELIVERIES, deliveries)
+            return self._dead(entry_id, envelope, MAX_DELIVERIES, deliveries)
         try:
             with self.session_factory() as session, session.begin():
                 if not claim(session, self.group, event.event_id):
