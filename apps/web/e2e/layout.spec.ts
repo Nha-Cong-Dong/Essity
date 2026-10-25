@@ -42,11 +42,6 @@ const KNOWN_RED = new Set<string>([
   "R44-h below sm Sửa stays on the first line, right of the name@320",
   "R44-h below sm Sửa stays on the first line, right of the name@390",
   "R44-h below sm Sửa stays on the first line, right of the name@639",
-  "R46-a nav labels are not clipped@320",
-  "R46-b logo, nav and account do not touch@320",
-  "R46-d the current item is scrolled into view, the page is not@280",
-  "R46-e without the web fonts, logo, nav and account do not touch@320",
-  "R46-e without the web fonts, nav labels are not clipped@320",
   "page: no horizontal scroll@1440",
   "page: no horizontal scroll@320",
   "page: no horizontal scroll@359",
@@ -182,7 +177,9 @@ const headerFits = async (page: Page) => {
 const headerApart = async (page: Page) => {
   const [l, n, a] = [await box(logo(page)), await box(nav(page)), await box(account(page))];
   expect(right(l)).toBeLessThanOrEqual(n.x + 0.5);
-  expect(right(n)).toBeLessThanOrEqual(a.x + 0.5);
+  // At least 4px to spare beside the account button, with the web fonts or the fallback ones
+  // (T2.3c plan G12, design-director): exactly fitting would turn red on the next font change.
+  expect(a.x - right(n)).toBeGreaterThanOrEqual(4);
   for (const pill of await nav(page).getByRole("link").all()) expect(inside(await box(pill), n)).toBe(true);
 };
 rule("R46-a nav labels are not clipped", HEADER, headerFits);
