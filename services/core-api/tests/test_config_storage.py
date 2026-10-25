@@ -54,6 +54,13 @@ def test_local_may_use_rustfs_over_http() -> None:
     assert values.s3_public_endpoint == "http://localhost:9000"
 
 
+@pytest.mark.parametrize("environment", ["local", "test"])
+def test_an_empty_endpoint_is_refused_everywhere(environment: str) -> None:
+    # boto3 reads "" as unset and would talk to Amazon S3 instead (review C5).
+    with pytest.raises(ValidationError, match="s3_endpoint"):
+        settings(environment=environment, s3_endpoint=" ")
+
+
 def test_the_public_endpoint_defaults_to_the_endpoint() -> None:
     values = settings(environment="local", s3_endpoint="http://storage:9000")
     assert values.s3_public_endpoint == "http://storage:9000"

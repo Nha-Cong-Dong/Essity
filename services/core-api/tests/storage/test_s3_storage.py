@@ -47,14 +47,16 @@ def test_url_signs_size_type_checksum_and_only_if_absent(s3_storage: S3Storage, 
 
     query = parse_qs(urlsplit(upload.url).query)
     signed = set(query["X-Amz-SignedHeaders"][0].split(";"))
-    assert {
+    assert signed == {
         "content-length",
         "content-type",
         "host",
         "if-none-match",
         "x-amz-checksum-sha256",
-    } <= signed
-    # The browser must send exactly these; Content-Length it sets itself from the body.
+    }
+    # The browser must send exactly the signed headers it may set: a signed one left out is a
+    # 403. Host and Content-Length it sets itself (they are forbidden headers in fetch).
+    assert {h.lower() for h in upload.headers} == signed - {"host", "content-length"}
     assert upload.headers["Content-Type"] == "application/pdf"
     assert upload.headers["If-None-Match"] == "*"
     assert "x-amz-checksum-sha256" in upload.headers

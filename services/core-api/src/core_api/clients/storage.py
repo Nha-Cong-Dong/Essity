@@ -18,6 +18,8 @@ A presigned URL is a credential until it expires: never log it.
 """
 
 import base64
+import binascii
+from contextlib import closing
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -42,7 +44,8 @@ class PresignedPut:
 @dataclass(frozen=True)
 class StoredObject:
     size: int
-    sha256: str | None  # hex; None when the store does not keep a SHA-256 for the object
+    # Hex. None when the store keeps no SHA-256 for the object; "" when what it keeps is not one.
+    sha256: str | None
 
 
 class ObjectStorage(Protocol):
@@ -85,6 +88,16 @@ def _reason(error: Exception) -> str:
     if isinstance(error, ClientError):
         return f"storage answered {error.response.get('Error', {}).get('Code', 'an error')}"
     return f"storage unreachable ({type(error).__name__})"
+
+
+def _sha256_hex(checksum: str) -> str:
+    """The stored base64 SHA-256 as hex; "" (which matches no SHA-256) when it is not one: a
+    multipart checksum ("...-2") or junk cannot show the file is the declared one."""
+    try:
+        digest = base64.b64decode(checksum, validate=True)
+    except binascii.Error:
+        return ""
+    return digest.hex() if len(digest) == 32 else ""
 
 
 def _not_found(error: ClientError) -> bool:
@@ -160,10 +173,10 @@ class S3Storage:
             raise StorageUnavailableError(_reason(error)) from None
         except BotoCoreError as error:
             raise StorageUnavailableError(_reason(error)) from None
-        checksum = found.get("ChecksumSHA256")
+        checksum = found.get("ChecksumSHA256", "")
         return StoredObject(
             size=found["ContentLength"],
-            sha256=base64.b64decode(checksum).hex() if checksum else None,
+            sha256=_sha256_hex(checksum) if checksum else None,
         )
 
     def read_start(self, key: str, length: int) -> bytes:
@@ -172,16 +185,15 @@ class S3Storage:
             found = self._internal.get_object(
                 Bucket=self._bucket, Key=key, Range=f"bytes=0-{length - 1}"
             )
-            return found["Body"].read(length)
+            with closing(found["Body"]) as body:  # a store ignoring Range sends it all
+                return body.read(length)
         except (ClientError, BotoCoreError) as error:
             raise StorageUnavailableError(_reason(error)) from None
 
     def delete(self, key: str) -> None:
-        """Delete the object; deleting one that is not there is not an error."""
+        """Delete the object. A key that is not there is not an error (S3 answers 204); a
+        bucket that is not there is, so a mistyped bucket fails closed."""
         try:
             self._internal.delete_object(Bucket=self._bucket, Key=key)
-        except ClientError as error:
-            if not _not_found(error):
-                raise StorageUnavailableError(_reason(error)) from None
-        except BotoCoreError as error:
+        except (ClientError, BotoCoreError) as error:
             raise StorageUnavailableError(_reason(error)) from None
