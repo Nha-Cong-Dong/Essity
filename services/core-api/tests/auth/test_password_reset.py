@@ -9,7 +9,6 @@ limits), ADR-0013 (security event, no token or password in the logs).
 """
 
 import json
-import random
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -26,6 +25,7 @@ from core_api.domain.auth.tokens import RESET_PASSWORD_TTL, TokenPurpose
 from core_api.repositories.email_token import EmailTokenRepository
 from core_api.repositories.user import UserRepository
 from core_api.security.audit import hash_ip
+from ips import fresh_ip
 
 RESET = "/v1/auth/password-reset"
 CONFIRM = "/v1/auth/password-reset/confirm"
@@ -74,7 +74,7 @@ def queued_emails(session: Session) -> list[dict[str, str]]:
 
 
 def other_ip() -> dict[str, str]:
-    return {"X-Client-IP": f"172.17.{random.randrange(256)}.{random.randrange(1, 255)}"}
+    return {"X-Client-IP": fresh_ip("172.17")}
 
 
 # --- Asking for a link (AC4, AC5) -------------------------------------------------------------

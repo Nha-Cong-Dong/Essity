@@ -7,7 +7,6 @@ work done), AC6 (sign-ups limited per IP), AC8 (no password or address in the lo
 "account exists" and keeps its password).
 """
 
-import random
 import uuid
 from collections.abc import Callable
 
@@ -20,6 +19,7 @@ from core_api.api import auth
 from core_api.db.models import User
 from core_api.domain.auth.passwords import hash_password, verify_password
 from core_api.repositories.user import UserRepository
+from ips import fresh_ip
 
 REGISTER = "/v1/auth/register"
 RESEND = "/v1/auth/verify-email/resend"
@@ -154,7 +154,7 @@ def test_ac6_sign_ups_are_limited_per_ip(client: TestClient, client_ip: str) -> 
     assert status.status_code == 429
     assert int(status.headers["Retry-After"]) > 0
     # Another fresh address: Redis is shared across runs, a fixed one would fill up.
-    other_ip = {"X-Client-IP": f"172.16.{random.randrange(256)}.{random.randrange(1, 255)}"}
+    other_ip = {"X-Client-IP": fresh_ip("172.16")}
     response = client.post(
         REGISTER, json={"email": new_email(), "password": PASSWORD}, headers=other_ip
     )

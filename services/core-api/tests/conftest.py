@@ -1,7 +1,6 @@
 import io
 import logging
 import os
-import random
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -24,6 +23,7 @@ from core_api.main import app
 from core_api.repositories.user import UserRepository
 from core_api.security.client_ip import CLIENT_IP_HEADER
 from core_api.security.service_token import SERVICE_TOKEN_HEADER
+from ips import fresh_ip
 
 TEST_AI_SERVICE_TOKEN = "test-ai-service-token-0123456789abcdef"
 WEB_TOKEN = "test-web-token-0123456789abcdefghij"
@@ -134,7 +134,7 @@ def redis_client() -> Iterator[Redis]:
 
 @pytest.fixture
 def client_ip() -> str:
-    return f"10.{random.randrange(256)}.{random.randrange(256)}.{random.randrange(1, 255)}"
+    return fresh_ip("10")
 
 
 @pytest.fixture
