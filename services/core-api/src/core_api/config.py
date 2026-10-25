@@ -205,6 +205,9 @@ class Settings(DatabaseSettings):
     @field_validator("s3_endpoint")
     @classmethod
     def _s3_endpoint_fits_environment(cls, url: str, info: ValidationInfo) -> str:
+        # boto3 takes "" as unset and would call Amazon S3 instead.
+        if not urlsplit(url.strip()).hostname:
+            raise ValueError("s3_endpoint must be a URL")
         if not _is_dev(info) and not _is_remote_https(url):
             raise ValueError("s3_endpoint must be an https:// URL outside local and test")
         return url
