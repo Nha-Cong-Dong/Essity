@@ -33,6 +33,10 @@ const PENDING_COPY: [file: string, text: string][] = [
   ["components/review/review-screen.tsx", "Còn {ids.length} câu chưa chấm"],
   ["components/review/review-screen.tsx", "Chưa chấm được"],
   ["components/review/review-screen.tsx", "Đã chấm"],
+  ["components/review/grade-result.tsx", "Chấm thử"],
+  ["components/review/source-quote.tsx", "Vở ghi"],
+  ["components/review/source-quote.tsx", "Giáo trình"],
+  ["components/review/source-quote.tsx", "Giáo trình · tr. {source.page_no}"],
   // plan D-8: the way out until T2.17's summary (last question, session over, answers ungraded)
   ["components/review/review-screen.tsx", "Về trang chính"],
   ["components/review/review-screen.tsx", "Về trang chính"],

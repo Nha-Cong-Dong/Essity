@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AnswerBox, clock, type SaveState } from "@/components/review/answer-box";
+import { GradeResult } from "@/components/review/grade-result";
 import { FocusShell } from "@/components/shells";
 import { Button } from "@/components/ui/button";
 import { clearDraft, pickDraft, readDraft, writeDraft } from "@/lib/draft";
@@ -412,7 +413,12 @@ function Rail({
       </>
     );
   }
-  return <div className="mt-9 flex flex-wrap items-center gap-2">{next("primary")}</div>;
+  return (
+    <>
+      {view.result && <GradeResult result={view.result} />}
+      <div className="mt-9 flex flex-wrap items-center gap-2">{next("primary")}</div>
+    </>
+  );
 }
 
 function Notice({ calm, children }: { calm: boolean; children: React.ReactNode }) {

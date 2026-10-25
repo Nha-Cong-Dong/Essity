@@ -183,6 +183,10 @@ describe("ReviewScreen (T2.15)", () => {
     expect(screen.queryByLabelText("Câu trả lời của bạn")).toBeNull();
     expect(screen.getByText("Vì Trái Đất tự quay.")).toBeTruthy();
     expect(readDraft(ATTEMPT)).toBeNull();
+    // T2.16: the result shows in the right column
+    expect(screen.getByText("Đúng một phần")).toBeTruthy();
+    expect(screen.getByText("Mặt Trời chỉ chiếu sáng một nửa Trái Đất.")).toBeTruthy();
+    expect(screen.getByText("Trái Đất tự quay quanh trục.")).toBeTruthy();
     const next = screen.getByRole("button", { name: /Câu tiếp/ });
     expect(document.activeElement).toBe(next);
   });
