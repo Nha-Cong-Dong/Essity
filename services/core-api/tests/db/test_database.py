@@ -6,6 +6,7 @@ from collections.abc import Iterator
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from alembic.util.exc import CommandError
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
@@ -41,6 +42,12 @@ HISTORY_FUNCTIONS = {
     "grade_needs_submitted_attempt",
     "grade_unit_with_its_grade",
 }
+
+
+def test_migrations_have_one_head(alembic_cfg: Config) -> None:
+    # Red when: two branches each add a migration on the same parent (two PRs both numbering
+    # theirs 0011, say): `upgrade head` then fails, so the later PR must renumber when rebasing.
+    assert len(ScriptDirectory.from_config(alembic_cfg).get_heads()) == 1
 
 
 def test_migrations_go_down_to_base_and_back_up(engine: Engine, alembic_cfg: Config) -> None:

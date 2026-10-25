@@ -10,8 +10,10 @@ A relay that dies between 2 and 3 leaves the rows unsent, so they go out again: 
 least once, and consumers skip an `event_id` they have already handled (ADR-0006). When Redis
 fails, the same transaction pushes the rows back (`retry_delay`) and records the error's class
 name; a row is never dropped. A row that no longer passes the contract is held back the same
-way, alone, so it cannot stop the rows behind it. A separate process rather than a Procrastinate job (plan E1): a
-periodic job runs at most once a minute, and US-02 AC11 gives the whole pipeline 3 minutes.
+way, alone, so it cannot stop the rows behind it.
+
+A separate process rather than a Procrastinate job (plan E1): a periodic job runs at most once a
+minute, and US-02 AC11 gives the whole pipeline 3 minutes.
 
 Logs hold counts and class names only, never an event (ADR-0013).
 """
