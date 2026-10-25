@@ -7,6 +7,8 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 Task = Literal["grade"]
+# The providers a call can go to (CHECK provider_known on llm_call).
+ProviderName = Literal["anthropic", "fake"]
 TASKS: tuple[Task, ...] = ("grade",)
 
 
@@ -46,7 +48,7 @@ class AdapterResult:
 class LlmResult:
     text: str
     llm_call_id: uuid.UUID
-    provider: str
+    provider: ProviderName
     model: str
 
 
@@ -63,7 +65,7 @@ class Adapter(Protocol):
     """One provider. Makes exactly one request per `complete` (no retries of its own)."""
 
     @property
-    def provider(self) -> str: ...
+    def provider(self) -> ProviderName: ...
 
     # A model the adapter always uses, whatever the task table says (the fake), or None.
     @property

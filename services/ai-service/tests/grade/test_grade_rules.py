@@ -87,8 +87,21 @@ def test_r03_3_anchors_used_are_among_those_sent(anchors: list[str]) -> None:
     assert violation(output(anchors_used=anchors)) == "anchors_used"
 
 
-def test_r03_3_no_anchors_used_is_allowed() -> None:
-    assert check_output(output(anchors_used=[]), LABELS).anchors_used == []
+@pytest.mark.parametrize("anchors", [[], ["U2.A1"]], ids=["none", "only-of-the-wrong-unit"])
+def test_r03_3b_a_right_answer_names_a_source_of_a_right_unit(anchors: list[str]) -> None:
+    # Red when: a correct or partial result links to no source of what it judged right, and
+    # the result screen has nothing to show under "nguồn" (AC2; review 🟡1, rule 3b).
+    assert violation(output(anchors_used=anchors)) == "anchors_used"
+
+
+def test_r03_3b_a_wrong_answer_may_name_no_source() -> None:
+    units = [{"unit": "U1", "verdict": "incorrect"}, {"unit": "U2", "verdict": "incorrect"}]
+    outcome = check_output(output(units=units, anchors_used=[], understanding=None), LABELS)
+    assert (outcome.overall, outcome.anchors_used) == ("incorrect", [])
+
+
+def test_r03_3b_one_source_of_a_right_unit_is_enough() -> None:
+    assert len(check_output(output(anchors_used=["U1.A2"]), LABELS).anchors_used) == 1
 
 
 # Rule 4: overall is derived by the code.

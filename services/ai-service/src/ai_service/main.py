@@ -10,7 +10,7 @@ from ai_service.db.session import get_session_factory
 from ai_service.llm.client import LlmClient, build_adapter
 from ai_service.logging import configure_logging, log_requests
 from ai_service.security import require_service_token
-from ai_service.tasks.grade import fake_grade
+from ai_service.tasks.grade import fake_grade, load_prompt
 from ai_service.telemetry import configure_tracing
 
 
@@ -19,6 +19,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Settings are validated here: a bad provider or an unpriced model stops the startup.
     settings = get_settings()
     configure_logging("ai-service", settings.log_level)
+    # A missing prompt file stops the startup instead of failing the first grade.
+    load_prompt()
     adapter = build_adapter(settings, {"grade": fake_grade})
     app.state.llm_client = (
         None

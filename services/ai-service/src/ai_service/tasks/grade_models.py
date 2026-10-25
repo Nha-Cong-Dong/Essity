@@ -20,6 +20,9 @@ MAX_MISSING_ITEMS = 3
 MAX_MISSING_CHARS = 200
 
 Verdict = Literal["correct", "partial", "incorrect"]
+# Who graded: a model's provider, the fake grader, or nobody (empty answer). core decides
+# on this value (R41), so nothing else may leave the service.
+Provider = Literal["anthropic", "fake", "none"]
 
 
 def _not_blank(text: str) -> str:
@@ -85,7 +88,7 @@ class UnitVerdict(_Strict):
 
 class GradeResponse(_Strict):
     # "fake" from the fake grader; "none" when no model was asked (empty answer).
-    provider: str
+    provider: Provider
     model: str | None
     prompt_version: str
     run_id: uuid.UUID

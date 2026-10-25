@@ -43,6 +43,7 @@ from ai_service.tasks.grade_models import (
     GradeRequest,
     GradeResponse,
     GradeUnit,
+    Provider,
     UnitVerdict,
     Verdict,
 )
@@ -271,6 +272,13 @@ def check_output(text: str, labels: Labels) -> GradeOutcome:
     ordered: list[Verdict] = [verdicts[label] for label in labels.units]
     overall = derive_overall(ordered)
 
+    # 3b: a result that is not incorrect names at least one source of a unit it judged
+    # correct or partial, so the result screen can link to it (AC2; review 🟡1).
+    if overall != "incorrect" and not any(
+        verdicts[label.partition(".")[0]] != "incorrect" for label in anchors
+    ):
+        raise OutputViolation("anchors_used")
+
     # 5: understanding 1..3 when right, null when wrong (core's understanding_when_right).
     understanding = parsed.understanding
     if overall == "incorrect":
@@ -398,7 +406,7 @@ def _response(
     run_id: uuid.UUID,
     prompt: Prompt,
     *,
-    provider: str,
+    provider: Provider,
     model: str | None,
     call: uuid.UUID | None,
 ) -> GradeResponse:

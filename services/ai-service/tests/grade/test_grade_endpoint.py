@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from ai_service.api.grade import MAX_BODY_BYTES, get_audit_sessions, get_llm_client
 from ai_service.db.models import LlmCall, PipelineRun
 from ai_service.llm.client import LlmClient
-from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError
+from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError, ProviderName
 from ai_service.logging import configure_logging
 from ai_service.main import create_app
 from ai_service.security import SERVICE_TOKEN_HEADER
@@ -43,7 +43,7 @@ BAD = '{"units": [], "missing": [], "anchors_used": [], "understanding": null, "
 class Scripted:
     """Answers each call with the next scripted text, or raises the scripted error."""
 
-    provider = "anthropic"
+    provider: ProviderName = "anthropic"
     fixed_model: str | None = None
     params: dict[str, Any] = {}
 
@@ -250,6 +250,37 @@ def test_r03_retry_once_then_success(
     assert [c.attempt for c in calls] == [1, 2]
     assert response.json()["llm_call_id"] == str(calls[1].id)
     assert [r.attempt for r in adapter.requests] == [1, 2]
+
+
+NO_SOURCE = json.dumps(
+    {
+        "units": [{"unit": "U1", "verdict": "correct"}],
+        "missing": [],
+        "anchors_used": [],
+        "understanding": 3,
+    }
+)
+
+
+def test_r03_3b_right_grade_without_a_source_is_retried_then_502(
+    app: FastAPI, sessions: sessionmaker[Session], engine: Engine
+) -> None:
+    # Review 🟡1: a "correct" that names no source is a violation like the others.
+    body = grade_body()
+    response = client_with(app, Scripted(NO_SOURCE, NO_SOURCE), sessions).post(
+        "/v1/grade", json=body
+    )
+    assert (response.status_code, response.json()) == (502, {"code": "grade_invalid"})
+    assert [c.attempt for c in calls_of(engine, body["user_id"])] == [1, 2]
+
+
+def test_r03_3b_retry_with_a_source_passes(
+    app: FastAPI, sessions: sessionmaker[Session], engine: Engine
+) -> None:
+    body = grade_body()
+    response = client_with(app, Scripted(NO_SOURCE, GOOD), sessions).post("/v1/grade", json=body)
+    assert response.status_code == 200
+    assert response.json()["anchors_used"] == [body["units"][0]["anchors"][0]["anchor_id"]]
 
 
 def test_o4_bad_output_then_provider_error_keeps_every_row(

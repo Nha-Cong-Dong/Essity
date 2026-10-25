@@ -15,8 +15,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from ai_service.main import create_app
 from ai_service.tasks import grade
 from ai_service.tasks.grade import (
     OUTPUT_SCHEMA,
@@ -25,7 +27,7 @@ from ai_service.tasks.grade import (
     load_prompt,
     wrap_untrusted,
 )
-from ai_service.tasks.grade_models import GradeRequest
+from ai_service.tasks.grade_models import GradeRequest, GradeResponse
 from tests.grade.helpers import anchor, grade_body, unit
 
 SRC = Path(grade.__file__).resolve().parents[1]
@@ -280,3 +282,48 @@ def test_f_output_schema_is_the_same_for_every_request() -> None:
     )
     labels = OUTPUT_SCHEMA["properties"]["units"]["items"]["properties"]["unit"]["enum"]
     assert labels == ["U1", "U2", "U3", "U4", "U5"]
+
+
+# --- Review of T2.12 ---------------------------------------------------------------------
+
+
+def response_with(provider: str) -> GradeResponse:
+    return GradeResponse.model_validate(
+        {
+            "provider": provider,
+            "model": None,
+            "prompt_version": "v1",
+            "run_id": str(uuid.uuid4()),
+            "llm_call_id": None,
+            "overall": "incorrect",
+            "understanding": None,
+            "missing": ["x"],
+            "units": [],
+            "anchors_used": [],
+        }
+    )
+
+
+@pytest.mark.parametrize("provider", ["anthropic", "fake", "none"])
+def test_t212_response_provider_is_one_core_knows(provider: str) -> None:
+    assert response_with(provider).provider == provider
+
+
+def test_t212_response_provider_outside_the_list_is_refused() -> None:
+    # Review 🟡2: core decides on `provider` (R41: fake outside dev is grade_invalid); a value
+    # it does not know must never leave this service.
+    with pytest.raises(ValidationError):
+        response_with("openai")
+
+
+def test_t212_missing_prompt_stops_the_startup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Review 🟢1: an image without prompts/ fails at startup, not at the first grade.
+    monkeypatch.setattr(grade, "_PROMPTS", tmp_path)
+    load_prompt.cache_clear()
+    try:
+        with pytest.raises(FileNotFoundError), TestClient(create_app()):
+            pass
+    finally:
+        load_prompt.cache_clear()

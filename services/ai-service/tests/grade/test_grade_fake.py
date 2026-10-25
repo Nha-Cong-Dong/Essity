@@ -205,6 +205,8 @@ def test_t212_injection_in_the_answer_changes_nothing_with_the_fake(fake_app: Te
     plain = fake_app.post("/v1/grade", json=seed_body(SEEDS[1])).json()
     injected = fake_app.post("/v1/grade", json=seed_body(SEEDS[7])).json()
     assert (plain["overall"], injected["overall"]) == ("incorrect", "incorrect")
+    assert [u["verdict"] for u in injected["units"]] == [u["verdict"] for u in plain["units"]]
+    assert (plain["anchors_used"], injected["anchors_used"]) == ([], [])
 
 
 TEN_WORDS = "alpha bravo charlie delta echo foxtrot golf hotel india juliet"

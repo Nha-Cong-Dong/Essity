@@ -25,7 +25,7 @@ from ai_service.llm.client import (
 )
 from ai_service.llm.fake_adapter import FakeAdapter
 from ai_service.llm.pricing import FAKE_MODEL, UnknownModelPriceError
-from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError
+from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError, ProviderName
 from tests.llm.helpers import FAKE_KEY, answering, failing, make_request
 
 MODEL = "claude-haiku-5-5"
@@ -77,7 +77,7 @@ def fake_client(sessions: sessionmaker[Session], **kwargs: Any) -> LlmClient:
 class Scripted:
     """An adapter that answers with the next scripted result, or raises it."""
 
-    provider = "anthropic"
+    provider: ProviderName = "anthropic"
     fixed_model: str | None = None
     params: dict[str, Any] = {}
 

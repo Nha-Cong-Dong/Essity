@@ -16,13 +16,13 @@ from typing import Any
 import anthropic
 import httpx2
 
-from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError
+from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError, ProviderName
 
 MAX_TOKENS = 800
 
 
 class AnthropicAdapter:
-    provider = "anthropic"
+    provider: ProviderName = "anthropic"
     fixed_model: str | None = None
 
     @property

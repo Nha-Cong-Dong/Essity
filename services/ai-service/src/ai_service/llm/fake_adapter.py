@@ -8,13 +8,13 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from ai_service.llm.pricing import FAKE_MODEL
-from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError
+from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError, ProviderName
 
 Responder = Callable[[LlmRequest], str]
 
 
 class FakeAdapter:
-    provider = "fake"
+    provider: ProviderName = "fake"
     fixed_model: str | None = FAKE_MODEL
     params: dict[str, Any] = {}  # never mutated
 

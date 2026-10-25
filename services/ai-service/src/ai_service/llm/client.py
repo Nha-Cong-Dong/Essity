@@ -22,7 +22,14 @@ from ai_service.db.session import SessionFactory
 from ai_service.llm.anthropic_adapter import AnthropicAdapter
 from ai_service.llm.fake_adapter import FakeAdapter, Responder
 from ai_service.llm.pricing import Price, cost_usd, price_for
-from ai_service.llm.types import Adapter, AdapterResult, LlmRequest, LlmResult, ProviderError
+from ai_service.llm.types import (
+    Adapter,
+    AdapterResult,
+    LlmRequest,
+    LlmResult,
+    ProviderError,
+    ProviderName,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -61,7 +68,7 @@ class LlmClient:
         self._quota_guard = quota_guard or QuotaGuard()
 
     @property
-    def provider(self) -> str:
+    def provider(self) -> ProviderName:
         return self._adapter.provider
 
     def call(self, request: LlmRequest, *, deadline: float) -> LlmResult:
