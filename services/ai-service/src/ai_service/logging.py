@@ -94,6 +94,14 @@ ALLOWED_FIELDS = frozenset(
         "ip_hash",  # keyed hash, never the IP itself
         "llm_call_id",  # ai-service: the audit row holding the call itself (ADR-0013)
         "provider",  # anthropic | fake
+        # Events (T4.2 outbox relay, T4.4 consumer): ids, counts and class names, never a payload.
+        "event_id",
+        "event_type",
+        "event_count",
+        "error_type",  # exception class name only
+        "deliveries",
+        "reason",  # dead letter: exception class name, invalid_envelope or unknown_type
+        "outbox_unsent_stale",  # job_health (plan Y8)
     }
 )
 # Top-level logger names; see the module docstring.
