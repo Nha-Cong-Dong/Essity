@@ -113,8 +113,9 @@ def test_t213_a_valid_answer_passes() -> None:
         {"units": [{"unit_id": str(U1), "verdict": "correct"}]},
         {
             "units": [
+                # U1 twice, overall still consistent: only the duplicate rule refuses it.
                 {"unit_id": str(U1), "verdict": "correct"},
-                {"unit_id": str(U1), "verdict": "incorrect"},
+                {"unit_id": str(U1), "verdict": "correct"},
                 {"unit_id": str(U2), "verdict": "incorrect"},
             ]
         },
