@@ -17,8 +17,10 @@ How a request becomes a prompt:
 import hashlib
 import json
 import logging
+import re
 import secrets
 import time
+import unicodedata
 import uuid
 from contextlib import suppress
 from dataclasses import dataclass
@@ -450,3 +452,60 @@ def _finish_run(sessions: SessionFactory, run_id: uuid.UUID, error_code: str | N
     except Exception as error:
         _log.exception("pipeline_run not closed")
         raise AuditUnavailableError from error
+
+
+# --- The fake grader (AI_LLM_PROVIDER=fake: local and test only) --------------------------
+
+_WORD = re.compile(r"\w+")
+
+
+def _words(text: str) -> set[str]:
+    """NFC, casefold, \\w+ words of 2 characters or more."""
+    normalized = unicodedata.normalize("NFC", text).casefold()
+    return {word for word in _WORD.findall(normalized) if len(word) >= 2}
+
+
+def _fake_verdict(answer_words: set[str], source_words: set[str]) -> Verdict:
+    if not source_words:
+        return "incorrect"
+    coverage = len(answer_words & source_words) / len(source_words)
+    if coverage >= 0.5:
+        return "correct"
+    if coverage >= 0.2:
+        return "partial"
+    return "incorrect"
+
+
+def fake_grade(request: LlmRequest) -> str:
+    """A deterministic grade from word coverage, shaped like a model's output (PLAN T2.10).
+
+    A unit is correct when the answer has at least half the words of its sources, partial from
+    a fifth. Its output goes through the same R03 checks as a model's.
+    """
+    payload = request.payload
+    answer_words = _words(payload["answer"])
+    units: list[dict[str, Any]] = payload["units"]
+    verdicts: list[Verdict] = [
+        _fake_verdict(answer_words, _words(" ".join(s["text"] for s in unit["sources"])))
+        for unit in units
+    ]
+    overall = derive_overall(verdicts)
+    wrong = [unit["title"] for unit, v in zip(units, verdicts, strict=True) if v == "incorrect"]
+    partial = [unit["title"] for unit, v in zip(units, verdicts, strict=True) if v == "partial"]
+    return json.dumps(
+        {
+            "units": [
+                {"unit": unit["label"], "verdict": verdict}
+                for unit, verdict in zip(units, verdicts, strict=True)
+            ],
+            "missing": missing_points(wrong + partial),
+            "anchors_used": [
+                source["label"]
+                for unit, verdict in zip(units, verdicts, strict=True)
+                if verdict != "incorrect"
+                for source in unit["sources"]
+            ],
+            "understanding": {"correct": 3, "partial": 2, "incorrect": None}[overall],
+        },
+        ensure_ascii=False,
+    )
