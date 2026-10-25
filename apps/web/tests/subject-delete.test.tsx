@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // T2.3b: deleting a subject from /subjects (us-01 AC8). Flow: PLAN T2.3b; design: plan F7, F9
-// (design-director and design-critic, flow-expert). Every new sentence is a placeholder (R09).
+// (design-director and design-critic, flow-expert). Its sentences were placeholders (R09) until
+// the user approved them on 25/10 (T2.3c).
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -228,19 +229,20 @@ describe("SubjectList delete (T2.3b, us-01 AC8)", () => {
     await waitFor(() => expect(go).toHaveBeenCalledWith("/login"));
   });
 
-  it("R09: every new sentence carries data-copy=\"tam\" in the page", async () => {
+  // The user approved the six strings on 25/10 (T2.3c plan G2): none is a placeholder any more.
+  it("R09: the approved sentences carry no data-copy=\"tam\" in the page", async () => {
     fakeWeb(empty204);
     render(<SubjectList subjects={[MMT, { ...HDH, has_history: true }]} example={EXAMPLE} />);
     openEdit(HDH.name);
-    expect(screen.getByText(HAS_HISTORY).getAttribute("data-copy")).toBe("tam");
+    expect(screen.getByText(HAS_HISTORY).getAttribute("data-copy")).toBeNull();
     openEdit(MMT.name);
-    expect(deleteButton(row(MMT.name)).getAttribute("data-copy")).toBe("tam");
+    expect(deleteButton(row(MMT.name)).getAttribute("data-copy")).toBeNull();
     fireEvent.click(deleteButton(row(MMT.name)));
-    expect(screen.getByText(CONFIRM).getAttribute("data-copy")).toBe("tam");
-    expect(deleteButton(screen.getByRole("group")).getAttribute("data-copy")).toBe("tam");
-    expect(keepButton().getAttribute("data-copy")).toBe("tam");
+    expect(screen.getByText(CONFIRM).getAttribute("data-copy")).toBeNull();
+    expect(deleteButton(screen.getByRole("group")).getAttribute("data-copy")).toBeNull();
+    expect(keepButton().getAttribute("data-copy")).toBeNull();
     fireEvent.click(deleteButton(screen.getByRole("group")));
-    expect((await screen.findByText(DELETED)).getAttribute("data-copy")).toBe("tam");
+    expect((await screen.findByText(DELETED)).getAttribute("data-copy")).toBeNull();
   });
 });
 

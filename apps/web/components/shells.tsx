@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { MainNav, type NavItem } from "@/components/main-nav";
 import { cn } from "@/lib/utils";
 
 // The three frames of design system v3.1 §5. Header and content share one container, so the
@@ -7,13 +8,7 @@ import { cn } from "@/lib/utils";
 
 const CONTAINER = "mx-auto w-full max-w-(--page-max) px-(--page-gutter)";
 
-const NAV = [
-  { href: "/today", label: "Hôm nay" },
-  { href: "/subjects", label: "Môn học" },
-  // "Tiến độ" stays hidden until US-10 is built (M5).
-] as const;
-
-export type NavItem = (typeof NAV)[number]["href"];
+export type { NavItem } from "@/components/main-nav";
 
 function Logo() {
   return <span className="font-display text-logo text-hong">Essity</span>;
@@ -35,23 +30,9 @@ export function AppShell({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="sticky top-0 z-(--z-header) border-b border-line bg-bg">
-        <div className={cn(CONTAINER, "flex h-(--header-h) items-center gap-2 min-[401px]:gap-4 min-[901px]:gap-10")}>
+        <div className={cn(CONTAINER, "flex h-(--header-h) items-center gap-2 max-[360px]:gap-1 min-[401px]:gap-4 min-[901px]:gap-10")}>
           <Logo />
-          <nav aria-label="Chính" className="flex min-w-0 gap-1 overflow-x-auto">
-            {NAV.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                aria-current={item.href === current ? "page" : undefined}
-                className={cn(
-                  "flex h-10 shrink-0 items-center rounded-full px-2.5 text-body font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink min-[401px]:px-3 min-[901px]:px-4",
-                  "aria-[current=page]:bg-ink aria-[current=page]:font-semibold aria-[current=page]:text-bg",
-                )}
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
+          <MainNav current={current} />
           <div className="ml-auto flex min-w-10 justify-end">{account}</div>
         </div>
       </header>

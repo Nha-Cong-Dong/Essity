@@ -3,8 +3,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
-import { Marker } from "@/components/notebook";
 import { AppShell } from "@/components/shells";
+import { SubjectsLoading } from "@/components/subjects/subjects-frame";
 import { Subjects } from "@/components/subjects/subjects-loader";
 import { exampleFor } from "@/lib/exam-date";
 import { requireVerifiedSession } from "@/lib/session";
@@ -22,24 +22,10 @@ async function SignedInSubjects() {
 export default function SubjectsPage() {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <div className="mx-auto flex w-full max-w-220 flex-col">
-        <h1 className="m-0 mb-8 font-display text-title">
-          <Marker>Môn học</Marker>
-        </h1>
-        <Suspense
-          fallback={
-            <div aria-busy="true" className="flex flex-col gap-4">
-              <div className="h-20 rounded-sheet bg-sunken" />
-              <div className="h-20 rounded-sheet bg-sunken" />
-              <p className="sr-only" role="status">
-                Đang tải danh sách môn.
-              </p>
-            </div>
-          }
-        >
-          <SignedInSubjects />
-        </Suspense>
-      </div>
+      {/* Each state draws the frame and its title, so "Tạo môn" can share the title's row (T2.3c plan G15). */}
+      <Suspense fallback={<SubjectsLoading />}>
+        <SignedInSubjects />
+      </Suspense>
     </AppShell>
   );
 }
