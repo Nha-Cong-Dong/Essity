@@ -104,6 +104,13 @@ def _attempt_out(attempt: Attempt) -> AttemptOut:
     )
 
 
+def _finished(session_id: uuid.UUID, user_id: uuid.UUID, session: DbSession) -> bool:
+    answered, total = session_counts(
+        ReviewSessionItemRepository(session, user_id).progress(session_id)
+    )
+    return answered == total
+
+
 @router.post("/review-sessions", status_code=status.HTTP_201_CREATED)
 def start_session(
     body: StartIn, user: VerifiedUser, session: DbSession, now: Now, response: Response
@@ -113,6 +120,13 @@ def start_session(
     sessions = ReviewSessionRepository(session, user.id)
     items = ReviewSessionItemRepository(session, user.id)
     found = sessions.open_on(day)
+    if found is not None and _finished(found.id, user.id, session):
+        # Every question answered, but "stop" never came (the tab closed): close it as completed,
+        # so it does not hold today's one open slot (review #21).
+        held = sessions.hold_for_update(found.id)
+        if held is not None and held.ended_at is None and _finished(found.id, user.id, session):
+            sessions.end(found.id, now, reason="completed")
+        found = None
     if found is None:
         listed = SubjectRepository(session, user.id).list_with_exams()
         exams = {subject.id: exam.exam_date for subject, exam, _ in listed}

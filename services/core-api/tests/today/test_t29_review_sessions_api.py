@@ -285,9 +285,7 @@ def test_t29_answer_text_not_logged(
 
 # US-03 / DESIGN §6.3: an open session today turns "Bắt đầu" into "Tiếp tục" with "7/14". Red
 # when: /v1/today does not report the session, or reports one from an earlier learning day.
-def test_t28_today_reports_the_session_in_progress(
-    client: TestClient, db_session: Session
-) -> None:
+def test_t28_today_reports_the_session_in_progress(client: TestClient, db_session: Session) -> None:
     _, headers, _ = ready(db_session, 2)
     session_id = start(client, headers).json()["id"]
     attempt_id = open_attempt(client, headers, session_id).json()["id"]
@@ -297,3 +295,18 @@ def test_t28_today_reports_the_session_in_progress(
     assert body["in_progress"] == {"session_id": session_id, "position": 2, "total": 2}
     client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers)
     assert client.get("/v1/today", headers=headers).json()["in_progress"] is None
+
+
+# Review #21 🟠. Red when: a session whose every question is answered, left open because the tab
+# closed before "stop", keeps today's one open slot, so "Bắt đầu" returns the finished session.
+def test_t29_a_finished_open_session_does_not_block_a_new_one(
+    client: TestClient, db_session: Session
+) -> None:
+    _, headers, _ = ready(db_session, 1)
+    first = start(client, headers).json()["id"]
+    attempt_id = open_attempt(client, headers, first).json()["id"]
+    submit(client, headers, attempt_id, "x")  # the tab closes here, before stop
+    again = start(client, headers)
+    assert again.status_code == 201, again.text
+    assert again.json()["id"] != first
+    assert current(client, headers, first) == {"done": True}

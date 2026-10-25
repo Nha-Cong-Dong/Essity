@@ -23,7 +23,7 @@ function Heading({ day }: { day: string }) {
 
 function SubjectsTile({ subjects }: { subjects: Today["subjects"] }) {
   return (
-    <Sheet variant="tile" className="min-[901px]:col-span-4" aria-labelledby="today-subjects">
+    <Sheet variant="tile" className="min-w-0 min-[901px]:col-span-4" aria-labelledby="today-subjects">
       <h2 id="today-subjects" className="m-0 font-display text-lead">
         {TODAY_COPY.subjectsTile}
       </h2>
@@ -44,7 +44,7 @@ function HongTile({ children }: { children: React.ReactNode }) {
     <Sheet
       variant="tile"
       tone="hong"
-      className="relative flex min-h-80 flex-col gap-3 min-[901px]:col-span-8 min-[901px]:row-span-2"
+      className="relative flex min-h-80 min-w-0 flex-col gap-3 min-[901px]:col-span-8 min-[901px]:row-span-2"
     >
       <Sticker icon="moon" className="top-7 right-8" />
       {children}
@@ -57,7 +57,7 @@ function QuietTile({ children }: { children: React.ReactNode }) {
     <Sheet
       variant="tile"
       tone="rose"
-      className="flex min-h-60 flex-col justify-end gap-3 min-[901px]:col-span-8 min-[901px]:row-span-2"
+      className="flex min-h-60 min-w-0 flex-col justify-end gap-3 min-[901px]:col-span-8 min-[901px]:row-span-2"
     >
       {children}
     </Sheet>
@@ -94,7 +94,8 @@ function Session({ today }: { today: Today }) {
           <span className="font-display text-mega">{question_count}</span>
           <span className="text-lead">{TODAY_COPY.questions}</span>
         </p>
-        <p className="m-0 text-read">
+        {/* A subject name may be one long word (CSDL_nâng_cao_…): it wraps, never widens the page. */}
+        <p className="m-0 text-read wrap-anywhere">
           khoảng {minutes} phút · {subjects.map((subject) => subject.name).join(", ")}
         </p>
         <div className="mt-4">
@@ -156,10 +157,10 @@ export function TodayScreen({ today }: { today: Today }) {
         {today.backlog && (
           <Sheet
             variant="tile"
-            className="flex flex-wrap items-center justify-between gap-5 min-[901px]:col-span-12"
+            className="flex min-w-0 flex-wrap items-center justify-between gap-5 min-[901px]:col-span-12"
             aria-label="Lịch ôn trước kỳ thi"
           >
-            <p data-copy="tam" className="m-0 text-read">
+            <p data-copy="tam" className="m-0 text-read wrap-anywhere">
               Để kịp thi {today.backlog.subject_name} cần thêm khoảng{" "}
               {extraSessions(today.backlog.sessions, today.backlog.days)} phiên trong{" "}
               {today.backlog.days} ngày.
