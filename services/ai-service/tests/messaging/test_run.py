@@ -1,0 +1,149 @@
+"""T4.3: the consumer process: `python -m ai_service.messaging.consumer`."""
+
+import threading
+from typing import Any
+
+import pytest
+from redis import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
+from sqlalchemy.orm import Session, sessionmaker
+
+from ai_service.handlers import HANDLERS
+from ai_service.messaging import consumer as consumer_module
+from ai_service.messaging.consumer import Consumer, run
+from tests.messaging.conftest import Names
+from tests.messaging.helpers import DOCUMENT_UPLOADED, Recorder, publish, uploaded
+from tests.messaging.test_consumer import make_consumer
+
+# What core-api sends ai-service (contracts/events/README.md, "On the wire").
+CORE_TO_AI = {
+    "document.uploaded.v1",
+    "session.confirmed.v1",
+    "grade.requested.v1",
+    "user.deleted.v1",
+}
+
+
+class FakeStop:
+    """A stop event that records how long the loop asked to wait, and never really waits."""
+
+    def __init__(self, rounds: int) -> None:
+        self.rounds = rounds
+        self.waits: list[float] = []
+
+    def is_set(self) -> bool:
+        return self.rounds <= 0
+
+    def wait(self, timeout: float | None = None) -> bool:
+        self.waits.append(timeout or 0.0)
+        return False
+
+    def tick(self) -> None:
+        self.rounds -= 1
+
+
+class Scripted(Consumer):
+    """A consumer whose rounds follow a script: an outcome list, or an exception to raise."""
+
+    def __init__(self, script: list[Any], stop: FakeStop, **options: Any) -> None:
+        super().__init__(**options)
+        self.script = script
+        self.stop = stop
+        self.groups = 0
+
+    def ensure_group(self) -> None:
+        self.groups += 1
+
+    def run_once(self) -> list[str]:
+        self.stop.tick()
+        step = self.script.pop(0)
+        if isinstance(step, Exception):
+            raise step
+        return step
+
+
+def scripted(
+    redis_client: Redis, session_factory: sessionmaker[Session], script: list[Any]
+) -> tuple[Scripted, FakeStop]:
+    stop = FakeStop(len(script))
+    options: dict[str, Any] = {"redis": redis_client, "session_factory": session_factory}
+    return Scripted(script, stop, handlers={}, **options), stop
+
+
+def test_t43_run_backs_off_on_round_errors_and_recovers(
+    redis_client: Redis, session_factory: sessionmaker[Session]
+) -> None:
+    # Review: a round that raises (Redis down, an XACK lost) must not end the process nor spin.
+    down = RedisConnectionError("Connection refused")
+    consumer, stop = scripted(
+        redis_client, session_factory, [down, down, down, ["processed"], down]
+    )
+    run(consumer, stop)  # pyright: ignore[reportArgumentType]
+    assert stop.waits == [1.0, 2.0, 4.0, 1.0]  # grows while failing, starts over after a success
+
+
+def test_t43_run_backs_off_while_infrastructure_is_unavailable(
+    redis_client: Redis, session_factory: sessionmaker[Session]
+) -> None:
+    # Review 🟠1: entries put back for an outage come back after min_idle; meanwhile, new ones
+    # would fail the same way, so the loop slows down too.
+    rounds = [["unavailable"], ["unavailable", "processed"], ["processed"], []]
+    consumer, stop = scripted(redis_client, session_factory, rounds)
+    run(consumer, stop)  # pyright: ignore[reportArgumentType]
+    assert stop.waits == [1.0, 2.0]
+
+
+def test_t43_run_backoff_is_capped(
+    redis_client: Redis, session_factory: sessionmaker[Session]
+) -> None:
+    down = RedisConnectionError("Connection refused")
+    consumer, stop = scripted(redis_client, session_factory, [down] * 10)
+    run(consumer, stop)  # pyright: ignore[reportArgumentType]
+    assert max(stop.waits) == consumer_module.MAX_PAUSE_S
+
+
+def test_t43_run_retries_creating_the_group(
+    redis_client: Redis, session_factory: sessionmaker[Session]
+) -> None:
+    consumer, stop = scripted(redis_client, session_factory, [["processed"]])
+    run(consumer, stop)  # pyright: ignore[reportArgumentType]
+    assert consumer.groups == 1
+
+
+def test_t43_run_handles_events_until_stopped(
+    redis_client: Redis, names: Names, session_factory: sessionmaker[Session]
+) -> None:
+    event = uploaded()
+    publish(redis_client, names.stream, event)
+    handled = threading.Event()
+
+    class Signalling(Recorder):
+        def __call__(self, session: Session, event: Any) -> None:
+            super().__call__(session, event)
+            handled.set()
+
+    consumer = make_consumer(
+        redis_client, names, session_factory, {DOCUMENT_UPLOADED: Signalling()}, block_ms=100
+    )
+    stop = threading.Event()
+    thread = threading.Thread(target=run, args=(consumer, stop))
+    thread.start()
+    try:
+        assert handled.wait(5)
+    finally:
+        stop.set()
+        thread.join(5)
+    assert not thread.is_alive()
+
+
+def test_t43_main_without_redis_url_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Review 🟢12: fail closed rather than run without a queue.
+    monkeypatch.delenv("AI_REDIS_URL", raising=False)
+    with pytest.raises(SystemExit) as exit_info:
+        consumer_module.main()
+    assert exit_info.value.code not in (0, None)
+
+
+def test_t43_handlers_only_for_events_core_sends() -> None:
+    # T4.7 fills the registry; a handler for an event ai-service itself sends would never run.
+    assert set(HANDLERS) <= CORE_TO_AI

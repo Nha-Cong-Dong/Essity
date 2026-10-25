@@ -23,11 +23,14 @@ Same pattern as core-api's consumer (T4.4) but not shared by import (ADR-0003, P
 
 import json
 import logging
+import signal
 import socket
+import sys
+import threading
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from types import UnionType
-from typing import Annotated, Any, Union, cast, get_args, get_origin
+from typing import Annotated, Any, Protocol, Union, cast, get_args, get_origin
 
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind, StatusCode
@@ -52,6 +55,7 @@ from ai_service.messaging.dead_letter import (
 from ai_service.messaging.envelope import OBJECT_KEY_PATTERN, Event, parse_event
 from ai_service.messaging.idempotency import claim, was_processed
 
+SERVICE = "ai-consumer"
 STREAM = "events.core"
 # Also the `consumer` column of `processed_event`.
 GROUP = "ai-service"
@@ -64,7 +68,11 @@ MAX_ATTEMPTS = 5
 MIN_IDLE_MS = 60_000
 BACKOFF_BASE_MS = 5_000
 BATCH = 10
+# A blocking read; the Redis client's socket timeout (5 s) must stay above it.
 BLOCK_MS = 1_000
+# The loop's own pause after rounds that failed, doubling up to the cap.
+PAUSE_S = 1.0
+MAX_PAUSE_S = 30.0
 
 Handler = Callable[[Session, Event], None]
 """Handles one event inside the consumer's transaction.
@@ -422,3 +430,75 @@ class Consumer:
             self.redis.xpending_range(self.stream, self.group, min=entry_id, max=entry_id, count=1),
         )
         return int(rows[0]["times_delivered"]) if rows else 1
+
+
+class StopSignal(Protocol):
+    def is_set(self) -> bool: ...
+    def wait(self, timeout: float | None = None) -> bool: ...
+
+
+def pause_s(failures: int) -> float:
+    """How long the loop waits after `failures` bad rounds in a row: 1, 2, 4, ... 30 s."""
+    return min(PAUSE_S * 2 ** (failures - 1), MAX_PAUSE_S)
+
+
+def run(consumer: Consumer, stop: StopSignal) -> None:
+    """Consume until `stop` is set; each round blocks for at most `block_ms`.
+
+    A round that raises (Redis or the database down, an acknowledgement lost) or that found the
+    infrastructure unavailable is logged, and the loop slows down until a round goes well: it
+    neither ends the process nor spins against a server that is down.
+    """
+    grouped = False
+    failures = 0
+    while not stop.is_set():
+        try:
+            if not grouped:
+                consumer.ensure_group()
+                grouped = True
+            outcomes = consumer.run_once()
+        except Exception:  # logged as class and stack, without the message (ADR-0013)
+            _log.exception("event consumer round failed")
+            failures += 1
+        else:
+            failures = failures + 1 if "unavailable" in outcomes else 0
+        if failures:
+            stop.wait(pause_s(failures))
+
+
+def install_signal_handlers(stop: threading.Event) -> None:
+    """SIGTERM (docker stop) and SIGINT end the loop after the current round."""
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, lambda signum, frame: stop.set())
+
+
+def main() -> None:
+    from ai_service.clients.redis import redis_from_url
+    from ai_service.config import get_settings
+    from ai_service.db.session import get_session_factory
+    from ai_service.handlers import HANDLERS
+    from ai_service.logging import configure_logging
+    from ai_service.telemetry import configure_tracing
+
+    settings = get_settings()
+    if settings.redis_url is None:
+        sys.exit("AI_REDIS_URL is not set: the event consumer needs Redis")
+    configure_logging(SERVICE, settings.log_level)
+    provider = configure_tracing(SERVICE)
+    consumer = Consumer(
+        redis=redis_from_url(settings.redis_url.get_secret_value()),
+        session_factory=get_session_factory(),
+        handlers=HANDLERS,
+    )
+    stop = threading.Event()
+    install_signal_handlers(stop)
+    _log.info("consumer starting")
+    try:
+        run(consumer, stop)
+    finally:
+        provider.shutdown()
+        _log.info("consumer stopped")
+
+
+if __name__ == "__main__":
+    main()
