@@ -108,6 +108,8 @@ jobs:
     env:
       CORE_TEST_DATABASE_URL: postgresql+psycopg://core:ci-only-password@localhost:5432/core_test
       CORE_TEST_REDIS_URL: redis://localhost:6379/15
+      # ai-service's tests use a database of their own on the same server (T2.10).
+      AI_TEST_DATABASE_URL: postgresql+psycopg://core:ci-only-password@localhost:5432/ai_test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -128,6 +130,15 @@ jobs:
         env:
           CORE_DATABASE_URL: ${{ env.CORE_TEST_DATABASE_URL }}
         run: |
+          uv run alembic upgrade head
+          uv run alembic check
+      - name: Migrations on an empty database
+        if: matrix.service == 'ai-service'
+        env:
+          AI_DATABASE_URL: ${{ env.AI_TEST_DATABASE_URL }}
+          PGPASSWORD: ci-only-password
+        run: |
+          psql -h localhost -U core -d core_test -c "CREATE DATABASE ai_test"
           uv run alembic upgrade head
           uv run alembic check
       - run: uv run pytest
