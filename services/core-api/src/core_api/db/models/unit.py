@@ -55,7 +55,8 @@ class KnowledgeUnit(UserOwned, Base):
 class Anchor(UserOwned, Base):
     """Where a unit comes from, down to the characters (ADR-0008, fine-grained from the start).
 
-    `document_id` and `section_id` arrive with the document tables (T4.5, T4.15).
+    `document_id` (with a CHECK that a document anchor has its page) and `section_id` arrive
+    with the first task that writes document anchors (T4.13/T4.15), not with `document` (T4.5).
     """
 
     __tablename__ = "anchor"

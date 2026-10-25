@@ -48,9 +48,9 @@ def short_name(filename: str) -> str:
     """
     name = unicodedata.normalize("NFC", filename).strip()
     if not name.lower().endswith(".pdf"):
-        raise UnsupportedFileTypeError(filename)
+        raise UnsupportedFileTypeError  # no name in it: it must never reach a log
     name = "".join(c for c in name[: -len(".pdf")] if unicodedata.category(c) not in _DROPPED)
     name = name.strip()[:SHORT_NAME_MAX].strip()
     if not name:
-        raise InvalidFilenameError(filename)
+        raise InvalidFilenameError
     return name
