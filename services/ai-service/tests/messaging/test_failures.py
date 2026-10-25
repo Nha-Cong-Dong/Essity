@@ -148,6 +148,22 @@ def test_t43_poison_envelope_goes_to_dead_letter_without_retry(
     assert dead["deliveries"] == "1"
 
 
+def test_t43_entry_that_is_not_utf8_goes_to_dead_letter(
+    redis_client: Redis, names: Names, session_factory: sessionmaker[Session]
+) -> None:
+    # Review 🟡A. Red when: the client decodes strictly, XAUTOCLAIM raises on the entry every
+    # round, and nothing after it is ever handled.
+    redis_client.xadd(names.stream, {"envelope": b"\xff\xfe"})
+    publish(redis_client, names.stream, uploaded())
+    recorder = Recorder()
+    consumer = make_consumer(redis_client, names, session_factory, {DOCUMENT_UPLOADED: recorder})
+    consumer.ensure_group()
+    redis_client.xreadgroup(names.group, "crashed-consumer", {names.stream: ">"}, count=1)
+    assert consumer.run_once() == ["dead", "processed"]
+    assert [d["reason"] for d in dead_entries(redis_client, names)] == ["invalid_envelope"]
+    assert len(recorder.calls) == 1
+
+
 def test_t43_unknown_event_type_dead_lettered(
     redis_client: Redis, names: Names, session_factory: sessionmaker[Session]
 ) -> None:
