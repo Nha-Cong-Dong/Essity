@@ -51,6 +51,7 @@ function Button({ className, variant = "primary", size = "md", pending = false, 
   return (
     <ButtonPrimitive
       data-slot="button"
+      data-variant={variant}
       className={cn(buttonVariants({ variant, size, className }))}
       disabled={disabled || pending}
       // Pending keeps focus on the button (aria-disabled, presses blocked), so a keyboard or screen

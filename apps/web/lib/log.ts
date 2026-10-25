@@ -12,9 +12,11 @@ export type LogRoute =
   | "password-reset-confirm"
   | "register"
   | "resend"
+  | "review-sessions"
   | "session-check"
   | "subject"
   | "subjects"
+  | "today"
   | "verify-email";
 
 type Fields = {
