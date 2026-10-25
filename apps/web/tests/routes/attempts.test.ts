@@ -155,6 +155,21 @@ describe("answer screen routes (T2.15, T2.13)", () => {
     });
   });
 
+  // Red when: core-api's 204 (a draft saved, no body) reads as a failure, so every save says
+  // "unavailable" and the answer box never shows "Đã lưu nháp".
+  it("a draft saved by core-api with 204 answers 204", async () => {
+    fakeCoreApi(() => new Response(null, { status: 204 }));
+    const response = await saveDraft(
+      browserPost(
+        `/api/attempts/${ID}/draft`,
+        { answer_text: "nháp", dont_remember: false },
+        { ...SIGNED_IN, method: "PUT" },
+      ),
+      params(),
+    );
+    expect(response.status).toBe(204);
+  });
+
   it("reading an attempt back, and the session's current question", async () => {
     const calls = fakeCoreApi(() => Response.json(GRADED));
     expect(

@@ -60,6 +60,8 @@ export async function forward(
   }
   const { data, error, response } = result;
   if (data !== undefined) return Response.json(data, { status: response.status });
+  if (response.status === 204) return new Response(null, { status: 204 }); // a draft saved
+
   if (response.status === 401) return errorResponse("signed_out", 401);
   if (response.status === 429) return rateLimited(response);
   const detail = (error as { detail?: unknown } | undefined)?.detail;
