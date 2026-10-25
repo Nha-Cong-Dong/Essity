@@ -14,8 +14,16 @@ const SM = 640;
 
 // Rules known to fail on the code before the fix: `test.fail` passes only while they still fail,
 // so CI proves "red on the old code". Filled from a local run without it; C2 (header) and C3
-// (rows) take their entries out (T2.3c plan G8, G10.4).
+// (rows) take their entries out (T2.3c plan G8, G10.4). LAYOUT_SHOW_RED=1 runs them plainly, to
+// see what fails and why.
+const SHOW_RED = process.env.LAYOUT_SHOW_RED === "1";
 const KNOWN_RED = new Set<string>([
+  "R44-a name, date and Sửa do not overlap@1440",
+  "R44-a name, date and Sửa do not overlap@320",
+  "R44-a name, date and Sửa do not overlap@390",
+  "R44-a name, date and Sửa do not overlap@639",
+  "R44-a name, date and Sửa do not overlap@640",
+  "R44-a name, date and Sửa do not overlap@768",
   "R44-b a long name wraps inside its column@1440",
   "R44-b a long name wraps inside its column@320",
   "R44-b a long name wraps inside its column@390",
@@ -57,6 +65,16 @@ const overlap = (a: Box, b: Box) =>
 const inside = (inner: Box, outer: Box) =>
   inner.x >= outer.x - 0.5 && inner.y >= outer.y - 0.5 && right(inner) <= right(outer) + 0.5 && bottom(inner) <= bottom(outer) + 0.5;
 
+/** Where the text itself is drawn (a Range over it): wider than its element when it overflows. */
+async function textBox(locator: Locator): Promise<Box> {
+  return locator.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const r = range.getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  });
+}
+
 async function box(locator: Locator): Promise<Box> {
   const b = await locator.boundingBox();
   if (b === null) throw new Error(`no box for ${locator}`);
@@ -91,7 +109,7 @@ function parts(row: Locator) {
 function rule(name: string, widths: number[], body: (page: Page, width: number) => Promise<void>, options: { blockFonts?: boolean } = {}) {
   for (const width of widths) {
     test(`${name} @ ${width}px`, async ({ page }) => {
-      test.fail(KNOWN_RED.has(`${name}@${width}`), "R44/R46 on the old code: removed with the fix (C2/C3)");
+      test.fail(!SHOW_RED && KNOWN_RED.has(`${name}@${width}`), "R44/R46 on the old code: removed with the fix (C2/C3)");
       await open(page, width, options);
       await body(page, width);
     });
@@ -150,7 +168,7 @@ rule("R46-d the current item is scrolled into view, the page is not", [280], asy
   const current = nav(page).locator('[aria-current="page"]');
   await expect(async () => {
     expect(inside(await box(current), await box(nav(page)))).toBe(true);
-  }).toPass();
+  }).toPass({ timeout: 5_000 });
   expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 0]);
 });
 
@@ -160,9 +178,11 @@ async function eachRow(page: Page, check: (row: ReturnType<typeof parts>, li: Lo
   for (const li of await rows(page).all()) await check(parts(li), li);
 }
 
+// The drawn text of the name, not its box: an unbroken word spills out of a narrow box and over
+// the date (the R44 screenshot) while the boxes themselves stay apart.
 rule("R44-a name, date and Sửa do not overlap", ROW, async (page) => {
   await eachRow(page, async ({ name, date, edit }, li) => {
-    const [n, d, e, row] = [await box(name), await box(date), await box(edit), await box(li)];
+    const [n, d, e, row] = [await textBox(name), await textBox(date), await box(edit), await box(li)];
     expect(overlap(n, d) || overlap(n, e) || overlap(d, e)).toBe(false);
     for (const part of [n, d, e]) expect(inside(part, row)).toBe(true);
   });
