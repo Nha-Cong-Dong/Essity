@@ -13,6 +13,7 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 // T1.22 emptied it (the user approved T1.18/T1.20's sentences on 23/10 and 24/10); T2.3c emptied it
 // again (the user approved T2.3b's six delete strings on 25/10). T2.14 adds /today's: the backlog
 // note and "Ôn thêm" (US-03 AC5), the two states with nothing to ask, and a start that failed.
+// T2.15/T2.13 add the answer screen's (plan t2.15-t2.13-t2.16-answer-grade.md "Câu tạm").
 const PENDING_COPY: [file: string, text: string][] = [
   ["components/today/today-screen.tsx", "Các môn của bạn đều đã thi xong."],
   ["components/today/today-screen.tsx", "Môn của bạn chưa có câu hỏi nào để ôn."],
@@ -22,6 +23,20 @@ const PENDING_COPY: [file: string, text: string][] = [
   ],
   ["components/today/today-screen.tsx", "Ôn thêm"],
   ["components/today/start-button.tsx", "Chưa mở được phiên. Thử lại sau giây lát."],
+  ["components/review/answer-box.tsx", "Câu trả lời dài hơn 4.000 ký tự. Rút gọn bớt rồi gửi."],
+  ["components/review/review-screen.tsx", "kết quả hiện ở đây sau khi gửi"],
+  ["components/review/review-screen.tsx", "Câu trả lời của bạn · đã lưu {clock(at)}"],
+  ["components/review/review-screen.tsx", "Chưa gửi được. Câu trả lời vẫn ở đây, bạn gửi lại nhé."],
+  ["components/review/review-screen.tsx", "Chưa chấm được. Câu trả lời của bạn đã được lưu."],
+  ["components/review/review-screen.tsx", "Chấm bài đang tạm tắt. Câu trả lời của bạn đã được lưu."],
+  ["components/review/review-screen.tsx", "Phiên ôn này đã kết thúc."],
+  ["components/review/review-screen.tsx", "Còn {ids.length} câu chưa chấm"],
+  ["components/review/review-screen.tsx", "Chưa chấm được"],
+  ["components/review/review-screen.tsx", "Đã chấm"],
+  // plan D-8: the way out until T2.17's summary (last question, session over, answers ungraded)
+  ["components/review/review-screen.tsx", "Về trang chính"],
+  ["components/review/review-screen.tsx", "Về trang chính"],
+  ["components/review/review-screen.tsx", "Về trang chính"],
 ];
 
 function sources(dir: string): string[] {
