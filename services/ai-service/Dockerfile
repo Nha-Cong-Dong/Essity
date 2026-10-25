@@ -7,6 +7,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY src ./src
 COPY alembic.ini ./
 COPY migrations ./migrations
+COPY prompts ./prompts
 RUN uv sync --frozen --no-dev
 EXPOSE 8001
 CMD ["uv", "run", "--no-sync", "uvicorn", "ai_service.main:app", "--host", "0.0.0.0", "--port", "8001"]
