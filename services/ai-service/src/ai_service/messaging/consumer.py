@@ -25,9 +25,13 @@ import json
 import logging
 import socket
 from collections.abc import Callable, Iterator, Mapping
+from dataclasses import dataclass
 from types import UnionType
 from typing import Annotated, Any, Union, cast, get_args, get_origin
 
+from opentelemetry import trace
+from opentelemetry.trace import SpanKind, StatusCode
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from pydantic import BaseModel, StringConstraints, ValidationError
 from redis import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -36,6 +40,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.orm import Session
 
+from ai_service.logging import user_id_var
 from ai_service.messaging.dead_letter import (
     INVALID_ENVELOPE,
     NO_HANDLER,
@@ -97,6 +102,37 @@ INFRASTRUCTURE_ERRORS: tuple[type[Exception], ...] = (
 )
 
 _log = logging.getLogger("ai_service.messaging")
+_tracer = trace.get_tracer("ai_service.messaging")
+_PROPAGATOR = TraceContextTextMapPropagator()
+# Fixed: the stream is known, and an event type is only trusted after parsing (review 🟡6).
+SPAN_NAME = "events.core process"
+# Outcomes that mark the span as an error and log a warning (dead: an error).
+_FAILED = frozenset({"retry", "unavailable", "dead"})
+
+
+@dataclass(frozen=True)
+class _Result:
+    outcome: str  # processed | duplicate | deferred | unavailable | retry | dead
+    reason: str | None = None  # dead letter reason
+    error_type: str | None = None  # exception class name
+
+
+def _log_result(result: _Result, event: Event | None, deliveries: int) -> None:
+    extra: dict[str, Any] = {"outcome": result.outcome, "deliveries": deliveries}
+    if event is not None:
+        extra |= {"event_id": str(event.event_id), "event_type": event.event_type}
+    if result.reason is not None:
+        extra["reason"] = result.reason
+    if result.error_type is not None:
+        extra["error_type"] = result.error_type
+    if result.outcome == "dead":
+        level = logging.ERROR
+    elif result.outcome in _FAILED:
+        level = logging.WARNING
+    else:
+        level = logging.INFO
+    _log.log(level, "event handled", extra=extra)
+
 
 # Every event_type in the contract, to tell an unknown type from a malformed known one.
 EVENT_TYPES = frozenset(
@@ -222,14 +258,57 @@ class Consumer:
         return outcomes
 
     def handle(self, entry_id: str, fields: Mapping[str, str], deliveries: int) -> str:
-        """Handle one entry delivered `deliveries` times; return its outcome."""
+        """Handle one entry delivered `deliveries` times; return its outcome.
+
+        One span per entry, continuing the trace the envelope carries, and one log line. Both
+        hold ids, counts, the outcome and class names only (ADR-0013); `event_id` and
+        `event_type` only once the envelope has passed the contract (review 🟡6).
+        """
         envelope = fields.get("envelope")
-        if envelope is None:
-            return self._dead(entry_id, "", INVALID_ENVELOPE, deliveries)
+        event: Event | None = None
+        rejected: str | None = INVALID_ENVELOPE if envelope is None else None
+        if envelope is not None:
+            try:
+                event = parse_event(envelope)
+            except ValidationError:
+                rejected = _rejection_reason(envelope)
+        carrier = event.trace_context.model_dump(exclude_none=True) if event else {}
+        parent = _PROPAGATOR.extract(carrier)
+        # Reset after the entry (review 🟡5): the loop is one context, and the next entry's
+        # lines must not carry this user.
+        user_token = user_id_var.set(str(event.user_id) if event else None)
         try:
-            event = parse_event(envelope)
-        except ValidationError:
-            return self._dead(entry_id, envelope, _rejection_reason(envelope), deliveries)
+            with _tracer.start_as_current_span(
+                SPAN_NAME,
+                context=parent,
+                kind=SpanKind.CONSUMER,
+                record_exception=False,
+                set_status_on_exception=False,
+            ) as span:
+                span.set_attribute("deliveries", deliveries)
+                if event is not None:
+                    span.set_attribute("event_id", str(event.event_id))
+                    span.set_attribute("event_type", event.event_type)
+                result = self._process(entry_id, envelope or "", event, rejected, deliveries)
+                span.set_attribute("outcome", result.outcome)
+                if result.outcome in _FAILED:
+                    # No description: an exception's message may hold data (ADR-0013).
+                    span.set_status(StatusCode.ERROR)
+                _log_result(result, event, deliveries)
+                return result.outcome
+        finally:
+            user_id_var.reset(user_token)
+
+    def _process(
+        self,
+        entry_id: str,
+        envelope: str,
+        event: Event | None,
+        rejected: str | None,
+        deliveries: int,
+    ) -> "_Result":
+        if event is None:
+            return self._dead(entry_id, envelope, rejected or INVALID_ENVELOPE, deliveries)
         if not keys_belong_to_user(event):
             return self._dead(entry_id, envelope, USER_MISMATCH, deliveries)
         handler = self.handlers.get(event.event_type)
@@ -237,11 +316,16 @@ class Consumer:
             return self._dead(entry_id, envelope, NO_HANDLER, deliveries)
         if deliveries > self.max_attempts:
             # Delivered again and again without a recorded failure: it crashes the consumer,
-            # or it was handled and only its acknowledgement kept failing.
-            with self.session_factory() as session:
-                if was_processed(session, self.group, event.event_id):
-                    self.redis.xack(self.stream, self.group, entry_id)
-                    return "duplicate"
+            # or it was handled and only its acknowledgement kept failing (review 🟡4).
+            try:
+                with self.session_factory() as session:
+                    done = was_processed(session, self.group, event.event_id)
+            except INFRASTRUCTURE_ERRORS as error:
+                self._put_back(entry_id, deliveries)
+                return _Result("unavailable", error_type=type(error).__name__)
+            if done:
+                self.redis.xack(self.stream, self.group, entry_id)
+                return _Result("duplicate")
             return self._dead(entry_id, envelope, TOO_MANY_DELIVERIES, deliveries)
         try:
             with self.session_factory() as session, session.begin():
@@ -252,19 +336,19 @@ class Consumer:
                     outcome = "processed"
         except Deferred:
             self._put_back(entry_id, deliveries)
-            return "deferred"
-        except INFRASTRUCTURE_ERRORS:
+            return _Result("deferred")
+        except INFRASTRUCTURE_ERRORS as error:
             self._put_back(entry_id, deliveries)
-            return "unavailable"
+            return _Result("unavailable", error_type=type(error).__name__)
         except Exception as error:
             if deliveries >= self.max_attempts:
                 return self._dead(entry_id, envelope, type(error).__name__, deliveries)
             self._back_off(entry_id, deliveries)
-            return "retry"
+            return _Result("retry", error_type=type(error).__name__)
         self.redis.xack(self.stream, self.group, entry_id)
-        return outcome
+        return _Result(outcome)
 
-    def _dead(self, entry_id: str, envelope: str, reason: str, deliveries: int) -> str:
+    def _dead(self, entry_id: str, envelope: str, reason: str, deliveries: int) -> "_Result":
         send_to_dead(
             self.redis,
             dead_stream=self.dead_stream,
@@ -275,12 +359,13 @@ class Consumer:
             reason=reason,
             deliveries=deliveries,
         )
-        return "dead"
+        return _Result("dead", reason=reason)
 
     def _back_off(self, entry_id: str, failures: int) -> None:
         """Make the entry look idle for `min_idle - backoff`: XAUTOCLAIM takes it after backoff.
 
-        JUSTID leaves the delivery count alone; IDLE is clamped, Redis refuses a negative one.
+        JUSTID leaves the delivery count alone. IDLE is clamped at 0, which Redis would also do
+        with a negative one; the clamp only makes that explicit.
         """
         wait = backoff_ms(failures, base_ms=self.backoff_base_ms, cap_ms=self.min_idle_ms)
         self.redis.xclaim(
