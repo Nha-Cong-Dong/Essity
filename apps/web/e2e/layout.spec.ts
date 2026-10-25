@@ -138,6 +138,38 @@ test("smoke: the fixture renders, hydrates and breaks no CSP rule", async ({ pag
   expect(problems).toEqual([]);
 });
 
+// Text at 200%: the type scale is px and @theme inline writes it into each utility, so the classes
+// themselves are overridden (T2.3c plan G10.1), and the precondition proves it took.
+const DOUBLE = [".text-small{font-size:28px!important}", ".text-body{font-size:32px!important}", ".text-section{font-size:44px!important}", ".text-logo{font-size:48px!important}", ".text-title{font-size:72px!important}"].join("");
+// --- Preconditions: never marked as failing. A rule above that fails must fail on its measure,
+// not because a part was not found, the text was not doubled or the fonts were not blocked
+// (review 790bc58 #1).
+test("preconditions: every row has its parts", async ({ page }) => {
+  await open(page, 390);
+  await eachRow(page, async ({ cover, name, date, halves, edit }) => {
+    for (const part of [cover, name, date, edit]) expect(await part.boundingBox()).not.toBeNull();
+    await expect(halves).toHaveCount(2);
+  });
+});
+test("preconditions: the 200% style doubles the type", async ({ page }) => {
+  await open(page, 390);
+  await page.addStyleTag({ content: DOUBLE });
+  expect(await parts(rows(page).first()).name.evaluate((el) => getComputedStyle(el).fontSize)).toBe("44px");
+});
+// next/font adds "<family> Fallback" faces from local() fonts: those load, the web fonts must not.
+test("preconditions: blocking .woff2 leaves no web font loaded", async ({ page }) => {
+  let blocked = 0;
+  page.on("requestfailed", (request) => {
+    if (request.url().endsWith(".woff2")) blocked += 1;
+  });
+  await open(page, 320, { blockFonts: true });
+  const loaded = await page.evaluate(() =>
+    [...document.fonts].filter((font) => font.status === "loaded" && !font.family.endsWith("Fallback")).map((font) => font.family),
+  );
+  expect(loaded).toEqual([]);
+  expect(blocked).toBeGreaterThan(0);
+});
+
 // --- Whole page
 rule("page: no horizontal scroll", [...new Set([...HEADER, ...ROW])], async (page) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -228,9 +260,6 @@ rule("R44-i the title and Tạo môn do not overlap", NARROW, async (page) => {
   expect(overlap(await box(title), await box(create))).toBe(false);
 });
 
-// Text at 200%: the type scale is px and @theme inline writes it into each utility, so the classes
-// themselves are overridden (T2.3c plan G10.1), and the precondition proves it took.
-const DOUBLE = [".text-small{font-size:28px!important}", ".text-body{font-size:32px!important}", ".text-section{font-size:44px!important}", ".text-logo{font-size:48px!important}", ".text-title{font-size:72px!important}"].join("");
 rule("R44-f at 200% text the rows still fit", [390], async (page) => {
   await page.addStyleTag({ content: DOUBLE });
   await page.evaluate(() => document.fonts.ready);

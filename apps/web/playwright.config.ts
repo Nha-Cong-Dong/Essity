@@ -15,7 +15,7 @@ export default defineConfig({
   // A flaky layout test is a bug to find, not to retry past (risk register R43).
   retries: 0,
   reporter: "list",
-  use: { baseURL: ORIGIN, browserName: "chromium" },
+  use: { baseURL: ORIGIN, browserName: "chromium", screenshot: "only-on-failure" },
   webServer: {
     command: "node .next/standalone/apps/web/server.js",
     url: `${ORIGIN}/design-preview/subjects`,

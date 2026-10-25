@@ -194,6 +194,7 @@ jobs:
           export WEB_TO_CORE_TOKEN="$(openssl rand -hex 24)"
           node .next/standalone/apps/web/server.js &
           for _ in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:3101/login && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:3101/login || { echo "server did not start"; exit 1; }
           status() { curl -s -o /dev/null -w "%{http_code}" "$@"; }
           for path in /design-preview/subjects /design-preview/subjects.rsc; do
             test "$(status "http://127.0.0.1:3101$path")" = 404 || { echo "$path is served"; exit 1; }
