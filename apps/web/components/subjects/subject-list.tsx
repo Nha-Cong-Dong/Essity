@@ -205,7 +205,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
           onKeyDown={onConfirmKey}
           className="flex max-w-120 flex-col gap-5"
         >
-          <p id={ids.confirm} data-copy="tam" className="m-0 text-body">
+          <p id={ids.confirm} className="m-0 text-body">
             Xóa môn này khỏi danh sách và phiên ôn?
           </p>
           <div role="alert">
@@ -218,11 +218,10 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
               pending={deleting}
               onClick={confirmDelete}
               aria-describedby={deleteFailed ? ids.deleteError : undefined}
-              data-copy="tam"
             >
               Xóa môn
             </Button>
-            <Button ref={keepRef} type="button" variant="quiet" disabled={deleting} onClick={keep} data-copy="tam">
+            <Button ref={keepRef} type="button" variant="quiet" disabled={deleting} onClick={keep}>
               Giữ môn
             </Button>
           </div>
@@ -253,7 +252,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
       {editing && !confirming && (
         <div className="max-w-120 border-t border-line pt-5">
           {hasHistory ? (
-            <p ref={historyRef} tabIndex={-1} data-copy="tam" className="m-0 text-small text-ink-soft">
+            <p ref={historyRef} tabIndex={-1} className="m-0 text-small text-ink-soft">
               Môn này đã có bài ôn nên chưa xóa được ở đây.
             </p>
           ) : (
@@ -263,7 +262,6 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
               variant="quiet"
               onClick={askToDelete}
               aria-describedby={ids.name}
-              data-copy="tam"
             >
               Xóa môn
             </Button>
@@ -280,7 +278,7 @@ function DeletedRow() {
   useEffect(() => ref.current?.focus(), []);
   return (
     <li className="border-b border-line py-5 last:border-b-0">
-      <p ref={ref} tabIndex={-1} data-copy="tam" className="m-0 text-small text-ink-soft">
+      <p ref={ref} tabIndex={-1} className="m-0 text-small text-ink-soft">
         Đã xóa môn.
       </p>
     </li>
