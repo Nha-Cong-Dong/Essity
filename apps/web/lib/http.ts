@@ -5,9 +5,9 @@ import { errorName, type LogRoute, logError } from "@/lib/log";
 // Account forms send a few short fields; anything bigger is refused before it fills memory.
 const MAX_BODY_BYTES = 8 * 1024;
 
-/** The body as text, or null once it passes MAX_BODY_BYTES (read as a stream, never whole). */
-async function readLimited(request: Request): Promise<string | null> {
-  if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) return null;
+/** The body as text, or null once it passes `maxBytes` (read as a stream, never whole). */
+async function readLimited(request: Request, maxBytes: number): Promise<string | null> {
+  if (Number(request.headers.get("content-length")) > maxBytes) return null;
   if (!request.body) return "";
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -16,7 +16,7 @@ async function readLimited(request: Request): Promise<string | null> {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > MAX_BODY_BYTES) {
+    if (size > maxBytes) {
       await reader.cancel();
       return null;
     }
@@ -26,8 +26,11 @@ async function readLimited(request: Request): Promise<string | null> {
 }
 
 /** The JSON body as an object, or null when it is too big, not JSON or not an object. */
-async function readObject(request: Request): Promise<Record<string, unknown> | null> {
-  const text = await readLimited(request);
+async function readObject(
+  request: Request,
+  maxBytes = MAX_BODY_BYTES,
+): Promise<Record<string, unknown> | null> {
+  const text = await readLimited(request, maxBytes);
   if (text === null) return null;
   let body: unknown;
   try {
@@ -67,13 +70,14 @@ const IS_KIND: Record<keyof FieldKind, (value: unknown) => boolean> = {
 /**
  * The JSON body read by `spec`: each field of its type, optional ones left out when missing, and
  * no other key. Null otherwise. What a route sends on is built from this, never the browser's JSON
- * (review plan R1).
+ * (review plan R1). `maxBytes` raises the 8 KB limit for a body that carries an answer.
  */
 export async function readFields<Spec extends Record<string, FieldSpec>>(
   request: Request,
   spec: Spec,
+  { maxBytes }: { maxBytes?: number } = {},
 ): Promise<Fields<Spec> | null> {
-  const body = await readObject(request);
+  const body = await readObject(request, maxBytes);
   if (body === null) return null;
   if (!Object.keys(body).every((name) => Object.hasOwn(spec, name))) return null;
   const fields: Record<string, unknown> = {};

@@ -9,9 +9,14 @@ const DEFAULT_TIMEOUT_MS = 3000;
 /**
  * The one way to call core-api. `path` must be a path on core-api ("/v1/me"): an absolute URL
  * would carry the session and service tokens to another host. Responses are never cached
- * (they belong to one user, W3), whatever the caller passes.
+ * (they belong to one user, W3), whatever the caller passes. `timeoutMs` is longer only where
+ * core-api waits on the AI (submitting an answer, plan D-5).
  */
-export async function coreFetch(path: string, init: RequestInit = {}): Promise<Response> {
+export async function coreFetch(
+  path: string,
+  init: RequestInit = {},
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
   if (!path.startsWith("/") || path.startsWith("//")) {
     throw new Error("coreFetch takes a path on core-api");
   }
@@ -21,7 +26,7 @@ export async function coreFetch(path: string, init: RequestInit = {}): Promise<R
     set: (carrier, key, value) => carrier.set(key, value),
   });
   return fetch(new URL(path, webConfig().coreApiUrl), {
-    signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
     ...init,
     headers,
     cache: "no-store",
