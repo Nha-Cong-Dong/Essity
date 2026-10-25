@@ -11,6 +11,7 @@ from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import (
+    AfterValidator,
     BaseModel,
     BeforeValidator,
     ConfigDict,
@@ -45,6 +46,14 @@ def _utc_timestamp(value: Any) -> Any:
         if not UTC_TIMESTAMP.match(value):
             raise ValueError("occurred_at must be UTC, ending in Z")
         return datetime.fromisoformat(value)
+    return value
+
+
+def _is_utc(value: datetime) -> datetime:
+    # A producer passes a datetime: naive or another offset would be written without the Z.
+    offset = value.utcoffset()
+    if offset is None or offset.total_seconds() != 0:
+        raise ValueError("occurred_at must be timezone-aware UTC")
     return value
 
 
@@ -168,7 +177,7 @@ class UserDeleted(_Closed):
 class _Envelope(_Closed):
     event_id: Id
     schema_version: Annotated[Literal[1], BeforeValidator(_not_bool)]
-    occurred_at: Annotated[datetime, BeforeValidator(_utc_timestamp)]
+    occurred_at: Annotated[datetime, BeforeValidator(_utc_timestamp), AfterValidator(_is_utc)]
     user_id: Id
     trace_context: TraceContext
 
@@ -243,3 +252,12 @@ _EVENT: TypeAdapter[Event] = TypeAdapter(Event)
 def parse_event(raw: str | bytes) -> Event:
     """Validate one event as it travels (JSON text). Raises `pydantic.ValidationError`."""
     return _EVENT.validate_json(raw)
+
+
+def dump_event(event: Event) -> str:
+    """The event as it travels (JSON text). Producers write events only through this function:
+    trace context fields that are absent are left out rather than written as null, which the
+    contract refuses. Not `exclude_none`: the payload's required nullable fields (a session
+    confirmed without a document) must stay, as null."""
+    absent = {name for name, value in event.trace_context if value is None}
+    return event.model_dump_json(exclude={"trace_context": absent})

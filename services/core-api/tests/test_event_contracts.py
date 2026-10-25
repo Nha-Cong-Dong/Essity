@@ -6,12 +6,13 @@ core-api's own Pydantic models must accept exactly what the schemas accept, on e
 
 import json
 from collections.abc import Iterator
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Protocol, cast
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from referencing import Registry, Resource
 
 CONTRACTS = Path(__file__).resolve().parents[3] / "contracts" / "events"
@@ -265,3 +266,63 @@ def test_every_object_is_closed(path: Path) -> None:
         and not (path.name == "envelope.schema.json" and where == "#/properties/payload")
     ]
     assert open_objects == []
+
+
+# --- Events built in code (what a producer sends) ------------------------------------------
+
+NOT_UTC = [
+    datetime(2026, 10, 25, 8, 30),
+    datetime(2026, 10, 25, 15, 30, tzinfo=timezone(timedelta(hours=7))),
+]
+
+
+def rebuilt(event: BaseModel, **changes: Any) -> BaseModel:
+    """`event` validated again from Python values, as a producer builds one, with `changes`."""
+    return type(event).model_validate({**event.model_dump(exclude_none=True), **changes})
+
+
+@pytest.mark.parametrize("path", VALID, ids=lambda p: p.name)
+def test_dumped_event_matches_schema_and_parses_back(path: Path) -> None:
+    # Red when: what core-api writes on the wire drifts from the contract (a null field, a
+    # timestamp without Z), so ai-service would refuse core-api's own events.
+    from core_api.messaging.envelope import dump_event, parse_event
+
+    event = parse_event(path.read_text(encoding="utf-8"))
+    wire = dump_event(event)
+    validator(event.event_type).validate(json.loads(wire))
+    assert parse_event(wire) == event
+
+
+def test_empty_trace_context_dumps_valid() -> None:
+    # Red when: an event produced outside any span writes `"traceparent": null`.
+    from core_api.messaging.envelope import TraceContext, dump_event, parse_event
+
+    event = parse_event((EXAMPLES / "user.deleted.v1.json").read_text(encoding="utf-8"))
+    wire = dump_event(rebuilt(event, trace_context=TraceContext()))  # pyright: ignore[reportArgumentType]
+    assert json.loads(wire)["trace_context"] == {}
+    validator("user.deleted.v1").validate(json.loads(wire))
+    assert parse_event(wire).trace_context == TraceContext()
+
+
+def test_required_null_payload_fields_are_dumped() -> None:
+    # Red when: dumping drops every None, including the payload's required nullable fields
+    # (a session confirmed without a document has `document_id: null`, `page_range: null`).
+    from core_api.messaging.envelope import dump_event, parse_event
+
+    event = parse_event((EXAMPLES / "session.confirmed.v1.json").read_text(encoding="utf-8"))
+    payload = event.payload.model_dump(exclude_none=True)
+    no_document = {**payload, "document_id": None, "page_range": None}
+    wire = dump_event(rebuilt(event, payload=no_document))  # pyright: ignore[reportArgumentType]
+    assert json.loads(wire)["payload"]["document_id"] is None
+    validator("session.confirmed.v1").validate(json.loads(wire))
+
+
+@pytest.mark.parametrize("occurred_at", NOT_UTC, ids=["naive", "plus-07"])
+def test_event_built_with_non_utc_time_is_refused(occurred_at: datetime) -> None:
+    # Red when: a producer can build an event whose occurred_at is naive or not UTC; it would be
+    # written without the Z the contract requires.
+    from core_api.messaging.envelope import parse_event
+
+    event = parse_event((EXAMPLES / "user.deleted.v1.json").read_text(encoding="utf-8"))
+    with pytest.raises(ValidationError):
+        rebuilt(event, occurred_at=occurred_at)
