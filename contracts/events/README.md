@@ -35,5 +35,6 @@ every consumer has moved.
 - Delivery is at least once: consumers record `event_id` and skip an event they have already
   handled. Order is not guaranteed.
 - An entry in `events.dead` has the fields `envelope` (the original text), `stream`, `entry_id`
-  (its id in that stream), `reason` (exception class name, `invalid_envelope` or `unknown_type`)
-  and `deliveries`. Never an exception message.
+  (its id in that stream), `reason` (exception class name, `invalid_envelope`, `unknown_type`, or
+  `max_deliveries` when deliveries died with their consumer) and `deliveries`. Never an exception
+  message. `envelope` is empty when the entry had no such field.
