@@ -1,6 +1,8 @@
 """Tests for agent_env.py. Run: python -m unittest discover -s scripts -p "test_*.py"."""
 
+import tempfile
 import unittest
+from pathlib import Path
 
 from agent_env import create_database_command, database_name, env_lines, redis_db
 
@@ -21,28 +23,39 @@ class Names(unittest.TestCase):
 
 
 class Redis(unittest.TestCase):
-    def test_redis_db_is_stable_and_leaves_dev_and_shared_test_dbs_alone(self) -> None:
+    def setUp(self) -> None:
+        self.registry = Path(tempfile.mkdtemp()) / "redis-dbs.json"
+
+    def test_each_agent_gets_its_own_db_and_keeps_it(self) -> None:
+        # A hash could give two agents the same db, and one suite's flush breaks the other (R32).
+        dbs = [redis_db(f"agent-{i}", self.registry) for i in range(14)]
+        self.assertEqual(len(set(dbs)), 14)
+        self.assertEqual(redis_db("agent-3", self.registry), dbs[3])
+
+    def test_dev_and_shared_test_dbs_are_never_given(self) -> None:
         # 0 holds local data, 15 is the shared test db (conftest default).
-        for agent in ["coder-s1", "coder-s2", "tester-t2.13", "reviewer-s5", "a"]:
-            db = redis_db(agent)
-            self.assertEqual(db, redis_db(agent))
-            self.assertIn(db, range(1, 15))
+        dbs = {redis_db(f"a{i}", self.registry) for i in range(14)}
+        self.assertEqual(dbs, set(range(1, 15)))
+
+    def test_a_fifteenth_agent_is_refused(self) -> None:
+        for i in range(14):
+            redis_db(f"a{i}", self.registry)
+        with self.assertRaises(RuntimeError):
+            redis_db("one-too-many", self.registry)
 
 
 class Env(unittest.TestCase):
     def test_bash_lines_export_both_urls(self) -> None:
-        lines = env_lines("coder-s2", "bash")
+        lines = env_lines("coder-s2", "bash", redis=3)
         self.assertIn(
             "export CORE_TEST_DATABASE_URL="
             "postgresql+psycopg://core:change-me-local@127.0.0.1:5432/core_test_coder_s2",
             lines,
         )
-        self.assertIn(
-            f"export CORE_TEST_REDIS_URL=redis://127.0.0.1:6379/{redis_db('coder-s2')}", lines
-        )
+        self.assertIn("export CORE_TEST_REDIS_URL=redis://127.0.0.1:6379/3", lines)
 
     def test_powershell_lines_set_env(self) -> None:
-        lines = env_lines("coder-s2", "powershell")
+        lines = env_lines("coder-s2", "powershell", redis=3)
         self.assertTrue(all(line.startswith("$env:") for line in lines), lines)
 
     def test_the_database_is_created_by_the_superuser_and_owned_by_core(self) -> None:

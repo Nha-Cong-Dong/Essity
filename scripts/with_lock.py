@@ -93,17 +93,31 @@ def _run_streaming(command: list[str]) -> tuple[int, str]:
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace"
     )
     assert process.stdout is not None
-    for line in process.stdout:
-        sys.stdout.write(line)
-        tail.append(line)
-    return process.wait(), "".join(tail)
+    try:
+        for line in process.stdout:
+            sys.stdout.write(line)
+            tail.append(line)
+        return process.wait(), "".join(tail)
+    finally:
+        # Interrupted (Ctrl+C) before the command ended: the slot is about to be freed, so the
+        # command must not run on beside the next holder. A hard kill of this process cannot be
+        # caught; that case still leaves the command running.
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        process.stdout.close()
+
+
+def known_flaky_pattern(output: str) -> str | None:
+    return next((p.pattern for p in KNOWN_FLAKY if p.search(output)), None)
 
 
 def run_locked(group: str, slots: int, lock_dir: Path, command: list[str]) -> int:
     with acquire(group, slots, lock_dir):
         code, output = _run_streaming(command)
-        if code != 0 and is_known_flaky(output):
-            print("with_lock: known flaky failure, running once more", file=sys.stderr, flush=True)
+        pattern = known_flaky_pattern(output) if code != 0 else None
+        if pattern:
+            print(f"with_lock: known flaky failure ({pattern}), running once more", file=sys.stderr)
             code, _ = _run_streaming(command)
     return code
 

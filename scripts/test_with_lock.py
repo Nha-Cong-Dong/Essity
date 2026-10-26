@@ -1,5 +1,6 @@
 """Tests for with_lock.py. Run: python -m unittest discover -s scripts -p "test_*.py"."""
 
+import io
 import subprocess
 import sys
 import tempfile
@@ -7,6 +8,7 @@ import textwrap
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from with_lock import Slot, acquire, is_known_flaky, run_locked
 
@@ -116,6 +118,22 @@ class RunLocked(unittest.TestCase):
     def test_a_pass_runs_once(self) -> None:
         code = run_locked("core", 1, self.dir, self.command("ok", False))
         self.assertEqual((code, self.runs()), (0, 1))
+
+    def test_an_interrupted_run_kills_its_command(self) -> None:
+        # Ctrl+C on the wrapper frees the slot; the heavy command must not keep running past it.
+        marker = self.dir / "still-running"
+        script = (
+            f"import time; print('started', flush=True); time.sleep(2); open({str(marker)!r}, 'w')"
+        )
+
+        class Interrupting(io.StringIO):
+            def write(self, s: str) -> int:
+                raise KeyboardInterrupt
+
+        with mock.patch("sys.stdout", Interrupting()), self.assertRaises(KeyboardInterrupt):
+            run_locked("core", 1, self.dir, [sys.executable, "-c", script])
+        time.sleep(3)
+        self.assertFalse(marker.exists())
 
     def test_the_lock_is_held_while_the_command_runs(self) -> None:
         started = time.monotonic()

@@ -8,10 +8,13 @@ Creates `core_test_<agent>` on the Compose Postgres if it is missing (the superu
 """
 
 import argparse
+import json
 import re
 import subprocess
 import sys
-import zlib
+from pathlib import Path
+
+from with_lock import acquire, default_lock_dir
 
 POSTGRES_CONTAINER = "essity-postgres-1"
 DATABASE_URL = "postgresql+psycopg://core:change-me-local@127.0.0.1:5432/{name}"
@@ -26,15 +29,27 @@ def database_name(agent: str) -> str:
     return (PREFIX + slug)[:63]  # Postgres identifier limit
 
 
-def redis_db(agent: str) -> int:
-    """1..14: db 0 holds local data, 15 is the shared test db."""
-    return 1 + zlib.crc32(agent.encode()) % 14
+def redis_db(agent: str, registry: Path) -> int:
+    """The agent's Redis db, handed out once from 1..14 and kept in `registry`.
+
+    db 0 holds local data, 15 is the shared test db. A hash would let two agents share a db, and
+    one suite's flush would break the other's (R32), so dbs are handed out, not computed.
+    """
+    with acquire("redis-registry", 1, registry.parent, timeout=10):
+        given: dict[str, int] = json.loads(registry.read_text()) if registry.exists() else {}
+        if agent not in given:
+            free = sorted(set(range(1, 15)) - set(given.values()))
+            if not free:
+                raise RuntimeError(f"all 14 Redis test dbs are given out; free some in {registry}")
+            given[agent] = free[0]
+            registry.write_text(json.dumps(given, indent=2, sort_keys=True))
+        return given[agent]
 
 
-def env_lines(agent: str, shell: str) -> list[str]:
+def env_lines(agent: str, shell: str, redis: int) -> list[str]:
     values = {
         "CORE_TEST_DATABASE_URL": DATABASE_URL.format(name=database_name(agent)),
-        "CORE_TEST_REDIS_URL": REDIS_URL.format(db=redis_db(agent)),
+        "CORE_TEST_REDIS_URL": REDIS_URL.format(db=redis),
     }
     if shell == "powershell":
         return [f"$env:{key} = '{value}'" for key, value in values.items()]
@@ -63,7 +78,8 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     if not args.no_create:
         ensure_database(database_name(args.agent))
-    print("\n".join(env_lines(args.agent, args.shell)))
+    redis = redis_db(args.agent, default_lock_dir() / "redis-dbs.json")
+    print("\n".join(env_lines(args.agent, args.shell, redis)))
     return 0
 
 
