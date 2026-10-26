@@ -27,3 +27,8 @@ def claim(session: Session, *, consumer: str, event_id: uuid.UUID, now: datetime
         .returning(ProcessedEvent.event_id)
     ).scalar_one_or_none()
     return claimed is not None
+
+
+def was_processed(session: Session, *, consumer: str, event_id: uuid.UUID) -> bool:
+    """Whether `consumer` has already handled `event_id` (a committed claim)."""
+    return session.get(ProcessedEvent, (consumer, event_id)) is not None

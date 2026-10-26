@@ -35,6 +35,34 @@ every consumer has moved.
 - Delivery is at least once: consumers record `event_id` and skip an event they have already
   handled. Order is not guaranteed.
 - An entry in `events.dead` has the fields `envelope` (the original text), `stream`, `entry_id`
-  (its id in that stream), `reason` (exception class name, `invalid_envelope`, `unknown_type`, or
-  `max_deliveries` when deliveries died with their consumer) and `deliveries`. Never an exception
-  message. `envelope` is empty when the entry had no such field.
+  (its id in that stream), `reason` and `deliveries`. Never an exception message. `envelope` is
+  empty when the entry had no such field. `reason` is one of:
+  - `invalid_envelope`: not text, not JSON, or not an event of the contract;
+  - `unknown_type`: well-formed, but its `event_type` is not in the contract;
+  - `no_handler`: a known type this consumer has no handler for yet (replayable once there is one);
+  - `user_mismatch`: an object key in the payload is not under `users/<user_id>/` of the envelope
+    (F2);
+  - `max_deliveries`: delivered more than 5 times without a recorded failure (its handling kills
+    the consumer, or its acknowledgement keeps failing) and not found in `processed_event`;
+  - otherwise the class name of the exception the handler raised on its 5th delivery.
+
+## Delivery semantics
+
+- A handler that fails leaves its entry pending; it is delivered again after a backoff (5, 15, 45,
+  then 60 s: `XCLAIM IDLE` set to `60 s - backoff`, never below 0) and goes to `events.dead` on
+  its 5th delivery.
+- A handler may raise `Deferred` (`ai-service`) to put its event back for later without counting a
+  failure: the consumer `XCLAIM`s the entry with `RETRYCOUNT` set to the count before this
+  delivery, so it never reaches the dead letter by waiting.
+- A lost connection (Redis `ConnectionError`/`TimeoutError`, a database connection invalidated, or
+  SQLSTATE empty, class `08`, or `57P01`-`57P03`) is handled the same way, not counted as a failed
+  delivery. A statement timeout, a deadlock, a full disk or a row too large is an ordinary failure.
+- Before an entry is dead-lettered for too many deliveries, `processed_event` is checked: an
+  event already handled is only acknowledged. If that check itself fails for a reason other than
+  a lost connection, the entry goes to `events.dead` as `max_deliveries`.
+- Logs, spans and `reason` carry ids, counts and exception class names only; a round that fails
+  logs the class name, not the traceback (an SQLAlchemy error holds the statement and its
+  parameters).
+- `python -m core_api.messaging.dead_letter purge --user <uuid>` (core-api) and
+  `python -m ai_service.messaging.dead_letter purge --user <uuid>` (ai-service) delete every
+  `events.dead` entry that mentions the user, in any case and anywhere in the envelope (T6.3).
