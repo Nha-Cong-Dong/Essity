@@ -40,6 +40,11 @@ class DatabaseSettings(BaseSettings):
     # postgresql+psycopg://user:password@host:5432/core. Secret because it holds the password;
     # no default, so a missing database is a startup error rather than a surprise later.
     database_url: SecretStr
+    # The pool, set here rather than left to SQLAlchemy's 5 + 10 (review T2.13 🟡2): a grading
+    # holds one connection while the AI answers, up to ~20 s, so concurrent gradings take
+    # connections from every other request (risk register, until T2.11's queue).
+    db_pool_size: int = Field(default=10, ge=1)
+    db_max_overflow: int = Field(default=10, ge=0)
 
 
 class Settings(DatabaseSettings):

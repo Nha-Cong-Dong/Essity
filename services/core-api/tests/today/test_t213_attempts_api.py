@@ -150,6 +150,33 @@ def test_t213_limiter_down_still_submits_without_calling_the_ai(
     assert stub.calls == []
 
 
+class Down:
+    """A rate limiter whose Redis is down: every check fails closed."""
+
+    def enforce(self, *_: object) -> None:
+        raise RateLimiterUnavailableError
+
+
+# Plan 🟠4 (review 🟡5). Red when: the limit is checked before "Không nhớ" or an existing grade,
+# which never call the AI, so a Redis outage turns them into failures.
+def test_t213_limiter_down_still_grades_dont_remember_and_returns_a_grade(
+    client: TestClient, db_session: Session, stub: Stub
+) -> None:
+    _, headers, _, forgot_id = opened(client, db_session)
+    _, other, _, graded_id = opened(client, db_session)
+    assert submit(client, other, graded_id).json()["grading"] == "graded"
+    calls = len(stub.calls)
+    app.dependency_overrides[get_rate_limiter] = lambda: Down()
+    try:
+        forgot = submit(client, headers, forgot_id, "", forgot=True).json()
+        again = client.post(f"/v1/attempts/{graded_id}/regrade", headers=other).json()
+    finally:
+        app.dependency_overrides.pop(get_rate_limiter, None)
+    assert (forgot["grading"], forgot["result"]["overall"]) == ("graded", "forgot")
+    assert (again["grading"], again["result"]["overall"]) == ("graded", "correct")
+    assert len(stub.calls) == calls
+
+
 # Plan D-7. Red when: an answer that failed to grade is lost from the session's view (no way back
 # to "Chấm lại"), or "Không nhớ" is listed as ungraded.
 def test_t213_current_lists_answers_left_ungraded(

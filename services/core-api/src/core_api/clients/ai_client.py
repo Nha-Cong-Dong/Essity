@@ -29,6 +29,7 @@ PING_TIMEOUT_SECONDS = 2.0
 GRADE_CALL_SECONDS = 10.0
 GRADE_TOTAL_SECONDS = 20.0
 GRADE_MIN_RETRY_SECONDS = 3.0
+GRADE_CONNECT_SECONDS = 2.0
 
 Failure = Literal["unavailable", "invalid", "disabled"]
 _log = logging.getLogger(__name__)
@@ -110,11 +111,17 @@ class AiServiceClient:
         self, payload: Mapping[str, object], timeout: float
     ) -> tuple[Graded | NotGraded, bool]:
         try:
-            response = self._http.post("/v1/grade", json=dict(payload), timeout=timeout)
+            # One budget per phase, connecting capped at 2 s (review 🟡3): a host that does not
+            # answer leaves time for the retry.
+            response = self._http.post(
+                "/v1/grade",
+                json=dict(payload),
+                timeout=httpx2.Timeout(timeout, connect=min(GRADE_CONNECT_SECONDS, timeout)),
+            )
         except httpx2.TimeoutException:
-            return _failed("unavailable", "timeout", None), True
+            return _failed("unavailable", "timeout", None, retry=True), True
         except httpx2.RequestError:  # transport, decoding, redirects: may clear (review 🟡5)
-            return _failed("unavailable", "connection_error", None), True
+            return _failed("unavailable", "connection_error", None, retry=True), True
         status = response.status_code
         if 200 <= status < 300:
             try:
@@ -125,11 +132,11 @@ class AiServiceClient:
         code = _error_code(response)
         if code in _CODES:
             failure, retry = _CODES[code]
-            return _failed(failure, code, status), retry
+            return _failed(failure, code, status, retry=retry), retry
         if status in (413, 422):
             return _failed("invalid", "refused", status), False
         if status >= 500:
-            return _failed("unavailable", "server_error", status), True
+            return _failed("unavailable", "server_error", status, retry=True), True
         return _failed("unavailable", "client_error", status), False
 
     def close(self) -> None:
@@ -154,6 +161,9 @@ def _error_code(response: httpx2.Response) -> str | None:
     return code if isinstance(code, str) else None
 
 
-def _failed(failure: Failure, reason: str, status: int | None) -> NotGraded:
-    _log.warning("grade call failed", extra={"outcome": reason, "upstream_status": status})
+def _failed(failure: Failure, reason: str, status: int | None, *, retry: bool = False) -> NotGraded:
+    # What a retry cannot clear is a fault to look at (plan "Bảng retry", review 🟡4); grading
+    # switched off on purpose is not.
+    level = logging.WARNING if retry or failure == "disabled" else logging.ERROR
+    _log.log(level, "grade call failed", extra={"outcome": reason, "upstream_status": status})
     return NotGraded(failure, reason)

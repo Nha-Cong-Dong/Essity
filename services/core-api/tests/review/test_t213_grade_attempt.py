@@ -140,11 +140,17 @@ def test_t213_graded_in_time_writes_grade_units_log_and_state(desk: Desk) -> Non
     assert quotes == {"nguồn 0", "nguồn 1"}
 
 
-# T2.13 case 2. Red when: a failed grading writes a grade or loses the answer.
-def test_t213_a_failure_writes_no_grade_and_keeps_the_answer(desk: Desk) -> None:
+# T2.13 case 2 and `grading_disabled` (plan test table). Red when: a failed or switched-off
+# grading writes a grade or loses the answer.
+@pytest.mark.parametrize(
+    "failure", [NotGraded("unavailable", "timeout"), NotGraded("disabled", "grading_disabled")]
+)
+def test_t213_a_failure_writes_no_grade_and_keeps_the_answer(
+    desk: Desk, failure: NotGraded
+) -> None:
     attempt = desk.submitted("Câu của tôi")
-    outcome = desk.grade(attempt, Stub(failure=NotGraded("unavailable", "timeout")))
-    assert (outcome.grading, outcome.failure) == ("failed", "unavailable")
+    outcome = desk.grade(attempt, Stub(failure=failure))
+    assert (outcome.grading, outcome.failure) == ("failed", failure.failure)
     assert desk.count(Grade) == 0
     kept = AttemptRepository(desk.session, desk.user.id).get(attempt)
     assert kept is not None and (kept.status, kept.answer_text) == ("submitted", "Câu của tôi")
@@ -213,11 +219,13 @@ def test_t213_a_graded_attempt_is_not_graded_again(desk: Desk) -> None:
 
 # PLAN T2.13 25/10. Red when: an answer graded late (older than the last review) is applied as one
 # more step, so the cache differs from the history replayed in order.
+# Plan 🟡11 (review 🟡6): "Không nhớ" goes through the same replay.
+@pytest.mark.parametrize("forgot", [False, True])
 def test_t213_grading_an_older_attempt_replays_the_unit(
-    db_session: Session, two_users: tuple[User, User]
+    db_session: Session, two_users: tuple[User, User], forgot: bool
 ) -> None:
     desk = Desk(db_session, two_users[0], units=1)
-    older = desk.submitted(days_ago=6)
+    older = desk.submitted("" if forgot else "Tin cậy", forgot=forgot, days_ago=6)
     newer = desk.submitted(days_ago=1)
     desk.grade(newer, Stub())
     desk.grade(older, Stub(verdicts={desk.units[0]: "incorrect"}))

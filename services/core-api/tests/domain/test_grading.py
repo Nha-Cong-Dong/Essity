@@ -128,6 +128,10 @@ def test_t213_a_valid_answer_passes() -> None:
         {"anchors_used": [str(uuid.uuid4())]},
         {"overall": "incorrect", "understanding": 2},
         {"overall": "correct"},
+        # Review 🟡1 (ADR-0013): NUL in `missing` makes Postgres refuse the JSONB, and its error
+        # (with a piece of the answer) would reach the span.
+        {"missing": ["thiếu \u0000 ý"]},
+        {"missing": ["\x07"]},
     ],
 )
 def test_r03_layer_2_refuses_an_answer_that_does_not_match(changes: dict[str, object]) -> None:

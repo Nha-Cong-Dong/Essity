@@ -14,6 +14,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from core_api.api.text import storable_text
 from core_api.clients.grade_contract import GradeResponse, Verdict
 
 # ai-service's limits (its tasks/grade_models.py, PR B decision G6).
@@ -137,6 +138,13 @@ def check_response(
         raise ResponseRefused("overall")
     if answer.understanding is not None and answer.overall == "incorrect":
         raise ResponseRefused("understanding")
+    for point in answer.missing:
+        # Postgres refuses NUL in JSONB, and its error quotes the row (a piece of the answer)
+        # into the span (review 🟡1, ADR-0013): refused here, before any write.
+        try:
+            storable_text(point)
+        except ValueError:
+            raise ResponseRefused("missing") from None
     anchors = {a.anchor_id for unit in units for a in unit.anchors}
     used = list(dict.fromkeys(answer.anchors_used))
     if not set(used) <= anchors:

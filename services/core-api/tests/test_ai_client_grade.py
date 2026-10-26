@@ -124,3 +124,42 @@ def test_t213_error_bodies_are_never_logged(caplog: pytest.LogCaptureFixture) ->
     with caplog.at_level("DEBUG"):
         client.grade(PAYLOAD)
     assert secret not in caplog.text
+
+
+# Review 🟡3. Red when: the 10 s is a per-phase timeout with connecting allowed the whole 10 s.
+def test_t213_the_call_timeout_caps_connect_at_2_s() -> None:
+    client, seen = client_answering(httpx2.Response(200, json=OK))
+    client.grade(PAYLOAD)
+    timeout = seen[0].extensions["timeout"]
+    assert timeout["connect"] == 2.0
+    assert timeout["read"] == 10.0 and timeout["write"] == 10.0 and timeout["pool"] == 10.0
+
+
+# Review 🟡4, plan "Bảng retry". Red when: a failure retrying cannot clear is logged below ERROR.
+@pytest.mark.parametrize(
+    "answer",
+    [
+        code(503, "audit_unavailable"),
+        httpx2.Response(401),
+        httpx2.Response(413),
+        httpx2.Response(422),
+        code(422, "grade_invalid"),
+        httpx2.Response(200, json={"bad": "schema"}),
+    ],
+)
+def test_t213_a_failure_without_retry_logs_error(
+    answer: httpx2.Response, caplog: pytest.LogCaptureFixture
+) -> None:
+    client, _ = client_answering(answer)
+    with caplog.at_level("DEBUG"):
+        client.grade(PAYLOAD)
+    levels = [r.levelname for r in caplog.records if r.getMessage() == "grade call failed"]
+    assert levels == ["ERROR"]
+
+
+def test_t213_a_failure_that_may_clear_stays_a_warning(caplog: pytest.LogCaptureFixture) -> None:
+    client, _ = client_answering(TIMEOUT, httpx2.Response(200, json=OK))
+    with caplog.at_level("DEBUG"):
+        client.grade(PAYLOAD)
+    levels = [r.levelname for r in caplog.records if r.getMessage() == "grade call failed"]
+    assert levels == ["WARNING"]

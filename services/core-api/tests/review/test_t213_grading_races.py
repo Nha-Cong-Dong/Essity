@@ -22,6 +22,7 @@ from core_api.domain.scheduling.replay import replay
 from core_api.grading import grade_attempt, record_grade
 from core_api.repositories.question import QuestionRepository, QuestionUnitRepository
 from core_api.repositories.review import (
+    GRADING_LOCK_NAMESPACE,
     AttemptRepository,
     GradeRepository,
     MemoryStateRepository,
@@ -224,3 +225,29 @@ def test_t213_two_attempts_same_unit_no_lost_update(engine: Engine, ready: Ready
         assert reviews == 2
         state = MemoryStateRepository(check, ready.user_id).state(ready.unit_id)
         assert state == expected_state(check, ready, FAR_EXAM)
+
+
+def _attempt_with_key(session: Session, negative: bool) -> uuid.UUID:
+    """An id whose lock key (a signed 64-bit hash) has the sign asked for."""
+    while True:
+        candidate = uuid.uuid4()
+        key = session.scalar(select(func.hashtextextended(str(candidate), GRADING_LOCK_NAMESPACE)))
+        assert key is not None
+        if (key < 0) == negative:
+            return candidate
+
+
+# Review 🟢2. Red when: pg_locks is read with the halves of a negative key put back wrongly, so
+# a grading under way reads as failed for about half of all attempts.
+@pytest.mark.parametrize("negative", [True, False])
+def test_t213_a_held_lock_is_seen_whatever_the_sign_of_its_key(
+    engine: Engine, negative: bool
+) -> None:
+    user_id = uuid.uuid4()
+    with Session(engine) as holder, Session(engine) as reader:
+        attempt_id = _attempt_with_key(holder, negative)
+        assert not GradeRepository(reader, user_id).is_being_graded(attempt_id)
+        assert GradeRepository(holder, user_id).try_lock_attempt(attempt_id)
+        assert GradeRepository(reader, user_id).is_being_graded(attempt_id)
+        holder.rollback()
+        assert not GradeRepository(reader, user_id).is_being_graded(attempt_id)
