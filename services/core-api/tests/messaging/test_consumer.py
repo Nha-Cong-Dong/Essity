@@ -941,3 +941,64 @@ def test_sigterm_sets_the_stop_event() -> None:
     finally:
         for sig, handler in saved_handlers.items():
             signal.signal(sig, handler)
+
+
+# --- Polling -------------------------------------------------------------------------------
+
+
+def test_an_empty_poll_leaves_no_span(
+    make_consumer: Callable[..., Consumer], spans: InMemorySpanExporter
+) -> None:
+    # Red when: reading an empty stream records a trace per round (Redis is instrumented for the
+    # whole process: XAUTOCLAIM and XREADGROUP every second, ~170,000 root traces a day).
+    consumer = make_consumer({})
+    spans.clear()  # the group's creation is a command too
+    for _ in range(3):
+        assert consumer.consume_once() == []
+    assert spans.get_finished_spans() == ()
+
+
+def test_pending_entries_beyond_one_batch_are_not_starved(
+    make_consumer: Callable[..., Consumer], redis_client: Redis, streams: tuple[str, str]
+) -> None:
+    # Red when: XAUTOCLAIM always starts at 0-0, so with a batch of one a failing first entry is
+    # taken back every round and the ones behind it never are.
+    source, _ = streams
+    seen: list[uuid.UUID] = []
+
+    def failing(session: Session, event: Event) -> None:
+        seen.append(event.event_id)
+        raise Boom
+
+    consumer = make_consumer({"session.progress.v1": failing}, count=1)
+    first, second = progress_event(), progress_event()
+    publish(redis_client, source, dump_event(first))
+    publish(redis_client, source, dump_event(second))
+    redis_client.xreadgroup("core-api", "gone", {source: ">"}, count=2)
+    consumer.consume_once()
+    consumer.consume_once()
+    assert seen == [first.event_id, second.event_id]
+
+
+def test_a_round_that_handled_entries_does_not_block_on_the_read(
+    make_consumer: Callable[..., Consumer],
+    redis_client: Redis,
+    streams: tuple[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Red when: after handling due entries the round still waits `block_ms` for new ones, so
+    # a backlog of retries is handled one second slower each round.
+    source, _ = streams
+    blocks: list[int | None] = []
+    real = redis_client.xreadgroup
+
+    def xreadgroup(*args: Any, **kwargs: Any) -> Any:
+        blocks.append(kwargs.get("block"))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(redis_client, "xreadgroup", xreadgroup)
+    consumer = make_consumer({"session.progress.v1": Recorder(failures=1)}, block_ms=50)
+    publish(redis_client, source, dump_event(progress_event()))
+    consumer.consume_once()  # new entry: fails
+    consumer.consume_once()  # due again: handled, so no waiting
+    assert blocks == [50, None]
