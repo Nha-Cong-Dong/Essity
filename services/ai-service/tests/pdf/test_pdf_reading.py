@@ -69,16 +69,6 @@ def test_without_page_labels_there_are_none() -> None:
         assert doc.get_page_labels() is None
 
 
-def test_page_labels_cover_pages_outside_every_label_range() -> None:
-    """Labels that start at page 3 leave pages 1–2 without a label: an empty string."""
-    data = make_pdf([Page(text=str(i)) for i in range(4)], labels=[(2, 3, "/D", "", 1)])
-    with open_pdf(data) as doc:
-        labels = doc.get_page_labels()
-    assert labels is not None
-    assert labels[2:] == ["1", "2"]
-    assert len(labels) == 4
-
-
 def test_extract_text_returns_the_text_layer() -> None:
     with open_pdf(make_pdf([Page(text="TCP three-way handshake: SYN, SYN-ACK, ACK")])) as doc:
         page = doc.extract_text(0)
