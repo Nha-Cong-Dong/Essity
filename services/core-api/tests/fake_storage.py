@@ -27,7 +27,10 @@ class FakeStorage:
     )
     presigned: list[Presigned] = field(default_factory=list[Presigned])
     deleted: list[str] = field(default_factory=list[str])
+    # What head() reports instead of the stored checksum, by key ("" = not a SHA-256).
+    checksums_hex: dict[str, str] = field(default_factory=dict[str, str])
     down: bool = False
+    delete_fails: bool = False
 
     def presign_put(
         self, key: str, *, size: int, sha256: str, content_type: str, expires_in: int
@@ -51,6 +54,8 @@ class FakeStorage:
         if key not in self.objects:
             return None
         body, checksum = self.objects[key]
+        if key in self.checksums_hex:
+            return StoredObject(size=len(body), sha256=self.checksums_hex[key])
         return StoredObject(size=len(body), sha256=_hex(checksum))
 
     def read_start(self, key: str, length: int) -> bytes:
@@ -59,7 +64,7 @@ class FakeStorage:
         return self.objects[key][0][:length]
 
     def delete(self, key: str) -> None:
-        if self.down:
+        if self.down or self.delete_fails:
             raise StorageUnavailableError("storage unreachable (test)")
         self.deleted.append(key)
         self.objects.pop(key, None)

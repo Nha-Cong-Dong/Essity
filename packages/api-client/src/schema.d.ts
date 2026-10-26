@@ -205,6 +205,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/documents/{document_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Upload
+         * @description The file is stored: check it, mark the document uploaded and announce it to ai-service
+         *     (`document.uploaded.v1`, in the same transaction). Confirming again changes nothing.
+         *
+         *     Errors: 404 `document_not_found` (another user's too) or `subject_not_found` (deleted since);
+         *     409 `upload_incomplete` (nothing stored yet: upload, or ask for a new URL, then confirm);
+         *     422 `size_mismatch` or `content_mismatch`: the file is deleted and the document stays
+         *     refused, so the same file cannot be uploaded again; 503 `storage_unavailable`.
+         *
+         *     Locks the subject FOR SHARE, then the document FOR UPDATE: the order `reserve` takes them.
+         */
+        post: operations["confirm_upload_v1_documents__document_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -1137,6 +1165,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    confirm_upload_v1_documents__document_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description The file stored is not the PDF declared */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

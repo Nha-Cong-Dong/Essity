@@ -263,3 +263,22 @@ def test_a_reservation_waits_while_the_subject_is_being_deleted(
         assert getattr(refused.value.orig, "sqlstate", None) == LOCK_NOT_AVAILABLE
         uploading.rollback()
         deleter.rollback()
+
+
+def test_a_document_is_held_by_one_confirm_at_a_time(
+    engine: Engine, committed: tuple[uuid.UUID, uuid.UUID]
+) -> None:
+    # Red when: `lock` reads without FOR UPDATE: two confirms would both announce the file.
+    user_id, subject_id = committed
+    with Session(engine) as setup:
+        document, _ = reserve(setup, user_id, subject_id, 1)
+        document_id = document.id
+        setup.commit()
+    with Session(engine) as first, Session(engine) as second:
+        assert DocumentRepository(first, user_id).lock(document_id) is not None
+        second.execute(text("SET LOCAL lock_timeout = '200ms'"))
+        with pytest.raises(OperationalError) as refused:
+            DocumentRepository(second, user_id).lock(document_id)
+        assert getattr(refused.value.orig, "sqlstate", None) == LOCK_NOT_AVAILABLE
+        second.rollback()
+        first.rollback()
