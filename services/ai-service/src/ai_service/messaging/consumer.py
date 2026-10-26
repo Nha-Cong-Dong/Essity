@@ -354,7 +354,8 @@ class Consumer:
                     done = was_processed(session, self.group, event.event_id)
             except Exception as error:
                 if not is_outage(error):
-                    raise
+                    # Cannot tell, and it would fail the same way every round (review 🟢F).
+                    return self._dead(entry_id, envelope, MAX_DELIVERIES, deliveries)
                 self._put_back(entry_id, deliveries)
                 return _Result("unavailable", error_type=type(error).__name__)
             if done:
