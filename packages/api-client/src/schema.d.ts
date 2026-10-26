@@ -225,6 +225,7 @@ export interface paths {
          *     refused, so the same file cannot be uploaded again; 503 `storage_unavailable`.
          *
          *     Locks the subject FOR SHARE, then the document FOR UPDATE: the order `reserve` takes them.
+         *     Limited per account (429): each confirm calls the store.
          */
         post: operations["confirm_upload_v1_documents__document_id__confirm_post"];
         delete?: never;

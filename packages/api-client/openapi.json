@@ -1307,7 +1307,7 @@
     },
     "/v1/documents/{document_id}/confirm": {
       "post": {
-        "description": "The file is stored: check it, mark the document uploaded and announce it to ai-service\n(`document.uploaded.v1`, in the same transaction). Confirming again changes nothing.\n\nErrors: 404 `document_not_found` (another user's too) or `subject_not_found` (deleted since);\n409 `upload_incomplete` (nothing stored yet: upload, or ask for a new URL, then confirm);\n422 `size_mismatch` or `content_mismatch`: the file is deleted and the document stays\nrefused, so the same file cannot be uploaded again; 503 `storage_unavailable`.\n\nLocks the subject FOR SHARE, then the document FOR UPDATE: the order `reserve` takes them.",
+        "description": "The file is stored: check it, mark the document uploaded and announce it to ai-service\n(`document.uploaded.v1`, in the same transaction). Confirming again changes nothing.\n\nErrors: 404 `document_not_found` (another user's too) or `subject_not_found` (deleted since);\n409 `upload_incomplete` (nothing stored yet: upload, or ask for a new URL, then confirm);\n422 `size_mismatch` or `content_mismatch`: the file is deleted and the document stays\nrefused, so the same file cannot be uploaded again; 503 `storage_unavailable`.\n\nLocks the subject FOR SHARE, then the document FOR UPDATE: the order `reserve` takes them.\nLimited per account (429): each confirm calls the store.",
         "operationId": "confirm_upload_v1_documents__document_id__confirm_post",
         "parameters": [
           {

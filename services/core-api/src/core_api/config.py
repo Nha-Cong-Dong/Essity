@@ -118,6 +118,8 @@ class Settings(DatabaseSettings):
     document_quota_bytes: int = Field(default=1 * GIB, gt=0)  # user, 26/10
     storage_global_quota_bytes: int = Field(default=8 * GIB, gt=0)
     document_uploads_per_hour: int = Field(default=30, ge=1)
+    # Each confirm calls the store (paid per call on R2): retries are fine, a loop is not.
+    document_confirms_per_hour: int = Field(default=120, ge=1)
     # An upload never confirmed, or refused, is deleted this long after its URL was signed.
     document_cleanup_after_seconds: int = Field(default=3600, gt=0)
 

@@ -203,7 +203,12 @@ def _check(storage: ObjectStorage, document: Document) -> str | None:
     responses={422: {"description": "The file stored is not the PDF declared"}},
 )
 def confirm_upload(
-    document_id: uuid.UUID, user: VerifiedUser, session: DbSession, storage: Storage, now: Now
+    document_id: uuid.UUID,
+    user: VerifiedUser,
+    session: DbSession,
+    storage: Storage,
+    limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
+    now: Now,
 ) -> DocumentOut | JSONResponse:
     """The file is stored: check it, mark the document uploaded and announce it to ai-service
     (`document.uploaded.v1`, in the same transaction). Confirming again changes nothing.
@@ -214,7 +219,14 @@ def confirm_upload(
     refused, so the same file cannot be uploaded again; 503 `storage_unavailable`.
 
     Locks the subject FOR SHARE, then the document FOR UPDATE: the order `reserve` takes them.
+    Limited per account (429): each confirm calls the store.
     """
+    limiter.enforce(
+        RateLimit(
+            "document_confirm", get_settings().document_confirms_per_hour, timedelta(hours=1)
+        ),
+        str(user.id),
+    )
     documents = DocumentRepository(session, user.id)
     found = documents.get(document_id)
     if found is None:

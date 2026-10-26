@@ -27,6 +27,7 @@ class FakeStorage:
     )
     presigned: list[Presigned] = field(default_factory=list[Presigned])
     deleted: list[str] = field(default_factory=list[str])
+    heads: list[str] = field(default_factory=list[str])  # keys head() was asked for
     # What head() reports instead of the stored checksum, by key ("" = not a SHA-256).
     checksums_hex: dict[str, str] = field(default_factory=dict[str, str])
     down: bool = False
@@ -49,6 +50,7 @@ class FakeStorage:
         self.objects[key] = (body, checksum_b64)
 
     def head(self, key: str) -> StoredObject | None:
+        self.heads.append(key)
         if self.down:
             raise StorageUnavailableError("storage unreachable (test)")
         if key not in self.objects:
