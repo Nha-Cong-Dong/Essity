@@ -33,6 +33,16 @@ class SubjectMismatchError(ValueError):
 class QuestionRepository(UserScopedRepository[Question]):
     model = Question
 
+    def retire(self, id: uuid.UUID) -> bool:
+        """ "Bỏ câu này" (US-09 AC4): the question is never chosen again; what was asked of it
+        stays in the history. False when it is not this user's. Retiring twice is the same."""
+        question = self.get(id)
+        if question is None:
+            return False
+        question.status = "retired"
+        self.session.flush()
+        return True
+
     def find_by_prompt(self, subject_id: uuid.UUID, prompt: str) -> Question | None:
         """The subject's question with this prompt however typed (same content hash), if any."""
         return self.session.scalars(

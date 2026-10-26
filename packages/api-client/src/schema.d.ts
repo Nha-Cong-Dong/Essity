@@ -246,6 +246,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/grades/{grade_id}/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Override */
+        post: operations["override_v1_grades__grade_id__override_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -274,6 +291,23 @@ export interface paths {
         get: operations["ping_v1_ping_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/questions/{question_id}/drop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Drop Question */
+        post: operations["drop_question_v1_questions__question_id__drop_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -588,6 +622,17 @@ export interface components {
             id: string;
             /** Timezone */
             timezone: string;
+        };
+        /**
+         * OverrideIn
+         * @description "Thực ra tôi đúng" is `correct`, "Thực ra tôi sai" is `incorrect` (US-09 AC1).
+         */
+        OverrideIn: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "correct" | "incorrect";
         };
         /** PingResponse */
         PingResponse: {
@@ -1223,6 +1268,41 @@ export interface operations {
             };
         };
     };
+    override_v1_grades__grade_id__override_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grade_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     me_v1_me_get: {
         parameters: {
             query?: never;
@@ -1259,6 +1339,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PingResponse"];
+                };
+            };
+        };
+    };
+    drop_question_v1_questions__question_id__drop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

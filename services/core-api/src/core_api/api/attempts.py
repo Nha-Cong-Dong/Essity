@@ -121,7 +121,7 @@ def result_of(session: DbSession, user_id: uuid.UUID, attempt: Attempt, grade: G
     )
 
 
-def _view(
+def attempt_view(
     session: DbSession, user_id: uuid.UUID, attempt: Attempt, outcome: GradingOutcome | None
 ) -> AttemptView:
     question = QuestionRepository(session, user_id).get(attempt.question_id)
@@ -206,7 +206,7 @@ def read_attempt(attempt_id: uuid.UUID, user: VerifiedUser, session: DbSession) 
     found = AttemptRepository(session, user.id).get(attempt_id)
     if found is None:
         raise _error(status.HTTP_404_NOT_FOUND, "attempt_not_found")
-    return _view(session, user.id, found, None)
+    return attempt_view(session, user.id, found, None)
 
 
 def _graded_view(
@@ -234,4 +234,4 @@ def _graded_view(
         raise _error(status.HTTP_409_CONFLICT, "attempt_not_submitted") from error
     found = AttemptRepository(session, user.id).get(attempt_id)
     assert found is not None
-    return _view(session, user.id, found, outcome)
+    return attempt_view(session, user.id, found, outcome)
