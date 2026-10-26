@@ -45,6 +45,9 @@ packages = ["src/core_api"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Wall-clock tests (R48): they go red when other suites share the Postgres server. CI runs
+# them; agents running locally next to other streams may skip them with -m "not timing".
+markers = ["timing: asserts wall-clock time; skip locally with -m \"not timing\""]
 
 [tool.ruff]
 line-length = 100
