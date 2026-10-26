@@ -14,17 +14,13 @@ import argparse
 import sys
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 from sqlalchemy.orm import Session
 
 from core_api.db.engine import get_engine
-from core_api.repositories.question import (
-    QuestionConflictError,
-    QuestionRepository,
-    QuestionRetiredError,
-    QuestionUnitRepository,
-)
+from core_api.repositories.question import QuestionRepository, QuestionUnitRepository
 from core_api.repositories.subject import SubjectNotFoundError
 from core_api.repositories.unit import AnchorRepository, KnowledgeUnitRepository
 from core_api.repositories.user import UserRepository
@@ -36,7 +32,18 @@ SEED_RUN_ID = uuid.UUID("5eed5eed-5eed-4eed-8eed-5eed5eed5eed")
 
 
 class SeedError(ValueError):
-    """A question of the file cannot be loaded; `str()` says which."""
+    """The file cannot be loaded; `problems` are lines ready to print."""
+
+    def __init__(self, problems: list[str]) -> None:
+        super().__init__("; ".join(problems))
+        self.problems = problems
+
+
+@dataclass(frozen=True)
+class Seeded:
+    added: int
+    replaced: int
+    retired: int  # questions of the file the user dropped: left as they are
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -45,12 +52,27 @@ def _parser() -> argparse.ArgumentParser:
     seed = commands.add_parser("seed-questions", help="load a seed file into one user's subject")
     seed.add_argument("--user-email", required=True)
     seed.add_argument("--subject", required=True, type=uuid.UUID, help="the subject's id")
+    seed.add_argument(
+        "--replace-changed",
+        action="store_true",
+        help="a question whose level or answer differs from the one seeded replaces it: the old "
+        "one is retired (its history stays) and a new one takes its place",
+    )
     seed.add_argument("file", type=Path)
     return parser
 
 
-def apply(session: Session, user_id: uuid.UUID, subject_id: uuid.UUID, seed: SeedFile) -> int:
-    """Write the file into the subject; returns how many questions were added."""
+def apply(
+    session: Session,
+    user_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    seed: SeedFile,
+    *,
+    replace_changed: bool = False,
+) -> Seeded:
+    """Write the file into the subject. A question already there with the same level and answer
+    is left; one that differs is a SeedError naming its line, unless `replace_changed`; one the
+    user retired is skipped, never brought back. SeedError leaves it to the caller to roll back."""
     units = KnowledgeUnitRepository(session, user_id)
     anchors = AnchorRepository(session, user_id)
     questions = QuestionRepository(session, user_id)
@@ -74,10 +96,11 @@ def apply(session: Session, user_id: uuid.UUID, subject_id: uuid.UUID, seed: See
                     page_no=source.page,
                     run_id=SEED_RUN_ID,
                 )
-    added = 0
+    added = replaced = retired = 0
+    changed: list[str] = []
     for index, spec in enumerate(seed.questions):
-        is_new = questions.find_by_prompt(subject_id, spec.prompt) is None
-        try:
+        existing = questions.find_by_prompt(subject_id, spec.prompt)
+        if existing is None:
             question = questions.add_idempotent(
                 subject_id,
                 level=spec.level,
@@ -85,16 +108,33 @@ def apply(session: Session, user_id: uuid.UUID, subject_id: uuid.UUID, seed: See
                 reference_answer=spec.answer,
                 run_id=SEED_RUN_ID,
             )
-        except QuestionConflictError as error:
-            raise SeedError(
-                f"questions.{index}: already seeded with another level or answer"
-            ) from error
-        except QuestionRetiredError as error:
-            raise SeedError(f"questions.{index}: was retired, not brought back") from error
-        added += is_new
+            added += 1
+        elif existing.status != "active":
+            retired += 1
+            continue
+        elif (existing.level, existing.reference_answer, existing.rubric) == (
+            spec.level,
+            spec.answer,
+            None,
+        ):
+            question = existing
+        elif replace_changed:
+            question = questions.replace(
+                existing.id, level=spec.level, reference_answer=spec.answer, run_id=SEED_RUN_ID
+            )
+            replaced += 1
+        else:
+            line = seed.question_lines[index]
+            changed.append(
+                f"line {line}: questions.{index}: differs from the question already seeded "
+                "(level or answer); run again with --replace-changed to retire the old one"
+            )
+            continue
         for title in spec.units:
             links.link_once(question.id, unit_ids[title])
-    return added
+    if changed:
+        raise SeedError(changed)
+    return Seeded(added, replaced, retired)
 
 
 def run(session: Session, argv: Sequence[str]) -> int:
@@ -115,14 +155,20 @@ def run(session: Session, argv: Sequence[str]) -> int:
         return 1
     try:
         with session.begin_nested():
-            added = apply(session, user.id, args.subject, seed)
+            done = apply(session, user.id, args.subject, seed, replace_changed=args.replace_changed)
     except SubjectNotFoundError:
         print("no such subject for this user (or it was deleted)", file=sys.stderr)
         return 1
     except SeedError as error:
-        print(f"{args.file}: {error}", file=sys.stderr)
+        for problem in error.problems:
+            print(f"{args.file}: {problem}", file=sys.stderr)
         return 1
-    print(f"added {added} questions, {len(seed.questions) - added} were already there")
+    print(
+        f"added {done.added} questions, replaced {done.replaced}, "
+        f"{len(seed.questions) - done.added - done.replaced - done.retired} were already there"
+    )
+    if done.retired:
+        print(f"{done.retired} questions are retired (dropped): left as they are")
     return 0
 
 
