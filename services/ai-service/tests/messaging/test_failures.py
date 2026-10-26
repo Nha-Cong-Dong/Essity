@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 from redis import Redis
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session, sessionmaker
 
 from ai_service.messaging.consumer import backoff_ms, keys_belong_to_user
@@ -238,6 +239,26 @@ def test_t43_entry_delivered_more_than_max_without_result_goes_dead_without_hand
     assert recorder.calls == []
     [dead] = dead_entries(redis_client, names)
     assert (dead["reason"], dead["deliveries"]) == ("max_deliveries", "6")
+
+
+def test_t43_entry_delivered_too_often_and_unreadable_record_goes_dead(
+    redis_client: Redis, names: Names, session_factory: sessionmaker[Session]
+) -> None:
+    # Review 🟢F. Red when: a database error that is not an outage (a schema out of step) is
+    # raised out of the round, and the entry fails every round after min_idle for ever.
+    entry_id = publish(redis_client, names.stream, uploaded())
+    consumer = make_consumer(redis_client, names, session_factory, {DOCUMENT_UPLOADED: Recorder()})
+    consumer.ensure_group()
+    redis_client.xreadgroup(names.group, "crashed-consumer", {names.stream: ">"}, count=1)
+    redis_client.xclaim(names.stream, names.group, "crashed-consumer", 0, [entry_id], retrycount=5)
+
+    def broken_sessions() -> Session:
+        raise ProgrammingError("SELECT", {}, Exception('relation "processed_event" is missing'))
+
+    consumer.session_factory = broken_sessions
+    assert consumer.run_once() == ["dead"]
+    [dead] = dead_entries(redis_client, names)
+    assert dead["reason"] == "max_deliveries"
 
 
 def test_t43_entry_delivered_too_often_but_already_handled_is_acked(
