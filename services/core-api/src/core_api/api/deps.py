@@ -6,10 +6,11 @@ URL, so it stays out of access logs and traces (the span exporter blanks the hea
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import Depends, HTTPException, Request
 
+from core_api.clients.storage import ObjectStorage
 from core_api.db.models import AuthSession, User
 from core_api.db.session import DbSession
 from core_api.logging import set_user_id
@@ -77,3 +78,11 @@ def verified_user(signed: CurrentSession) -> User:
 
 
 VerifiedUser = Annotated[User, Depends(verified_user)]
+
+
+def get_storage(request: Request) -> ObjectStorage:
+    """The object storage built at startup (`main.lifespan`); tests swap in a double."""
+    return cast(ObjectStorage, request.app.state.storage)
+
+
+Storage = Annotated[ObjectStorage, Depends(get_storage)]
