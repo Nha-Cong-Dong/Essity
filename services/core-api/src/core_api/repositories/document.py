@@ -41,6 +41,16 @@ def stored_bytes_of_everyone(session: Session) -> int:
 class DocumentRepository(UserScopedRepository[Document]):
     model = Document
 
+    def lock(self, id: uuid.UUID) -> Document | None:
+        """This user's document, held FOR UPDATE until commit and read afresh: one confirm at a
+        time, and none while cleanup deletes it (plan R2)."""
+        return self.session.scalars(
+            self._select()
+            .where(Document.id == id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).one_or_none()
+
     def reserve(
         self,
         subject_id: uuid.UUID,
