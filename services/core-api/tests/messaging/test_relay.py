@@ -11,6 +11,7 @@ from typing import Any, cast
 
 import pytest
 import sqlalchemy
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from redis import Redis
 from sqlalchemy import Engine, update
 from sqlalchemy.orm import Session
@@ -316,12 +317,77 @@ def test_relay_logs_no_payload(
 
 
 def test_run_stops_when_asked(engine: Engine, redis_client: Redis, stream: str) -> None:
-    # Red when: the loop ignores the stop signal, so SIGTERM waits for Compose to kill it.
+    # Red when: the loop ignores the stop signal while it waits out the poll, so SIGTERM waits
+    # for Compose to kill it. The poll is a minute: only an interruptible wait ends in time.
     stop = threading.Event()
-    thread, outcome = in_thread(lambda: run(engine, redis_client, stop, stream=stream))
+    thread, outcome = in_thread(
+        lambda: run(engine, redis_client, stop, stream=stream, poll_seconds=60)
+    )
     enqueue(engine)
     stop.set()
     assert finished(thread, outcome) is None
+
+
+def test_run_goes_on_after_a_failed_round(
+    engine: Engine,
+    redis_client: Redis,
+    stream: str,
+    monkeypatch: pytest.MonkeyPatch,
+    log_output: Callable[[], str],
+) -> None:
+    # Red when: one failed round (the database restarting, say) ends the loop, or its log line
+    # carries the error's message instead of its class name.
+    rounds: list[int] = []
+    stop = threading.Event()
+
+    def flaky(*args: Any, **kwargs: Any) -> int:
+        rounds.append(1)
+        if len(rounds) == 1:
+            raise RuntimeError("password=hunter2 refused")
+        stop.set()
+        return 0
+
+    monkeypatch.setattr("core_api.messaging.relay.relay_once", flaky)
+    run(engine, redis_client, stop, stream=stream, poll_seconds=0.01)
+    assert len(rounds) == 2
+    failed = [
+        json.loads(line)
+        for line in log_output().splitlines()
+        if "outbox relay round failed" in line
+    ]
+    assert [line["error_type"] for line in failed] == ["RuntimeError"]
+    assert "hunter2" not in log_output()
+
+
+# --- Tracing -------------------------------------------------------------------------------
+
+
+def test_an_empty_poll_leaves_no_span(
+    engine: Engine, redis_client: Redis, stream: str, spans: InMemorySpanExporter
+) -> None:
+    # Red when: polling an empty outbox records a trace (SQLAlchemy is instrumented for the
+    # whole process, so the relay's SELECT every second would be ~86,400 root traces a day).
+    for _ in range(3):
+        assert relay_once(engine, redis_client, now=NOW, stream=stream) == 0
+    assert spans.get_finished_spans() == ()
+
+
+def test_a_relayed_batch_is_one_span_with_its_queries(
+    engine: Engine, redis_client: Redis, stream: str, spans: InMemorySpanExporter
+) -> None:
+    # Red when: a round that sent events leaves no span, or the UPDATE that marks them sent
+    # runs outside it.
+    enqueue(engine)
+    assert relay_once(engine, redis_client, now=NOW, stream=stream) == 1
+    finished_spans = spans.get_finished_spans()
+    [relay] = [s for s in finished_spans if s.name == "relay outbox"]
+    assert relay.parent is None
+    assert dict(relay.attributes or {}) == {"messaging.batch.message_count": 1}
+    updates = [s for s in finished_spans if s.name.startswith("UPDATE")]
+    assert updates
+    assert relay.context is not None
+    relay_id = relay.context.span_id
+    assert all(s.parent is not None and s.parent.span_id == relay_id for s in updates)
 
 
 def test_sigterm_sets_the_stop_event() -> None:

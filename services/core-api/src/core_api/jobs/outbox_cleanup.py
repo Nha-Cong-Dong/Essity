@@ -9,9 +9,9 @@ Runs every hour. Running twice is harmless: the second run finds nothing to dele
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import delete
+from sqlalchemy import CursorResult, delete
 from sqlalchemy.orm import Session
 
 from core_api.db.engine import get_engine
@@ -26,14 +26,13 @@ _log = logging.getLogger("core_api.jobs")
 
 def delete_sent_outbox(session: Session, now: datetime) -> int:
     """Delete rows sent before `now - SENT_KEPT_FOR`; return how many."""
-    deleted = session.scalars(
+    result = session.execute(
         delete(Outbox)
         # NULL < anything is not true: an unsent row never matches.
         .where(Outbox.sent_at < now - SENT_KEPT_FOR)
-        .returning(Outbox.id)
         .execution_options(synchronize_session=False)
     )
-    return len(deleted.all())
+    return cast(CursorResult[Any], result).rowcount  # a DELETE returns a CursorResult
 
 
 @periodic_job(OUTBOX_CLEANUP, cron="30 * * * *")

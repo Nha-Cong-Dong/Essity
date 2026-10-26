@@ -21,8 +21,11 @@ Logs hold counts and class names only, never an event (ADR-0013).
 import logging
 import signal
 import threading
+from contextlib import ExitStack
 from datetime import UTC, datetime, timedelta
 
+from opentelemetry import trace
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from pydantic import TypeAdapter, ValidationError
 from redis import Redis
 from redis.exceptions import RedisError
@@ -42,6 +45,7 @@ POLL_SECONDS = 1.0
 MAX_DELAY = timedelta(seconds=30)
 
 _log = logging.getLogger("core_api.messaging")
+_tracer = trace.get_tracer("core_api.messaging")
 _EVENT: TypeAdapter[Event] = TypeAdapter(Event)
 
 
@@ -76,16 +80,22 @@ def relay_once(
 ) -> int:
     """Send up to `batch` due rows; return how many were sent (0 when Redis failed)."""
     now = now or datetime.now(UTC)
-    with Session(engine) as session, session.begin():
-        rows = session.scalars(
-            select(Outbox)
-            .where(Outbox.sent_at.is_(None), Outbox.available_at <= now)
-            .order_by(Outbox.seq)
-            .limit(batch)
-            .with_for_update(skip_locked=True)
-        ).all()
+    # SQLAlchemy is instrumented for the whole process: an empty poll every second would be a
+    # root trace of its own (~86,400 a day). The span opens only once there is something to send,
+    # and stays open to the commit so the UPDATE that marks the rows sent belongs to it.
+    with ExitStack() as stack, Session(engine) as session, session.begin():
+        with suppress_instrumentation():
+            rows = session.scalars(
+                select(Outbox)
+                .where(Outbox.sent_at.is_(None), Outbox.available_at <= now)
+                .order_by(Outbox.seq)
+                .limit(batch)
+                .with_for_update(skip_locked=True)
+            ).all()
         if not rows:
             return 0
+        span = stack.enter_context(_tracer.start_as_current_span("relay outbox"))
+        span.set_attribute("messaging.batch.message_count", len(rows))
         # A row that no longer validates waits like a failed send instead of failing the batch.
         ready: list[tuple[Outbox, str]] = []
         for row in rows:
@@ -135,8 +145,9 @@ def run(
     while not stop.is_set():
         try:
             sent = relay_once(engine, redis, stream=stream)
-        except Exception:  # the database is down, say: log it and try again next round
-            _log.exception("outbox relay round failed")
+        except Exception as error:  # the database is down, say: log it and try again next round
+            # The class name only: a traceback would carry the error's message (ADR-0013).
+            _log.error("outbox relay round failed", extra={"error_type": type(error).__name__})
             sent = 0
         if sent < BATCH:
             stop.wait(poll_seconds)

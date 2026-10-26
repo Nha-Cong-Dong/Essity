@@ -12,8 +12,6 @@ from typing import Any, cast
 
 import pytest
 from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import SpanKind
 from redis import Redis
@@ -363,16 +361,6 @@ def test_entry_trimmed_while_pending_is_acknowledged(
 
 
 # --- Tracing and logs ----------------------------------------------------------------------
-
-
-@pytest.fixture
-def spans() -> Iterator[InMemorySpanExporter]:
-    provider = trace.get_tracer_provider()
-    assert isinstance(provider, TracerProvider)  # installed when core_api.main was imported
-    exporter = InMemorySpanExporter()
-    provider.add_span_processor(SimpleSpanProcessor(exporter))
-    yield exporter
-    exporter.shutdown()
 
 
 def test_consumer_span_links_trace_context(

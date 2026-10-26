@@ -155,6 +155,9 @@ services:
     command: ["uv", "run", "--no-sync", "python", "-m", "core_api.messaging.relay"]
     environment: *core-environment
     stop_grace_period: 10s
+    # A round that fails is logged and retried, but the process can still die (out of memory,
+    # Redis refusing at start): events are owed, so bring it back.
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
