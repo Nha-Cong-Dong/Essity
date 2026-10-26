@@ -168,7 +168,7 @@ class S3Storage:
         try:
             found = self._internal.head_object(Bucket=self._bucket, Key=key, ChecksumMode="ENABLED")
         except ClientError as error:
-            if _not_found(error):
+            if _not_found(error) and self._bucket_exists():
                 return None
             raise StorageUnavailableError(_reason(error)) from None
         except BotoCoreError as error:
@@ -178,6 +178,20 @@ class S3Storage:
             size=found["ContentLength"],
             sha256=_sha256_hex(checksum) if checksum else None,
         )
+
+    def _bucket_exists(self) -> bool:
+        """Whether the bucket is there. A HEAD has no body, so its 404 cannot say whether the
+        object or the bucket is missing; a mistyped bucket must fail closed (tester L1). Asked
+        only after a 404, which confirm rarely meets."""
+        try:
+            self._internal.head_bucket(Bucket=self._bucket)
+        except ClientError as error:
+            if _not_found(error):
+                return False
+            raise StorageUnavailableError(_reason(error)) from None
+        except BotoCoreError as error:
+            raise StorageUnavailableError(_reason(error)) from None
+        return True
 
     def read_start(self, key: str, length: int) -> bytes:
         """The first `length` bytes of the object (fewer if it is shorter)."""
