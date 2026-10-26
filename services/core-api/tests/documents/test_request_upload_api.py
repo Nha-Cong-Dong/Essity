@@ -236,6 +236,11 @@ def test_a_pending_file_again_gets_a_new_url_for_the_same_row(
     assert datetime.fromisoformat(out["upload"]["expires_at"]) == later + timedelta(minutes=5)
     assert len(fake_storage.presigned) == 2
     assert rows(db_session) == 1
+    # Saved, not only set on the object: cleanup reads the column (plan R2, review F2).
+    stored = db_session.execute(
+        select(Document.presigned_at).where(Document.id == uuid.UUID(out["document"]["id"]))
+    ).scalar_one()
+    assert stored == later
 
 
 def test_a_pending_file_again_with_another_size_is_refused(

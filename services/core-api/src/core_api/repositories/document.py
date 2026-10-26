@@ -31,7 +31,10 @@ class StorageFullError(ValueError):
 
 def stored_bytes_of_everyone(session: Session) -> int:
     """Bytes of every document row, any user: the one query here that is not scoped to a user,
-    for the store-wide cap (plan P17). It reads a sum, never a row."""
+    for the store-wide cap (plan P17). It reads a sum, never a row.
+
+    The cap is approximate: each user's asks are serialized, not everyone's, so N users asking
+    at once can go over it by up to N files. Accepted (P17): it bounds cost, not a promise."""
     return session.scalar(select(func.coalesce(func.sum(Document.size_bytes), 0))) or 0
 
 
