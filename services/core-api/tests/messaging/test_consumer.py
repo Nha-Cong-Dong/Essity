@@ -634,8 +634,8 @@ def test_backoff_longer_than_min_idle_never_sends_a_negative_idle(
     streams: tuple[str, str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Red when: IDLE is min_idle - backoff unclamped. Redis accepts a negative IDLE (the entry
-    # then looks like it will be delivered in the future), so only the value shows it.
+    # Red when: the IDLE sent is min_idle - backoff unclamped (negative). Redis accepts it and
+    # behaves as for 0, so the entry's behaviour is the same: only the value sent shows it.
     source, _ = streams
     calls = spy_xclaim(redis_client, monkeypatch)
     consumer = make_consumer(
