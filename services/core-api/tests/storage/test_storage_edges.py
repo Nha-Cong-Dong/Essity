@@ -19,6 +19,10 @@ def test_a_missing_bucket_is_an_error_not_a_missing_object(object_key: str) -> N
         storage.delete(object_key)
     with pytest.raises(StorageUnavailableError):
         storage.read_start(object_key, 5)
+    # HEAD has no body, so its 404 cannot say which is missing (tester L1): confirm must answer
+    # 503, not "upload incomplete" for ever.
+    with pytest.raises(StorageUnavailableError):
+        storage.head(object_key)
 
 
 def test_read_start_of_a_missing_object_is_an_error(s3_storage: S3Storage, object_key: str):
