@@ -100,7 +100,7 @@ ALLOWED_FIELDS = frozenset(
         "event_count",
         "error_type",  # exception class name only
         "deliveries",
-        "reason",  # dead letter: exception class name, invalid_envelope or unknown_type
+        "reason",  # dead letter: exception class name or a code (contracts/events/README.md)
         "outbox_unsent_stale",  # job_health (plan Y8)
     }
 )
