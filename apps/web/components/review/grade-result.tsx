@@ -64,9 +64,9 @@ export function GradeResult({ result }: { result: Result }) {
         <Block order={order++}>
           <Pen id="result-missing">còn thiếu</Pen>
           <ul aria-labelledby="result-missing" className="m-0 flex list-none flex-col gap-1.5 p-0">
-            {result.missing.map((point) => (
+            {result.missing.map((point, index) => (
               <li
-                key={point}
+                key={index}
                 className="relative pl-5 wrap-anywhere before:absolute before:left-0 before:text-ink-soft before:content-['+']"
               >
                 {point}

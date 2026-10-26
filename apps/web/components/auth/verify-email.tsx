@@ -4,6 +4,7 @@ import { type MouseEvent, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { type AuthResult, postJson } from "@/lib/auth-errors";
+import { clearAllDrafts } from "@/lib/draft";
 import { NEXT_PAGES, safeNext } from "@/lib/landing";
 import { consumeLinkToken, postOnce } from "@/lib/link-token";
 import { go } from "@/lib/navigate";
@@ -66,6 +67,11 @@ export function VerifyEmail() {
   // unless the person asked for less motion; then the button alone moves on.
   const dest = state.view === "ok" ? safeNext(state.next, NEXT_PAGES) : "/today";
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // This device now belongs to the person who signed in: answers left by the last one go.
+  const signedIn = state.view === "ok" && state.signedIn;
+  useEffect(() => {
+    if (signedIn) clearAllDrafts();
+  }, [signedIn]);
   useEffect(() => {
     if (state.view !== "ok" || !state.signedIn) return;
     if (prefersLessMotion()) return;

@@ -69,10 +69,13 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
       const reply = await api.saveDraft(attemptId, { answer_text: value, dont_remember: false });
       if (attemptRef.current !== attemptId) return;
       if (reply.ok) {
+        baseRef.current = value; // core-api has this text now, whatever was typed meanwhile
         if (textRef.current === value) {
-          baseRef.current = value;
           writeDraft(attemptId, { text: value, dontRemember: false, synced: true, base: value });
           setSave({ state: "saved", at: Date.now() });
+        } else {
+          // Typed during the call: the newer text stays unsent, over the text core-api now has.
+          writeDraft(attemptId, { text: textRef.current, dontRemember: false, synced: false, base: value });
         }
       } else if (reply.error === "session_ended") {
         setPhase({ kind: "ended" });
@@ -170,7 +173,7 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
     clearTimeout(timer.current);
     setSendFailed(false);
     setSent({ text, dontRemember, view: null, late: false });
-    const reply = await api.submit(attemptId, { answer_text: text, dont_remember: dontRemember });
+    const reply = await api.submit(attemptId, { answer_text: dontRemember ? "" : text, dont_remember: dontRemember });
     if (attemptRef.current !== attemptId) return;
     if (!reply.ok) {
       if (reply.error === "session_ended") setPhase({ kind: "ended" });

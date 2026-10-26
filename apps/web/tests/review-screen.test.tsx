@@ -174,6 +174,51 @@ describe("ReviewScreen (T2.15)", () => {
     expect(readDraft(ATTEMPT)).toMatchObject({ synced: true });
   });
 
+  // Review 🟠1. Red when: a save that finishes after more typing marks the older text as the
+  // base, so a reload hides the newer text behind the server's draft.
+  it("text typed while a save is in flight is still sent after a reload", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let finish: (reply: Reply<null>) => void = () => {};
+    const saveDraft = vi.fn(
+      () => new Promise<Reply<null>>((resolve) => (finish = resolve)),
+    ) as ReviewApi["saveDraft"];
+    await show(fakeApi({ saveDraft }));
+    type("TCP");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1600);
+    });
+    type("TCP tin cậy");
+    await act(async () => finish(ok(null)));
+    expect(readDraft(ATTEMPT)).toMatchObject({ text: "TCP tin cậy", synced: false, base: "TCP" });
+    cleanup();
+    const again = await show(
+      fakeApi({
+        current: vi.fn(async () =>
+          ok(current({ attempt: { id: ATTEMPT, status: "draft", answer_text: "TCP", dont_remember: false } })),
+        ),
+      }),
+    );
+    expect(field().value).toBe("TCP tin cậy");
+    await waitFor(() =>
+      expect(again.saveDraft).toHaveBeenCalledWith(ATTEMPT, { answer_text: "TCP tin cậy", dont_remember: false }),
+    );
+  });
+
+  // Review 🟡2. Red when: unsent text overwrites a draft another device saved since (the check
+  // `start.text === local.text` before sending is dropped).
+  it("a draft changed from another device is shown and not overwritten", async () => {
+    writeDraft(ATTEMPT, { text: "gõ ở đây", dontRemember: false, synced: false, base: "cũ" });
+    const api = await show(
+      fakeApi({
+        current: vi.fn(async () =>
+          ok(current({ attempt: { id: ATTEMPT, status: "draft", answer_text: "máy khác", dont_remember: false } })),
+        ),
+      }),
+    );
+    expect(field().value).toBe("máy khác");
+    expect(api.saveDraft).not.toHaveBeenCalled();
+  });
+
   // Red when: a graded answer stays editable, or its device copy outlives the submit.
   it("submitting shows the answer read-only, clears this device's copy and offers Câu tiếp", async () => {
     const api = await show(fakeApi());
@@ -198,7 +243,8 @@ describe("ReviewScreen (T2.15)", () => {
     );
     type("nửa chừng");
     await press("Không nhớ");
-    expect(api.submit).toHaveBeenCalledWith(ATTEMPT, { answer_text: "nửa chừng", dont_remember: true });
+    // Review 🟡3: a half-written answer is not kept (and cannot be over the 4000 limit).
+    expect(api.submit).toHaveBeenCalledWith(ATTEMPT, { answer_text: "", dont_remember: true });
     expect(screen.getByText("Bạn chọn Không nhớ.")).toBeTruthy();
   });
 
