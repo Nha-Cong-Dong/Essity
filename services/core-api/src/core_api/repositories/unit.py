@@ -27,6 +27,19 @@ class KnowledgeUnitRepository(UserScopedRepository[KnowledgeUnit]):
         self.session.flush()  # gives the unit its id, for the anchors and links that follow
         return unit
 
+    def find_by_title(self, subject_id: uuid.UUID, title: str) -> KnowledgeUnit | None:
+        """The subject's active unit with this title, oldest first (the seed script, T2.2)."""
+        query = (
+            self._select()
+            .where(
+                KnowledgeUnit.subject_id == subject_id,
+                KnowledgeUnit.title == title,
+                KnowledgeUnit.status == "active",
+            )
+            .order_by(KnowledgeUnit.created_at, KnowledgeUnit.id)
+        )
+        return self.session.scalars(query.limit(1)).first()
+
     def lock(self, ids: Sequence[uuid.UUID]) -> None:
         """Hold these units FOR NO KEY UPDATE until commit, in id order (T2.13): two answers on
         one unit graded at once write its schedule one after the other, never over each other.
@@ -49,6 +62,20 @@ class AnchorRepository(UserScopedRepository[Anchor]):
         anchor = self.add(Anchor(unit_id=unit_id, **fields))
         self.session.flush()
         return anchor
+
+    def has_quote(self, unit_id: uuid.UUID, source: str, quote_text: str) -> bool:
+        return (
+            self.session.scalars(
+                self._select()
+                .where(
+                    Anchor.unit_id == unit_id,
+                    Anchor.source == source,
+                    Anchor.quote_text == quote_text,
+                )
+                .limit(1)
+            ).first()
+            is not None
+        )
 
     def of_units(self, unit_ids: Sequence[uuid.UUID]) -> Sequence[Anchor]:
         """The anchors of these units, oldest first (the sources sent for grading, US-05 AC8)."""
