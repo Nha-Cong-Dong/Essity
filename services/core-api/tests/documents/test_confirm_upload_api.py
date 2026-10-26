@@ -10,6 +10,7 @@ Against a storage double; `test_documents_e2e.py` runs the flow on RustFS.
 import base64
 import hashlib
 import uuid
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -19,8 +20,11 @@ from sqlalchemy.orm import Session
 
 from accounts import signed_in
 from clock import FROZEN_NOW, future_exam
+from core_api.clients.redis import redis_from_url
+from core_api.config import get_settings
 from core_api.db.models import Document, Outbox, Subject, User
 from core_api.repositories.subject import SubjectRepository
+from core_api.security import rate_limit
 from fake_storage import FakeStorage
 
 PDF = b"%PDF-1.7\n" + b"x" * 100
@@ -265,3 +269,58 @@ def test_a_file_already_there_when_the_put_got_412_is_confirmed(
 def test_a_malformed_id_is_a_422(client: TestClient, db_session: Session, path: str) -> None:
     _, headers = signed_in(db_session)
     assert client.post(path, headers=headers).status_code == 422
+
+
+def test_confirming_too_often_is_a_429(
+    client: TestClient,
+    db_session: Session,
+    fake_storage: FakeStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Each confirm costs calls to the store (review G1): a loop must not run up its bill.
+    monkeypatch.setenv("CORE_DOCUMENT_CONFIRMS_PER_HOUR", "2")
+    get_settings.cache_clear()
+    _, headers, document = asked(client, db_session)
+    assert confirm(client, headers, document.id)[0] == 409
+    assert confirm(client, headers, document.id)[0] == 409
+    calls = len(fake_storage.heads)
+
+    response = client.post(f"/v1/documents/{document.id}/confirm", headers=headers)
+
+    assert response.status_code == 429
+    assert int(response.headers["Retry-After"]) > 0
+    assert len(fake_storage.heads) == calls  # refused before the store
+
+
+def test_confirms_are_limited_by_default() -> None:
+    assert get_settings().document_confirms_per_hour == 120
+
+
+def test_confirm_with_redis_down_is_a_503(
+    client: TestClient,
+    db_session: Session,
+    fake_storage: FakeStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user, headers, document = asked(client, db_session)
+    fake_storage.put(document.object_key, PDF, PDF_SHA_B64)
+    dead = redis_from_url("redis://127.0.0.1:1/0", timeout=0.2)
+    monkeypatch.setattr(rate_limit, "get_redis", lambda: dead)
+
+    assert confirm(client, headers, document.id)[0] == 503
+    assert state(db_session, document) == "pending"
+    assert events(db_session, user) == []
+
+
+def test_confirm_logs_no_key_or_checksum(
+    client: TestClient,
+    db_session: Session,
+    fake_storage: FakeStorage,
+    log_output: Callable[[], str],
+) -> None:
+    _, headers, document = asked(client, db_session)
+    fake_storage.put(document.object_key, PDF, PDF_SHA_B64)
+    assert confirm(client, headers, document.id)[0] == 200
+    logged = log_output()
+    assert document.object_key not in logged
+    assert PDF_SHA not in logged
