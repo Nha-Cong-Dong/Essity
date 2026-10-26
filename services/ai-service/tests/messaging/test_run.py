@@ -1,14 +1,19 @@
 """T4.3: the consumer process: `python -m ai_service.messaging.consumer`."""
 
+import io
+import json
+import logging
 import threading
 from typing import Any
 
 import pytest
 from redis import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from ai_service.handlers import HANDLERS
+from ai_service.logging import configure_logging
 from ai_service.messaging import consumer as consumer_module
 from ai_service.messaging.consumer import Consumer, run
 from tests.messaging.conftest import Names
@@ -94,6 +99,26 @@ def test_t43_run_backs_off_while_infrastructure_is_unavailable(
     consumer, stop = scripted(redis_client, session_factory, rounds)
     run(consumer, stop)  # pyright: ignore[reportArgumentType]
     assert stop.waits == [1.0, 2.0]
+
+
+def test_t43_failed_round_is_logged_without_the_exception_message(
+    redis_client: Redis, session_factory: sessionmaker[Session]
+) -> None:
+    # ADR-0013 (finding from S2 in core-api): a database error's message holds the SQL and its
+    # parameters; the round's log line must carry the class and the stack frames only.
+    buffer = io.StringIO()
+    root = logging.getLogger()
+    saved = (root.handlers[:], root.level, logging.getLogger("uvicorn.access").disabled)
+    configure_logging("ai-consumer", "INFO", stream=buffer)
+    try:
+        secret = OperationalError("SELECT", {"password": "hunter2"}, Exception("password=hunter2"))
+        consumer, stop = scripted(redis_client, session_factory, [secret])
+        run(consumer, stop)  # pyright: ignore[reportArgumentType]
+    finally:
+        root.handlers, root.level, logging.getLogger("uvicorn.access").disabled = saved
+    [line] = [json.loads(text) for text in buffer.getvalue().splitlines()]
+    assert line["error_type"] == "OperationalError"
+    assert "hunter2" not in buffer.getvalue()
 
 
 def test_t43_run_backoff_is_capped(
