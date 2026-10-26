@@ -9,6 +9,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -35,7 +36,16 @@ class Question(UserOwned, Base):
         CheckConstraint(not_blank("reference_answer"), name="answer_not_blank"),
         CheckConstraint("status IN ('active', 'retired')", name="status_known"),
         CheckConstraint("length(content_hash) = 64", name="content_hash_length"),
-        UniqueConstraint("user_id", "subject_id", "content_hash"),
+        # Unique among the active ones: a question whose answer changed is retired and replaced
+        # (T2.2), so retired ones may repeat the hash.
+        Index(
+            "uq_question_active_content_hash",
+            "user_id",
+            "subject_id",
+            "content_hash",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
         UniqueConstraint("id", "user_id"),
         UniqueConstraint("id", "subject_id", "user_id"),
         Index(None, "subject_id", "status"),

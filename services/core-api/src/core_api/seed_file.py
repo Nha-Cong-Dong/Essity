@@ -27,6 +27,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PrivateAttr,
     StringConstraints,
     ValidationError,
 )
@@ -70,6 +71,12 @@ class SeedQuestion(_Strict):
 class SeedFile(_Strict):
     units: Annotated[list[SeedUnit], Field(min_length=1)]
     questions: Annotated[list[SeedQuestion], Field(min_length=1)]
+    # The line each question starts on, for messages about it after parsing.
+    _lines: list[int] = PrivateAttr(default_factory=list[int])
+
+    @property
+    def question_lines(self) -> list[int]:
+        return self._lines
 
 
 class SeedFileError(ValueError):
@@ -139,4 +146,7 @@ def parse(text: str) -> SeedFile:
                 )
     if problems:
         raise SeedFileError(problems)
+    seed._lines = [  # pyright: ignore[reportPrivateUsage]
+        _line_of(root, ("questions", n)) for n in range(len(seed.questions))
+    ]
     return seed
