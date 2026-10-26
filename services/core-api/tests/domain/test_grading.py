@@ -165,3 +165,45 @@ def test_t213_provider_none_is_stored_as_ai() -> None:
         anchors_used=[],
     )
     assert check(answer).source == "ai"  # type: ignore[attr-defined]
+
+
+# Tester (T2.13): the edges of the limits, each on its own.
+
+
+# Red when: `1 <= len(units)` becomes `0 <=`. A question whose units are all gone would be sent
+# with none, and ai-service refuses that (422) on every "Chấm lại".
+def test_t213_a_request_with_no_unit_is_refused() -> None:
+    with pytest.raises(RequestRefused):
+        request(units=[])
+
+
+# Red when: a limit is off by one (`>=` for `>`, `<` for `<=`): an answer of exactly 4000
+# characters, which the box allows (plan D-4), would be refused before the AI, and "Chấm lại"
+# would never grade it.
+def test_t213_a_request_exactly_at_every_limit_is_sent() -> None:
+    units = [
+        UnitIn(uuid.uuid4(), f"u{n}", [AnchorIn(uuid.uuid4(), "q" * 480) for _ in range(5)])
+        for n in range(5)
+    ]  # 5 units, 5 anchors each, 12 000 characters of quotes in all
+    body: Any = request(
+        answer="x" * 4000,
+        question=QuestionIn(text="q" * 4000, rubric=None, reference_answer="a" * 4000),
+        units=units,
+    )
+    assert len(body["answer"]) == 4000
+    assert sum(len(a["quote_text"]) for u in body["units"] for a in u["anchors"]) == 12000
+
+
+# Red when: the `understanding` rule is dropped. The overall is consistent here (every unit
+# incorrect), so only that rule refuses it; the case in the table above is refused by `overall`.
+def test_r03_understanding_on_an_incorrect_answer_is_refused() -> None:
+    answer = response(
+        overall="incorrect",
+        understanding=2,
+        units=[
+            {"unit_id": str(U1), "verdict": "incorrect"},
+            {"unit_id": str(U2), "verdict": "incorrect"},
+        ],
+    )
+    with pytest.raises(ResponseRefused):
+        check(answer)

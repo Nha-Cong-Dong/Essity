@@ -404,3 +404,76 @@ describe("ReviewScreen (T2.15)", () => {
     expect(screen.getByText("Phiên ôn này đã kết thúc.")).toBeTruthy();
   });
 });
+
+// Tester (T2.15, 26/10): the `base` a device copy is written over (lib/draft, review 🟠1). Each
+// test names the change in components/review/review-screen.tsx that turns it red.
+describe("ReviewScreen draft base (T2.15, tester)", () => {
+  beforeEach(() => {
+    go.mockReset();
+    window.localStorage.clear();
+  });
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  const serverDraft = (answer_text: string) =>
+    vi.fn(async () => ok(current({ attempt: { id: ATTEMPT, status: "draft", answer_text, dont_remember: false } })));
+
+  // Red when: `show` stops setting `baseRef` to core-api's text, or `change` writes another base:
+  // text typed offline over core-api's draft "cũ" is then hidden behind "cũ" on reload.
+  it("text typed offline over core-api's draft is kept over that draft after a reload", async () => {
+    const saveDraft = vi.fn(async () => fail("offline")) as ReviewApi["saveDraft"];
+    await show(fakeApi({ current: serverDraft("cũ"), saveDraft }));
+    type("cũ và mới");
+    expect(readDraft(ATTEMPT)).toMatchObject({ text: "cũ và mới", synced: false, base: "cũ" });
+    cleanup();
+    const again = await show(fakeApi({ current: serverDraft("cũ") }));
+    expect(field().value).toBe("cũ và mới");
+    await waitFor(() =>
+      expect(again.saveDraft).toHaveBeenCalledWith(ATTEMPT, { answer_text: "cũ và mới", dont_remember: false }),
+    );
+  });
+
+  // Red when: a save that succeeds no longer moves `baseRef` to the saved text: what is typed
+  // next is written over the old base, and a reload before the next save shows core-api's text.
+  it("text typed after a save is kept over the saved text after a reload", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await show(fakeApi());
+    type("TCP");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1600);
+    });
+    expect(readDraft(ATTEMPT)).toMatchObject({ text: "TCP", synced: true });
+    type("TCP tin cậy");
+    expect(readDraft(ATTEMPT)).toMatchObject({ text: "TCP tin cậy", synced: false, base: "TCP" });
+    cleanup();
+    await show(fakeApi({ current: serverDraft("TCP") }));
+    expect(field().value).toBe("TCP tin cậy");
+  });
+
+  // Red when: the check `attemptRef.current !== attemptId` after a draft save is dropped: a save
+  // of the previous question finishing after "Câu tiếp" writes the new question's text under the
+  // old attempt's key and moves the new question's base to the old text.
+  it("a draft save finishing after Câu tiếp touches neither question's device copy", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let finish: (reply: Reply<null>) => void = () => {};
+    const saveDraft = vi.fn(
+      () => new Promise<Reply<null>>((resolve) => (finish = resolve)),
+    ) as ReviewApi["saveDraft"];
+    const api = await show(fakeApi({ saveDraft }));
+    type("câu một");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1600);
+    });
+    await press("Gửi");
+    vi.mocked(api.current).mockResolvedValue(
+      ok(current({ position: 2, attempt: { id: NEXT_ATTEMPT, status: "draft", answer_text: "", dont_remember: false } })),
+    );
+    await press(/Câu tiếp/);
+    type("câu hai");
+    await act(async () => finish(ok(null)));
+    expect(readDraft(ATTEMPT)).toBeNull();
+    expect(readDraft(NEXT_ATTEMPT)).toMatchObject({ text: "câu hai", synced: false, base: "" });
+  });
+});
