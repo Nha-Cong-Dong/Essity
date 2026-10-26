@@ -7,6 +7,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from core_api.api import (
     attempts,
     auth,
+    documents,
     grades,
     health,
     me,
@@ -56,6 +57,7 @@ app.include_router(ping.router)
 app.include_router(auth.router)
 app.include_router(me.router)
 app.include_router(subjects.router)
+app.include_router(documents.router)
 app.include_router(today.router)
 app.include_router(review_sessions.router)
 app.include_router(attempts.router)

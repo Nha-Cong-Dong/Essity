@@ -6,6 +6,7 @@ same file in a subject, and states that do not add up.
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 from alembic import command
@@ -144,7 +145,7 @@ def test_two_users_may_hold_the_same_file(
 def test_states_that_do_not_add_up_are_refused(
     db_session: Session,
     two_users: tuple[User, User],
-    overrides: dict[str, object],
+    overrides: dict[str, Any],
     constraint: str,
 ) -> None:
     alice, _ = two_users
