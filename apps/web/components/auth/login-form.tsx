@@ -6,6 +6,7 @@ import { AUTH_LINK, AuthField, AuthNote, PasswordField } from "@/components/auth
 import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import { authMessage, postJson, rateLimitMessage } from "@/lib/auth-errors";
+import { clearAllDrafts } from "@/lib/draft";
 import { safeNext } from "@/lib/landing";
 import { go } from "@/lib/navigate";
 
@@ -35,6 +36,7 @@ export function LoginForm() {
       password: String(form.get("password")),
     });
     if (result.data) {
+      clearAllDrafts(); // answers a previous person left here (T2.15 review 🟡7)
       // A full load, so every server component reads the new session. Only the pages
       // /api/auth/login names are followed (review 266042d #3).
       go(safeNext(result.data.next, SIGN_IN_PAGES, "/"));

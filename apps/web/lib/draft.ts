@@ -13,6 +13,8 @@ export type LocalDraft = {
   dontRemember: boolean;
   /** Whether core-api has this text: then core-api's draft is at least as new. */
   synced: boolean;
+  /** core-api's text when this device last saw it: unsent text only wins over that same text. */
+  base: string;
   savedAt: number;
 };
 
@@ -36,6 +38,7 @@ export function readDraft(attemptId: string, { storage = local(), now = Date.now
       typeof draft.text !== "string" ||
       typeof draft.dontRemember !== "boolean" ||
       typeof draft.synced !== "boolean" ||
+      typeof draft.base !== "string" ||
       typeof draft.savedAt !== "number"
     ) {
       return null;
@@ -44,7 +47,7 @@ export function readDraft(attemptId: string, { storage = local(), now = Date.now
       storage.removeItem(PREFIX + attemptId);
       return null;
     }
-    return { text: draft.text, dontRemember: draft.dontRemember, synced: draft.synced, savedAt: draft.savedAt };
+    return { text: draft.text, dontRemember: draft.dontRemember, synced: draft.synced, base: draft.base, savedAt: draft.savedAt };
   } catch {
     return null;
   }
@@ -85,11 +88,14 @@ export function clearAllDrafts({ storage = local() }: Options = {}): void {
   }
 }
 
-/** What the answer box starts with: this device's text if core-api never got it, else core-api's. */
+/**
+ * What the answer box starts with: this device's text if core-api never got it and core-api's
+ * draft is still the one it was typed over, else core-api's (another device saved since).
+ */
 export function pickDraft(
   draft: LocalDraft | null,
   server: { answer_text: string; dont_remember: boolean },
 ): { text: string; dontRemember: boolean } {
-  if (draft && !draft.synced) return { text: draft.text, dontRemember: draft.dontRemember };
+  if (draft && !draft.synced && draft.base === server.answer_text) return { text: draft.text, dontRemember: draft.dontRemember };
   return { text: server.answer_text, dontRemember: server.dont_remember };
 }

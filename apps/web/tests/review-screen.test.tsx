@@ -111,7 +111,7 @@ describe("ReviewScreen (T2.15)", () => {
 
   // Plan 🟡14. Red when: text this device never got to core-api is replaced by core-api's older draft.
   it("US-04 AC3: text kept on this device that core-api never got wins, and is sent", async () => {
-    writeDraft(ATTEMPT, { text: "gõ lúc mất mạng", dontRemember: false, synced: false });
+    writeDraft(ATTEMPT, { text: "gõ lúc mất mạng", dontRemember: false, synced: false, base: "cũ" });
     const api = await show(
       fakeApi({
         current: vi.fn(async () =>
@@ -126,7 +126,7 @@ describe("ReviewScreen (T2.15)", () => {
   });
 
   it("core-api's draft is shown when this device has nothing newer", async () => {
-    writeDraft(ATTEMPT, { text: "đã đồng bộ", dontRemember: false, synced: true });
+    writeDraft(ATTEMPT, { text: "đã đồng bộ", dontRemember: false, synced: true, base: "đã đồng bộ" });
     await show(
       fakeApi({
         current: vi.fn(async () =>

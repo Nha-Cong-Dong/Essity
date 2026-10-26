@@ -54,6 +54,7 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
   // What the timers and late answers compare against: the attempt on screen and its text now.
   const attemptRef = useRef<string | null>(null);
   const textRef = useRef("");
+  const baseRef = useRef(""); // core-api's text when last seen or saved (lib/draft `base`)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const finish = useCallback(async () => {
@@ -69,7 +70,8 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
       if (attemptRef.current !== attemptId) return;
       if (reply.ok) {
         if (textRef.current === value) {
-          writeDraft(attemptId, { text: value, dontRemember: false, synced: true });
+          baseRef.current = value;
+          writeDraft(attemptId, { text: value, dontRemember: false, synced: true, base: value });
           setSave({ state: "saved", at: Date.now() });
         }
       } else if (reply.error === "session_ended") {
@@ -86,6 +88,7 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
       const local = readDraft(attemptId);
       const start = pickDraft(local, server);
       attemptRef.current = attemptId;
+      baseRef.current = server.answer_text;
       textRef.current = start.text;
       setText(start.text);
       setSent(null);
@@ -93,7 +96,7 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
       setSave({ state: "idle", at: null });
       setLast({ position: step.position, total: step.total });
       setPhase({ kind: "question", step, attemptId });
-      if (local && !local.synced && local.text !== server.answer_text) void saveNow(attemptId, start.text);
+      if (local && !local.synced && start.text === local.text && local.text !== server.answer_text) void saveNow(attemptId, start.text);
     },
     [saveNow],
   );
@@ -156,7 +159,7 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
     if (!attemptId) return;
     textRef.current = value;
     setText(value);
-    writeDraft(attemptId, { text: value, dontRemember: false, synced: false });
+    writeDraft(attemptId, { text: value, dontRemember: false, synced: false, base: baseRef.current });
     clearTimeout(timer.current);
     timer.current = setTimeout(() => void saveNow(attemptId, value), SAVE_AFTER_MS);
   }

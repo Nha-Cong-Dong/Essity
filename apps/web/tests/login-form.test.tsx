@@ -31,4 +31,14 @@ describe("LoginForm next", () => {
     await signIn("//evil.example");
     await waitFor(() => expect(go).toHaveBeenCalledWith("/"));
   });
+
+  // Review T2.15 🟡7b. Red when: signing in leaves the drafts of whoever used this device before
+  // (a sign-out from another tab or an expired session never reached them).
+  it("drops the answers a previous person left on this device", async () => {
+    go.mockReset();
+    window.localStorage.setItem("essity:draft:old", "{}");
+    await signIn("/");
+    await waitFor(() => expect(go).toHaveBeenCalled());
+    expect(window.localStorage.getItem("essity:draft:old")).toBeNull();
+  });
 });
