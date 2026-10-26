@@ -34,6 +34,7 @@ from types import UnionType
 from typing import Annotated, Any, Protocol, Union, cast, get_args, get_origin
 
 from opentelemetry import trace
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.trace import SpanKind, StatusCode
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from pydantic import BaseModel, StringConstraints, ValidationError
@@ -209,6 +210,7 @@ class Consumer:
         self.min_idle_ms, self.backoff_base_ms = min_idle_ms, backoff_base_ms
         self.block_ms, self.count = block_ms, count
         self.clock = clock
+        self._cursor = "0-0"
 
     def ensure_group(self) -> None:
         """Create the group from the start of the stream (plan Y1): events sent before core-api
@@ -225,14 +227,29 @@ class Consumer:
             self._handle(entry_id, fields, self._deliveries(entry_id))
             for entry_id, fields in self._claim_stale()
         ]
-        outcomes += [self._handle(entry_id, fields, 1) for entry_id, fields in self._read_new()]
+        # Nothing to wait for while entries due again keep coming: read at once.
+        block = None if outcomes else self.block_ms
+        outcomes += [
+            self._handle(entry_id, fields, 1) for entry_id, fields in self._read_new(block)
+        ]
         return outcomes
 
     def _claim_stale(self) -> list[Entry]:
         """Entries due again (idle over `min_idle_ms`, never acknowledged), now this consumer's."""
-        response = self.redis.xautoclaim(
-            self.stream, self.group, self.name, self.min_idle_ms, "0-0", count=self.count
-        )
+        # Redis is instrumented for the whole process: polling an empty stream every second
+        # would be a root trace per round. The entries that are handled have their own span.
+        with suppress_instrumentation():
+            response = self.redis.xautoclaim(
+                self.stream,
+                self.group,
+                self.name,
+                self.min_idle_ms,
+                self._cursor,
+                count=self.count,
+            )
+        # Where the next scan starts ("0-0" once it has seen the whole pending list): without
+        # it a failing first entry is taken back every round and the ones behind never are.
+        self._cursor = response[0].decode() if isinstance(response[0], bytes) else str(response[0])
         claimed = cast(list[Entry], response[1])
         # An entry trimmed (MAXLEN) while pending comes back without fields: Redis 7 and later
         # have already dropped it from the pending list, so there is nothing to handle or ack.
@@ -246,13 +263,14 @@ class Consumer:
         )
         return int(rows[0]["times_delivered"]) if rows else 1
 
-    def _read_new(self) -> list[Entry]:
-        response = cast(
-            list[tuple[bytes, list[Entry]]] | None,
-            self.redis.xreadgroup(
-                self.group, self.name, {self.stream: ">"}, count=self.count, block=self.block_ms
-            ),
-        )
+    def _read_new(self, block: int | None) -> list[Entry]:
+        with suppress_instrumentation():
+            response = cast(
+                list[tuple[bytes, list[Entry]]] | None,
+                self.redis.xreadgroup(
+                    self.group, self.name, {self.stream: ">"}, count=self.count, block=block
+                ),
+            )
         return [entry for _, entries in response or [] for entry in entries]
 
     def _handle(self, entry_id: bytes, fields: dict[bytes, bytes] | None, deliveries: int) -> str:
