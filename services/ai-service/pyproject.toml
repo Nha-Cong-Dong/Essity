@@ -16,11 +16,15 @@ dependencies = [
     "psycopg[binary]>=3.3.6",
     "opentelemetry-instrumentation-sqlalchemy>=0.66b1",
     "anthropic>=1.13.0,<2",
+    "pypdfium2>=5.14.0",
+    "pillow>=12.3.0",
 ]
 
 [dependency-groups]
 dev = [
+    "cryptography>=50.0.2",
     "httpx2>=2.13.1",
+    "pypdf>=6.20.1",
     "pyright>=1.1.390",
     "pytest>=8.3",
     "pytest-randomly>=5",
