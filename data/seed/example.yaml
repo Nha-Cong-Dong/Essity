@@ -1,0 +1,26 @@
+# Example seed file for `python -m core_api.cli_seed seed-questions` (T2.2). Made up; your real
+# files go next to this one and stay out of git (data/seed/* is ignored except this file).
+# Quote any text that holds ": " or starts with a symbol (YAML).
+units:
+  - title: Bắt tay ba bước TCP
+    summary: TCP mở kết nối bằng SYN, SYN-ACK, ACK.
+    kind: mechanism
+    sources:
+      - source: document
+        page: 47
+        quote: "TCP thiết lập kết nối bằng bắt tay ba bước: SYN, SYN-ACK, ACK."
+  - title: UDP không kết nối
+    summary: UDP gửi ngay, không bảo đảm gói tới nơi.
+    kind: concept
+    sources:
+      - source: notes
+        quote: UDP không bắt tay và không gửi lại gói mất.
+questions:
+  - level: 1
+    prompt: TCP thiết lập kết nối như thế nào?
+    answer: Bằng bắt tay ba bước, client gửi SYN, server trả SYN-ACK, client gửi ACK.
+    units: [Bắt tay ba bước TCP]
+  - level: 2
+    prompt: So sánh cách TCP và UDP bắt đầu truyền dữ liệu.
+    answer: TCP bắt tay ba bước trước khi gửi; UDP gửi ngay, không bảo đảm gói tới nơi.
+    units: [Bắt tay ba bước TCP, UDP không kết nối]

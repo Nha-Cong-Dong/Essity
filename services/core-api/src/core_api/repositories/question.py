@@ -33,6 +33,14 @@ class SubjectMismatchError(ValueError):
 class QuestionRepository(UserScopedRepository[Question]):
     model = Question
 
+    def find_by_prompt(self, subject_id: uuid.UUID, prompt: str) -> Question | None:
+        """The subject's question with this prompt however typed (same content hash), if any."""
+        return self.session.scalars(
+            self._select().where(
+                Question.subject_id == subject_id, Question.content_hash == content_hash(prompt)
+            )
+        ).one_or_none()
+
     def add_idempotent(
         self,
         subject_id: uuid.UUID,
@@ -101,6 +109,18 @@ class QuestionUnitRepository(UserScopedRepository[QuestionUnit]):
         )
         self.session.flush()
         return link
+
+    def link_once(self, question_id: uuid.UUID, unit_id: uuid.UUID) -> bool:
+        """`link`, unless the pair is already there. Returns whether it added one."""
+        found = self.session.scalars(
+            self._select()
+            .where(QuestionUnit.question_id == question_id, QuestionUnit.unit_id == unit_id)
+            .limit(1)
+        ).first()
+        if found is not None:
+            return False
+        self.link(question_id, unit_id)
+        return True
 
     def units_of(self, question_id: uuid.UUID) -> Sequence[KnowledgeUnit]:
         units = KnowledgeUnitRepository(self.session, self.user_id)
