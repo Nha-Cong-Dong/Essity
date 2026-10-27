@@ -193,7 +193,15 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
   async function undoSkip() {
     if (!undo) return;
     setBusy(true);
-    for (const unit of undo) await api.unskip(unit, sessionId);
+    setSkipFailed(false);
+    for (const unit of undo) {
+      const reply = await api.unskip(unit, sessionId);
+      if (!reply.ok) {
+        setBusy(false);
+        setSkipFailed(true); // the line stays: pressing again is safe (core-api answers 204 either way)
+        return;
+      }
+    }
     setBusy(false);
     setUndo(null);
     reload();
@@ -322,7 +330,7 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
       )}
       {skipFailed && (
         <p role="alert" data-copy="tam" className="m-0 mb-6 text-meta">
-          Chưa bỏ qua được. Bạn bấm lại nhé.
+          Chưa gửi được. Bạn bấm lại nhé.
         </p>
       )}
     <div className="grid items-start gap-7 min-[901px]:grid-cols-2 min-[901px]:gap-16">

@@ -117,9 +117,32 @@ describe("Không cần ôn phần này (T2.24, US-04 AC5)", () => {
   it("US-04 AC5: a failed skip says so, keeps the question and the button", async () => {
     const api = await show(fakeApi({ skip: vi.fn(async () => ({ ok: false as const, error: "unavailable" })) as ReviewApi["skip"] }));
     await press("Không cần ôn phần này");
-    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe("Chưa gửi được. Bạn bấm lại nhé.");
     expect(screen.getByText("Vì sao có ngày và đêm?")).toBeTruthy();
     expect(api.skip).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "Không cần ôn phần này" })).toBeTruthy();
+  });
+
+  // Red when: a failed undo is ignored, so the line goes although the unit is still skipped.
+  it("US-04 AC5: a failed Hoàn tác keeps the line and says so; pressing again works", async () => {
+    const unskip = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, error: "unavailable" })
+      .mockResolvedValue(ok(null));
+    const api = await show(
+      fakeApi({
+        unskip: unskip as ReviewApi["unskip"],
+        current: vi.fn().mockResolvedValueOnce(ok(FIRST)).mockResolvedValueOnce(ok(SECOND)).mockResolvedValue(ok(FIRST)),
+      }),
+    );
+    await press("Không cần ôn phần này");
+    await press("Hoàn tác");
+    expect(screen.getByRole("alert").textContent).toBe("Chưa gửi được. Bạn bấm lại nhé.");
+    expect(screen.getByRole("button", { name: "Hoàn tác" })).toBeTruthy();
+    expect(screen.getByText("Vì sao có mùa?")).toBeTruthy();
+    await press("Hoàn tác");
+    expect(api.unskip).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("button", { name: "Hoàn tác" })).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
