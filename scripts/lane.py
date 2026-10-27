@@ -6,6 +6,7 @@
     python scripts/lane.py down L3                        # removes the folder; the branch stays
     python scripts/lane.py status [--stale]               # --stale: ages, STALE, ORPHAN
     python scripts/lane.py preflight                      # Docker, containers, free RAM, encoding
+    python scripts/lane.py next [--all] [--limit N]       # PR caps and which task to hand out next
 
 A lane is a git worktree at `.claude/worktrees/L<n>` with its own test databases
 `core_test_l<n>` and `ai_test_l<n>` and Redis db <n>. Fixed numbers mean nothing to hand out or
@@ -15,6 +16,7 @@ lane: the only one allowed to write migrations or regenerate the api-client
 """
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -23,6 +25,7 @@ import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import flow
 from agent_env import DATABASE_URL, REDIS_URL, ensure_database
@@ -35,6 +38,8 @@ CONTAINERS = ("essity-postgres-1", "essity-redis-1")
 DOCKER_WAIT_SECONDS = 180
 RAM_WARN_GB, RAM_STOP_GB = 3.0, 1.5
 STALE_MINUTES = 45
+MAX_OPEN_PRS, MAX_OPEN_RED_PRS = 3, 2
+MIGRATION_HINTS = ("migration", "alembic", "contracts", "api-client")
 
 
 def parse_lane(text: str) -> int:
@@ -63,7 +68,11 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def up(
-    repo: Path, lane: int, branch: str, base: str = "origin/main", create_db: bool = True
+    repo: Path,
+    lane: int,
+    branch: str,
+    base: str = "origin/main",
+    create_db: bool = True,
 ) -> Path:
     path = lane_path(repo, lane)
     if path.exists():
@@ -237,7 +246,10 @@ def preflight(sleep: Callable[[float], None] = time.sleep) -> tuple[list[str], b
     if not docker_running():
         notes.append("preflight: Docker is not running, starting Docker Desktop...")
         if not start_docker(sleep=sleep):
-            return [*notes, f"preflight: Docker did not come up in {DOCKER_WAIT_SECONDS} s"], False
+            return [
+                *notes,
+                f"preflight: Docker did not come up in {DOCKER_WAIT_SECONDS} s",
+            ], False
     for name in CONTAINERS:
         if not container_healthy(name):
             notes.append(f"preflight: {name} is not healthy: run `just up`")
@@ -250,6 +262,189 @@ def preflight(sleep: Callable[[float], None] = time.sleep) -> tuple[list[str], b
     if os.environ.get("PYTHONIOENCODING", "").lower().replace("-", "") != "utf8":
         notes.append("preflight: warning, PYTHONIOENCODING is not utf-8 (Vietnamese text breaks)")
     return notes or ["preflight: ok"], ok
+
+
+Row = dict[str, Any]
+
+
+def _gh_open_prs() -> list[dict[str, str]] | None:
+    try:
+        run = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "list",
+                "--state",
+                "open",
+                "--json",
+                "number,headRefName,title",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        data = json.loads(run.stdout) if run.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+    return data if isinstance(data, list) else None
+
+
+def _read_yaml_flat(path: Path) -> dict[str, str]:
+    """Top-level `key: value` lines only; enough for card.yaml and lane-report.yaml."""
+    out: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        found = re.match(r"^([A-Za-z_]+):\s*(.*?)\s*$", line)
+        if found:
+            out[found.group(1)] = found.group(2).strip("\"'")
+    return out
+
+
+def _read_cards(repo: Path) -> list[Row]:
+    cards: list[Row] = []
+    for card_file in sorted((repo / ".work").glob("*/card.yaml")):
+        card = _read_yaml_flat(card_file)
+        report_file = card_file.with_name("lane-report.yaml")
+        report = _read_yaml_flat(report_file) if report_file.exists() else {}
+        touches = [t.strip().strip("\"'") for t in card.get("touches", "").strip("[]").split(",")]
+        cards.append(
+            {
+                "task": card.get("task", card_file.parent.name),
+                "lane": card.get("lane", "?"),
+                "risk": card.get("risk", ""),
+                "branch": card.get("branch", ""),
+                "touches": [t for t in touches if t],
+                "done": report.get("status") == "done",
+            }
+        )
+    return cards
+
+
+def _is_red(text: str) -> bool:
+    return "🔴" in text or text.strip() == "red"
+
+
+def _plan_blocks(plan: str) -> dict[str, tuple[list[str], list[str]]]:
+    """Task code -> (dependencies, files) from the `### T…` blocks of PLAN.md."""
+    blocks: dict[str, tuple[list[str], list[str]]] = {}
+    for chunk in re.split(r"^### ", plan, flags=re.MULTILINE)[1:]:
+        code = re.match(r"(T[\w.-]*\d[\w.-]*)", chunk)
+        if not code:
+            continue
+        dep = re.search(r"^- \*\*Phụ thuộc:\*\*(.*)$", chunk, re.MULTILINE)
+        files = re.search(r"^- \*\*File:\*\*(.*)$", chunk, re.MULTILINE)
+        deps = re.findall(r"\bT[\w.-]*\d[\w.-]*", dep.group(1)) if dep else []
+        names = re.findall(r"`([^`]+)`", files.group(1)) if files else []
+        blocks[code.group(1)] = ([d.rstrip(".,;") for d in deps], names)
+    return blocks
+
+
+def _plan_index(text: str) -> list[Row]:
+    rows: list[Row] = []
+    for line in text.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 7 or not re.fullmatch(r"T[\w.-]*\d[\w.-]*", cells[0]):
+            continue
+        rows.append(
+            {
+                "task": cells[0],
+                "milestone": cells[1],
+                "risk": cells[2],
+                "merged": cells[3].startswith("✅"),
+                "in_progress": cells[3].startswith("🟦"),
+                "line": int(cells[5]) if cells[5].isdigit() else 0,
+                "name": "|".join(cells[6:]),
+            }
+        )
+    return rows
+
+
+def _overlap(a: list[str], b: list[str]) -> bool:
+    def norm(path: str) -> str:
+        return path.strip().replace("\\", "/").rstrip("/")
+
+    for x in map(norm, a):
+        for y in map(norm, b):
+            if x and y and (x == y or x.startswith(y + "/") or y.startswith(x + "/")):
+                return True
+    return False
+
+
+def _order(row: Row) -> tuple[int, str, int, int]:
+    found = re.fullmatch(r"M(\d+)", row["milestone"])
+    risk = {"🔴": 0, "🟡": 1}.get(row["risk"].strip(), 2)
+    return (int(found.group(1)) if found else 999, row["milestone"], risk, row["line"])
+
+
+def next_tasks(
+    repo: Path,
+    gh: Callable[[], list[dict[str, str]] | None] = _gh_open_prs,
+    limit: int = 10,
+    show_all: bool = False,
+) -> list[str]:
+    """Cap line, then candidates by milestone, risk, PLAN line (WORKFLOW-PARALLEL scheduling)."""
+    rows = _plan_index((repo / "docs" / "plan-index.md").read_text(encoding="utf-8"))
+    blocks = _plan_blocks((repo / "docs" / "PLAN.md").read_text(encoding="utf-8"))
+    cards = _read_cards(repo)
+    prs = gh()
+    red_task = {r["task"] for r in rows if _is_red(r["risk"])}
+    red_branch = {c["branch"]: _is_red(c["risk"]) for c in cards if c["branch"]}
+    notes = ["warning: gh failed, open PRs unknown (counted as 0)"] if prs is None else []
+    open_branches: set[str] = set()
+    open_red = 0
+    pr_tasks: set[str] = set()
+    for pr in prs or []:
+        branch, title = pr.get("headRefName", ""), pr.get("title", "")
+        open_branches.add(branch)
+        codes = re.findall(r"\bT[\w.-]*\d[\w.-]*", title)
+        pr_tasks.update(codes)
+        if branch in red_branch:
+            open_red += red_branch[branch]
+        else:
+            open_red += "🔴" in title or any(c in red_task for c in codes)
+    open_total = len(prs or [])
+    stop = []
+    if open_total >= MAX_OPEN_PRS:
+        stop.append(f"{open_total} PR mở, cap {MAX_OPEN_PRS}")
+    if open_red >= MAX_OPEN_RED_PRS:
+        stop.append(f"{open_red} PR 🔴 mở, cap {MAX_OPEN_RED_PRS}")
+    verdict = f"DỪNG PHÁT ({'; '.join(stop)})" if stop else "được phát"
+    lines = [
+        f"PR mở {open_total}/{MAX_OPEN_PRS} · PR 🔴 mở {open_red}/{MAX_OPEN_RED_PRS} -> {verdict}",
+        *notes,
+    ]
+    merged = {r["task"] for r in rows if r["merged"]}
+    running = [c for c in cards if not c["done"] or c["branch"] in open_branches]
+    running_tasks = {c["task"] for c in running} | pr_tasks
+    candidates: list[tuple[Row, str]] = []
+    blocked: list[str] = []
+    for row in sorted(rows, key=_order):
+        code = row["task"]
+        if row["merged"] or code in running_tasks:
+            continue
+        if row["in_progress"]:
+            blocked.append(f"{code} | đang làm")
+            continue
+        deps, files = blocks.get(code, ([], []))
+        missing = [d for d in deps if d not in merged]
+        clash = next((c for c in running if _overlap(files, c["touches"])), None)
+        if missing:
+            blocked.append(f"{code} | thiếu phụ thuộc {', '.join(missing)}")
+        elif clash:
+            blocked.append(f"{code} | trùng touches với {clash['task']} ({clash['lane']})")
+        else:
+            hint = any(h in f.lower() for f in files for h in MIGRATION_HINTS)
+            candidates.append((row, "L1" if hint else "bất kỳ"))
+    for row, suggest in candidates[:limit]:
+        lines.append(
+            f"{row['task']} | {row['milestone']} | {row['risk'] or '-'} | "
+            f"PLAN:{row['line']} | {suggest} | {row['name']}"
+        )
+    if not candidates:
+        lines.append("(không có ứng viên)")
+    if show_all:
+        lines.extend(["-- bị chặn --", *blocked] if blocked else ["-- bị chặn -- (không có)"])
+    return lines
 
 
 def main_repo() -> Path:
@@ -275,13 +470,20 @@ def main(argv: list[str]) -> int:
     p_status = sub.add_parser("status")
     p_status.add_argument("--stale", action="store_true", help="ages, STALE and ORPHAN worktrees")
     sub.add_parser("preflight")
+    p_next = sub.add_parser("next")
+    p_next.add_argument("--all", action="store_true", help="also list blocked tasks and why")
+    p_next.add_argument("--limit", type=int, default=10)
     args = parser.parse_args(argv)
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
     repo = main_repo()
     try:
         if args.action == "preflight":
             notes, ok = preflight()
             print("\n".join(notes))
             return 0 if ok else 1
+        if args.action == "next":
+            print("\n".join(next_tasks(repo, limit=args.limit, show_all=args.all)))
+            return 0
         if args.action == "up":
             if not args.no_preflight and not args.no_db:
                 notes, ok = preflight()
