@@ -269,7 +269,7 @@ APPEND_ONLY = [
 OWN_METHODS = {
     # T2.9: one open session per learning day (plan C4) is made or found, never changed.
     ReviewSessionRepository: {"start", "end", "open_for_day", "open_on", "hold_for_update"},
-    ReviewSessionItemRepository: {"add_all", "of_session", "progress"},
+    ReviewSessionItemRepository: {"add_all", "append", "of_session", "progress"},
     AttemptRepository: {"create_draft", "open_draft", "save_draft", "submit"},
     GradeRepository: {
         "add_with_units",

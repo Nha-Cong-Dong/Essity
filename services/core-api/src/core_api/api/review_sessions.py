@@ -138,11 +138,19 @@ def start_session(
         units = [u for u in reads.scheduled_units() if body.subject_id in (None, u.subject_id)]
         fresh = [q for q in reads.new_questions() if body.subject_id in (None, q.subject_id)]
         plan = compose_today(
-            units, fresh, exams, now=now, tz=tz, day_start_hour=user.day_start_hour
+            units,
+            fresh,
+            exams,
+            now=now,
+            tz=tz,
+            day_start_hour=user.day_start_hour,
+            unasked={
+                s: n for s, n in reads.unasked_by_subject().items() if body.subject_id in (None, s)
+            },
         )
         if not plan.items:
             raise _error(status.HTTP_409_CONFLICT, "nothing_to_review")
-        found, made = sessions.open_for_day(day, now)
+        found, made = sessions.open_for_day(day, now, body.subject_id)
         if made:
             items.add_all(found.id, [item.question_id for item in plan.items])
         else:  # another tab made it a moment ago: the open session, as when it already was
@@ -175,13 +183,12 @@ def _current(steps: list[SessionStep]) -> SessionStep | None:
     return next((s for s in steps if s.askable and not s.answered), None)
 
 
-@router.get("/review-sessions/{session_id}/current")
-def current_question(
-    session_id: uuid.UUID, user: VerifiedUser, session: DbSession
+def current_out(
+    ended: bool, steps: list[SessionStep], user_id: uuid.UUID, session: DbSession
 ) -> CurrentOut | DoneOut:
-    ended, steps = _open_steps(session_id, user.id, session)
+    """What the session screen shows next: the first question still to ask, or "done"."""
     step = _current(steps)
-    ungraded = _ungraded(steps, user.id, session)
+    ungraded = _ungraded(steps, user_id, session)
     if ended or step is None:
         return DoneOut(ungraded=ungraded)
     answered, total = session_counts(steps)
@@ -196,6 +203,14 @@ def current_question(
         ),
         attempt=_attempt_out(step.attempt) if step.attempt is not None else None,
     )
+
+
+@router.get("/review-sessions/{session_id}/current")
+def current_question(
+    session_id: uuid.UUID, user: VerifiedUser, session: DbSession
+) -> CurrentOut | DoneOut:
+    ended, steps = _open_steps(session_id, user.id, session)
+    return current_out(ended, steps, user.id, session)
 
 
 @router.post("/review-sessions/{session_id}/attempts", status_code=status.HTTP_201_CREATED)

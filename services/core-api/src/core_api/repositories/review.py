@@ -62,7 +62,7 @@ class AttemptNotSubmittedError(ValueError):
 
 
 class QuestionNotAskableError(ValueError):
-    """The question of this attempt can no longer be asked in its session (a skipped unit, T2.23)."""
+    """The attempt's question can no longer be asked in its session (skipped unit, T2.23)."""
 
 
 class ReviewSessionEndedError(ValueError):
@@ -81,14 +81,20 @@ class ReviewSessionRepository(AppendOnlyRepository[ReviewSession]):
         self.session.flush()
         return session
 
-    def open_for_day(self, learning_day: date, now: datetime) -> tuple[ReviewSession, bool]:
+    def open_for_day(
+        self, learning_day: date, now: datetime, subject_id: uuid.UUID | None = None
+    ) -> tuple[ReviewSession, bool]:
         """The open session of `learning_day`, made if there is none: (session, made now). Two
         tabs pressing "Bắt đầu" at once get the same one (plan C4): the partial unique index
         refuses the second insert, which then reads the first once it has committed."""
         made = self.session.execute(
             insert(ReviewSession)
             .values(
-                id=uuid.uuid4(), user_id=self.user_id, learning_day=learning_day, started_at=now
+                id=uuid.uuid4(),
+                user_id=self.user_id,
+                learning_day=learning_day,
+                started_at=now,
+                subject_id=subject_id,
             )
             .on_conflict_do_nothing(
                 index_elements=["user_id", "learning_day"],
@@ -163,6 +169,28 @@ class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
                 )
             )
             for n, question_id in enumerate(question_ids, start=1)
+        ]
+        self.session.flush()
+        return items
+
+    def append(
+        self, review_session_id: uuid.UUID, question_ids: Sequence[uuid.UUID]
+    ) -> list[ReviewSessionItem]:
+        """Questions that take the place of skipped ones (T2.23), after the last item. Only the
+        holder of the session's FOR UPDATE lock calls this."""
+        last = self.session.scalar(
+            select(func.max(ReviewSessionItem.position)).where(
+                ReviewSessionItem.user_id == self.user_id,
+                ReviewSessionItem.review_session_id == review_session_id,
+            )
+        )
+        items = [
+            self.add(
+                ReviewSessionItem(
+                    review_session_id=review_session_id, position=n, question_id=question_id
+                )
+            )
+            for n, question_id in enumerate(question_ids, start=(last or 0) + 1)
         ]
         self.session.flush()
         return items

@@ -449,6 +449,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/units/{unit_id}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Skip Unit */
+        post: operations["skip_unit_v1_units__unit_id__skip_post"];
+        /**
+         * Unskip Unit
+         * @description Undo a skip; 204 whether or not the unit was skipped. Nothing is added to or taken from an
+         *     open session here: a question hidden by the skip is asked again, and the session cap (20)
+         *     hides the last replacement, if any (`progress`).
+         */
+        delete: operations["unskip_unit_v1_units__unit_id__skip_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -696,6 +719,18 @@ export interface components {
             understanding: number | null;
             /** Units */
             units: components["schemas"]["UnitResult"][];
+        };
+        /** SkipIn */
+        SkipIn: {
+            /** Review Session Id */
+            review_session_id?: string | null;
+        };
+        /** SkipOut */
+        SkipOut: {
+            /** Next */
+            next: components["schemas"]["CurrentOut"] | components["schemas"]["DoneOut"] | null;
+            /** Session Id */
+            session_id: string | null;
         };
         /** Source */
         Source: {
@@ -1631,6 +1666,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodayOut"];
+                };
+            };
+        };
+    };
+    skip_unit_v1_units__unit_id__skip_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkipIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkipOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unskip_unit_v1_units__unit_id__skip_delete: {
+        parameters: {
+            query?: {
+                review_session_id?: string | null;
+            };
+            header?: never;
+            path: {
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -14,6 +14,7 @@ from core_api.api import (
     review_sessions,
     subjects,
     today,
+    units,
 )
 from core_api.api.errors import install_validation_handler
 from core_api.clients.ai_client import AiServiceClient
@@ -56,5 +57,6 @@ app.include_router(today.router)
 app.include_router(review_sessions.router)
 app.include_router(attempts.router)
 app.include_router(grades.router)
+app.include_router(units.router)
 # Outermost middleware: the request span is open while log_requests writes its line.
 FastAPIInstrumentor.instrument_app(app, excluded_urls="healthz", exclude_spans=["receive", "send"])
