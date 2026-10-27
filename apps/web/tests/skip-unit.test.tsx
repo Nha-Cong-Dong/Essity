@@ -41,7 +41,7 @@ function fakeApi(over: Partial<ReviewApi> = {}): ReviewApi {
   return {
     current: vi.fn(async () => ok(FIRST)),
     open: vi.fn(async () => ok(FIRST.attempt)),
-    stop: vi.fn(async () => ok({ answered: 0, total: 3 })),
+    stop: vi.fn(async () => ok({ answered: 3, total: 3, correct: 2, next_day: null })),
     saveDraft: vi.fn(async () => ok(null)),
     submit: vi.fn(),
     regrade: vi.fn(),
@@ -111,6 +111,7 @@ describe("Không cần ôn phần này (T2.24, US-04 AC5)", () => {
     const api = await show(fakeApi({ current: vi.fn().mockResolvedValueOnce(ok(FIRST)).mockResolvedValue(ok(DONE)) }));
     await press("Không cần ôn phần này");
     expect(api.stop).toHaveBeenCalledWith(SESSION);
+    expect(await screen.findByText("Xong phiên hôm nay")).toBeTruthy();
   });
 
   it("US-04 AC5: a failed skip says so, keeps the question and the button", async () => {
