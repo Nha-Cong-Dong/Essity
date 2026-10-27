@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AnswerBox, clock, type SaveState } from "@/components/review/answer-box";
 import { GradeResult } from "@/components/review/grade-result";
+import { ResultActions } from "@/components/review/result-actions";
 import { FocusShell } from "@/components/shells";
 import { Button } from "@/components/ui/button";
 import { clearDraft, pickDraft, readDraft, writeDraft } from "@/lib/draft";
@@ -306,6 +307,8 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
           lastQuestion={lastQuestion}
           onNext={reload}
           onRegrade={() => void regrade()}
+          api={api}
+          onOverridden={(next) => setSent((before) => before && { ...before, view: next })}
         />
       </section>
     </div>,
@@ -337,7 +340,11 @@ function Rail({
   lastQuestion,
   onNext,
   onRegrade,
+  api,
+  onOverridden,
 }: {
+  api: ReviewApi;
+  onOverridden: (view: AttemptView) => void;
   sent: Sent | null;
   busy: boolean;
   /** Plan D-8: the last question's way on closes the session (T2.17's summary comes later). */
@@ -422,7 +429,17 @@ function Rail({
   return (
     <>
       {view.result && <GradeResult result={view.result} />}
-      <div className="mt-9 flex flex-wrap items-center gap-2">{next("primary")}</div>
+      {view.result ? (
+        <ResultActions
+          gradeId={view.result.grade_id}
+          questionId={view.question?.id ?? null}
+          api={api}
+          next={next("primary")}
+          onOverridden={onOverridden}
+        />
+      ) : (
+        <div className="mt-9 flex flex-wrap items-center gap-2">{next("primary")}</div>
+      )}
     </>
   );
 }

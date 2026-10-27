@@ -15,6 +15,7 @@ const UNIT_B = "0b8f1d2e-0000-4000-8000-0000000000c2";
 
 function result(over: Partial<Result> = {}): Result {
   return {
+    grade_id: "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
     overall: "partial",
     understanding: 2,
     missing: ["Server giữ trạng thái SYN-RECEIVED.", "Client gửi lại SYN."],

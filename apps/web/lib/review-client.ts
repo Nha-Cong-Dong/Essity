@@ -17,7 +17,7 @@ export const ANSWER_MAX = 4000;
 
 export type Reply<T> = { ok: true; data: T } | { ok: false; error: string };
 
-async function call<T>(path: string, method: string, body?: Answer): Promise<Reply<T>> {
+async function call<T>(path: string, method: string, body?: object): Promise<Reply<T>> {
   let response: Response;
   try {
     response = await fetch(path, {
@@ -48,5 +48,8 @@ export const reviewApi = {
   saveDraft: (attemptId: string, answer: Answer) => call<null>(`/api/attempts/${attemptId}/draft`, "PUT", answer),
   submit: (attemptId: string, answer: Answer) => call<AttemptView>(`/api/attempts/${attemptId}/submit`, "POST", answer),
   regrade: (attemptId: string) => call<AttemptView>(`/api/attempts/${attemptId}/regrade`, "POST"),
+  override: (gradeId: string, verdict: "correct" | "incorrect") =>
+    call<AttemptView>(`/api/grades/${gradeId}/override`, "POST", { verdict }),
+  drop: (questionId: string) => call<null>(`/api/questions/${questionId}/drop`, "POST"),
   read: (attemptId: string) => call<AttemptView>(`/api/attempts/${attemptId}`, "GET"),
 };

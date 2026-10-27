@@ -36,6 +36,7 @@ function graded(text: string, dontRemember: boolean): AttemptView {
     grading: "graded",
     failure: null,
     result: {
+      grade_id: "0b8f1d2e-0000-4000-8000-0000000000f1",
       overall: dontRemember ? "forgot" : "partial",
       understanding: dontRemember ? null : 1,
       missing: dontRemember
@@ -60,7 +61,7 @@ function graded(text: string, dontRemember: boolean): AttemptView {
     },
     answer_text: text,
     submitted_at: "2026-10-21T14:42:00Z",
-    question: { prompt: STEP.question.prompt },
+    question: { id: STEP.question.id, prompt: STEP.question.prompt },
   };
 }
 
@@ -73,6 +74,8 @@ const API: ReviewApi = {
   saveDraft: () => ok(null),
   submit: (_, answer) => ok(graded(answer.answer_text, answer.dont_remember)),
   regrade: () => ok(graded("", false)),
+  override: () => ok(graded("", false)),
+  drop: () => ok(null),
   read: () => ok(graded("", false)),
 };
 

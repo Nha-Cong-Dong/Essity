@@ -16,6 +16,8 @@ const { readDraft, writeDraft } = await import("@/lib/draft");
 const SESSION = "5a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d";
 const ATTEMPT = "6b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e";
 const NEXT_ATTEMPT = "7c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f";
+const GRADE = "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
+const QUESTION = "8d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f6a";
 
 const ok = <T,>(data: T): Reply<T> => ({ ok: true, data });
 const fail = (error: string): Reply<never> => ({ ok: false, error });
@@ -42,6 +44,7 @@ function view(over: Partial<AttemptView> = {}): AttemptView {
     grading: "graded",
     failure: null,
     result: {
+      grade_id: GRADE,
       overall: "partial",
       understanding: 1,
       missing: ["Mặt Trời chỉ chiếu sáng một nửa Trái Đất."],
@@ -52,7 +55,7 @@ function view(over: Partial<AttemptView> = {}): AttemptView {
     },
     answer_text: "Vì Trái Đất tự quay.",
     submitted_at: "2026-10-26T14:42:00Z",
-    question: { prompt: "Vì sao có ngày và đêm?" },
+    question: { id: QUESTION, prompt: "Vì sao có ngày và đêm?" },
     ...over,
   };
 }
@@ -65,6 +68,8 @@ function fakeApi(over: Partial<ReviewApi> = {}): ReviewApi {
     saveDraft: vi.fn(async () => ok(null)),
     submit: vi.fn(async () => ok(view())),
     regrade: vi.fn(async () => ok(view())),
+    override: vi.fn(async () => ok(view({ result: { ...view().result!, overall: "correct" } }))),
+    drop: vi.fn(async () => ok(null)),
     read: vi.fn(async () => ok(view())),
     ...over,
   } as ReviewApi;
@@ -354,7 +359,7 @@ describe("ReviewScreen (T2.15)", () => {
   // Plan D-7. Red when: answers left ungraded at the end are dropped silently, or the way out is blocked.
   it("answers left ungraded at the end are listed, each with Chấm lại, and the way out stays", async () => {
     const read = vi.fn(async () =>
-      ok(view({ grading: "failed", failure: null, result: null, question: { prompt: "Vì sao có mùa?" } })),
+      ok(view({ grading: "failed", failure: null, result: null, question: { id: QUESTION, prompt: "Vì sao có mùa?" } })),
     ) as ReviewApi["read"];
     const api = await show(
       fakeApi({ current: vi.fn(async () => ok({ done: true as const, ungraded: [NEXT_ATTEMPT] })), read }),
