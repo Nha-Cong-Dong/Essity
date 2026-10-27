@@ -271,16 +271,9 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
     "h-11 cursor-pointer border-0 bg-transparent px-2 text-meta text-ink-soft underline decoration-line-strong underline-offset-4 hover:text-ink";
   const skippable = phase.kind === "question" && !sent ? phase.step.question.unit_ids : [];
   const exit = (
-    <>
-      {skippable.length > 0 && (
-        <button type="button" disabled={busy} onClick={() => void skipUnits(skippable)} className={quietLink}>
-          Không cần ôn phần này
-        </button>
-      )}
-      <button type="button" disabled={busy} onClick={() => void finish()} className={quietLink}>
-        Dừng tại đây
-      </button>
-    </>
+    <button type="button" disabled={busy} onClick={() => void finish()} className={quietLink}>
+      Dừng tại đây
+    </button>
   );
 
   const shell = (position: number, total: number, children: React.ReactNode) => (
@@ -352,6 +345,14 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
               save={save}
               pending={null}
             />
+            {skippable.length > 0 && (
+              // Under the answer, not in the one-row header: its two buttons overflow at 320 px.
+              <p className="m-0 mt-2">
+                <button type="button" disabled={busy} onClick={() => void skipUnits(skippable)} className={quietLink}>
+                  Không cần ôn phần này
+                </button>
+              </p>
+            )}
             {sendFailed && (
               <p role="alert" data-copy="tam" className="m-0 mt-4 text-meta">
                 Chưa gửi được. Câu trả lời vẫn ở đây, bạn gửi lại nhé.
