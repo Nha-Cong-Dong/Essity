@@ -1,5 +1,5 @@
 /*
- * Notebook objects of design system v3.1 (docs/plans/design-architecture-final.md §4.4, §4.5).
+ * Notebook objects of design system v3.1 (docs/design/visual-system.md §4.4, §4.5).
  * Decoration stays on edges and corners; reading and writing areas stay clear. Every decorative
  * element is aria-hidden and pointer-events: none (set in the components / here).
  */
