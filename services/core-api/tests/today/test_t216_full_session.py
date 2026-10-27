@@ -49,7 +49,7 @@ def test_t216_a_whole_session_with_the_fake_grader(
     done = client.get(f"/v1/review-sessions/{session_id}/current", headers=headers).json()
     assert done == {"done": True, "ungraded": []}
     stopped = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers).json()
-    assert stopped == {"answered": 3, "total": 3}
+    assert (stopped["answered"], stopped["total"], stopped["correct"]) == (3, 3, 2)
     logs = db_session.scalar(
         select(func.count()).select_from(ReviewLog).where(ReviewLog.user_id == user.id)
     )
