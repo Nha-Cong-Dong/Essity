@@ -2,7 +2,9 @@
   "attribution": { "commit": "", "pr": "" },
   "env": {
     "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet",
-    "CLAUDE_CODE_FORK_SUBAGENT": "0"
+    "CLAUDE_CODE_FORK_SUBAGENT": "0",
+    "PYTHONIOENCODING": "utf-8",
+    "PYTHONUTF8": "1"
   },
   "hooks": {
     "SessionStart": [
