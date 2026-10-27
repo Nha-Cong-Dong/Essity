@@ -40,16 +40,17 @@ packages = ["src/ai_service"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
-src = ["src", "tests", "migrations"]
+src = ["src", "tests", "migrations", "evals"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
 
 [tool.pyright]
-include = ["src", "tests", "migrations"]
+include = ["src", "tests", "migrations", "evals"]
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"
