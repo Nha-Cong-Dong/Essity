@@ -5,7 +5,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent_usage import collect, estimate_cost, last_context_tokens, scan, summarize
+from agent_usage import (
+    collect,
+    estimate_cost,
+    last_context_tokens,
+    scan,
+    summarize,
+    task_subagents,
+)
 
 
 def turn(msg_id: str, model: str, ts: str, inp: int, write: int, read: int, out: int) -> dict:
@@ -28,6 +35,66 @@ def turn(msg_id: str, model: str, ts: str, inp: int, write: int, read: int, out:
 def write_jsonl(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+
+
+def sub_transcript(
+    root: Path,
+    name: str,
+    prompt: str | list,
+    model: str = "claude-sonnet-5-5",
+    out: int = 10,
+) -> None:
+    """A fake subagent under <root>/D--Essity/<session>/subagents/ with one assistant turn."""
+    base = root / "D--Essity" / "sess" / "subagents"
+    user = {"type": "user", "message": {"role": "user", "content": prompt}}
+    write_jsonl(base / f"agent-{name}.jsonl", [user, turn(name, model, "t", 100, 0, 900, out)])
+    meta = {"customAgentType": "lane-lead", "model": model}
+    base.joinpath(f"agent-{name}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+
+
+class TaskSubagents(unittest.TestCase):
+    def codes(self, root: Path, task: str) -> list:
+        return sorted(
+            r.name.removeprefix("agent-") for r in task_subagents(task, root, "D--Essity*")
+        )
+
+    def test_matches_whole_task_code_and_work_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sub_transcript(root, "a", "Luồng L1, task T3.1 (card).")
+            sub_transcript(root, "b", r"Xem D:\Essity\.work\T-OPS-NEXT\card.yaml")
+            sub_transcript(root, "c", [{"type": "text", "text": "xong T3.1."}])
+            sub_transcript(root, "d", "task T3.10 khác")
+            sub_transcript(root, "e", "không nhắc mã nào ở tin đầu")
+            self.assertEqual(self.codes(root, "T3.1"), ["a", "c"])
+            self.assertEqual(self.codes(root, "T-OPS-NEXT"), ["b"])
+            self.assertEqual(self.codes(root, "T9"), [])
+
+    def test_only_the_first_prompt_assigns_the_task(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sub_transcript(root, "x", "việc khác hẳn")
+            path = root / "D--Essity" / "sess" / "subagents" / "agent-x.jsonl"
+            later = {
+                "type": "user",
+                "message": {"role": "user", "content": "T3.1 ở tin sau"},
+            }
+            with path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(later) + "\n")
+            self.assertEqual(self.codes(root, "T3.1"), [])
+
+    def test_sums_tokens_and_prices_by_model(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sub_transcript(root, "s", "T5", "claude-sonnet-5-5", out=1_000_000)
+            sub_transcript(root, "o", "T5", "claude-opus-5-5", out=1_000_000)
+            rows = task_subagents("T5", root, "D--Essity*")
+        self.assertEqual(
+            sum(r.usage.input + r.usage.cache_read + r.usage.output for r in rows),
+            2_002_000,
+        )
+        cost = {r.name.removeprefix("agent-"): estimate_cost(r.usage) for r in rows}
+        self.assertGreater(cost["o"], cost["s"])
 
 
 class Scan(unittest.TestCase):
@@ -54,7 +121,8 @@ class Scan(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "s.jsonl"
             path.write_text(
-                'not json\n{"type": "user", "message": {"content": "hi"}}\n', encoding="utf-8"
+                'not json\n{"type": "user", "message": {"content": "hi"}}\n',
+                encoding="utf-8",
             )
             self.assertEqual(scan(path).turns, 0)
 
@@ -73,7 +141,9 @@ class Scan(unittest.TestCase):
 
 
 class Cost(unittest.TestCase):
-    def test_cache_reads_cost_a_tenth_of_input_and_sonnet_is_cheaper_than_opus(self) -> None:
+    def test_cache_reads_cost_a_tenth_of_input_and_sonnet_is_cheaper_than_opus(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             opus, sonnet = Path(tmp) / "o.jsonl", Path(tmp) / "s.jsonl"
             write_jsonl(opus, [turn("a", "claude-opus-5-5", "t", 0, 0, 1_000_000, 0)])
@@ -93,12 +163,17 @@ class Collect(unittest.TestCase):
         write_jsonl(sub, [turn("m2", "claude-sonnet-5-5", "2026-10-26T10:05:00Z", 0, 0, 500, 1)])
         sub.with_suffix(".meta.json").write_text(
             json.dumps(
-                {"customAgentType": "security-reviewer", "name": "rev-t2.1", "model": "sonnet"}
+                {
+                    "customAgentType": "security-reviewer",
+                    "name": "rev-t2.1",
+                    "model": "sonnet",
+                }
             ),
             encoding="utf-8",
         )
         write_jsonl(
-            proj / "s0.jsonl", [turn("m0", "claude-opus-5-5", "2026-10-20T10:00:00Z", 0, 0, 9, 1)]
+            proj / "s0.jsonl",
+            [turn("m0", "claude-opus-5-5", "2026-10-20T10:00:00Z", 0, 0, 9, 1)],
         )
 
     def test_rows_carry_role_and_name_and_since_filters_by_session_start(self) -> None:
@@ -106,7 +181,8 @@ class Collect(unittest.TestCase):
             self.make_project(Path(tmp))
             rows = collect(Path(tmp), "D--Essity*", since="2026-10-25")
         self.assertEqual(
-            sorted((r.kind, r.role) for r in rows), [("main", "main"), ("sub", "security-reviewer")]
+            sorted((r.kind, r.role) for r in rows),
+            [("main", "main"), ("sub", "security-reviewer")],
         )
         sub = next(r for r in rows if r.kind == "sub")
         self.assertEqual((sub.name, sub.meta_model), ("rev-t2.1", "sonnet"))
