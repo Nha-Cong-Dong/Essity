@@ -21,6 +21,7 @@ from core_api.repositories.review import (
     AttemptNotDraftError,
     AttemptNotFoundError,
     AttemptRepository,
+    GradeRepository,
     ReviewSessionEndedError,
     ReviewSessionItemRepository,
     ReviewSessionNotFoundError,
@@ -65,6 +66,10 @@ class AttemptOut(BaseModel):
 
 class CurrentOut(BaseModel):
     done: Literal[False] = False
+    # Answers submitted in this session that have no grade yet (plan D-7): the screen offers
+    # "Chấm lại" for each. "Không nhớ" is graded by the system, so it is listed only when that
+    # grade could not be written.
+    ungraded: list[uuid.UUID] = []
     position: int
     total: int
     question: QuestionOut
@@ -73,17 +78,13 @@ class CurrentOut(BaseModel):
 
 class DoneOut(BaseModel):
     done: Literal[True] = True
+    ungraded: list[uuid.UUID] = []
 
 
 class AnswerIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     answer_text: AnswerText
     dont_remember: bool
-
-
-class SubmittedOut(BaseModel):
-    status: Literal["submitted"] = "submitted"
-    grading: Literal["pending"] = "pending"
 
 
 class StoppedOut(BaseModel):
@@ -162,6 +163,13 @@ def _open_steps(
     return found.ended_at is not None, steps
 
 
+def _ungraded(steps: list[SessionStep], user_id: uuid.UUID, session: DbSession) -> list[uuid.UUID]:
+    """The session's submitted answers that have no grade yet, in session order (plan D-7)."""
+    submitted = [s.attempt.id for s in steps if s.attempt is not None and s.answered]
+    graded = GradeRepository(session, user_id).graded(submitted)
+    return [attempt_id for attempt_id in submitted if attempt_id not in graded]
+
+
 def _current(steps: list[SessionStep]) -> SessionStep | None:
     return next((s for s in steps if s.askable and not s.answered), None)
 
@@ -172,10 +180,12 @@ def current_question(
 ) -> CurrentOut | DoneOut:
     ended, steps = _open_steps(session_id, user.id, session)
     step = _current(steps)
+    ungraded = _ungraded(steps, user.id, session)
     if ended or step is None:
-        return DoneOut()
+        return DoneOut(ungraded=ungraded)
     answered, total = session_counts(steps)
     return CurrentOut(
+        ungraded=ungraded,
         position=answered + 1,
         total=total,
         question=QuestionOut(
@@ -203,13 +213,15 @@ def open_current_attempt(
         response.status_code = status.HTTP_200_OK
         return _attempt_out(step.attempt)
     try:
-        attempt = AttemptRepository(session, user.id).create_draft(session_id, step.question.id)
+        attempt, made = AttemptRepository(session, user.id).open_draft(session_id, step.question.id)
     except ReviewSessionEndedError as error:
         raise _error(status.HTTP_409_CONFLICT, "session_ended") from error
     except (SubjectNotFoundError, QuestionNotFoundError) as error:
         raise _error(status.HTTP_404_NOT_FOUND, "subject_deleted") from error
     except ReviewSessionNotFoundError as error:
         raise _error(status.HTTP_404_NOT_FOUND, "session_not_found") from error
+    if not made:  # another tab opened it a moment ago
+        response.status_code = status.HTTP_200_OK
     return _attempt_out(attempt)
 
 
@@ -227,32 +239,6 @@ def save_draft(
         raise _error(status.HTTP_409_CONFLICT, "session_ended") from error
     except AttemptNotDraftError as error:
         raise _error(status.HTTP_409_CONFLICT, "attempt_submitted") from error
-
-
-@router.post("/attempts/{attempt_id}/submit")
-def submit_attempt(
-    attempt_id: uuid.UUID, body: AnswerIn, user: VerifiedUser, session: DbSession, now: Now
-) -> SubmittedOut:
-    """Save the last text and submit, in one write: nothing typed after the last draft save is
-    lost. Submitting again returns the first submission, even once the session has ended."""
-    attempts = AttemptRepository(session, user.id)
-    found = attempts.get(attempt_id)
-    if found is None:
-        raise _error(status.HTTP_404_NOT_FOUND, "attempt_not_found")
-    if found.status == "submitted":
-        return SubmittedOut()
-    if not body.dont_remember and not body.answer_text.strip():
-        raise _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "answer_empty")
-    try:
-        attempts.save_draft(
-            attempt_id, answer_text=body.answer_text, dont_remember=body.dont_remember
-        )
-        attempts.submit(attempt_id, now)
-    except ReviewSessionEndedError as error:
-        raise _error(status.HTTP_409_CONFLICT, "session_ended") from error
-    except AttemptNotDraftError:
-        return SubmittedOut()  # another request submitted it first
-    return SubmittedOut()
 
 
 @router.post("/review-sessions/{session_id}/stop")

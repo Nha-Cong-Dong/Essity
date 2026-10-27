@@ -5,7 +5,7 @@
         "additionalProperties": false,
         "properties": {
           "answer_text": {
-            "maxLength": 20000,
+            "maxLength": 4000,
             "title": "Answer Text",
             "type": "string"
           },
@@ -48,6 +48,104 @@
           "dont_remember"
         ],
         "title": "AttemptOut",
+        "type": "object"
+      },
+      "AttemptView": {
+        "properties": {
+          "answer_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer Text"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "enum": [
+                  "unavailable",
+                  "invalid",
+                  "disabled"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          },
+          "grading": {
+            "anyOf": [
+              {
+                "enum": [
+                  "graded",
+                  "failed",
+                  "in_progress"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grading"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuestionRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "submitted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          }
+        },
+        "required": [
+          "status",
+          "grading",
+          "failure",
+          "result",
+          "answer_text",
+          "submitted_at",
+          "question"
+        ],
+        "title": "AttemptView",
         "type": "object"
       },
       "BacklogOut": {
@@ -107,6 +205,15 @@
           "total": {
             "title": "Total",
             "type": "integer"
+          },
+          "ungraded": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Ungraded",
+            "type": "array"
           }
         },
         "required": [
@@ -125,6 +232,15 @@
             "default": true,
             "title": "Done",
             "type": "boolean"
+          },
+          "ungraded": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Ungraded",
+            "type": "array"
           }
         },
         "title": "DoneOut",
@@ -357,6 +473,19 @@
         "title": "QuestionOut",
         "type": "object"
       },
+      "QuestionRef": {
+        "properties": {
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "QuestionRef",
+        "type": "object"
+      },
       "RegisterBody": {
         "additionalProperties": false,
         "properties": {
@@ -399,6 +528,107 @@
           "password"
         ],
         "title": "ResetBody",
+        "type": "object"
+      },
+      "ResultOut": {
+        "properties": {
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "overall": {
+            "enum": [
+              "correct",
+              "partial",
+              "incorrect",
+              "forgot"
+            ],
+            "title": "Overall",
+            "type": "string"
+          },
+          "practice": {
+            "title": "Practice",
+            "type": "boolean"
+          },
+          "reference_answer": {
+            "title": "Reference Answer",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "understanding": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Understanding"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/UnitResult"
+            },
+            "title": "Units",
+            "type": "array"
+          }
+        },
+        "required": [
+          "overall",
+          "understanding",
+          "missing",
+          "units",
+          "reference_answer",
+          "sources",
+          "practice"
+        ],
+        "title": "ResultOut",
+        "type": "object"
+      },
+      "Source": {
+        "properties": {
+          "anchor_id": {
+            "format": "uuid",
+            "title": "Anchor Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "page_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page No"
+          },
+          "quote_text": {
+            "title": "Quote Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "anchor_id",
+          "quote_text",
+          "kind",
+          "page_no"
+        ],
+        "title": "Source",
         "type": "object"
       },
       "StartIn": {
@@ -543,24 +773,6 @@
         "title": "SubjectRef",
         "type": "object"
       },
-      "SubmittedOut": {
-        "properties": {
-          "grading": {
-            "const": "pending",
-            "default": "pending",
-            "title": "Grading",
-            "type": "string"
-          },
-          "status": {
-            "const": "submitted",
-            "default": "submitted",
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "title": "SubmittedOut",
-        "type": "object"
-      },
       "TodayOut": {
         "properties": {
           "backlog": {
@@ -688,6 +900,35 @@
         "title": "TokenBody",
         "type": "object"
       },
+      "UnitResult": {
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unit_id": {
+            "format": "uuid",
+            "title": "Unit Id",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "correct",
+              "partial",
+              "incorrect"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id",
+          "title",
+          "verdict"
+        ],
+        "title": "UnitResult",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -808,6 +1049,47 @@
         "summary": "Healthz"
       }
     },
+    "/v1/attempts/{attempt_id}": {
+      "get": {
+        "description": "The attempt as the answer and result screens show it (after a reload too). Never grades.",
+        "operationId": "read_attempt_v1_attempts__attempt_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Attempt"
+      }
+    },
     "/v1/attempts/{attempt_id}/draft": {
       "put": {
         "operationId": "save_draft_v1_attempts__attempt_id__draft_put",
@@ -851,9 +1133,50 @@
         "summary": "Save Draft"
       }
     },
+    "/v1/attempts/{attempt_id}/regrade": {
+      "post": {
+        "description": "\"Chấm lại\": grade a submitted answer that has no grade yet; a graded one is returned as it\nis, never paid for twice.",
+        "operationId": "regrade_attempt_v1_attempts__attempt_id__regrade_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Regrade Attempt"
+      }
+    },
     "/v1/attempts/{attempt_id}/submit": {
       "post": {
-        "description": "Save the last text and submit, in one write: nothing typed after the last draft save is\nlost. Submitting again returns the first submission, even once the session has ended.",
+        "description": "Save the last text and submit (nothing typed after the last draft save is lost), commit,\nthen grade. Submitting again, or from a second tab, grades what was submitted first.",
         "operationId": "submit_attempt_v1_attempts__attempt_id__submit_post",
         "parameters": [
           {
@@ -882,7 +1205,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SubmittedOut"
+                  "$ref": "#/components/schemas/AttemptView"
                 }
               }
             },

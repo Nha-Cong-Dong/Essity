@@ -39,6 +39,13 @@ afterEach(() => {
 });
 
 describe("VerifyEmail after the link is verified", () => {
+  // Review T2.15 🟡4. Red when: the sign-in this link makes leaves the last person's drafts.
+  it("drops the answers kept on this device when it signs in", async () => {
+    window.localStorage.setItem("essity:draft:old", "{}");
+    await verified({ verified: true, signedIn: true, next: "/today" });
+    expect(window.localStorage.getItem("essity:draft:old")).toBeNull();
+  });
+
   // Red when: the button keeps the old baseline label, or its label and its page disagree.
   it.each([
     ["/subjects/new", "Tạo môn đầu tiên"],

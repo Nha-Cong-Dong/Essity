@@ -46,6 +46,15 @@ describe("frames share one container (§5)", () => {
     expect(markup).toContain("Câu 3 / 14");
   });
 
+  // T2.15: before a question loads, or once the session is over, there is no "Câu 0 / 0".
+  it("FocusShell without a total shows no counter and no bar", () => {
+    const markup = renderToStaticMarkup(
+      h(FocusShell, { position: 0, total: 0, exit: h("a", { href: "/today" }, "Dừng tại đây"), children: "x" }),
+    );
+    expect(markup).not.toContain("Câu 0");
+    expect(markup).not.toContain("progressbar");
+  });
+
   it("the nav can shrink and scroll rather than push the page sideways at 320px (review of 96bebab)", () => {
     const markup = renderToStaticMarkup(h(AppShell, { current: "/today", children: "x" }));
     expect(markup).toMatch(/<nav[^>]*class="[^"]*min-w-0[^"]*overflow-x-auto/);

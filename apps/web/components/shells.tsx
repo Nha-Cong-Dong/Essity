@@ -43,7 +43,8 @@ export function AppShell({
 
 /**
  * Focus frame for a review session (/review/*): no navigation, only progress and the way out
- * ("Dừng tại đây"). The 3px bar is not split per question, so it hints at nothing ahead.
+ * ("Dừng tại đây"). The 3px bar is not split per question, so it hints at nothing ahead. Without a
+ * total (loading, or the session over) neither shows.
  */
 export function FocusShell({
   position,
@@ -61,19 +62,23 @@ export function FocusShell({
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b border-line">
         <div className={cn(CONTAINER, "flex h-(--header-focus-h) items-center gap-4")}>
-          <span className="text-meta whitespace-nowrap text-ink-soft tabular-nums">
-            Câu {position} / {total}
-          </span>
-          <div
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={total}
-            aria-valuenow={position}
-            aria-label={`Câu ${position} trên ${total}`}
-            className="h-[3px] w-40 overflow-hidden rounded-full bg-line"
-          >
-            <div className="h-[3px] rounded-full bg-hong" style={{ width: `${percent}%` }} />
-          </div>
+          {total > 0 && (
+            <>
+              <span className="text-meta whitespace-nowrap text-ink-soft tabular-nums">
+                Câu {position} / {total}
+              </span>
+              <div
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={total}
+                aria-valuenow={position}
+                aria-label={`Câu ${position} trên ${total}`}
+                className="h-[3px] w-40 overflow-hidden rounded-full bg-line max-[900px]:w-24"
+              >
+                <div className="h-[3px] rounded-full bg-hong" style={{ width: `${percent}%` }} />
+              </div>
+            </>
+          )}
           <div className="ml-auto text-meta whitespace-nowrap text-ink-soft">{exit}</div>
         </div>
       </header>

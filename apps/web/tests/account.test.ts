@@ -120,6 +120,15 @@ describe("signOut (review cdbaa25 #1)", () => {
     expect(assign).toHaveBeenCalledWith("/login");
   });
 
+  // T2.15. Red when: answers kept on a shared computer outlive the session that typed them.
+  it("drops this device's drafts once signed out, and keeps them when it stays", async () => {
+    const clearDrafts = vi.fn();
+    await signOut({ post: async () => ({ status: 0, error: "unavailable" }), assign: vi.fn(), clearDrafts });
+    expect(clearDrafts).not.toHaveBeenCalled();
+    await signOut({ post: async () => ({ status: 200, data: { next: "/login" } }), assign: vi.fn(), clearDrafts });
+    expect(clearDrafts).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     ["a refused origin", { status: 403, error: "forbidden_origin" }],
     ["a network failure", { status: 0, error: "unavailable" }],

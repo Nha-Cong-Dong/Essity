@@ -212,3 +212,19 @@ def test_t26_a_unit_with_no_reviews_gets_no_state(learner: Learner) -> None:
     learner.unit(learner.subject("Mạng"), "never asked")
     assert MemoryStateRepository(learner.session, learner.user.id).rebuild() == 0
     assert learner.states() == {}
+
+
+# Review final #21. Red when: a rebuild in several batches drops or repeats a state (each batch
+# is one statement, kept under Postgres's 65 535 parameters).
+def test_t26_rebuild_in_batches_matches_one_batch(
+    learner: Learner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from core_api.repositories import review
+
+    reviewed_history(learner, learner.subject("Mạng"), units=3, exam=EXAM)
+    written = learner.states()
+    monkeypatch.setattr(review, "REBUILD_BATCH", 2)
+    repo = MemoryStateRepository(learner.session, learner.user.id)
+    repo.delete_all()
+    assert repo.rebuild() == 3
+    assert learner.states() == written

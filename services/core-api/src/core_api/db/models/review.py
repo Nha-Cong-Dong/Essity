@@ -35,7 +35,8 @@ from core_api.domain.scheduling.rating import ReviewRating, Verdict
 
 STOP_REASONS = frozenset({"completed", "user_stopped"})
 ATTEMPT_STATUSES = frozenset({"draft", "submitted"})
-GRADE_SOURCES = frozenset({"ai", "user_override", "system"})
+# "fake": the fake grader in local and test (T2.13, R41); a fake grade is never real evidence.
+GRADE_SOURCES = frozenset({"ai", "fake", "user_override", "system"})
 OVERALL = frozenset(verdict.value for verdict in Verdict)
 # A unit is judged correct, partial or incorrect; "forgot" is a whole answer, never a unit's.
 UNIT_VERDICTS = OVERALL - {Verdict.FORGOT.value}
@@ -151,7 +152,7 @@ class Grade(UserOwned, Base):
         CheckConstraint("(overall = 'forgot') = (source = 'system')", name="forgot_by_system"),
         CheckConstraint(
             "understanding IS NULL OR (overall NOT IN ('incorrect', 'forgot')"
-            " AND understanding BETWEEN 0 AND 3)",
+            " AND understanding BETWEEN 1 AND 3)",
             name="understanding_when_right",
         ),
         UniqueConstraint("id", "user_id"),

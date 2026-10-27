@@ -19,9 +19,11 @@ export type CoreAuth = {
   token?: string;
   /** The user's IP (W4); core-api only trusts it alongside the service token. */
   clientIp?: string | null;
+  /** How long to wait for core-api: 3 s unless the call waits on the AI (plan D-5). */
+  timeoutMs?: number;
 };
 
-export function coreClient({ token, clientIp }: CoreAuth = {}): CoreClient {
+export function coreClient({ token, clientIp, timeoutMs }: CoreAuth = {}): CoreClient {
   return createCoreClient({
     baseUrl: webConfig().coreApiUrl,
     fetch: async (request: Request) => {
@@ -37,17 +39,17 @@ export function coreClient({ token, clientIp }: CoreAuth = {}): CoreClient {
       }
       const url = new URL(request.url);
       const body = request.method === "GET" ? undefined : await request.arrayBuffer();
-      return coreFetch(url.pathname + url.search, {
-        method: request.method,
-        headers,
-        body: body && body.byteLength > 0 ? body : undefined,
-      });
+      return coreFetch(
+        url.pathname + url.search,
+        { method: request.method, headers, body: body && body.byteLength > 0 ? body : undefined },
+        timeoutMs,
+      );
     },
   });
 }
 
 /** A client for a route handler: the user's IP comes from the request (W4). */
-export function coreClientFor(request: Request, token?: string): CoreClient {
+export function coreClientFor(request: Request, token?: string, timeoutMs?: number): CoreClient {
   const clientIp = clientIpFrom(request.headers, webConfig().trustedProxyHops);
-  return coreClient({ token, clientIp });
+  return coreClient({ token, clientIp, timeoutMs });
 }

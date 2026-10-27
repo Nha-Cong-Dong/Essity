@@ -1,5 +1,6 @@
 """T2.9: the review session API, before grading (US-04, US-08, PLAN T2.9, plan
-`t2.8-t2.9-t2.14-today-session.md`). Grading is T2.13: a submitted answer is "pending" here."""
+`t2.8-t2.9-t2.14-today-session.md`). Submitting grades the answer (T2.13): conftest's stub
+grader stands in for ai-service."""
 
 import uuid
 from collections.abc import Callable
@@ -13,8 +14,10 @@ from test_t28_today_api import Space
 
 from accounts import signed_in
 from clock import FROZEN_NOW
-from core_api.db.models import Attempt, Question
+from core_api.clients.ai_client import NotGraded
+from core_api.db.models import Attempt, Question, ReviewSession
 from core_api.repositories.subject import SubjectRepository
+from grader_stub import Stub
 
 Headers = dict[str, str]
 
@@ -189,7 +192,7 @@ def test_t29_submit_saves_the_last_text_and_moves_on(
     attempt_id = open_attempt(client, headers, session_id).json()["id"]
     done = submit(client, headers, attempt_id, "TCP tin cậy")
     assert done.status_code == 200
-    assert done.json() == {"status": "submitted", "grading": "pending"}
+    assert (done.json()["status"], done.json()["grading"]) == ("submitted", "graded")
     nxt = current(client, headers, session_id)
     assert (nxt["position"], nxt["total"], nxt["attempt"]) == (2, 2, None)
 
@@ -221,7 +224,7 @@ def test_us08_stop_counts_and_closes_once(client: TestClient, db_session: Sessio
     assert stopped.json() == {"answered": 1, "total": 2}
     again = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers)
     assert again.json() == {"answered": 1, "total": 2}
-    assert current(client, headers, session_id) == {"done": True}
+    assert current(client, headers, session_id) == {"done": True, "ungraded": []}
 
 
 # D14. Red when: a draft can still change once its session is stopped.
@@ -305,8 +308,9 @@ def test_t28_today_reports_the_session_in_progress(client: TestClient, db_sessio
 # Review #21 🟠. Red when: a session whose every question is answered, left open because the tab
 # closed before "stop", keeps today's one open slot, so "Bắt đầu" returns the finished session.
 def test_t29_a_finished_open_session_does_not_block_a_new_one(
-    client: TestClient, db_session: Session
+    client: TestClient, db_session: Session, stub: Stub
 ) -> None:
+    stub.failure = NotGraded("unavailable", "timeout")  # ungraded, the question is still due
     _, headers, _ = ready(db_session, 1)
     first = start(client, headers).json()["id"]
     attempt_id = open_attempt(client, headers, first).json()["id"]
@@ -314,12 +318,16 @@ def test_t29_a_finished_open_session_does_not_block_a_new_one(
     again = start(client, headers)
     assert again.status_code == 201, again.text
     assert again.json()["id"] != first
-    assert current(client, headers, first) == {"done": True}
+    assert current(client, headers, first) == {"done": True, "ungraded": [attempt_id]}
+    db_session.expire_all()
+    closed = db_session.get(ReviewSession, uuid.UUID(first))
+    assert closed is not None and closed.ended_at is not None
+    assert closed.stop_reason == "completed"
 
 
 # PLAN T2.9 (23/10b), plan C11. Red when: a subject deleted between reading the session's steps
 # and writing the draft leaves an attempt on it, or answers anything but 404 subject_deleted. The
-# race is opened by deleting the subject just before create_draft runs.
+# race is opened by deleting the subject just before open_draft runs.
 def test_t29_draft_on_a_subject_deleted_meanwhile_is_404_and_leaves_no_attempt(
     client: TestClient, db_session: Session, monkeypatch: Any
 ) -> None:
@@ -327,14 +335,14 @@ def test_t29_draft_on_a_subject_deleted_meanwhile_is_404_and_leaves_no_attempt(
     session_id = start(client, headers).json()["id"]
     from core_api.repositories import review as review_repo
 
-    original = review_repo.AttemptRepository.create_draft
+    original = review_repo.AttemptRepository.open_draft
 
     def deleted_first(self: Any, review_session_id: uuid.UUID, question_id: uuid.UUID) -> Any:
         subject_id = db_session.get(Question, question_id).subject_id  # type: ignore[union-attr]
         SubjectRepository(db_session, space.user.id).soft_delete(subject_id, FROZEN_NOW)
         return original(self, review_session_id, question_id)
 
-    monkeypatch.setattr(review_repo.AttemptRepository, "create_draft", deleted_first)
+    monkeypatch.setattr(review_repo.AttemptRepository, "open_draft", deleted_first)
     response = open_attempt(client, headers, session_id)
     assert response.status_code == 404
     assert response.json() == {"detail": "subject_deleted"}
@@ -342,3 +350,17 @@ def test_t29_draft_on_a_subject_deleted_meanwhile_is_404_and_leaves_no_attempt(
         select(func.count()).select_from(Attempt).where(Attempt.user_id == space.user.id)
     )
     assert count == 0
+
+
+# T2.13 plan D-4. Red when: an answer ai-service would refuse (> 4000 characters) is stored, so it
+# could never be graded and "Chấm lại" would loop.
+def test_t213_an_answer_over_4000_characters_is_refused(
+    client: TestClient, db_session: Session
+) -> None:
+    _, headers, _ = ready(db_session)
+    session_id = start(client, headers).json()["id"]
+    attempt_id = open_attempt(client, headers, session_id).json()["id"]
+    for text, code in [("ệ" * 4000, 204), ("ệ" * 4000 + "x", 422)]:
+        body = {"answer_text": text, "dont_remember": False}
+        response = client.put(f"/v1/attempts/{attempt_id}/draft", json=body, headers=headers)
+        assert response.status_code == code

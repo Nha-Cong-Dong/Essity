@@ -99,10 +99,20 @@ def refused_by_trigger(session: Session, sql: str, /, **params: Any) -> None:
 
 
 def test_t23_attempt_unique_per_session_question(db_session: Session, history: History) -> None:
-    with pytest.raises(IntegrityError), db_session.begin_nested():
-        AttemptRepository(db_session, history.user.id).create_draft(
-            history.review.id, history.question.id
-        )
+    # One attempt per (session, question): opening it again returns that attempt (T2.15 (c)), and
+    # the database still refuses a second row inserted around the repository.
+    again, made = AttemptRepository(db_session, history.user.id).open_draft(
+        history.review.id, history.question.id
+    )
+    assert (again.id, made) == (history.attempt.id, False)
+    refused(
+        db_session,
+        "INSERT INTO attempt (id, user_id, review_session_id, question_id, status)"
+        " VALUES (gen_random_uuid(), :u, :s, :q, 'draft')",
+        u=history.user.id,
+        s=history.review.id,
+        q=history.question.id,
+    )
 
 
 def test_us04_attempt_submitted_requires_timestamp(db_session: Session, history: History) -> None:
@@ -260,8 +270,15 @@ OWN_METHODS = {
     # T2.9: one open session per learning day (plan C4) is made or found, never changed.
     ReviewSessionRepository: {"start", "end", "open_for_day", "open_on", "hold_for_update"},
     ReviewSessionItemRepository: {"add_all", "of_session", "progress"},
-    AttemptRepository: {"create_draft", "save_draft", "submit"},
-    GradeRepository: {"add_with_units", "latest_for_attempt"},
+    AttemptRepository: {"create_draft", "open_draft", "save_draft", "submit"},
+    GradeRepository: {
+        "add_with_units",
+        "latest_for_attempt",
+        "try_lock_attempt",
+        "is_being_graded",
+        "unit_verdicts",
+        "graded",
+    },
     ReviewLogRepository: {"append"},
 }
 
@@ -796,3 +813,43 @@ def test_t23_a_temporary_table_cannot_stand_in_for_grade(
             ),
             {"user": history.user.id, "grade": old, "unit": history.unit.id},
         )
+
+
+# T2.13 (migration 0011, PLAN T2.13 23/10b, PR B B1): the fake grader's grades are stored as
+# source 'fake'; understanding is 1..3, never 0. Red when: the CHECKs are not changed.
+def test_t213_fake_grades_are_stored_as_fake(db_session: Session, history: History) -> None:
+    made = GradeRepository(db_session, history.user.id).add_with_units(
+        history.attempt.id,
+        source="fake",
+        overall=Verdict.CORRECT,
+        understanding=3,
+        units={history.unit.id: Verdict.CORRECT},
+        run_id=RUN,
+    )
+    db_session.flush()
+    assert made.source == "fake"
+
+
+@pytest.mark.parametrize(
+    ("understanding", "stored"), [(0, False), (1, True), (3, True), (4, False)]
+)
+def test_t213_understanding_is_one_to_three(
+    db_session: Session, history: History, understanding: int, stored: bool
+) -> None:
+    def add() -> None:
+        GradeRepository(db_session, history.user.id).add_with_units(
+            history.attempt.id,
+            source="ai",
+            overall=Verdict.CORRECT,
+            understanding=understanding,
+            units={history.unit.id: Verdict.CORRECT},
+            run_id=RUN,
+        )
+        db_session.flush()
+
+    if stored:
+        with db_session.begin_nested():
+            add()
+    else:
+        with pytest.raises(IntegrityError), db_session.begin_nested():
+            add()

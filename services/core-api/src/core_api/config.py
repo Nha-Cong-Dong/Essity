@@ -40,6 +40,11 @@ class DatabaseSettings(BaseSettings):
     # postgresql+psycopg://user:password@host:5432/core. Secret because it holds the password;
     # no default, so a missing database is a startup error rather than a surprise later.
     database_url: SecretStr
+    # The pool, set here rather than left to SQLAlchemy's 5 + 10 (review T2.13 🟡2): a grading
+    # holds one connection while the AI answers, up to ~20 s, so concurrent gradings take
+    # connections from every other request (risk register, until T2.11's queue).
+    db_pool_size: int = Field(default=10, ge=1)
+    db_max_overflow: int = Field(default=10, ge=0)
 
 
 class Settings(DatabaseSettings):
@@ -75,9 +80,10 @@ class Settings(DatabaseSettings):
     # Sent to ai-service in X-Service-Token. No default: core-api refuses to start without one,
     # the same rule ai-service applies on its side.
     ai_service_token: SecretStr = Field(min_length=32)
-    # Below web's 3 s timeout for core-api, so a hung ai-service is reported as such
-    # instead of web timing out and blaming core-api.
-    ai_service_timeout_seconds: float = Field(default=2.0, gt=0)
+    # The ai-service client's default timeout. Its two calls set their own (review T2.13 🟢8):
+    # grading GRADE_CALL_SECONDS a call within GRADE_TOTAL_SECONDS (plan D-5), the ping
+    # PING_TIMEOUT_SECONDS (clients.ai_client).
+    ai_service_timeout_seconds: float = Field(default=10.0, gt=0)
 
     # A field validator, not a model one: a model validator's error prints the whole input,
     # secrets included, to the startup traceback; this one prints only the URL.

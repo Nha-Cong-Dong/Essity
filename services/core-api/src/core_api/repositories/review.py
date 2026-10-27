@@ -12,7 +12,7 @@ from datetime import date, datetime
 from itertools import groupby
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 
 from core_api.db.models import (
@@ -209,18 +209,41 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
     model = Attempt
 
     def create_draft(self, review_session_id: uuid.UUID, question_id: uuid.UUID) -> Attempt:
-        """A draft answer. Locks in this order: the session, then the question's subject (FOR
-        SHARE, so a soft delete waits for this draft or this finds the subject gone: T2.3b plan
-        F3), then the attempt. Saving and submitting need no subject lock: a subject with an
-        attempt cannot be soft-deleted (that path comes with T6.3)."""
+        """The draft of this question in this session: `open_draft` without saying who made it."""
+        return self.open_draft(review_session_id, question_id)[0]
+
+    def open_draft(
+        self, review_session_id: uuid.UUID, question_id: uuid.UUID
+    ) -> tuple[Attempt, bool]:
+        """The draft of this question in this session, made if there is none: (attempt, made now).
+        Locks in this order: the session, then the question's subject (FOR SHARE, so a soft delete
+        waits for this draft or this finds the subject gone: T2.3b plan F3), then the attempt.
+        Two tabs opening the same question at once (T2.15 (c)): the second insert waits on
+        UNIQUE(review_session_id, question_id), then reads the first draft instead of failing.
+        Saving and submitting need no subject lock: a subject with an attempt cannot be
+        soft-deleted (that path comes with T6.3)."""
         self._lock_open_session(review_session_id)
         question = QuestionRepository(self.session, self.user_id).get(question_id)
         if question is None:
             raise QuestionNotFoundError(question_id)
         SubjectRepository(self.session, self.user_id).hold_for_share(question.subject_id)
-        attempt = self.add(Attempt(review_session_id=review_session_id, question_id=question_id))
-        self.session.flush()
-        return attempt
+        made = self.session.execute(
+            insert(Attempt)
+            .values(
+                id=uuid.uuid4(),
+                user_id=self.user_id,
+                review_session_id=review_session_id,
+                question_id=question_id,
+            )
+            .on_conflict_do_nothing(index_elements=["review_session_id", "question_id"])
+            .returning(Attempt.id)
+        ).scalar_one_or_none()
+        found = self.session.scalars(
+            self._select().where(
+                Attempt.review_session_id == review_session_id, Attempt.question_id == question_id
+            )
+        ).one()
+        return found, made is not None
 
     def save_draft(self, id: uuid.UUID, *, answer_text: str, dont_remember: bool) -> None:
         self._change_draft(id, answer_text=answer_text, dont_remember=dont_remember)
@@ -304,6 +327,54 @@ class GradeRepository(AppendOnlyRepository[Grade]):
         self.session.flush()
         return grade
 
+    def try_lock_attempt(self, attempt_id: uuid.UUID) -> bool:
+        """Take the attempt's grading lock for this transaction, or say someone holds it (T2.13
+        plan D-2): one grading at a time, without a row lock held while the AI answers. The key
+        is a 64-bit hash of the id in a namespace of its own; a collision only gives a false
+        "in progress". Check the attempt is this user's first: otherwise anyone knowing an id
+        could hold a victim's lock (plan 🟡16)."""
+        return bool(
+            self.session.scalar(
+                select(
+                    func.pg_try_advisory_xact_lock(
+                        func.hashtextextended(str(attempt_id), GRADING_LOCK_NAMESPACE)
+                    )
+                )
+            )
+        )
+
+    def is_being_graded(self, attempt_id: uuid.UUID) -> bool:
+        """Whether another transaction holds the attempt's grading lock, read from pg_locks
+        without taking it (plan 🟡9): a read taking it could make a submit arriving at that
+        moment answer "in progress" with nobody grading."""
+        key = func.hashtextextended(str(attempt_id), GRADING_LOCK_NAMESPACE)
+        held = text(
+            "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory'"
+            " AND objsubid = 1 AND ((classid::bigint << 32) | objid::bigint) = :key"
+            " AND database = (SELECT oid FROM pg_database WHERE datname = current_database())"
+            " AND pid <> pg_backend_pid())"
+        )
+        value = self.session.scalar(select(key))
+        return bool(self.session.scalar(held, {"key": value}))
+
+    def graded(self, attempt_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+        """Which of these attempts have a grade (plan D-7: the others are offered "Chấm lại")."""
+        if not attempt_ids:
+            return set()
+        query = select(Grade.attempt_id).where(
+            Grade.user_id == self.user_id, Grade.attempt_id.in_(attempt_ids)
+        )
+        return set(self.session.scalars(query))
+
+    def unit_verdicts(self, grade_id: uuid.UUID) -> dict[uuid.UUID, str]:
+        """A grade's verdict on each unit it judged (US-05 AC9)."""
+        rows = self.session.execute(
+            select(GradeUnit.unit_id, GradeUnit.verdict).where(
+                GradeUnit.user_id == self.user_id, GradeUnit.grade_id == grade_id
+            )
+        ).all()
+        return {unit_id: verdict for unit_id, verdict in rows}
+
     def latest_for_attempt(self, attempt_id: uuid.UUID) -> Grade | None:
         """The attempt's current judgement: its newest grade (plan D2)."""
         query = self._select().where(Grade.attempt_id == attempt_id).order_by(Grade.seq.desc())
@@ -335,6 +406,11 @@ class ReviewLogRepository(AppendOnlyRepository[ReviewLog]):
         return log
 
 
+REBUILD_BATCH = 1000
+GRADING_LOCK_NAMESPACE = 7213  # T2.13: advisory locks on attempts being graded
+_STATE_FIELDS = ("phase", "step", "stability", "difficulty", "due", "last_review")
+
+
 class MemoryStateRepository(UserScopedRepository[MemoryState]):
     """Layer 4: a cache of FSRS state, changed freely and rebuilt from review_log (T2.6)."""
 
@@ -343,7 +419,10 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
     def state(self, unit_id: uuid.UUID, facet: str = "core") -> State | None:
         """The FSRS state of (unit, facet), or None for a unit never reviewed."""
         row = self.session.scalars(
-            self._select().where(MemoryState.unit_id == unit_id, MemoryState.facet == facet)
+            self._select().where(MemoryState.unit_id == unit_id, MemoryState.facet == facet),
+            # A fresh read, not the object an earlier statement left in the session (T2.13
+            # reads it after locking the unit; plan 🟡12).
+            execution_options={"populate_existing": True},
         ).one_or_none()
         if row is None:
             return None
@@ -386,7 +465,9 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         )
         return deleted.rowcount  # type: ignore[attr-defined]
 
-    def rebuild(self, subject_id: uuid.UUID | None = None) -> int:
+    def rebuild(
+        self, subject_id: uuid.UUID | None = None, unit_ids: Sequence[uuid.UUID] | None = None
+    ) -> int:
         """Rebuild the cache from review_log (T2.6), for one subject or all of them: drop it,
         then replay each (unit, facet) through `schedule_review` with its subject's exam date
         as it is now. A moved exam reaches the schedule this way (US-01 AC3). Returns the number
@@ -397,6 +478,8 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         units = select(KnowledgeUnit.id).where(KnowledgeUnit.user_id == self.user_id)
         if subject_id is not None:
             units = units.where(KnowledgeUnit.subject_id == subject_id)
+        if unit_ids is not None:  # T2.13: only the units an older answer touches
+            units = units.where(KnowledgeUnit.id.in_(unit_ids))
         self.session.execute(
             delete(MemoryState).where(
                 MemoryState.user_id == self.user_id, MemoryState.unit_id.in_(units)
@@ -404,7 +487,8 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         )
         rows: list[dict[str, object]] = []
         for (unit_id, facet, exam_day), reviews in groupby(
-            self._current_reviews(subject_id), key=lambda row: (row[0], row[1], row[4])
+            self._current_reviews(subject_id, unit_ids),
+            key=lambda row: (row[0], row[1], row[4]),
         ):
             state = replay(
                 ((ReviewRating(row[2]), row[3]) for row in reviews),
@@ -429,32 +513,23 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
             )
         # One insert, not one upsert per unit: the rows were just deleted, and every unit comes
         # from this user's own review_log joined to knowledge_unit (rebuild at real size, #20).
-        if rows:
-            # Still one statement: a review written meanwhile (T2.13, or a CLI rebuild) updates
-            # the row instead of failing the rebuild on the unique key.
-            statement = insert(MemoryState).values(rows)
+        # One upsert per batch, not per unit: a review written meanwhile (T2.13, or a CLI
+        # rebuild) updates the row instead of failing the rebuild on the unique key. Batches keep
+        # each statement under Postgres's 65 535 parameters (10 a row; review final #21).
+        for start in range(0, len(rows), REBUILD_BATCH):
+            statement = insert(MemoryState).values(rows[start : start + REBUILD_BATCH])
             excluded = statement.excluded
             self.session.execute(
                 statement.on_conflict_do_update(
                     index_elements=["user_id", "unit_id", "facet"],
-                    set_={
-                        name: getattr(excluded, name)
-                        for name in (
-                            "phase",
-                            "step",
-                            "stability",
-                            "difficulty",
-                            "due",
-                            "last_review",
-                        )
-                    },
+                    set_={name: getattr(excluded, name) for name in _STATE_FIELDS},
                 )
             )
         self.session.expire_all()
         return len(rows)
 
     def _current_reviews(
-        self, subject_id: uuid.UUID | None
+        self, subject_id: uuid.UUID | None, unit_ids: Sequence[uuid.UUID] | None = None
     ) -> Sequence[tuple[uuid.UUID, str, int, datetime, date]]:
         """(unit, facet, rating, reviewed_at, exam date) of every review that counts: the rows of
         each attempt's latest grade (plan D7), in the order they happened."""
@@ -489,4 +564,6 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         )
         if subject_id is not None:
             query = query.where(KnowledgeUnit.subject_id == subject_id)
+        if unit_ids is not None:
+            query = query.where(ReviewLog.unit_id.in_(unit_ids))
         return [tuple(row) for row in self.session.execute(query)]  # type: ignore[misc]
