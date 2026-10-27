@@ -26,7 +26,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from ai_service.config import Settings
 from ai_service.llm.anthropic_adapter import MAX_TOKENS, AnthropicAdapter
@@ -50,7 +50,7 @@ from ai_service.tasks.grade_models import (
     GradeUnit,
     Verdict,
 )
-from evals.grade.schema import RIGHT_IDEA, EvalCase, load_cases
+from evals.grade.schema import RIGHT_IDEA, EvalCase, error_reason, load_cases
 
 DEFAULT_RUNS = 3
 DEFAULT_MAX_COST_USD = Decimal("1.00")
@@ -167,7 +167,7 @@ def _request(case: EvalCase) -> GradeRequest:
 
 def _worst_case(adapter: Adapter, price: Price, request: LlmRequest) -> Decimal:
     # A token is at most a character; the output is capped by the adapter.
-    chars = len(request.system) + len(request.user)
+    chars = len(request.system) + len(request.user) + len(json.dumps(request.output_schema))
     max_out = int(adapter.params.get("max_tokens", MAX_TOKENS))
     return cost_usd(price, input_tokens=chars, output_tokens=max_out)
 
@@ -234,7 +234,10 @@ def run_eval(
     """Every case `runs` times, run by run, so an early stop leaves whole runs behind."""
     price_for(model)  # fail closed: an unpriced model is refused before any call
     for case in cases:
-        _request(case)  # a case the service would refuse fails here, before any money is spent
+        try:
+            _request(case)  # a case the service would refuse fails here, before any money is spent
+        except ValidationError as error:
+            raise ValueError(f"case {case.id}: {error_reason(error)}") from None
     prompt = load_prompt()
     budget = _Budget(max_cost_usd)
     results: dict[str, list[RunResult]] = {case.id: [] for case in cases}

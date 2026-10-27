@@ -74,7 +74,7 @@ def load_cases(path: Path) -> list[EvalCase]:
         try:
             case = EvalCase.model_validate(json.loads(line))
         except (ValidationError, json.JSONDecodeError) as error:
-            raise ValueError(f"{path.name} line {number}: {_reason(error)}") from None
+            raise ValueError(f"{path.name} line {number}: {error_reason(error)}") from None
         if case.id in seen:
             raise ValueError(f"{path.name} line {number}: duplicate id {case.id}")
         seen.add(case.id)
@@ -82,7 +82,7 @@ def load_cases(path: Path) -> list[EvalCase]:
     return cases
 
 
-def _reason(error: ValidationError | json.JSONDecodeError) -> str:
+def error_reason(error: ValidationError | json.JSONDecodeError) -> str:
     # Never echo the input: a case may hold a learner's text.
     if isinstance(error, json.JSONDecodeError):
         return "not valid JSON"

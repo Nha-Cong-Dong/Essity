@@ -42,3 +42,20 @@ def test_cli_refuses_unpriced_model_and_bad_ceiling(tmp_path: Path) -> None:
     assert main(["--model", "no-such-model", "--out", str(out)]) == 2
     assert main(["--max-cost-usd", "nan", "--out", str(out)]) == 2
     assert not out.exists()
+
+
+def test_case_beyond_service_limits_error_does_not_echo_text(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import json
+
+    from tests.evals.helpers import case_dict
+
+    cases = tmp_path / "c.jsonl"
+    cases.write_text(json.dumps(case_dict(answer="SECRET-MARK " * 400)) + "\n", encoding="utf-8")
+    out = tmp_path / "r.md"
+    assert main(["--cases", str(cases), "--out", str(out)]) == 2
+    captured = capsys.readouterr()
+    assert "SECRET-MARK" not in captured.err + captured.out
+    assert "c1" in captured.err
+    assert not out.exists()
