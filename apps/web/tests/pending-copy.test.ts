@@ -37,6 +37,8 @@ const PENDING_COPY: [file: string, text: string][] = [
   ["components/review/result-actions.tsx", "Đã cập nhật kết quả và lịch ôn."],
   ["components/review/result-actions.tsx", "Câu này sẽ không xuất hiện lại."],
   ["components/review/result-actions.tsx", "Chưa gửi được. Bạn bấm lại nhé."],
+  ["components/review/review-screen.tsx", "Chưa bỏ qua được. Bạn bấm lại nhé."],
+  ["components/review/review-screen.tsx", "Đã bỏ qua phần này."],
   ["components/review/source-quote.tsx", "Vở ghi"],
   ["components/review/source-quote.tsx", "Giáo trình"],
   ["components/review/source-quote.tsx", "Giáo trình · tr. {source.page_no}"],

@@ -33,6 +33,7 @@ const CODES = new Set([
   "grade_not_current",
   "grading_in_progress",
   "question_not_found",
+  "unit_not_found",
   "session_done",
   "session_ended",
   "session_not_found",

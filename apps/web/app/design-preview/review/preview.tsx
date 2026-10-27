@@ -21,6 +21,7 @@ const STEP: Current = {
       LONG_WORD +
       "?",
     subject: { id: "0b8f1d2e-0000-4000-8000-000000000001", name: LONG_WORD },
+    unit_ids: ["0b8f1d2e-0000-4000-8000-0000000000a1"],
   },
   attempt: {
     id: ATTEMPT,
@@ -76,6 +77,8 @@ const API: ReviewApi = {
   regrade: () => ok(graded("", false)),
   override: () => ok(graded("", false)),
   drop: () => ok(null),
+  skip: () => ok({ session_id: null, next: null }),
+  unskip: () => ok(null),
   read: () => ok(graded("", false)),
 };
 

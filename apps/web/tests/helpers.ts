@@ -27,7 +27,7 @@ export function browserPost(
   });
 }
 
-type CoreCall = { path: string; method: string; headers: Headers; body: unknown };
+type CoreCall = { path: string; search: string; method: string; headers: Headers; body: unknown };
 
 /**
  * Stand-in for core-api: `reply` answers each call; every call is recorded. The global fetch is
@@ -41,6 +41,7 @@ export function fakeCoreApi(reply: (call: CoreCall) => Response | Promise<Respon
       const raw = init.body ? new TextDecoder().decode(init.body as ArrayBuffer) : "";
       const call = {
         path: url.pathname,
+        search: url.search,
         method: init.method ?? "GET",
         headers: new Headers(init.headers),
         body: raw ? JSON.parse(raw) : undefined,

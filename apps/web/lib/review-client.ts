@@ -11,6 +11,7 @@ export type AttemptView = components["schemas"]["AttemptView"];
 export type Result = components["schemas"]["ResultOut"];
 export type Draft = components["schemas"]["AttemptOut"];
 export type Answer = { answer_text: string; dont_remember: boolean };
+export type Skipped = components["schemas"]["SkipOut"];
 
 /** What ai-service grades at most (core-api's ANSWER_MAX, plan D-4): the box stops there. */
 export const ANSWER_MAX = 4000;
@@ -51,5 +52,9 @@ export const reviewApi = {
   override: (gradeId: string, verdict: "correct" | "incorrect") =>
     call<AttemptView>(`/api/grades/${gradeId}/override`, "POST", { verdict }),
   drop: (questionId: string) => call<null>(`/api/questions/${questionId}/drop`, "POST"),
+  skip: (unitId: string, sessionId: string) =>
+    call<Skipped>(`/api/units/${unitId}/skip`, "POST", { review_session_id: sessionId }),
+  unskip: (unitId: string, sessionId: string) =>
+    call<null>(`/api/units/${unitId}/skip?review_session_id=${sessionId}`, "DELETE"),
   read: (attemptId: string) => call<AttemptView>(`/api/attempts/${attemptId}`, "GET"),
 };

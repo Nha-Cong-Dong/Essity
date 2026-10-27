@@ -25,6 +25,7 @@ const current: Current = {
     id: QUESTION,
     prompt: "Vì sao có ngày và đêm?",
     subject: { id: "9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b", name: "Địa lý tự nhiên" },
+    unit_ids: ["b2c3d4e5-6f7a-4b8c-9d0e-1f2a3b4c5d6e"],
   },
   attempt: { id: ATTEMPT, status: "draft", answer_text: "", dont_remember: false },
 };
@@ -60,6 +61,8 @@ function fakeApi(over: Partial<ReviewApi> = {}): ReviewApi {
     regrade: vi.fn(async () => ok(view())),
     override: vi.fn(async () => ok(view("correct"))),
     drop: vi.fn(async () => ok(null)),
+    skip: vi.fn(async () => ok({ session_id: null, next: null })),
+    unskip: vi.fn(async () => ok(null)),
     read: vi.fn(async () => ok(view())),
     ...over,
   } as ReviewApi;

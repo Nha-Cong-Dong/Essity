@@ -32,6 +32,7 @@ function current(over: Partial<Current> = {}): Current {
       id: "8d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f6a",
       prompt: "Vì sao có ngày và đêm?",
       subject: { id: "9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b", name: "Địa lý tự nhiên" },
+      unit_ids: ["b2c3d4e5-6f7a-4b8c-9d0e-1f2a3b4c5d6e"],
     },
     attempt: { id: ATTEMPT, status: "draft", answer_text: "", dont_remember: false },
     ...over,
@@ -70,6 +71,8 @@ function fakeApi(over: Partial<ReviewApi> = {}): ReviewApi {
     regrade: vi.fn(async () => ok(view())),
     override: vi.fn(async () => ok(view({ result: { ...view().result!, overall: "correct" } }))),
     drop: vi.fn(async () => ok(null)),
+    skip: vi.fn(async () => ok({ session_id: SESSION, next: current() })),
+    unskip: vi.fn(async () => ok(null)),
     read: vi.fn(async () => ok(view())),
     ...over,
   } as ReviewApi;
