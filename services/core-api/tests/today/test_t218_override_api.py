@@ -239,3 +239,22 @@ def test_t218_routes_need_a_verified_user(client: TestClient, db_session: Sessio
         f"/v1/grades/{uuid.uuid4()}/override", json={"verdict": "correct"}, headers=headers
     )
     assert response.status_code in (401, 403)
+
+
+# US-09 (review T2-Y1). Red when: dropping a question of a deleted subject answers 204 and
+# retires it, while override and skip answer 404 for the same case.
+def test_t218_drop_of_a_deleted_subjects_question_is_404(
+    client: TestClient, db_session: Session
+) -> None:
+    from clock import FROZEN_NOW
+    from core_api.repositories.subject import SubjectRepository
+
+    user, headers = signed_in(db_session)
+    space = Space(db_session, user)
+    subject = space.subject()
+    _, question = space.question(subject)
+    SubjectRepository(db_session, user.id).soft_delete(subject, FROZEN_NOW)
+    db_session.flush()
+    response = client.post(f"/v1/questions/{question.id}/drop", headers=headers)
+    assert response.status_code == 404 and response.json() == {"detail": "question_not_found"}
+    assert db_session.get(Question, question.id).status == "active"  # type: ignore[union-attr]
