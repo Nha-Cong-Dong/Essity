@@ -494,12 +494,18 @@
       },
       "QuestionRef": {
         "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "prompt": {
             "title": "Prompt",
             "type": "string"
           }
         },
         "required": [
+          "id",
           "prompt"
         ],
         "title": "QuestionRef",
@@ -551,6 +557,11 @@
       },
       "ResultOut": {
         "properties": {
+          "grade_id": {
+            "format": "uuid",
+            "title": "Grade Id",
+            "type": "string"
+          },
           "missing": {
             "items": {
               "type": "string"
@@ -603,6 +614,7 @@
           }
         },
         "required": [
+          "grade_id",
           "overall",
           "understanding",
           "missing",

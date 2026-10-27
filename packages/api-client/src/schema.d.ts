@@ -683,6 +683,11 @@ export interface components {
         };
         /** QuestionRef */
         QuestionRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /** Prompt */
             prompt: string;
         };
@@ -702,6 +707,11 @@ export interface components {
         };
         /** ResultOut */
         ResultOut: {
+            /**
+             * Grade Id
+             * Format: uuid
+             */
+            grade_id: string;
             /** Missing */
             missing: string[];
             /**

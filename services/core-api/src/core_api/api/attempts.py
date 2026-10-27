@@ -64,6 +64,7 @@ class Source(BaseModel):
 
 
 class ResultOut(BaseModel):
+    grade_id: uuid.UUID  # what "Chấm sai" overrides (T2.18)
     overall: Literal["correct", "partial", "incorrect", "forgot"]
     understanding: int | None
     missing: list[str]
@@ -74,6 +75,7 @@ class ResultOut(BaseModel):
 
 
 class QuestionRef(BaseModel):
+    id: uuid.UUID  # what "Bỏ câu này" drops (T2.18)
     prompt: str
 
 
@@ -106,6 +108,7 @@ def result_of(session: DbSession, user_id: uuid.UUID, attempt: Attempt, grade: G
         used = [by_id[a] for a in ids if a in by_id]
     verdicts = GradeRepository(session, user_id).unit_verdicts(grade.id)
     return ResultOut(
+        grade_id=grade.id,
         overall=grade.overall,  # type: ignore[arg-type]
         understanding=grade.understanding,
         missing=list(grade.missing),
@@ -135,7 +138,7 @@ def attempt_view(
             result=None,
             answer_text=attempt.answer_text,
             submitted_at=None,
-            question=QuestionRef(prompt=question.prompt) if question else None,
+            question=QuestionRef(id=question.id, prompt=question.prompt) if question else None,
         )
     if outcome is None:
         grades = GradeRepository(session, user_id)
@@ -156,7 +159,7 @@ def attempt_view(
         result=result,
         answer_text=attempt.answer_text,
         submitted_at=attempt.submitted_at,
-        question=QuestionRef(prompt=question.prompt) if question else None,
+        question=QuestionRef(id=question.id, prompt=question.prompt) if question else None,
     )
 
 
