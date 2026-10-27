@@ -4,6 +4,7 @@ one session is open per learning day (plan C4). Submitting stores the answer; gr
 T2.13, so a submitted answer is "pending" here."""
 
 import uuid
+from datetime import date
 from typing import Literal
 from zoneinfo import ZoneInfo
 
@@ -90,6 +91,11 @@ class AnswerIn(BaseModel):
 class StoppedOut(BaseModel):
     answered: int
     total: int
+    # The summary screen (US-08 AC1): answers whose current grade is "correct" (not partial,
+    # not forgotten), and the first learning day after today something is due; null when nothing
+    # is scheduled later.
+    correct: int
+    next_day: date | None
 
 
 def _error(code: int, detail: str) -> HTTPException:
@@ -257,4 +263,16 @@ def stop_session(
     )
     if held.ended_at is None:
         sessions.end(session_id, now, reason="completed" if answered == total else "user_stopped")
-    return StoppedOut(answered=answered, total=total)
+    tz = ZoneInfo(user.timezone)
+    today = learning_day(now, tz, user.day_start_hour)
+    later = [
+        day
+        for unit in TodayRepository(session, user.id).scheduled_units()
+        if (day := learning_day(unit.state.due, tz, user.day_start_hour)) > today
+    ]
+    return StoppedOut(
+        answered=answered,
+        total=total,
+        correct=GradeRepository(session, user.id).count_correct(session_id),
+        next_day=min(later, default=None),
+    )

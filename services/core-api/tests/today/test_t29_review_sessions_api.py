@@ -221,9 +221,14 @@ def test_us08_stop_counts_and_closes_once(client: TestClient, db_session: Sessio
     submit(client, headers, attempt_id, "x")
     stopped = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers)
     assert stopped.status_code == 200
-    assert stopped.json() == {"answered": 1, "total": 2}
+    assert stopped.json() == {
+        "answered": 1,
+        "total": 2,
+        "correct": 1,
+        "next_day": stopped.json()["next_day"],
+    }
     again = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers)
-    assert again.json() == {"answered": 1, "total": 2}
+    assert again.json() == stopped.json()
     assert current(client, headers, session_id) == {"done": True, "ungraded": []}
 
 
@@ -364,3 +369,55 @@ def test_t213_an_answer_over_4000_characters_is_refused(
         body = {"answer_text": text, "dont_remember": False}
         response = client.put(f"/v1/attempts/{attempt_id}/draft", json=body, headers=headers)
         assert response.status_code == code
+
+
+# US-08 AC1, AC2. Red when: the summary counts a forgotten answer as correct, drops the answers
+# given before "Dừng tại đây", or names a next day that is not after today.
+def test_us08_ac1_stop_summary_counts_correct_and_names_the_next_day(
+    client: TestClient, db_session: Session
+) -> None:
+    space, headers, _ = ready(db_session, 3)
+    session_id = start(client, headers).json()["id"]
+    for text, forgot in (("đúng", False), ("", True)):
+        attempt_id = open_attempt(client, headers, session_id).json()["id"]
+        assert submit(client, headers, attempt_id, text, forgot).status_code == 200
+    stopped = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers).json()
+    assert (stopped["answered"], stopped["total"], stopped["correct"]) == (2, 3, 1)
+    assert stopped["next_day"] is not None
+    assert stopped["next_day"] > space.today.isoformat()
+
+
+def test_us08_ac1_stop_summary_has_no_next_day_without_a_schedule(
+    client: TestClient, db_session: Session
+) -> None:
+    _, headers, _ = ready(db_session, 1)
+    session_id = start(client, headers).json()["id"]
+    stopped = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers).json()
+    assert stopped == {"answered": 0, "total": 1, "correct": 0, "next_day": None}
+
+
+# US-08 AC2, PLAN T2.17. Red when: stopping midway loses the answered question, or the
+# unanswered one does not come back in the next session.
+def test_us08_ac2_stopped_midway_unanswered_returns_to_the_queue(
+    client: TestClient, db_session: Session
+) -> None:
+    _, headers, ids = ready(db_session, 2)
+    session_id = start(client, headers).json()["id"]
+    attempt_id = open_attempt(client, headers, session_id).json()["id"]
+    assert submit(client, headers, attempt_id, "đúng").status_code == 200
+    stopped = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers).json()
+    assert (stopped["answered"], stopped["total"]) == (1, 2)
+    again = start(client, headers)
+    assert again.json()["id"] != session_id
+    assert again.json()["total"] == 1
+    shown = current(client, headers, again.json()["id"])
+    assert shown["question"]["id"] in {str(i) for i in ids}
+
+
+# ADR-0001, US-08. Red when: B's stop closes A's session.
+def test_us08_stop_by_another_user_changes_nothing(client: TestClient, db_session: Session) -> None:
+    _, alice, _ = ready(db_session)
+    _, bob = signed_in(db_session)
+    session_id = start(client, alice).json()["id"]
+    assert client.post(f"/v1/review-sessions/{session_id}/stop", headers=bob).status_code == 404
+    assert open_attempt(client, alice, session_id).status_code == 201

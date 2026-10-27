@@ -41,6 +41,15 @@ const PENDING_COPY: [file: string, text: string][] = [
   ["components/review/review-screen.tsx", "Về trang chính"],
   ["components/review/review-screen.tsx", "Về trang chính"],
   ["components/review/review-screen.tsx", "Về trang chính"],
+  // T2.17 summary (screens-html/screens/session-done.html)
+  ["components/review/summary.tsx", "Đã lưu phần bạn làm"],
+  ["components/review/summary.tsx", "Xong phiên hôm nay"],
+  ["components/review/summary.tsx", "{total - answered} câu còn lại sẽ quay về lần ôn sau."],
+  ["components/review/summary.tsx", "câu đã làm"],
+  ["components/review/summary.tsx", "câu đúng"],
+  ["components/review/summary.tsx", "Phiên tiếp theo:"],
+  ["components/review/summary.tsx", "Về trang chính"],
+  ["components/review/summary.tsx", "Ôn thêm"],
 ];
 
 function sources(dir: string): string[] {

@@ -366,6 +366,29 @@ class GradeRepository(AppendOnlyRepository[Grade]):
         )
         return set(self.session.scalars(query))
 
+    def count_correct(self, review_session_id: uuid.UUID) -> int:
+        """Attempts of the session whose current (newest) grade is "correct" (US-08 AC1)."""
+        newest = (
+            select(Grade.attempt_id, func.max(Grade.seq).label("seq"))
+            .where(Grade.user_id == self.user_id)
+            .group_by(Grade.attempt_id)
+            .subquery()
+        )
+        query = (
+            select(func.count())
+            .select_from(Attempt)
+            .join(newest, newest.c.attempt_id == Attempt.id)
+            .join(Grade, (Grade.attempt_id == newest.c.attempt_id) & (Grade.seq == newest.c.seq))
+            .where(
+                Attempt.user_id == self.user_id,
+                Attempt.review_session_id == review_session_id,
+                Attempt.status == "submitted",
+                Grade.user_id == self.user_id,
+                Grade.overall == Verdict.CORRECT.value,
+            )
+        )
+        return self.session.scalar(query) or 0
+
     def unit_verdicts(self, grade_id: uuid.UUID) -> dict[uuid.UUID, str]:
         """A grade's verdict on each unit it judged (US-05 AC9)."""
         rows = self.session.execute(
