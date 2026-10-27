@@ -394,3 +394,30 @@ def test_us08_ac1_stop_summary_has_no_next_day_without_a_schedule(
     session_id = start(client, headers).json()["id"]
     stopped = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers).json()
     assert stopped == {"answered": 0, "total": 1, "correct": 0, "next_day": None}
+
+
+# US-08 AC2, PLAN T2.17. Red when: stopping midway loses the answered question, or the
+# unanswered one does not come back in the next session.
+def test_us08_ac2_stopped_midway_unanswered_returns_to_the_queue(
+    client: TestClient, db_session: Session
+) -> None:
+    _, headers, ids = ready(db_session, 2)
+    session_id = start(client, headers).json()["id"]
+    attempt_id = open_attempt(client, headers, session_id).json()["id"]
+    assert submit(client, headers, attempt_id, "đúng").status_code == 200
+    stopped = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers).json()
+    assert (stopped["answered"], stopped["total"]) == (1, 2)
+    again = start(client, headers)
+    assert again.json()["id"] != session_id
+    assert again.json()["total"] == 1
+    shown = current(client, headers, again.json()["id"])
+    assert shown["question"]["id"] in {str(i) for i in ids}
+
+
+# ADR-0001, US-08. Red when: B's stop closes A's session.
+def test_us08_stop_by_another_user_changes_nothing(client: TestClient, db_session: Session) -> None:
+    _, alice, _ = ready(db_session)
+    _, bob = signed_in(db_session)
+    session_id = start(client, alice).json()["id"]
+    assert client.post(f"/v1/review-sessions/{session_id}/stop", headers=bob).status_code == 404
+    assert open_attempt(client, alice, session_id).status_code == 201
