@@ -1,4 +1,4 @@
-// Design system v3.1 rules checked on the source (docs/plans/design-architecture-final.md §6, §7;
+// Design system v3.1 rules checked on the source (docs/design/visual-system.md §6, §7;
 // plan design-tokens-v3 V10). Each guards against a component added or edited later.
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";

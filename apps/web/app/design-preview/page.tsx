@@ -19,7 +19,7 @@ import { designPreviewAllowed } from "@/lib/design-preview";
 export const metadata: Metadata = { title: "Design preview · Essity" };
 
 // Every token, base control, notebook object and motif of design system v3.1
-// (docs/plans/design-architecture-final.md) on one page. Closed outside development unless
+// (docs/design/visual-system.md) on one page. Closed outside development unless
 // WEB_DESIGN_PREVIEW=1 (proxy.ts, lib/design-preview.ts).
 
 const SURFACES = [

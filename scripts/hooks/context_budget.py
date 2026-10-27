@@ -2,7 +2,7 @@
 
 Wired in `.claude/settings.json` for Agent and SendMessage, the orchestrator's tools. Every turn
 re-reads the whole context from cache, so a 300k-token orchestrator pays for 300k tokens on each
-small step: the 15-27/10 baseline (docs/optimization-baseline.md) put that at about 45% of all
+small step: the 15-27/10 baseline (docs/archive/reports/optimization-baseline.md) put that at about 45% of all
 spend. Claude Code cannot /clear itself, so the hook only reminds; the orchestrator asks the user
 to /clear at the next safe point (.claude/agent.md §6). Calls inside a subagent are ignored: lane
 leads have `maxTurns` instead.
