@@ -210,6 +210,8 @@ INDEX = """| Task | Mốc | Mức | Trạng thái | Spec | Dòng | Tên |
 | T1.6 | M1 |  |  |  | 70 | Running |
 | T0.2 | M0 |  |  |  | 80 | Early but later line |
 | T1.7 | M1 | 🔴 |  |  | 90 | Migration |
+| T1.8 | M1 |  | 🟦 #5 |  | 95 | Doing |
+| T1.9 | M1 |  | 🔶 |  | 96 | Partial |
 """
 PLAN = """### T0.1 — Base
 - **Phụ thuộc:** —
@@ -234,6 +236,12 @@ PLAN = """### T0.1 — Base
 ### T0.2 — Early
 - **Phụ thuộc:** —
 - **File:** `web/f.ts`
+### T1.8 — Doing
+- **Phụ thuộc:** —
+- **File:** `web/g.ts`
+### T1.9 — Partial
+- **Phụ thuộc:** —
+- **File:** `web/h.ts`
 ### T1.7 — Migration
 - **Phụ thuộc:** —
 - **File:** `core_api/db/migrations/0009.py`
@@ -267,7 +275,7 @@ class Next(unittest.TestCase):
 
     def test_orders_by_milestone_then_risk_then_line(self) -> None:
         out = self.run_next([])
-        self.assertEqual(self.codes(out), ["T0.2", "T1.2", "T1.7", "T1.1", "T1.5", "T1.6"])
+        self.assertEqual(self.codes(out), ["T0.2", "T1.2", "T1.7", "T1.1", "T1.5", "T1.6", "T1.9"])
         self.assertIn("được phát", out[0])
 
     def test_merged_cell_with_trailing_text_counts_as_merged(self) -> None:
@@ -323,6 +331,17 @@ class Next(unittest.TestCase):
         out = self.run_next(None)
         self.assertIn("warning", out[1])
         self.assertIn("0/3", out[0])
+
+    def test_open_pr_title_codes_are_running_without_a_card(self) -> None:
+        out = self.run_next([{"headRefName": "x", "title": "T1.1 + T1.5 combined"}], show_all=True)
+        self.assertNotIn("T1.1", self.codes(out))
+        self.assertNotIn("T1.5", self.codes(out))
+
+    def test_in_progress_cell_is_not_a_candidate_but_partial_is(self) -> None:
+        self.assertNotIn("T1.8", self.codes(self.run_next([])))
+        self.assertIn("T1.8 | đang làm", self.run_next([], show_all=True))
+        out = self.run_next([])
+        self.assertIn("T1.9", self.codes(out))
 
     def test_limit(self) -> None:
         self.assertEqual(len(self.codes(self.run_next([], limit=2))), 2)

@@ -351,6 +351,7 @@ def _plan_index(text: str) -> list[Row]:
                 "milestone": cells[1],
                 "risk": cells[2],
                 "merged": cells[3].startswith("✅"),
+                "in_progress": cells[3].startswith("🟦"),
                 "line": int(cells[5]) if cells[5].isdigit() else 0,
                 "name": "|".join(cells[6:]),
             }
@@ -391,13 +392,15 @@ def next_tasks(
     notes = ["warning: gh failed, open PRs unknown (counted as 0)"] if prs is None else []
     open_branches: set[str] = set()
     open_red = 0
+    pr_tasks: set[str] = set()
     for pr in prs or []:
         branch, title = pr.get("headRefName", ""), pr.get("title", "")
         open_branches.add(branch)
+        codes = re.findall(r"\bT[\w.-]*\d[\w.-]*", title)
+        pr_tasks.update(codes)
         if branch in red_branch:
             open_red += red_branch[branch]
         else:
-            codes = re.findall(r"\bT[\w.-]*\d[\w.-]*", title)
             open_red += "🔴" in title or any(c in red_task for c in codes)
     open_total = len(prs or [])
     stop = []
@@ -412,12 +415,15 @@ def next_tasks(
     ]
     merged = {r["task"] for r in rows if r["merged"]}
     running = [c for c in cards if not c["done"] or c["branch"] in open_branches]
-    running_tasks = {c["task"] for c in running}
+    running_tasks = {c["task"] for c in running} | pr_tasks
     candidates: list[tuple[Row, str]] = []
     blocked: list[str] = []
     for row in sorted(rows, key=_order):
         code = row["task"]
         if row["merged"] or code in running_tasks:
+            continue
+        if row["in_progress"]:
+            blocked.append(f"{code} | đang làm")
             continue
         deps, files = blocks.get(code, ([], []))
         missing = [d for d in deps if d not in merged]
