@@ -221,9 +221,9 @@ def test_us08_stop_counts_and_closes_once(client: TestClient, db_session: Sessio
     submit(client, headers, attempt_id, "x")
     stopped = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers)
     assert stopped.status_code == 200
-    assert stopped.json() == {"answered": 1, "total": 2}
+    assert stopped.json() == {"answered": 1, "total": 2, "correct": 1, "next_day": stopped.json()["next_day"]}
     again = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers)
-    assert again.json() == {"answered": 1, "total": 2}
+    assert again.json() == stopped.json()
     assert current(client, headers, session_id) == {"done": True, "ungraded": []}
 
 
@@ -364,3 +364,28 @@ def test_t213_an_answer_over_4000_characters_is_refused(
         body = {"answer_text": text, "dont_remember": False}
         response = client.put(f"/v1/attempts/{attempt_id}/draft", json=body, headers=headers)
         assert response.status_code == code
+
+
+# US-08 AC1, AC2. Red when: the summary counts a forgotten answer as correct, drops the answers
+# given before "Dừng tại đây", or names a next day that is not after today.
+def test_us08_ac1_stop_summary_counts_correct_and_names_the_next_day(
+    client: TestClient, db_session: Session
+) -> None:
+    space, headers, _ = ready(db_session, 3)
+    session_id = start(client, headers).json()["id"]
+    for text, forgot in (("đúng", False), ("", True)):
+        attempt_id = open_attempt(client, headers, session_id).json()["id"]
+        assert submit(client, headers, attempt_id, text, forgot).status_code == 200
+    stopped = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers).json()
+    assert (stopped["answered"], stopped["total"], stopped["correct"]) == (2, 3, 1)
+    assert stopped["next_day"] is not None
+    assert stopped["next_day"] > space.today.isoformat()
+
+
+def test_us08_ac1_stop_summary_has_no_next_day_without_a_schedule(
+    client: TestClient, db_session: Session
+) -> None:
+    _, headers, _ = ready(db_session, 1)
+    session_id = start(client, headers).json()["id"]
+    stopped = client.post(f"/v1/review-sessions/{session_id}/stop", headers=headers).json()
+    assert stopped == {"answered": 0, "total": 1, "correct": 0, "next_day": None}
