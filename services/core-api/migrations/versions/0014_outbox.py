@@ -1,7 +1,7 @@
 """outbox
 
-Revision ID: 0011
-Revises: 0010
+Revision ID: 0014
+Revises: 0013
 Create Date: 2026-10-25 20:07:37.873746
 
 T4.2 (ADR-0006): the transactional outbox. `user_id` has no foreign key to `user` on purpose
@@ -16,8 +16,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "0011"
-down_revision: str | Sequence[str] | None = "0010"
+revision: str = "0014"
+down_revision: str | Sequence[str] | None = "0013"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

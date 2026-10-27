@@ -52,12 +52,12 @@ def test_rolled_back_claim_is_not_kept(engine: Engine) -> None:
     assert not claimed(engine, "core-api", event_id)
 
 
-def test_0012_up_down_up(engine: Engine, alembic_cfg: Config) -> None:
-    # Red when: 0012's downgrade leaves the table behind or its upgrade does not create it.
+def test_0015_up_down_up(engine: Engine, alembic_cfg: Config) -> None:
+    # Red when: 0015's downgrade leaves the table behind or its upgrade does not create it.
     try:
-        command.downgrade(alembic_cfg, "0011")
+        command.downgrade(alembic_cfg, "0014")
         assert "processed_event" not in inspect(engine).get_table_names()
-        command.upgrade(alembic_cfg, "0012")
+        command.upgrade(alembic_cfg, "0015")
         assert "processed_event" in inspect(engine).get_table_names()
     finally:
         command.upgrade(alembic_cfg, "head")

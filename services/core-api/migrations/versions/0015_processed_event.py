@@ -1,7 +1,7 @@
 """processed_event
 
-Revision ID: 0012
-Revises: 0011
+Revision ID: 0015
+Revises: 0014
 Create Date: 2026-10-26 09:00:00.000000
 
 T4.4 (ADR-0006): the events each consumer of core-api has handled, keyed by (consumer,
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0012"
-down_revision: str | Sequence[str] | None = "0011"
+revision: str = "0015"
+down_revision: str | Sequence[str] | None = "0014"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

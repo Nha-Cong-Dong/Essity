@@ -133,13 +133,13 @@ def test_enqueue_event_records_current_traceparent(engine: Engine) -> None:
     assert saved_outside.trace_context == {}
 
 
-def test_0011_up_down_up(engine: Engine, alembic_cfg: Config) -> None:
-    # Red when: 0011's downgrade leaves the table behind, or its upgrade misses the partial index
+def test_0014_up_down_up(engine: Engine, alembic_cfg: Config) -> None:
+    # Red when: 0014's downgrade leaves the table behind, or its upgrade misses the partial index
     # the relay reads through.
     try:
         command.downgrade(alembic_cfg, "0010")
         assert "outbox" not in inspect(engine).get_table_names()
-        command.upgrade(alembic_cfg, "0011")
+        command.upgrade(alembic_cfg, "0014")
         with engine.connect() as connection:
             index = connection.execute(
                 text("SELECT indexdef FROM pg_indexes WHERE indexname = 'ix_outbox_unsent'")
