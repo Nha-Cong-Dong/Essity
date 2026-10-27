@@ -88,12 +88,32 @@ def scan(path: Path) -> Usage:
     return u
 
 
-def last_context_tokens(path: Path) -> int:
-    """Context size of the latest assistant turn: what the next turn will carry at least."""
+def last_context_tokens(path: Path, tail_bytes: int | None = None) -> int:
+    """Context size of the latest assistant turn: what the next turn will carry at least.
+
+    With `tail_bytes`, only the end of the file is read: a long session's transcript runs to tens
+    of MB, and a hook calling this must stay fast. 0 when the tail holds no assistant turn.
+    """
     last = 0
-    for _, _, usage in _assistant_turns(path):
-        last = _context(usage)
-    return last
+    if tail_bytes is None:
+        for _, _, usage in _assistant_turns(path):
+            last = _context(usage)
+        return last
+    try:
+        with path.open("rb") as f:
+            f.seek(max(0, f.seek(0, 2) - tail_bytes))
+            tail = f.read().decode("utf-8", errors="ignore")
+    except OSError:
+        return 0
+    for line in reversed(tail.splitlines()):
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue  # includes the line cut in half by the seek
+        message = record.get("message")
+        if record.get("type") == "assistant" and isinstance(message, dict) and message.get("usage"):
+            return _context(message["usage"])
+    return 0
 
 
 def estimate_cost(u: Usage) -> float:
