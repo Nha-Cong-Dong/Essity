@@ -4,7 +4,7 @@ import json
 from collections.abc import Callable
 from typing import Any
 
-from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError
+from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError, ProviderName
 
 
 def case_dict(case_id: str = "c1", **overrides: Any) -> dict[str, Any]:
@@ -21,7 +21,9 @@ def case_dict(case_id: str = "c1", **overrides: Any) -> dict[str, Any]:
     return case
 
 
-def case_with(case_id: str, overall: str, *, category: str = "general", level: int = 1):
+def case_with(
+    case_id: str, overall: str, *, category: str = "general", level: int = 1
+) -> dict[str, Any]:
     """A one-unit case labelled `overall`, as a dict."""
     return case_dict(
         case_id,
@@ -48,7 +50,7 @@ def output(units: list[str], *, understanding: int | None = None) -> str:
 class ScriptedAdapter:
     """Answers each call from `script(call_number, request)`: text or a ProviderError."""
 
-    provider = "fake"
+    provider: ProviderName = "fake"
     params: dict[str, Any] = {}
 
     def __init__(
