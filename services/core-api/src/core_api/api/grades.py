@@ -20,7 +20,7 @@ from core_api.overriding import (
 )
 from core_api.repositories.question import QuestionRepository
 from core_api.repositories.review import AttemptRepository
-from core_api.repositories.subject import SubjectNotFoundError
+from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
 from core_api.repositories.unit import UnitNotFoundError
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
@@ -58,6 +58,10 @@ def override(
 
 @router.post("/questions/{question_id}/drop", status_code=status.HTTP_204_NO_CONTENT)
 def drop_question(question_id: uuid.UUID, user: VerifiedUser, session: DbSession) -> Response:
-    if not QuestionRepository(session, user.id).retire(question_id):
+    questions = QuestionRepository(session, user.id)
+    question = questions.get(question_id)
+    # A question of a deleted subject is gone for the user, as it is for override and skip.
+    if question is None or SubjectRepository(session, user.id).get(question.subject_id) is None:
         raise _error(status.HTTP_404_NOT_FOUND, "question_not_found")
+    questions.retire(question_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

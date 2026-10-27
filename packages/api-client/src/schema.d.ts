@@ -767,6 +767,10 @@ export interface components {
         StoppedOut: {
             /** Answered */
             answered: number;
+            /** Correct */
+            correct: number;
+            /** Next Day */
+            next_day: string | null;
             /** Total */
             total: number;
         };

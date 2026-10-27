@@ -751,6 +751,22 @@
             "title": "Answered",
             "type": "integer"
           },
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "next_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Day"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
@@ -758,7 +774,9 @@
         },
         "required": [
           "answered",
-          "total"
+          "total",
+          "correct",
+          "next_day"
         ],
         "title": "StoppedOut",
         "type": "object"

@@ -346,3 +346,34 @@ def test_us03_ac8_a_replacement_skips_the_session_and_fills_only_the_room() -> N
     assert len(plan.items) == 2 and not {i.question_id for i in plan.items} & inside
     assert len(_pure_plan(new, {}, room=99).items) == 20
     assert _pure_plan(new, {}, room=0).items == []
+
+
+# US-06 AC6, review T1-O1. Red when: the quota counts units but takes questions, so two questions
+# on one unit hold both places and the other unit is not asked before the exam (deterministic:
+# the created_at of every question is explicit).
+def test_us06_ac6_two_questions_on_one_unit_do_not_crowd_out_another_unit() -> None:
+    from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
+    from core_api.domain.scheduling.fsrs_adapter import Phase
+
+    subject, unit_a, unit_b = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    state = State(
+        phase=Phase.REVIEW,
+        step=None,
+        stability=5.0,
+        difficulty=5.0,
+        due=FROZEN_NOW - timedelta(days=2),
+        last_review=FROZEN_NOW - timedelta(days=9),
+    )
+    due = [DueUnit(uuid.uuid4(), subject, uuid.uuid4(), state) for _ in range(40)]
+    a_new = NewQuestion(
+        uuid.uuid4(), subject, FROZEN_NOW - timedelta(minutes=1), frozenset({unit_a})
+    )
+    a_old = NewQuestion(
+        uuid.uuid4(), subject, FROZEN_NOW - timedelta(minutes=2), frozenset({unit_a})
+    )
+    b_only = NewQuestion(uuid.uuid4(), subject, FROZEN_NOW - timedelta(days=9), frozenset({unit_b}))
+    exam = learning_day(FROZEN_NOW, ZoneInfo("Asia/Ho_Chi_Minh"), 4) + timedelta(days=1)
+    elsewhere = uuid.uuid4()  # newer questions of another subject take the places left over
+    others = [NewQuestion(uuid.uuid4(), elsewhere, FROZEN_NOW) for _ in range(10)]
+    plan = _pure_plan([a_new, a_old, b_only, *others], {subject: exam}, {subject: 2}, due=due)
+    assert b_only.question_id in {i.question_id for i in plan.items}

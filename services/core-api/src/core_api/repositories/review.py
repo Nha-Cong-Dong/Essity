@@ -285,6 +285,7 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
         if question is None:
             raise QuestionNotFoundError(question_id)
         SubjectRepository(self.session, self.user_id).hold_for_share(question.subject_id)
+        self._check_askable(review_session_id, question_id)
         made = self.session.execute(
             insert(Attempt)
             .values(
@@ -324,17 +325,19 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
         if ended_at[0] is not None:
             raise ReviewSessionEndedError(review_session_id)
 
+    def _check_askable(self, review_session_id: uuid.UUID, question_id: uuid.UUID) -> None:
+        """Called after the session lock: a skip that committed before it shows here (T2.23)."""
+        steps = ReviewSessionItemRepository(self.session, self.user_id).progress(review_session_id)
+        if any(not step.askable and step.question.id == question_id for step in steps):
+            raise QuestionNotAskableError(question_id)
+
     def _change_draft(self, id: uuid.UUID, **values: object) -> None:
         attempt = self.get(id)
         if attempt is None:
             raise AttemptNotFoundError(id)
         self._lock_open_session(attempt.review_session_id)
         if attempt.status == "draft":
-            steps = ReviewSessionItemRepository(self.session, self.user_id).progress(
-                attempt.review_session_id
-            )
-            if any(not step.askable and step.question.id == attempt.question_id for step in steps):
-                raise QuestionNotAskableError(id)
+            self._check_askable(attempt.review_session_id, attempt.question_id)
         changed = self.session.execute(
             update(Attempt)
             .where(Attempt.user_id == self.user_id, Attempt.id == id, Attempt.status == "draft")
@@ -429,6 +432,29 @@ class GradeRepository(AppendOnlyRepository[Grade]):
             Grade.user_id == self.user_id, Grade.attempt_id.in_(attempt_ids)
         )
         return set(self.session.scalars(query))
+
+    def count_correct(self, review_session_id: uuid.UUID) -> int:
+        """Attempts of the session whose current (newest) grade is "correct" (US-08 AC1)."""
+        newest = (
+            select(Grade.attempt_id, func.max(Grade.seq).label("seq"))
+            .where(Grade.user_id == self.user_id)
+            .group_by(Grade.attempt_id)
+            .subquery()
+        )
+        query = (
+            select(func.count())
+            .select_from(Attempt)
+            .join(newest, newest.c.attempt_id == Attempt.id)
+            .join(Grade, (Grade.attempt_id == newest.c.attempt_id) & (Grade.seq == newest.c.seq))
+            .where(
+                Attempt.user_id == self.user_id,
+                Attempt.review_session_id == review_session_id,
+                Attempt.status == "submitted",
+                Grade.user_id == self.user_id,
+                Grade.overall == Verdict.CORRECT.value,
+            )
+        )
+        return self.session.scalar(query) or 0
 
     def unit_verdicts(self, grade_id: uuid.UUID) -> dict[uuid.UUID, str]:
         """A grade's verdict on each unit it judged (US-05 AC9)."""

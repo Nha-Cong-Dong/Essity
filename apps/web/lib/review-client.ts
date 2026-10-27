@@ -9,6 +9,8 @@ export type Current = components["schemas"]["CurrentOut"];
 export type Done = components["schemas"]["DoneOut"];
 export type AttemptView = components["schemas"]["AttemptView"];
 export type Result = components["schemas"]["ResultOut"];
+export type Summary = components["schemas"]["StoppedOut"];
+export type Started = { id: string };
 export type Draft = components["schemas"]["AttemptOut"];
 export type Answer = { answer_text: string; dont_remember: boolean };
 export type Skipped = components["schemas"]["SkipOut"];
@@ -43,9 +45,10 @@ async function call<T>(path: string, method: string, body?: object): Promise<Rep
 export type ReviewApi = typeof reviewApi;
 
 export const reviewApi = {
+  start: () => call<Started>("/api/review-sessions", "POST", {}),
   current: (sessionId: string) => call<Current | Done>(`/api/review-sessions/${sessionId}/current`, "GET"),
   open: (sessionId: string) => call<Draft>(`/api/review-sessions/${sessionId}/attempts`, "POST"),
-  stop: (sessionId: string) => call<{ answered: number; total: number }>(`/api/review-sessions/${sessionId}/stop`, "POST"),
+  stop: (sessionId: string) => call<Summary>(`/api/review-sessions/${sessionId}/stop`, "POST"),
   saveDraft: (attemptId: string, answer: Answer) => call<null>(`/api/attempts/${attemptId}/draft`, "PUT", answer),
   submit: (attemptId: string, answer: Answer) => call<AttemptView>(`/api/attempts/${attemptId}/submit`, "POST", answer),
   regrade: (attemptId: string) => call<AttemptView>(`/api/attempts/${attemptId}/regrade`, "POST"),

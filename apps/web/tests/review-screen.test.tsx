@@ -15,6 +15,7 @@ const { readDraft, writeDraft } = await import("@/lib/draft");
 
 const SESSION = "5a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d";
 const ATTEMPT = "6b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e";
+const NEXT_SESSION = "1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f5a";
 const NEXT_ATTEMPT = "7c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f";
 const GRADE = "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
 const QUESTION = "8d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f6a";
@@ -65,7 +66,8 @@ function fakeApi(over: Partial<ReviewApi> = {}): ReviewApi {
   return {
     current: vi.fn(async () => ok(current())),
     open: vi.fn(async () => ok({ id: ATTEMPT, status: "draft", answer_text: "", dont_remember: false })),
-    stop: vi.fn(async () => ok({ answered: 1, total: 3 })),
+    stop: vi.fn(async () => ok({ answered: 1, total: 3, correct: 1, next_day: "2026-10-29" })),
+    start: vi.fn(async () => ok({ id: NEXT_SESSION })),
     saveDraft: vi.fn(async () => ok(null)),
     submit: vi.fn(async () => ok(view())),
     regrade: vi.fn(async () => ok(view())),
@@ -350,12 +352,20 @@ describe("ReviewScreen (T2.15)", () => {
 
   // Plan D-8, US-08 AC2. Red when: the last question does not close the session.
   it("after the last question, with everything graded, the session closes and Hôm nay shows", async () => {
-    const api = await show(fakeApi({ current: vi.fn(async () => ok(current({ position: 3, total: 3 }))) }));
+    const api = await show(
+      fakeApi({
+        current: vi.fn(async () => ok(current({ position: 3, total: 3 }))),
+        stop: vi.fn(async () => ok({ answered: 3, total: 3, correct: 2, next_day: null })) as ReviewApi["stop"],
+      }),
+    );
     type("x");
     await press("Gửi");
     vi.mocked(api.current).mockResolvedValue(ok({ done: true as const, ungraded: [] }));
     await press("Về trang chính");
     expect(api.stop).toHaveBeenCalledWith(SESSION);
+    expect(screen.getByText("Xong phiên hôm nay")).toBeTruthy();
+    expect(go).not.toHaveBeenCalled();
+    await press("Về trang chính");
     expect(go).toHaveBeenCalledWith("/today");
   });
 
@@ -374,18 +384,56 @@ describe("ReviewScreen (T2.15)", () => {
     expect(await screen.findByText("Đã chấm")).toBeTruthy();
     await press("Về trang chính");
     expect(api.stop).toHaveBeenCalledWith(SESSION);
+    await press("Về trang chính");
     expect(go).toHaveBeenCalledWith("/today");
   });
 
   // US-08 AC2, plan D-8. Red when: "Dừng tại đây" is missing, or a failed stop traps the user.
-  it.each([
-    ["stops", ok({ answered: 0, total: 3 })],
-    ["still leaves when stop fails", fail("offline")],
-  ])("Dừng tại đây %s and goes to Hôm nay", async (_, reply) => {
-    const api = await show(fakeApi({ stop: vi.fn(async () => reply) as ReviewApi["stop"] }));
+  it("Dừng tại đây still leaves to Hôm nay when stop fails", async () => {
+    const api = await show(fakeApi({ stop: vi.fn(async () => fail("offline")) as ReviewApi["stop"] }));
     await press("Dừng tại đây");
     expect(api.stop).toHaveBeenCalledWith(SESSION);
     expect(go).toHaveBeenCalledWith("/today");
+  });
+
+  // US-08 AC1, AC2. Red when: stopping midway hides the saved work or the way back, or a question has no stop.
+  it("Dừng tại đây midway shows what was saved, the numbers and the next day", async () => {
+    const api = await show(
+      fakeApi({ stop: vi.fn(async () => ok({ answered: 8, total: 14, correct: 5, next_day: "2026-10-22" })) as ReviewApi["stop"] }),
+    );
+    await press("Dừng tại đây");
+    expect(api.stop).toHaveBeenCalledWith(SESSION);
+    expect(screen.getByText("Đã lưu phần bạn làm")).toBeTruthy();
+    expect(screen.getByText("6 câu còn lại sẽ quay về lần ôn sau.")).toBeTruthy();
+    expect(screen.getByTestId("answered").textContent).toBe("8");
+    expect(screen.getByTestId("correct").textContent).toBe("5");
+    expect(screen.getByText("thứ Năm, 22/10")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Dừng tại đây" })).toBeNull();
+  });
+
+  // US-08 AC1. Red when: "Ôn thêm" becomes the primary button, or it does not start a session.
+  it("a finished session says Xong, with Ôn thêm as the secondary button that starts a session", async () => {
+    const api = await show(
+      fakeApi({ stop: vi.fn(async () => ok({ answered: 3, total: 3, correct: 2, next_day: null })) as ReviewApi["stop"] }),
+    );
+    await press("Dừng tại đây");
+    expect(screen.getByText("Xong phiên hôm nay")).toBeTruthy();
+    expect(screen.queryByText(/Phiên tiếp theo/)).toBeNull();
+    expect(screen.queryByText(/còn lại/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Về trang chính" }).getAttribute("data-variant")).toBe("primary");
+    const more = screen.getByRole("button", { name: "Ôn thêm" });
+    expect(more.getAttribute("data-variant")).toBe("secondary");
+    await act(async () => fireEvent.click(more));
+    expect(api.start).toHaveBeenCalled();
+    expect(go).toHaveBeenCalledWith(`/review/${NEXT_SESSION}`);
+  });
+
+  // US-08 AC4. Red when: the summary talks of a broken streak, missed days or blame.
+  it("the summary has no words about streaks, missed days or blame", async () => {
+    await show(fakeApi());
+    await press("Dừng tại đây");
+    const text = document.body.textContent ?? "";
+    expect(text).not.toMatch(/lại quên|lười|bỏ lỡ|thất bại|kém|chuỗi|streak|tụt|đáng lẽ/i);
   });
 
   // DESIGN.md §6.4. Red when: a failed load shows a blank page or a guess.

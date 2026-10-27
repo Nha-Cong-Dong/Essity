@@ -107,11 +107,10 @@ describe("Không cần ôn phần này (T2.24, US-04 AC5)", () => {
   });
 
   // Red when: nothing is left after the skip and the user is stranded instead of leaving.
-  it("US-04 AC5: no question left closes the session and goes to Hôm nay", async () => {
+  it("US-04 AC5: no question left closes the session (T2.17 then shows its summary)", async () => {
     const api = await show(fakeApi({ current: vi.fn().mockResolvedValueOnce(ok(FIRST)).mockResolvedValue(ok(DONE)) }));
     await press("Không cần ôn phần này");
     expect(api.stop).toHaveBeenCalledWith(SESSION);
-    expect(go).toHaveBeenCalledWith("/today");
   });
 
   it("US-04 AC5: a failed skip says so, keeps the question and the button", async () => {

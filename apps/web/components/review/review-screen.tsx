@@ -5,18 +5,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnswerBox, clock, type SaveState } from "@/components/review/answer-box";
 import { GradeResult } from "@/components/review/grade-result";
 import { ResultActions } from "@/components/review/result-actions";
+import { Summary } from "@/components/review/summary";
 import { FocusShell } from "@/components/shells";
 import { Button } from "@/components/ui/button";
 import { clearDraft, pickDraft, readDraft, writeDraft } from "@/lib/draft";
 import { go } from "@/lib/navigate";
-import { type AttemptView, type Current, reviewApi, type ReviewApi } from "@/lib/review-client";
+import { type AttemptView, type Current, reviewApi, type ReviewApi, type Summary as Stopped } from "@/lib/review-client";
 
 // T2.15, T2.13 (US-04, US-05, US-08; DESIGN.md §6.4, §6.5; plan t2.15-t2.13-t2.16-answer-grade.md):
 // one question at a time in the focus frame, "Hai cột yên": the question and the answer on the
 // left, the result on the right. The draft is kept on this device at every keystroke and in
 // core-api after a pause; submitting grades at once. A failed grading keeps the answer and offers
 // "Chấm lại", never blocking "Câu tiếp" (D-7). The last question and "Dừng tại đây" close the
-// session and go to /today (D-8).
+// session and show its summary (D-8, T2.17).
 
 /** PLAN T2.15: the draft goes to core-api once typing pauses this long. */
 const SAVE_AFTER_MS = 1500;
@@ -39,6 +40,7 @@ type Phase =
   | { kind: "load_failed" }
   | { kind: "ended" }
   | { kind: "done"; ungraded: string[] }
+  | { kind: "summary"; stopped: Stopped }
   | { kind: "question"; step: Current; attemptId: string };
 
 const ENDED = new Set(["session_ended", "session_not_found", "attempt_not_found"]);
@@ -63,9 +65,20 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
 
   const finish = useCallback(async () => {
     setBusy(true);
-    await api.stop(sessionId); // a failure still leaves: T2.9 closes a finished session itself
-    go("/today");
+    const stopped = await api.stop(sessionId);
+    if (stopped.ok) {
+      setBusy(false);
+      setPhase({ kind: "summary", stopped: stopped.data });
+    } else {
+      go("/today"); // a failure still leaves: T2.9 closes a finished session itself
+    }
   }, [api, sessionId]);
+
+  const more = useCallback(async () => {
+    setBusy(true);
+    const started = await api.start();
+    go(started.ok ? `/review/${started.data.id}` : "/today");
+  }, [api]);
 
   const saveNow = useCallback(
     async (attemptId: string, value: string) => {
@@ -277,7 +290,7 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
   );
 
   const shell = (position: number, total: number, children: React.ReactNode) => (
-    <FocusShell position={position} total={total} exit={exit}>
+    <FocusShell position={position} total={total} exit={phase.kind === "summary" ? null : exit}>
       {children}
     </FocusShell>
   );
@@ -297,7 +310,26 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
     return shell(0, 0, <LoadFailed onRetry={reload} />);
   }
   if (phase.kind === "ended") {
-    return shell(0, 0, <Ended busy={busy} onLeave={() => void finish()} />);
+    return shell(0, 0, <Ended busy={busy} onLeave={() => go("/today")} />);
+  }
+  if (phase.kind === "summary") {
+    const { answered, total, correct, next_day: nextDay } = phase.stopped;
+    return shell(
+      0,
+      0,
+      <Summary
+        answered={answered}
+        total={total}
+        correct={correct}
+        nextDay={nextDay}
+        busy={busy}
+        onLeave={() => {
+          setBusy(true);
+          go("/today");
+        }}
+        onMore={() => void more()}
+      />,
+    );
   }
   if (phase.kind === "done") {
     return shell(
@@ -409,7 +441,7 @@ function Rail({
   onOverridden: (view: AttemptView) => void;
   sent: Sent | null;
   busy: boolean;
-  /** Plan D-8: the last question's way on closes the session (T2.17's summary comes later). */
+  /** Plan D-8: the last question's way on closes the session and shows the summary (T2.17). */
   lastQuestion: boolean;
   onNext: () => void;
   onRegrade: () => void;

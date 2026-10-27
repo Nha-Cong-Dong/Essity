@@ -71,7 +71,8 @@ const ok = <T,>(data: T): Promise<Reply<T>> => Promise.resolve({ ok: true, data 
 const API: ReviewApi = {
   current: () => ok(STEP),
   open: () => ok(STEP.attempt!),
-  stop: () => ok({ answered: 7, total: 14 }),
+  start: () => ok({ id: "0b8f1d2e-0000-4000-8000-0000000000e2" }),
+  stop: () => ok({ answered: 7, total: 14, correct: 5, next_day: "2026-10-22" }),
   saveDraft: () => ok(null),
   submit: (_, answer) => ok(graded(answer.answer_text, answer.dont_remember)),
   regrade: () => ok(graded("", false)),

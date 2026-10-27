@@ -104,3 +104,24 @@ def _unit_of(db_session: Session, space: Space, question_id: object) -> uuid.UUI
         uuid.UUID(str(question_id))
     )
     return unit.id
+
+
+# US-04 AC5 (review T1-Y3). Red when: a draft is opened for the question of a unit skipped after
+# the steps were read, so the session holds an attempt that can never be saved.
+def test_us04_ac5_no_draft_is_opened_for_a_skipped_question(
+    client: TestClient, db_session: Session
+) -> None:
+    from core_api.repositories.review import AttemptRepository, QuestionNotAskableError
+
+    space, headers, _ = ready(db_session, 2)
+    session_id = start(client, headers).json()["id"]
+    first = current(client, headers, session_id)["question"]["id"]
+    KnowledgeUnitRepository(db_session, space.user.id).skip(
+        _unit_of(db_session, space, first), FROZEN_NOW
+    )
+    db_session.flush()
+    with pytest.raises(QuestionNotAskableError):
+        AttemptRepository(db_session, space.user.id).open_draft(
+            uuid.UUID(session_id), uuid.UUID(first)
+        )
+    assert db_session.scalars(select(Attempt.status)).all() == []
