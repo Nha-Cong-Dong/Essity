@@ -29,21 +29,42 @@ def database_name(agent: str) -> str:
     return (PREFIX + slug)[:63]  # Postgres identifier limit
 
 
-def redis_db(agent: str, registry: Path) -> int:
-    """The agent's Redis db, handed out once from 1..14 and kept in `registry`.
+AGENT_DBS = range(6, 15)  # 0 local data, 1..5 lanes L1..L5 (lane.py), 15 shared test db
 
-    db 0 holds local data, 15 is the shared test db. A hash would let two agents share a db, and
-    one suite's flush would break the other's (R32), so dbs are handed out, not computed.
+
+def _load(registry: Path) -> dict[str, int]:
+    return json.loads(registry.read_text()) if registry.exists() else {}
+
+
+def redis_db(agent: str, registry: Path) -> int:
+    """The agent's Redis db, handed out once from 6..14 and kept in `registry`.
+
+    A hash would let two agents share a db, and one suite's flush would break the other's (R32),
+    so dbs are handed out, not computed. Give them back with `--release` when the agent is done.
     """
     with acquire("redis-registry", 1, registry.parent, timeout=10):
-        given: dict[str, int] = json.loads(registry.read_text()) if registry.exists() else {}
+        given = _load(registry)
         if agent not in given:
-            free = sorted(set(range(1, 15)) - set(given.values()))
+            free = sorted(set(AGENT_DBS) - set(given.values()))
             if not free:
-                raise RuntimeError(f"all 14 Redis test dbs are given out; free some in {registry}")
+                raise RuntimeError(
+                    f"all {len(AGENT_DBS)} agent Redis dbs are given out: run "
+                    f"`python scripts/agent_env.py --release <agent>` (or `--release-all`)"
+                )
             given[agent] = free[0]
             registry.write_text(json.dumps(given, indent=2, sort_keys=True))
         return given[agent]
+
+
+def release(agents: list[str] | None, registry: Path) -> bool:
+    """Give back the agents' dbs (all when `agents` is None); True if anything was freed."""
+    with acquire("redis-registry", 1, registry.parent, timeout=10):
+        given = _load(registry)
+        kept = {} if agents is None else {a: db for a, db in given.items() if a not in agents}
+        if kept == given:
+            return False
+        registry.write_text(json.dumps(kept, indent=2, sort_keys=True))
+        return True
 
 
 def env_lines(agent: str, shell: str, redis: int) -> list[str]:
@@ -72,13 +93,22 @@ def ensure_database(name: str) -> None:
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="agent_env.py")
-    parser.add_argument("agent")
+    parser.add_argument("agent", nargs="?")
     parser.add_argument("--shell", choices=["bash", "powershell"], default="bash")
     parser.add_argument("--no-create", action="store_true", help="only print the variables")
+    parser.add_argument("--release", nargs="+", metavar="AGENT", help="give back these dbs")
+    parser.add_argument("--release-all", action="store_true", help="give back every db")
     args = parser.parse_args(argv)
+    registry = default_lock_dir() / "redis-dbs.json"
+    if args.release or args.release_all:
+        freed = release(None if args.release_all else args.release, registry)
+        print("agent_env: released" if freed else "agent_env: nothing to release")
+        return 0
+    if not args.agent:
+        parser.error("agent name required")
     if not args.no_create:
         ensure_database(database_name(args.agent))
-    redis = redis_db(args.agent, default_lock_dir() / "redis-dbs.json")
+    redis = redis_db(args.agent, registry)
     print("\n".join(env_lines(args.agent, args.shell, redis)))
     return 0
 

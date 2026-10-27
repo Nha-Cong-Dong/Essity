@@ -1,3 +1,16 @@
 {
-  "attribution": { "commit": "", "pr": "" }
+  "attribution": { "commit": "", "pr": "" },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/scripts/hooks/serial_guard.py\""
+          }
+        ]
+      }
+    ]
+  }
 }
