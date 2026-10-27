@@ -22,6 +22,7 @@ from core_api.repositories.review import (
     AttemptNotFoundError,
     AttemptRepository,
     GradeRepository,
+    QuestionNotAskableError,
     ReviewSessionEndedError,
     ReviewSessionItemRepository,
     ReviewSessionNotFoundError,
@@ -239,6 +240,8 @@ def save_draft(
         raise _error(status.HTTP_409_CONFLICT, "session_ended") from error
     except AttemptNotDraftError as error:
         raise _error(status.HTTP_409_CONFLICT, "attempt_submitted") from error
+    except QuestionNotAskableError as error:
+        raise _error(status.HTTP_409_CONFLICT, "question_not_askable") from error
 
 
 @router.post("/review-sessions/{session_id}/stop")

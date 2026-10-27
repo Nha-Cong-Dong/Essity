@@ -7,7 +7,7 @@ second close or an edit after submitting changes nothing and says so.
 
 import uuid
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from itertools import groupby
 from zoneinfo import ZoneInfo
@@ -23,6 +23,7 @@ from core_api.db.models import (
     KnowledgeUnit,
     MemoryState,
     Question,
+    QuestionUnit,
     ReviewLog,
     ReviewSession,
     ReviewSessionItem,
@@ -33,6 +34,7 @@ from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
 from core_api.domain.scheduling.fsrs_adapter import Phase
 from core_api.domain.scheduling.rating import ReviewRating, Verdict
 from core_api.domain.scheduling.replay import replay
+from core_api.domain.today import MAX_QUESTIONS
 from core_api.repositories.base import AppendOnlyRepository, UserScopedRepository
 from core_api.repositories.question import (
     QuestionNotFoundError,
@@ -57,6 +59,10 @@ class AttemptNotDraftError(ValueError):
 
 class AttemptNotSubmittedError(ValueError):
     """The attempt is still a draft: it can be graded only once submitted."""
+
+
+class QuestionNotAskableError(ValueError):
+    """The question of this attempt can no longer be asked in its session (a skipped unit, T2.23)."""
 
 
 class ReviewSessionEndedError(ValueError):
@@ -163,7 +169,20 @@ class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
 
     def progress(self, review_session_id: uuid.UUID) -> list[SessionStep]:
         """Each item of the session in order, with its question, its subject, whether it can
-        still be asked (question active, subject not deleted) and its attempt, if any."""
+        still be asked (question active, subject not deleted, no unit of it skipped, and the
+        session's cap of `MAX_QUESTIONS` not passed) and its attempt, if any. The cap counts the
+        answered questions first, then the unanswered ones in order, so a skip undone after a
+        replacement was added hides the last replacement instead of making a 21st question."""
+        skipped = (
+            select(QuestionUnit.question_id)
+            .join(
+                KnowledgeUnit,
+                (KnowledgeUnit.id == QuestionUnit.unit_id)
+                & (KnowledgeUnit.user_id == self.user_id),
+            )
+            .where(QuestionUnit.user_id == self.user_id, KnowledgeUnit.skipped_at.is_not(None))
+        )
+        skipped_ids = set(self.session.scalars(skipped))
         rows = self.session.execute(
             select(ReviewSessionItem, Question, Subject, Attempt)
             .join(
@@ -186,15 +205,26 @@ class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
             )
             .order_by(ReviewSessionItem.position)
         ).all()
-        return [
+        steps = [
             SessionStep(
                 question=question,
                 subject=subject,
                 attempt=attempt,
-                askable=question.status == "active" and subject.deleted_at is None,
+                askable=question.status == "active"
+                and subject.deleted_at is None
+                and question.id not in skipped_ids,
             )
             for _, question, subject, attempt in rows
         ]
+        places = MAX_QUESTIONS - sum(step.answered for step in steps)
+        capped: list[SessionStep] = []
+        for step in steps:
+            if step.askable and not step.answered:
+                places -= 1
+                if places < 0:
+                    step = replace(step, askable=False)
+            capped.append(step)
+        return capped
 
     def of_session(self, review_session_id: uuid.UUID) -> Sequence[ReviewSessionItem]:
         query = (
@@ -271,6 +301,12 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
         if attempt is None:
             raise AttemptNotFoundError(id)
         self._lock_open_session(attempt.review_session_id)
+        if attempt.status == "draft":
+            steps = ReviewSessionItemRepository(self.session, self.user_id).progress(
+                attempt.review_session_id
+            )
+            if any(not step.askable and step.question.id == attempt.question_id for step in steps):
+                raise QuestionNotAskableError(id)
         changed = self.session.execute(
             update(Attempt)
             .where(Attempt.user_id == self.user_id, Attempt.id == id, Attempt.status == "draft")

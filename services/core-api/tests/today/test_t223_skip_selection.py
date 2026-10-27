@@ -38,7 +38,7 @@ def two_unit_question(space: Space, subject: uuid.UUID, prompt: str, *units: uui
 
 
 def ids(rows: object) -> set[uuid.UUID]:
-    return {getattr(row, "question_id") for row in rows}  # type: ignore[attr-defined]
+    return {row.question_id for row in rows}  # type: ignore[attr-defined]
 
 
 def skip(space: Space, unit_id: uuid.UUID) -> None:

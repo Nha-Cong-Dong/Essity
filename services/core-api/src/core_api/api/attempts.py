@@ -29,6 +29,7 @@ from core_api.repositories.review import (
     AttemptNotSubmittedError,
     AttemptRepository,
     GradeRepository,
+    QuestionNotAskableError,
     ReviewSessionEndedError,
 )
 from core_api.repositories.unit import AnchorRepository
@@ -185,6 +186,8 @@ def submit_attempt(
             attempts.submit(attempt_id, now)
         except ReviewSessionEndedError as error:
             raise _error(status.HTTP_409_CONFLICT, "session_ended") from error
+        except QuestionNotAskableError as error:
+            raise _error(status.HTTP_409_CONFLICT, "question_not_askable") from error
         except AttemptNotDraftError:
             session.rollback()  # another request submitted it first: grade that one
     session.commit()  # the answer is kept, whatever grading does next
