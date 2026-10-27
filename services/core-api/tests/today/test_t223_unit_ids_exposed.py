@@ -4,8 +4,8 @@ import uuid
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from test_t223_skip_api import unit_of
 from test_t29_review_sessions_api import current, ready, start
+from test_t223_skip_api import unit_of
 
 
 # Red when: the current question does not carry the ids of its own units, so the screen cannot
