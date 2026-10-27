@@ -13,13 +13,19 @@ them as a share of quota on a subscription.
 
 import argparse
 import json
+import re
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
 # USD per million tokens: (input, output). Cache reads cost 0.1x input, cache writes 1.25x.
-PRICES = {"opus": (5.0, 25.0), "fable": (5.0, 25.0), "sonnet": (3.0, 15.0), "haiku": (1.0, 5.0)}
+PRICES = {
+    "opus": (5.0, 25.0),
+    "fable": (5.0, 25.0),
+    "sonnet": (3.0, 15.0),
+    "haiku": (1.0, 5.0),
+}
 CACHE_READ, CACHE_WRITE = 0.1, 1.25
 PROJECTS = Path.home() / ".claude" / "projects"
 
@@ -63,7 +69,11 @@ def _assistant_turns(path: Path):
             if message.get("id") in seen:
                 continue
             seen.add(message.get("id"))
-            yield record.get("timestamp", ""), message.get("model", ""), message["usage"]
+            yield (
+                record.get("timestamp", ""),
+                message.get("model", ""),
+                message["usage"],
+            )
 
 
 def _context(usage: dict) -> int:
@@ -137,6 +147,58 @@ class Row:
     usage: Usage
 
 
+def _sub_row(sub: Path, session: str) -> Row:
+    try:
+        meta = json.loads(sub.with_suffix(".meta.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        meta = {}
+    role = meta.get("customAgentType") or meta.get("agentType") or "general"
+    return Row(
+        "sub",
+        session,
+        role,
+        meta.get("name") or sub.stem,
+        meta.get("model") or "",
+        scan(sub),
+    )
+
+
+def first_prompt(path: Path) -> str:
+    """Text of the first user message: the brief a subagent was started with."""
+    try:
+        lines = path.open(encoding="utf-8")
+    except OSError:
+        return ""
+    with lines:
+        for line in lines:
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            message = record.get("message")
+            if record.get("type") != "user" or not isinstance(message, dict):
+                continue
+            content = message.get("content")
+            if isinstance(content, list):
+                return "\n".join(b.get("text", "") for b in content if isinstance(b, dict))
+            return content if isinstance(content, str) else ""
+    return ""
+
+
+def task_subagents(task: str, projects: Path = PROJECTS, pattern: str = "D--Essity*") -> list[Row]:
+    """Subagents whose first prompt names `task` as a whole code (T3.1 is not T3.10).
+
+    The main session is not counted: it serves many tasks. Later messages sent to the same agent
+    are in its own transcript, so they are counted with it.
+    """
+    code = re.compile(rf"(?<![\w.-]){re.escape(task)}(?![\w-]|\.\d)")
+    rows: list[Row] = []
+    for sub in sorted(projects.glob(f"{pattern}/*/subagents/*.jsonl")):
+        if code.search(first_prompt(sub)):
+            rows.append(_sub_row(sub, sub.parent.parent.name))
+    return rows
+
+
 def collect(projects: Path = PROJECTS, pattern: str = "D--Essity*", since: str = "") -> list[Row]:
     """Main sessions and their subagents; `since` (YYYY-MM-DD) keeps sessions started that day or later."""
     rows: list[Row] = []
@@ -147,21 +209,7 @@ def collect(projects: Path = PROJECTS, pattern: str = "D--Essity*", since: str =
                 continue
             rows.append(Row("main", transcript.stem, "main", "main", "", main))
             for sub in sorted((project / transcript.stem / "subagents").glob("*.jsonl")):
-                try:
-                    meta = json.loads(sub.with_suffix(".meta.json").read_text(encoding="utf-8"))
-                except (OSError, ValueError):
-                    meta = {}
-                role = meta.get("customAgentType") or meta.get("agentType") or "general"
-                rows.append(
-                    Row(
-                        "sub",
-                        transcript.stem,
-                        role,
-                        meta.get("name") or sub.stem,
-                        meta.get("model") or "",
-                        scan(sub),
-                    )
-                )
+                rows.append(_sub_row(sub, transcript.stem))
     return rows
 
 

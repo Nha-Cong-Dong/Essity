@@ -22,6 +22,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import agent_usage
+
 # Targets for `retro` (docs/agent.md): hours by risk, one round per gate, one failed CI run.
 HOURS_TARGET = {"red": 8.0, "yellow": 3.0, "none": 3.0}
 ROUNDS_TARGET = 3.0
@@ -31,6 +33,7 @@ WORSE_BY = 0.20
 CSV_FIELDS = [
     "task", "risk", "pr", "lane", "started_at", "merged_at", "hours", "review_rounds",
     "tester_rounds", "pm_rounds", "ci_failed_runs", "subagent_tokens", "orange_found", "notes",
+    "subagent_usd",
 ]  # fmt: skip
 
 # name, glob in .work/<task>/, who writes it, accepted verdicts, only for risk red
@@ -190,7 +193,10 @@ def gather(work: Path, task: str) -> dict[str, Any]:
 
 
 def judge(
-    name: str, docs: list[tuple[str, dict[str, Any] | None]], head: str | None, repo: Path
+    name: str,
+    docs: list[tuple[str, dict[str, Any] | None]],
+    head: str | None,
+    repo: Path,
 ) -> tuple[str, str]:
     """('ok'|'missing'|'fail', reason) for one evidence kind against the head sha (if known)."""
     ok_verdicts = next(item[3] for item in EVIDENCE if item[0] == name)
@@ -293,7 +299,10 @@ def check(work: Path, task: str, repo: Path) -> list[str]:
     found = gather(work, task)
     card = found["card"]
     if card is None:
-        return [f"✗ card (thiếu {work / task / 'card.yaml'})", "next: card (orchestrator)"]
+        return [
+            f"✗ card (thiếu {work / task / 'card.yaml'})",
+            "next: card (orchestrator)",
+        ]
     red = card.get("risk") == "red"
     branch = str(card.get("branch") or "")
     worktree = Path(str(card.get("worktree") or repo))
@@ -360,7 +369,25 @@ def _sum(docs: list[dict[str, Any] | None], key: str) -> int:
     return sum(int(doc.get(key) or 0) for doc in docs if doc)
 
 
-def build_row(work: Path, task: str, pr: int, repo: Path, notes: str = "") -> dict[str, Any]:
+def real_tokens(task: str, projects: Path) -> tuple[int, str] | None:
+    """(tokens, USD) summed over the task's subagent transcripts; None when there are none."""
+    rows = agent_usage.task_subagents(task, projects)
+    if not rows:
+        return None
+    total = sum(
+        r.usage.input + r.usage.cache_write + r.usage.cache_read + r.usage.output for r in rows
+    )
+    return total, f"{sum(agent_usage.estimate_cost(r.usage) for r in rows):.2f}"
+
+
+def build_row(
+    work: Path,
+    task: str,
+    pr: int,
+    repo: Path,
+    notes: str = "",
+    projects_dir: Path = agent_usage.PROJECTS,
+) -> dict[str, Any]:
     found = gather(work, task)
     card = found["card"] or {}
     branch = str(card.get("branch") or "")
@@ -370,7 +397,18 @@ def build_row(work: Path, task: str, pr: int, repo: Path, notes: str = "") -> di
     view = _run(["gh", "pr", "view", str(pr), "--json", "mergedAt"], repo)
     merged = str(json.loads(view or "{}").get("mergedAt") or "")
     runs = _run(
-        ["gh", "run", "list", "--branch", branch, "--json", "conclusion", "--limit", "100"], repo
+        [
+            "gh",
+            "run",
+            "list",
+            "--branch",
+            branch,
+            "--json",
+            "conclusion",
+            "--limit",
+            "100",
+        ],
+        repo,
     )
     failed = sum(1 for run in json.loads(runs or "[]") if run.get("conclusion") == "failure")
     hours = ""
@@ -381,13 +419,15 @@ def build_row(work: Path, task: str, pr: int, repo: Path, notes: str = "") -> di
     def first_doc(name: str) -> dict[str, Any] | None:
         return found[name][0][1] if found[name] else None
 
+    real = real_tokens(task, projects_dir)
+    tokens, usd = real if real else (_sum(docs, "tokens"), "")
     return {
         "task": task, "risk": card.get("risk", ""), "pr": pr, "lane": card.get("lane", ""),
         "started_at": started, "merged_at": merged, "hours": hours,
         "review_rounds": _round(first_doc("review")), "tester_rounds": _round(first_doc("tester")),
         "pm_rounds": _round(first_doc("pm")), "ci_failed_runs": failed,
-        "subagent_tokens": _sum(docs, "tokens"), "orange_found": _sum(docs, "orange_total"),
-        "notes": notes,
+        "subagent_tokens": tokens, "orange_found": _sum(docs, "orange_total"),
+        "notes": notes, "subagent_usd": usd,
     }  # fmt: skip
 
 
@@ -399,7 +439,7 @@ def record(out: Path, row: dict[str, Any]) -> None:
     rows.append({key: str(value) for key, value in row.items()})
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=CSV_FIELDS)
+        writer = csv.DictWriter(handle, fieldnames=CSV_FIELDS, restval="")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -491,6 +531,7 @@ def main(argv: list[str]) -> int:
     p_rec.add_argument("--pr", type=int, required=True)
     p_rec.add_argument("--notes", default="")
     p_rec.add_argument("--out", type=Path)
+    p_rec.add_argument("--projects-dir", type=Path, default=agent_usage.PROJECTS)
     p_retro = sub.add_parser("retro")
     p_retro.add_argument("--last", type=int, default=5)
     p_retro.add_argument("--csv", type=Path)
@@ -508,9 +549,10 @@ def main(argv: list[str]) -> int:
         return 1 if problems else 0
     elif args.action == "record":
         out = args.out or metrics
-        row = build_row(work, args.task, args.pr, repo, args.notes)
+        row = build_row(work, args.task, args.pr, repo, args.notes, args.projects_dir)
         record(out, row)
         print(f"flow: {args.task} -> {out}")
+        print(",".join(str(row[k]) for k in CSV_FIELDS))
     else:
         print("\n".join(retro(args.csv or metrics, args.last)))
     return 0

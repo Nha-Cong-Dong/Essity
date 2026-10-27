@@ -17,7 +17,14 @@ SHORT = FULL[:7]
 
 
 def evidence(step: str, verdict: str, sha: str = FULL, **extra: object) -> str:
-    fields = {"step": step, "verdict": verdict, "sha": sha, "round": 1, "open_orange": 0, **extra}
+    fields = {
+        "step": step,
+        "verdict": verdict,
+        "sha": sha,
+        "round": 1,
+        "open_orange": 0,
+        **extra,
+    }
     return "\n".join(f"{key}: {value}" for key, value in fields.items()) + "\nsummary: ok\n"
 
 
@@ -84,7 +91,14 @@ class Gate(Fixture):
         self.assertIn("card.yaml", self.run_gate()[0])
         self.card("red")
         problems = self.run_gate()
-        for name in ("lane-report", "plan-review", "review-task", "tester", "review", "pm"):
+        for name in (
+            "lane-report",
+            "plan-review",
+            "review-task",
+            "tester",
+            "review",
+            "pm",
+        ):
             self.assertTrue(any(p.startswith(name) for p in problems), name)
 
     def test_all_evidence_at_head_passes(self) -> None:
@@ -153,7 +167,10 @@ class AncestorGit(unittest.TestCase):
 
         def git(*args: str) -> str:
             return subprocess.run(
-                ["git", "-C", str(repo), *args], capture_output=True, text=True, check=True
+                ["git", "-C", str(repo), *args],
+                capture_output=True,
+                text=True,
+                check=True,
             ).stdout.strip()
 
         git("init", "-q", "-b", "main")
@@ -246,6 +263,7 @@ class Metrics(Fixture):
         self.assertEqual(row["ci_failed_runs"], 1)
         self.assertEqual(row["subagent_tokens"], 1750)
         self.assertEqual(row["orange_found"], 3)
+        self.assertIn("subagent_usd", row)
         out = self.tmp / "m" / "metrics.csv"
         flow.record(out, row)
         flow.record(out, {**row, "pr": 30})
@@ -254,6 +272,56 @@ class Metrics(Fixture):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["pr"], "30")
         self.assertEqual(list(rows[0]), flow.CSV_FIELDS)
+
+
+class RealTokens(Fixture):
+    def run_build(self, projects: Path) -> dict[str, Any]:
+        with mock.patch.object(flow, "_run", lambda args, cwd=None: ""):
+            return flow.build_row(self.work, "T9", 1, self.repo, projects_dir=projects)
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.all_red()
+
+    def test_transcripts_replace_the_evidence_tokens_key(self) -> None:
+        from test_agent_usage import sub_transcript
+
+        self.put("tester.yaml", evidence("tester", "pass", tokens=999))
+        root = self.tmp / "proj"
+        sub_transcript(root, "a", "task T9", out=1000)
+        sub_transcript(root, "b", "task T90", out=5000)
+        row = self.run_build(root)
+        self.assertEqual(row["subagent_tokens"], 2000)
+        self.assertGreater(float(row["subagent_usd"]), 0)
+
+    def test_no_transcript_falls_back_to_evidence_tokens(self) -> None:
+        self.put("tester.yaml", evidence("tester", "pass", tokens=999))
+        row = self.run_build(self.tmp / "empty")
+        self.assertEqual(row["subagent_tokens"], 999)
+        self.assertEqual(row["subagent_usd"], "")
+
+    def test_retro_reads_old_rows_without_the_usd_column(self) -> None:
+        path = self.tmp / "old.csv"
+        old = [f for f in flow.CSV_FIELDS if f != "subagent_usd"]
+        with path.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=old)
+            writer.writeheader()
+            for i in range(5):
+                writer.writerow(
+                    {
+                        "task": f"T{i}",
+                        "risk": "yellow",
+                        "merged_at": f"2026-10-{i + 10}",
+                    }
+                )
+        self.assertTrue(flow.retro(path))
+        out = self.tmp / "mixed.csv"
+        out.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+        flow.record(out, {"task": "T9", "subagent_usd": "1.5"})  # rewrites with the new header
+        with out.open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle))
+        self.assertEqual(rows[0]["subagent_usd"], "")
+        self.assertEqual(rows[-1]["subagent_usd"], "1.5")
 
 
 class Retro(unittest.TestCase):
