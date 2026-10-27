@@ -4,11 +4,12 @@ does to selection is in test_t223_skip_selection.py, to an open session in
 test_t223_skip_session.py."""
 
 import uuid
+from datetime import timedelta
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 from test_t28_today_api import Space
 from test_t29_review_sessions_api import Headers, current, ready, start
@@ -207,3 +208,65 @@ def test_t223_the_replacement_comes_from_the_sessions_subject(
     first = current(client, headers, session["id"])["question"]["id"]
     body = skip(client, headers, unit_of(db_session, space, first), session["id"]).json()
     assert body["next"]["total"] == 1 and total_items(db_session, session["id"]) == 2
+
+
+# Plan-review Y1. Red when: skipping again after an undo adds a replacement for a question the
+# session cap had only hidden (counting flipped items instead of the askable total).
+def test_t223_skip_after_undo_adds_no_second_replacement(
+    client: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    space, headers, _ = ready(db_session, 2)
+    more_questions(db_session, space, 1)
+    monkeypatch.setattr("core_api.domain.today.MAX_QUESTIONS", 2)
+    monkeypatch.setattr("core_api.repositories.review.MAX_QUESTIONS", 2)
+    session = start(client, headers).json()
+    first = current(client, headers, session["id"])["question"]["id"]
+    unit = unit_of(db_session, space, first)
+    assert skip(client, headers, unit, session["id"]).status_code == 200
+    assert client.delete(f"/v1/units/{unit}/skip", headers=headers).status_code == 204
+    again = skip(client, headers, unit, session["id"])
+    assert again.status_code == 200 and again.json()["next"]["total"] == 2
+    assert total_items(db_session, session["id"]) == 3
+
+
+# Plan-review Y3. Red when: undo with a session id ignores whose session it is, or a 404 on the
+# session still lifts the skip.
+def test_t223_undo_with_a_session_id_is_checked_like_the_skip(
+    client: TestClient, db_session: Session
+) -> None:
+    space, headers, ids = ready(db_session, 2)
+    session = start(client, headers).json()
+    unit = unit_of(db_session, space, ids[0])
+    assert skip(client, headers, unit).status_code == 200
+    _, bob = signed_in(db_session)
+    unknown = client.delete(
+        f"/v1/units/{unit}/skip", params={"review_session_id": str(uuid.uuid4())}, headers=headers
+    )
+    theirs = client.delete(
+        f"/v1/units/{unit}/skip", params={"review_session_id": session["id"]}, headers=bob
+    )
+    assert unknown.status_code == 404 and theirs.status_code == 404
+    assert db_session.get(KnowledgeUnit, unit).skipped_at is not None  # type: ignore[union-attr]
+    mine = client.delete(
+        f"/v1/units/{unit}/skip", params={"review_session_id": session["id"]}, headers=headers
+    )
+    assert mine.status_code == 204
+    assert db_session.get(KnowledgeUnit, unit).skipped_at is None  # type: ignore[union-attr]
+
+
+# Plan-review Y6. Red when: a session still open from an earlier learning day gets replacements.
+def test_t223_a_session_of_an_earlier_day_only_gets_the_skip(
+    client: TestClient, db_session: Session
+) -> None:
+    space, headers, ids = ready(db_session, 2)
+    session = start(client, headers).json()
+    row = db_session.get(ReviewSession, uuid.UUID(session["id"]))
+    assert row is not None
+    db_session.execute(text("ALTER TABLE review_session DISABLE TRIGGER review_session_guard"))
+    row.learning_day = row.learning_day - timedelta(days=1)
+    db_session.flush()
+    db_session.execute(text("ALTER TABLE review_session ENABLE TRIGGER review_session_guard"))
+    unit = unit_of(db_session, space, ids[0])
+    response = skip(client, headers, unit, session["id"])
+    assert response.status_code == 200 and response.json() == {"session_id": None, "next": None}
+    assert total_items(db_session, session["id"]) == 2

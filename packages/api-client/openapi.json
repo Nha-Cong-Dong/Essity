@@ -482,12 +482,21 @@
           },
           "subject": {
             "$ref": "#/components/schemas/SubjectRef"
+          },
+          "unit_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Unit Ids",
+            "type": "array"
           }
         },
         "required": [
           "id",
           "prompt",
-          "subject"
+          "subject",
+          "unit_ids"
         ],
         "title": "QuestionOut",
         "type": "object"

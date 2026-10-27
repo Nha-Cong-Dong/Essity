@@ -5,7 +5,7 @@ questions only. One query each, whatever the number of units (US-03 AC2: under 3
 import uuid
 from collections.abc import Sequence
 
-from sqlalchemy import Select, and_, exists, func, or_, select
+from sqlalchemy import ColumnElement, and_, exists, func, select
 
 from core_api.db.models import KnowledgeUnit, MemoryState, Question, QuestionUnit, Subject
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
@@ -24,9 +24,11 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             Subject.deleted_at.is_(None),
         )
 
-    def _questions_with_skipped_unit(self) -> Select[tuple[uuid.UUID]]:
-        """A question that checks a skipped unit stops being chosen (T2.23, PLAN)."""
-        return (
+    def _questions_with_skipped_unit(self) -> list[uuid.UUID]:
+        """A question that checks a skipped unit stops being chosen (T2.23, PLAN). Read as a short
+        list (nearly always empty) and passed as values: as a subquery inside NOT IN, stale
+        statistics made the planner rescan it per question (T2.8 timing test)."""
+        query = (
             select(QuestionUnit.question_id)
             .join(
                 KnowledgeUnit,
@@ -37,26 +39,26 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             )
             .where(QuestionUnit.user_id == self.user_id, KnowledgeUnit.skipped_at.is_not(None))
         )
+        return list(self.session.scalars(query))
 
-    def _unscheduled_units(self) -> Select[tuple[uuid.UUID]]:
-        """Active, not skipped units without a core schedule: never asked, so due (US-06 AC6)."""
-        scheduled = select(MemoryState.unit_id).where(
-            MemoryState.user_id == self.user_id, MemoryState.facet == "core"
-        )
-        return select(KnowledgeUnit.id).where(
-            KnowledgeUnit.user_id == self.user_id,
-            KnowledgeUnit.status == "active",
-            KnowledgeUnit.skipped_at.is_(None),
-            KnowledgeUnit.id.not_in(scheduled),
-        )
+    def _not_skipped(self) -> list[ColumnElement[bool]]:
+        """The condition "no unit of the question is skipped", none at all when nothing is: an
+        empty NOT IN costs the planner a subquery per row."""
+        skipped = self._questions_with_skipped_unit()
+        return [Question.id.not_in(skipped)] if skipped else []
 
     def unasked_by_subject(self) -> dict[uuid.UUID, int]:
         """Units never asked, by visible subject: what the exam quota counts (T2.23, b2)."""
-        unasked = self._unscheduled_units().subquery()
+        scheduled = select(MemoryState.unit_id).where(
+            MemoryState.user_id == self.user_id, MemoryState.facet == "core"
+        )
         rows = self.session.execute(
             select(KnowledgeUnit.subject_id, func.count())
             .where(
-                KnowledgeUnit.id.in_(select(unasked.c.id)),
+                KnowledgeUnit.user_id == self.user_id,
+                KnowledgeUnit.status == "active",
+                KnowledgeUnit.skipped_at.is_(None),
+                KnowledgeUnit.id.not_in(scheduled),
                 self._visible_subject(KnowledgeUnit.subject_id),  # type: ignore[arg-type]
             )
             .group_by(KnowledgeUnit.subject_id)
@@ -75,7 +77,7 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             .where(
                 QuestionUnit.user_id == self.user_id,
                 Question.status == "active",
-                Question.id.not_in(self._questions_with_skipped_unit()),
+                *self._not_skipped(),
             )
             .order_by(QuestionUnit.unit_id, Question.created_at, Question.id)
             .distinct(QuestionUnit.unit_id)
@@ -123,17 +125,34 @@ class TodayRepository(UserScopedRepository[MemoryState]):
         # Sets, not a correlated NOT EXISTS: NOT IN hashes each once. A correlated NOT EXISTS let
         # the planner, misled by stale statistics, rescan it per question (7 s for 500 questions
         # instead of 6 ms; T2.8 timing test).
-        with_unasked = select(QuestionUnit.question_id).where(
-            QuestionUnit.user_id == self.user_id,
-            QuestionUnit.unit_id.in_(self._unscheduled_units()),
+        scheduled = select(MemoryState.unit_id).where(
+            MemoryState.user_id == self.user_id, MemoryState.facet == "core"
+        )
+        with_unasked = (
+            select(QuestionUnit.question_id)
+            .join(
+                KnowledgeUnit,
+                and_(
+                    KnowledgeUnit.id == QuestionUnit.unit_id,
+                    KnowledgeUnit.user_id == self.user_id,
+                ),
+            )
+            .where(
+                QuestionUnit.user_id == self.user_id,
+                KnowledgeUnit.status == "active",
+                KnowledgeUnit.skipped_at.is_(None),
+                KnowledgeUnit.id.not_in(scheduled),
+            )
         )
         linked = select(QuestionUnit.question_id).where(QuestionUnit.user_id == self.user_id)
+        unlinked = select(Question.id).where(Question.id.not_in(linked))
+        candidates = with_unasked.union(unlinked).subquery()
         rows = self.session.execute(
             select(Question.id, Question.subject_id, Question.created_at).where(
                 Question.user_id == self.user_id,
                 Question.status == "active",
-                or_(Question.id.in_(with_unasked), Question.id.not_in(linked)),
-                Question.id.not_in(self._questions_with_skipped_unit()),
+                Question.id.in_(select(candidates.c.question_id)),
+                *self._not_skipped(),
                 self._visible_subject(Question.subject_id),  # type: ignore[arg-type]
             )
         ).all()

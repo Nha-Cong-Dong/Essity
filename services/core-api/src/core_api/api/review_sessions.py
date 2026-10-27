@@ -16,7 +16,7 @@ from core_api.db.models import Attempt
 from core_api.db.session import DbSession
 from core_api.domain.learning_day import learning_day
 from core_api.domain.today import compose_today
-from core_api.repositories.question import QuestionNotFoundError
+from core_api.repositories.question import QuestionNotFoundError, QuestionUnitRepository
 from core_api.repositories.review import (
     AttemptNotDraftError,
     AttemptNotFoundError,
@@ -56,6 +56,7 @@ class QuestionOut(BaseModel):
     id: uuid.UUID
     prompt: str
     subject: SubjectRef
+    unit_ids: list[uuid.UUID]  # what "Không cần ôn phần này" skips (T2.23)
 
 
 class AttemptOut(BaseModel):
@@ -200,6 +201,9 @@ def current_out(
             id=step.question.id,
             prompt=step.question.prompt,
             subject=SubjectRef(id=step.subject.id, name=step.subject.name),
+            unit_ids=[
+                u.id for u in QuestionUnitRepository(session, user_id).units_of(step.question.id)
+            ],
         ),
         attempt=_attempt_out(step.attempt) if step.attempt is not None else None,
     )

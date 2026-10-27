@@ -680,6 +680,8 @@ export interface components {
             /** Prompt */
             prompt: string;
             subject: components["schemas"]["SubjectRef"];
+            /** Unit Ids */
+            unit_ids: string[];
         };
         /** QuestionRef */
         QuestionRef: {
