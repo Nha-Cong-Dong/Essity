@@ -17,12 +17,13 @@ from core_api.db.models import Attempt
 from core_api.db.session import DbSession
 from core_api.domain.learning_day import learning_day
 from core_api.domain.today import compose_today
-from core_api.repositories.question import QuestionNotFoundError
+from core_api.repositories.question import QuestionNotFoundError, QuestionUnitRepository
 from core_api.repositories.review import (
     AttemptNotDraftError,
     AttemptNotFoundError,
     AttemptRepository,
     GradeRepository,
+    QuestionNotAskableError,
     ReviewSessionEndedError,
     ReviewSessionItemRepository,
     ReviewSessionNotFoundError,
@@ -56,6 +57,7 @@ class QuestionOut(BaseModel):
     id: uuid.UUID
     prompt: str
     subject: SubjectRef
+    unit_ids: list[uuid.UUID]  # what "Không cần ôn phần này" skips (T2.23)
 
 
 class AttemptOut(BaseModel):
@@ -143,11 +145,19 @@ def start_session(
         units = [u for u in reads.scheduled_units() if body.subject_id in (None, u.subject_id)]
         fresh = [q for q in reads.new_questions() if body.subject_id in (None, q.subject_id)]
         plan = compose_today(
-            units, fresh, exams, now=now, tz=tz, day_start_hour=user.day_start_hour
+            units,
+            fresh,
+            exams,
+            now=now,
+            tz=tz,
+            day_start_hour=user.day_start_hour,
+            unasked={
+                s: n for s, n in reads.unasked_by_subject().items() if body.subject_id in (None, s)
+            },
         )
         if not plan.items:
             raise _error(status.HTTP_409_CONFLICT, "nothing_to_review")
-        found, made = sessions.open_for_day(day, now)
+        found, made = sessions.open_for_day(day, now, body.subject_id)
         if made:
             items.add_all(found.id, [item.question_id for item in plan.items])
         else:  # another tab made it a moment ago: the open session, as when it already was
@@ -180,13 +190,12 @@ def _current(steps: list[SessionStep]) -> SessionStep | None:
     return next((s for s in steps if s.askable and not s.answered), None)
 
 
-@router.get("/review-sessions/{session_id}/current")
-def current_question(
-    session_id: uuid.UUID, user: VerifiedUser, session: DbSession
+def current_out(
+    ended: bool, steps: list[SessionStep], user_id: uuid.UUID, session: DbSession
 ) -> CurrentOut | DoneOut:
-    ended, steps = _open_steps(session_id, user.id, session)
+    """What the session screen shows next: the first question still to ask, or "done"."""
     step = _current(steps)
-    ungraded = _ungraded(steps, user.id, session)
+    ungraded = _ungraded(steps, user_id, session)
     if ended or step is None:
         return DoneOut(ungraded=ungraded)
     answered, total = session_counts(steps)
@@ -198,9 +207,20 @@ def current_question(
             id=step.question.id,
             prompt=step.question.prompt,
             subject=SubjectRef(id=step.subject.id, name=step.subject.name),
+            unit_ids=[
+                u.id for u in QuestionUnitRepository(session, user_id).units_of(step.question.id)
+            ],
         ),
         attempt=_attempt_out(step.attempt) if step.attempt is not None else None,
     )
+
+
+@router.get("/review-sessions/{session_id}/current")
+def current_question(
+    session_id: uuid.UUID, user: VerifiedUser, session: DbSession
+) -> CurrentOut | DoneOut:
+    ended, steps = _open_steps(session_id, user.id, session)
+    return current_out(ended, steps, user.id, session)
 
 
 @router.post("/review-sessions/{session_id}/attempts", status_code=status.HTTP_201_CREATED)
@@ -226,6 +246,8 @@ def open_current_attempt(
         raise _error(status.HTTP_404_NOT_FOUND, "subject_deleted") from error
     except ReviewSessionNotFoundError as error:
         raise _error(status.HTTP_404_NOT_FOUND, "session_not_found") from error
+    except QuestionNotAskableError as error:  # a skip committed since the steps were read
+        raise _error(status.HTTP_409_CONFLICT, "question_not_askable") from error
     if not made:  # another tab opened it a moment ago
         response.status_code = status.HTTP_200_OK
     return _attempt_out(attempt)
@@ -245,6 +267,8 @@ def save_draft(
         raise _error(status.HTTP_409_CONFLICT, "session_ended") from error
     except AttemptNotDraftError as error:
         raise _error(status.HTTP_409_CONFLICT, "attempt_submitted") from error
+    except QuestionNotAskableError as error:
+        raise _error(status.HTTP_409_CONFLICT, "question_not_askable") from error
 
 
 @router.post("/review-sessions/{session_id}/stop")

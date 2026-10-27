@@ -246,6 +246,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/grades/{grade_id}/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Override */
+        post: operations["override_v1_grades__grade_id__override_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -274,6 +291,23 @@ export interface paths {
         get: operations["ping_v1_ping_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/questions/{question_id}/drop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Drop Question */
+        post: operations["drop_question_v1_questions__question_id__drop_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -410,6 +444,29 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/units/{unit_id}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Skip Unit */
+        post: operations["skip_unit_v1_units__unit_id__skip_post"];
+        /**
+         * Unskip Unit
+         * @description Undo a skip; 204 whether or not the unit was skipped. Nothing is added to or taken from an
+         *     open session here: a question hidden by the skip is asked again, and the session cap (20)
+         *     hides the last replacement, if any (`progress`).
+         */
+        delete: operations["unskip_unit_v1_units__unit_id__skip_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -589,6 +646,17 @@ export interface components {
             /** Timezone */
             timezone: string;
         };
+        /**
+         * OverrideIn
+         * @description "Thực ra tôi đúng" is `correct`, "Thực ra tôi sai" is `incorrect` (US-09 AC1).
+         */
+        OverrideIn: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "correct" | "incorrect";
+        };
         /** PingResponse */
         PingResponse: {
             /**
@@ -612,9 +680,16 @@ export interface components {
             /** Prompt */
             prompt: string;
             subject: components["schemas"]["SubjectRef"];
+            /** Unit Ids */
+            unit_ids: string[];
         };
         /** QuestionRef */
         QuestionRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /** Prompt */
             prompt: string;
         };
@@ -634,6 +709,11 @@ export interface components {
         };
         /** ResultOut */
         ResultOut: {
+            /**
+             * Grade Id
+             * Format: uuid
+             */
+            grade_id: string;
             /** Missing */
             missing: string[];
             /**
@@ -651,6 +731,18 @@ export interface components {
             understanding: number | null;
             /** Units */
             units: components["schemas"]["UnitResult"][];
+        };
+        /** SkipIn */
+        SkipIn: {
+            /** Review Session Id */
+            review_session_id?: string | null;
+        };
+        /** SkipOut */
+        SkipOut: {
+            /** Next */
+            next: components["schemas"]["CurrentOut"] | components["schemas"]["DoneOut"] | null;
+            /** Session Id */
+            session_id: string | null;
         };
         /** Source */
         Source: {
@@ -1227,6 +1319,41 @@ export interface operations {
             };
         };
     };
+    override_v1_grades__grade_id__override_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grade_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     me_v1_me_get: {
         parameters: {
             query?: never;
@@ -1263,6 +1390,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PingResponse"];
+                };
+            };
+        };
+    };
+    drop_question_v1_questions__question_id__drop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1526,6 +1682,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodayOut"];
+                };
+            };
+        };
+    };
+    skip_unit_v1_units__unit_id__skip_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkipIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkipOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unskip_unit_v1_units__unit_id__skip_delete: {
+        parameters: {
+            query?: {
+                review_session_id?: string | null;
+            };
+            header?: never;
+            path: {
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -8,8 +8,11 @@ Choices for what the spec leaves open (us-03 §9 #2–#5, plan `t2.6-t2.7-replay
   the `EXAM_WINDOW_DAYS` before the exam: a close exam makes its units count as riskier.
 - Nobody starves (Q5): each subject with a due unit gets its riskiest one in first; the rest of
   the room goes by risk alone.
-- New questions fill what is left, newest first: until documents arrive (M4) a question's
-  creation time stands for "the latest document" (us-03 §9 #5).
+- New questions: until documents arrive (M4) a question's creation time stands for "the latest
+  document" (us-03 §9 #5), newest first. Places are kept for them so a backlog of due units
+  never starves the units not yet asked (T2.23, US-06 AC6): `NEW_FLOOR`, or more when a subject's
+  exam is near: ceil(units never asked / learning days left before the exam) for each such
+  subject, at most `MAX_QUESTIONS`. Places they do not fill go back to the due units.
 - Backlog (AC5): before a subject's exam come the due units of every subject examined that day
   or earlier (one shared session a day, AC7); ceil(units / MAX_QUESTIONS) sessions more than the
   learning days left gives a neutral note. Units are counted, not questions: a question that
@@ -32,6 +35,7 @@ MAX_QUESTIONS = 20
 MAX_MINUTES = 30
 MINUTES_PER_QUESTION = 1.5
 NEAR_EXAM_WEIGHT = 0.5
+NEW_FLOOR = 5
 
 _SCHEDULER = FsrsScheduler()
 
@@ -53,6 +57,9 @@ class NewQuestion:
     question_id: uuid.UUID
     subject_id: uuid.UUID
     created_at: datetime
+    # The units of this question never asked (and not skipped). Empty: the question counts as one
+    # unit of its own for the exam quota.
+    unasked_units: frozenset[uuid.UUID] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -87,45 +94,113 @@ def compose_today(
     now: datetime,
     tz: ZoneInfo,
     day_start_hour: int,
+    unasked: Mapping[uuid.UUID, int] | None = None,
+    exclude: frozenset[uuid.UUID] = frozenset(),
+    room: int | None = None,
 ) -> TodayPlan:
     """Today's session from every scheduled unit (due or not), the new questions and each
-    subject's exam day."""
+    subject's exam day. `unasked`: units never asked by subject (exam quota, backlog); `exclude`:
+    questions already in the session; `room`: places to fill, at most the day's cap (the
+    replacement for a skipped question, T2.23)."""
     today = learning_day(now, tz, day_start_hour)
     end_of_today = day_bounds(today, tz, day_start_hour)[1]
     scheduled = list(units)
+    never = unasked or {}
     due = [unit for unit in scheduled if unit.state.due < end_of_today]
 
     def risk(unit: DueUnit) -> float:
         recall = _SCHEDULER.retrievability(unit.state, now)
         return recall * _exam_weight(exams.get(unit.subject_id), today)
 
-    ranked = sorted(due, key=risk)
+    ranked = sorted((u for u in due if u.question_id not in exclude), key=risk)
     first_of_each: dict[uuid.UUID, DueUnit] = {}
     for unit in ranked:
         first_of_each.setdefault(unit.subject_id, unit)
     ordered = [*first_of_each.values(), *(u for u in ranked if u not in first_of_each.values())]
 
+    limit = _room() if room is None else min(room, _room())
+    fresh = [q for q in new_questions if q.question_id not in exclude]
+    fresh.sort(key=lambda q: (q.created_at, q.question_id), reverse=True)
+    kept = _kept_for_new(fresh, exams, never, today, min(limit, MAX_QUESTIONS))
+
     items: list[PlannedQuestion] = []
     asked: set[uuid.UUID] = set()
     for unit in ordered:
-        _add(items, asked, PlannedQuestion(unit.question_id, unit.subject_id, "due"))
-    for question in sorted(new_questions, key=lambda q: q.created_at, reverse=True):
-        _add(items, asked, PlannedQuestion(question.question_id, question.subject_id, "new"))
+        _add(
+            items,
+            asked,
+            PlannedQuestion(unit.question_id, unit.subject_id, "due"),
+            limit - len(kept),
+        )
+    for question in kept:
+        _add(items, asked, PlannedQuestion(question.question_id, question.subject_id, "new"), limit)
+    for unit in ordered:  # what the kept places did not use goes back to the due units
+        _add(items, asked, PlannedQuestion(unit.question_id, unit.subject_id, "due"), limit)
+    for question in fresh:
+        _add(items, asked, PlannedQuestion(question.question_id, question.subject_id, "new"), limit)
 
     next_day = None
-    if not items and scheduled:
+    if not items and scheduled and room is None:
         next_day = min(learning_day(u.state.due, tz, day_start_hour) for u in scheduled)
     return TodayPlan(
         items=items,
         minutes=math.ceil(len(items) * MINUTES_PER_QUESTION),
-        backlog=_backlog(due, exams, today),
+        backlog=_backlog(due, exams, today, never),
         next_day=next_day,
     )
 
 
-def _add(items: list[PlannedQuestion], asked: set[uuid.UUID], item: PlannedQuestion) -> None:
-    room = min(MAX_QUESTIONS, math.floor(MAX_MINUTES / MINUTES_PER_QUESTION))
-    if item.question_id in asked or len(items) >= room:
+def _room() -> int:
+    return min(MAX_QUESTIONS, math.floor(MAX_MINUTES / MINUTES_PER_QUESTION))
+
+
+def _kept_for_new(
+    fresh: Sequence[NewQuestion],
+    exams: Mapping[uuid.UUID, date],
+    unasked: Mapping[uuid.UUID, int],
+    today: date,
+    limit: int,
+) -> list[NewQuestion]:
+    """The new questions that hold a place whatever is due. Each subject with an exam still to
+    come takes its quota first (the nearest exam first, newest question first inside a subject);
+    the rest of the places go to the newest of any subject. Without this, a subject whose exam is
+    near but whose questions are older never gets its units asked while another subject's newer
+    questions fill the places (review of the T2.23 plan)."""
+    quota = {
+        subject: math.ceil(count / max(1, (exams[subject] - today).days - 1))
+        for subject, count in unasked.items()
+        if subject in exams and exams[subject] >= today and count > 0
+    }
+    places = min(limit, max(NEW_FLOOR, sum(quota.values())), len(fresh))
+    kept: list[NewQuestion] = []
+    covered: set[uuid.UUID] = set()
+    for subject in sorted(quota, key=lambda s: exams[s]):
+        # The quota counts units, so a question holds a place only for a unit no kept question
+        # covers yet: several questions on one unit must not crowd out another unit.
+        got: set[uuid.UUID] = set()
+        for question in (q for q in fresh if q.subject_id == subject):
+            if len(got) >= quota[subject] or len(kept) >= places:
+                break
+            units = (question.unasked_units or {question.question_id}) - covered
+            if units:
+                kept.append(question)
+                got |= units
+                covered |= units
+    for question in fresh:
+        if len(kept) >= places:
+            break
+        if question not in kept:
+            kept.append(question)
+    return kept
+
+
+def _add(
+    items: list[PlannedQuestion],
+    asked: set[uuid.UUID],
+    item: PlannedQuestion,
+    limit: int | None = None,
+) -> None:
+    if item.question_id in asked or len(items) >= (_room() if limit is None else limit):
         return
     asked.add(item.question_id)
     items.append(item)
@@ -140,13 +215,19 @@ def _exam_weight(exam_day: date | None, today: date) -> float:
 
 
 def _backlog(
-    due: Sequence[DueUnit], exams: Mapping[uuid.UUID, date], today: date
+    due: Sequence[DueUnit],
+    exams: Mapping[uuid.UUID, date],
+    today: date,
+    unasked: Mapping[uuid.UUID, int],
 ) -> Backlog | None:
     """Every subject shares the one session a day (AC7), so before a subject's exam come the due
-    units of every subject examined that day or earlier. The worst subject by sessions per day."""
+    units of every subject examined that day or earlier, and the units never asked count with
+    them (T2.23). The worst subject by sessions per day."""
     counts: dict[uuid.UUID, int] = {}
     for unit in due:
         counts[unit.subject_id] = counts.get(unit.subject_id, 0) + 1
+    for subject_id, count in unasked.items():
+        counts[subject_id] = counts.get(subject_id, 0) + count
     upcoming = {s: exams[s] for s in counts if s in exams and exams[s] > today}
     worst: Backlog | None = None
     for subject_id, exam_day in sorted(upcoming.items(), key=lambda item: item[1]):

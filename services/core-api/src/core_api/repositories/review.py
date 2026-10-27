@@ -7,7 +7,7 @@ second close or an edit after submitting changes nothing and says so.
 
 import uuid
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from itertools import groupby
 from zoneinfo import ZoneInfo
@@ -23,6 +23,7 @@ from core_api.db.models import (
     KnowledgeUnit,
     MemoryState,
     Question,
+    QuestionUnit,
     ReviewLog,
     ReviewSession,
     ReviewSessionItem,
@@ -33,6 +34,7 @@ from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
 from core_api.domain.scheduling.fsrs_adapter import Phase
 from core_api.domain.scheduling.rating import ReviewRating, Verdict
 from core_api.domain.scheduling.replay import replay
+from core_api.domain.today import MAX_QUESTIONS
 from core_api.repositories.base import AppendOnlyRepository, UserScopedRepository
 from core_api.repositories.question import (
     QuestionNotFoundError,
@@ -59,6 +61,10 @@ class AttemptNotSubmittedError(ValueError):
     """The attempt is still a draft: it can be graded only once submitted."""
 
 
+class QuestionNotAskableError(ValueError):
+    """The attempt's question can no longer be asked in its session (skipped unit, T2.23)."""
+
+
 class ReviewSessionEndedError(ValueError):
     """The session has ended: its answers no longer change (plan D14)."""
 
@@ -75,14 +81,20 @@ class ReviewSessionRepository(AppendOnlyRepository[ReviewSession]):
         self.session.flush()
         return session
 
-    def open_for_day(self, learning_day: date, now: datetime) -> tuple[ReviewSession, bool]:
+    def open_for_day(
+        self, learning_day: date, now: datetime, subject_id: uuid.UUID | None = None
+    ) -> tuple[ReviewSession, bool]:
         """The open session of `learning_day`, made if there is none: (session, made now). Two
         tabs pressing "Bắt đầu" at once get the same one (plan C4): the partial unique index
         refuses the second insert, which then reads the first once it has committed."""
         made = self.session.execute(
             insert(ReviewSession)
             .values(
-                id=uuid.uuid4(), user_id=self.user_id, learning_day=learning_day, started_at=now
+                id=uuid.uuid4(),
+                user_id=self.user_id,
+                learning_day=learning_day,
+                started_at=now,
+                subject_id=subject_id,
             )
             .on_conflict_do_nothing(
                 index_elements=["user_id", "learning_day"],
@@ -161,9 +173,44 @@ class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
         self.session.flush()
         return items
 
+    def append(
+        self, review_session_id: uuid.UUID, question_ids: Sequence[uuid.UUID]
+    ) -> list[ReviewSessionItem]:
+        """Questions that take the place of skipped ones (T2.23), after the last item. Only the
+        holder of the session's FOR UPDATE lock calls this."""
+        last = self.session.scalar(
+            select(func.max(ReviewSessionItem.position)).where(
+                ReviewSessionItem.user_id == self.user_id,
+                ReviewSessionItem.review_session_id == review_session_id,
+            )
+        )
+        items = [
+            self.add(
+                ReviewSessionItem(
+                    review_session_id=review_session_id, position=n, question_id=question_id
+                )
+            )
+            for n, question_id in enumerate(question_ids, start=(last or 0) + 1)
+        ]
+        self.session.flush()
+        return items
+
     def progress(self, review_session_id: uuid.UUID) -> list[SessionStep]:
         """Each item of the session in order, with its question, its subject, whether it can
-        still be asked (question active, subject not deleted) and its attempt, if any."""
+        still be asked (question active, subject not deleted, no unit of it skipped, and the
+        session's cap of `MAX_QUESTIONS` not passed) and its attempt, if any. The cap counts the
+        answered questions first, then the unanswered ones in order, so a skip undone after a
+        replacement was added hides the last replacement instead of making a 21st question."""
+        skipped = (
+            select(QuestionUnit.question_id)
+            .join(
+                KnowledgeUnit,
+                (KnowledgeUnit.id == QuestionUnit.unit_id)
+                & (KnowledgeUnit.user_id == self.user_id),
+            )
+            .where(QuestionUnit.user_id == self.user_id, KnowledgeUnit.skipped_at.is_not(None))
+        )
+        skipped_ids = set(self.session.scalars(skipped))
         rows = self.session.execute(
             select(ReviewSessionItem, Question, Subject, Attempt)
             .join(
@@ -186,15 +233,26 @@ class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
             )
             .order_by(ReviewSessionItem.position)
         ).all()
-        return [
+        steps = [
             SessionStep(
                 question=question,
                 subject=subject,
                 attempt=attempt,
-                askable=question.status == "active" and subject.deleted_at is None,
+                askable=question.status == "active"
+                and subject.deleted_at is None
+                and question.id not in skipped_ids,
             )
             for _, question, subject, attempt in rows
         ]
+        places = MAX_QUESTIONS - sum(step.answered for step in steps)
+        capped: list[SessionStep] = []
+        for step in steps:
+            if step.askable and not step.answered:
+                places -= 1
+                if places < 0:
+                    step = replace(step, askable=False)
+            capped.append(step)
+        return capped
 
     def of_session(self, review_session_id: uuid.UUID) -> Sequence[ReviewSessionItem]:
         query = (
@@ -227,6 +285,7 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
         if question is None:
             raise QuestionNotFoundError(question_id)
         SubjectRepository(self.session, self.user_id).hold_for_share(question.subject_id)
+        self._check_askable(review_session_id, question_id)
         made = self.session.execute(
             insert(Attempt)
             .values(
@@ -266,11 +325,19 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
         if ended_at[0] is not None:
             raise ReviewSessionEndedError(review_session_id)
 
+    def _check_askable(self, review_session_id: uuid.UUID, question_id: uuid.UUID) -> None:
+        """Called after the session lock: a skip that committed before it shows here (T2.23)."""
+        steps = ReviewSessionItemRepository(self.session, self.user_id).progress(review_session_id)
+        if any(not step.askable and step.question.id == question_id for step in steps):
+            raise QuestionNotAskableError(question_id)
+
     def _change_draft(self, id: uuid.UUID, **values: object) -> None:
         attempt = self.get(id)
         if attempt is None:
             raise AttemptNotFoundError(id)
         self._lock_open_session(attempt.review_session_id)
+        if attempt.status == "draft":
+            self._check_askable(attempt.review_session_id, attempt.question_id)
         changed = self.session.execute(
             update(Attempt)
             .where(Attempt.user_id == self.user_id, Attempt.id == id, Attempt.status == "draft")

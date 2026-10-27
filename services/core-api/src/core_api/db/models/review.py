@@ -64,6 +64,9 @@ class ReviewSession(UserOwned, Base):
         ),
         CheckConstraint("(ended_at IS NULL) = (stop_reason IS NULL)", name="ended_with_reason"),
         CheckConstraint("ended_at IS NULL OR ended_at >= started_at", name="ends_after_start"),
+        ForeignKeyConstraint(
+            ["subject_id", "user_id"], ["subject.id", "subject.user_id"], ondelete="NO ACTION"
+        ),
         UniqueConstraint("id", "user_id"),
         Index(None, "user_id", "learning_day"),
         # One open session per learning day (T2.9 plan C4): two tabs pressing "Bắt đầu" get the
@@ -81,6 +84,8 @@ class ReviewSession(UserOwned, Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     stop_reason: Mapped[str | None] = mapped_column(String(20))
+    # The subject a session was started for (null: all); a replacement question comes from it.
+    subject_id: Mapped[uuid.UUID | None]
 
 
 class ReviewSessionItem(UserOwned, Base):

@@ -1,8 +1,10 @@
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
+    DateTime,
     ForeignKeyConstraint,
     Index,
     Integer,
@@ -48,6 +50,8 @@ class KnowledgeUnit(UserOwned, Base):
     summary: Mapped[str] = mapped_column(Text)
     kind: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(10), default="active")
+    # "Không cần ôn phần này" (T2.23): never asked while set; schedule and history stay as they are.
+    skipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The pipeline run that made it, in the ai database: a plain UUID, no foreign key (ADR-0008).
     run_id: Mapped[uuid.UUID]
 

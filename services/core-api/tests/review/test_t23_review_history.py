@@ -199,6 +199,24 @@ def test_t23_history_rows_cannot_be_changed_or_deleted(
     )
 
 
+def test_t223_an_open_session_cannot_change_its_subject(
+    db_session: Session, history: History
+) -> None:
+    # Red when: the guard of 0013 stops comparing subject_id (T1-O2): the replacement question of
+    # a skip would then come from another subject than the session was started for.
+    other, _ = SubjectRepository(db_session, history.user.id).create_with_exam(
+        "Khác", future_exam()
+    )
+    scoped, _ = ReviewSessionRepository(db_session, history.user.id).open_for_day(
+        spare_day(), NOW, history.question.subject_id
+    )
+    db_session.flush()
+    statement = "UPDATE review_session SET subject_id = :subject WHERE id = :session"
+    refused_by_trigger(db_session, statement, subject=other.id, session=scoped.id)
+    refused_by_trigger(db_session, statement, subject=None, session=scoped.id)
+    refused_by_trigger(db_session, statement, subject=other.id, session=history.review.id)
+
+
 @pytest.mark.parametrize(
     "table", ["grade", "grade_unit", "review_log", "attempt", "review_session"]
 )
@@ -269,7 +287,7 @@ APPEND_ONLY = [
 OWN_METHODS = {
     # T2.9: one open session per learning day (plan C4) is made or found, never changed.
     ReviewSessionRepository: {"start", "end", "open_for_day", "open_on", "hold_for_update"},
-    ReviewSessionItemRepository: {"add_all", "of_session", "progress"},
+    ReviewSessionItemRepository: {"add_all", "append", "of_session", "progress"},
     AttemptRepository: {"create_draft", "open_draft", "save_draft", "submit"},
     GradeRepository: {
         "add_with_units",

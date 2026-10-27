@@ -1,6 +1,9 @@
 import uuid
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
+
+from sqlalchemy import ColumnElement, update
 
 from core_api.db.models import Anchor, KnowledgeUnit
 from core_api.repositories.base import UserScopedRepository
@@ -27,6 +30,39 @@ class KnowledgeUnitRepository(UserScopedRepository[KnowledgeUnit]):
         self.session.flush()  # gives the unit its id, for the anchors and links that follow
         return unit
 
+    def find_by_title(self, subject_id: uuid.UUID, title: str) -> KnowledgeUnit | None:
+        """The subject's active unit with this title, oldest first (the seed script, T2.2)."""
+        query = (
+            self._select()
+            .where(
+                KnowledgeUnit.subject_id == subject_id,
+                KnowledgeUnit.title == title,
+                KnowledgeUnit.status == "active",
+            )
+            .order_by(KnowledgeUnit.created_at, KnowledgeUnit.id)
+        )
+        return self.session.scalars(query.limit(1)).first()
+
+    def skip(self, id: uuid.UUID, now: datetime) -> bool:
+        """Mark the unit "không cần ôn phần này" (T2.23); False when it is not this user's or is
+        already skipped. Schedule and history stay as they are (ADR-0008)."""
+        return self._set_skipped(id, KnowledgeUnit.skipped_at.is_(None), now)
+
+    def unskip(self, id: uuid.UUID) -> bool:
+        """Undo `skip`; False when it is not this user's or is not skipped."""
+        return self._set_skipped(id, KnowledgeUnit.skipped_at.is_not(None), None)
+
+    def _set_skipped(
+        self, id: uuid.UUID, state: ColumnElement[bool], value: datetime | None
+    ) -> bool:
+        done = self.session.execute(
+            update(KnowledgeUnit)
+            .where(KnowledgeUnit.user_id == self.user_id, KnowledgeUnit.id == id, state)
+            .values(skipped_at=value)
+            .returning(KnowledgeUnit.id)
+        ).first()
+        return done is not None
+
     def lock(self, ids: Sequence[uuid.UUID]) -> None:
         """Hold these units FOR NO KEY UPDATE until commit, in id order (T2.13): two answers on
         one unit graded at once write its schedule one after the other, never over each other.
@@ -49,6 +85,20 @@ class AnchorRepository(UserScopedRepository[Anchor]):
         anchor = self.add(Anchor(unit_id=unit_id, **fields))
         self.session.flush()
         return anchor
+
+    def has_quote(self, unit_id: uuid.UUID, source: str, quote_text: str) -> bool:
+        return (
+            self.session.scalars(
+                self._select()
+                .where(
+                    Anchor.unit_id == unit_id,
+                    Anchor.source == source,
+                    Anchor.quote_text == quote_text,
+                )
+                .limit(1)
+            ).first()
+            is not None
+        )
 
     def of_units(self, unit_ids: Sequence[uuid.UUID]) -> Sequence[Anchor]:
         """The anchors of these units, oldest first (the sources sent for grading, US-05 AC8)."""

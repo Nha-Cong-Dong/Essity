@@ -29,6 +29,7 @@ from core_api.repositories.review import (
     AttemptNotSubmittedError,
     AttemptRepository,
     GradeRepository,
+    QuestionNotAskableError,
     ReviewSessionEndedError,
 )
 from core_api.repositories.unit import AnchorRepository
@@ -63,6 +64,7 @@ class Source(BaseModel):
 
 
 class ResultOut(BaseModel):
+    grade_id: uuid.UUID  # what "Chấm sai" overrides (T2.18)
     overall: Literal["correct", "partial", "incorrect", "forgot"]
     understanding: int | None
     missing: list[str]
@@ -73,6 +75,7 @@ class ResultOut(BaseModel):
 
 
 class QuestionRef(BaseModel):
+    id: uuid.UUID  # what "Bỏ câu này" drops (T2.18)
     prompt: str
 
 
@@ -105,6 +108,7 @@ def result_of(session: DbSession, user_id: uuid.UUID, attempt: Attempt, grade: G
         used = [by_id[a] for a in ids if a in by_id]
     verdicts = GradeRepository(session, user_id).unit_verdicts(grade.id)
     return ResultOut(
+        grade_id=grade.id,
         overall=grade.overall,  # type: ignore[arg-type]
         understanding=grade.understanding,
         missing=list(grade.missing),
@@ -121,7 +125,7 @@ def result_of(session: DbSession, user_id: uuid.UUID, attempt: Attempt, grade: G
     )
 
 
-def _view(
+def attempt_view(
     session: DbSession, user_id: uuid.UUID, attempt: Attempt, outcome: GradingOutcome | None
 ) -> AttemptView:
     question = QuestionRepository(session, user_id).get(attempt.question_id)
@@ -134,7 +138,7 @@ def _view(
             result=None,
             answer_text=attempt.answer_text,
             submitted_at=None,
-            question=QuestionRef(prompt=question.prompt) if question else None,
+            question=QuestionRef(id=question.id, prompt=question.prompt) if question else None,
         )
     if outcome is None:
         grades = GradeRepository(session, user_id)
@@ -155,7 +159,7 @@ def _view(
         result=result,
         answer_text=attempt.answer_text,
         submitted_at=attempt.submitted_at,
-        question=QuestionRef(prompt=question.prompt) if question else None,
+        question=QuestionRef(id=question.id, prompt=question.prompt) if question else None,
     )
 
 
@@ -185,6 +189,8 @@ def submit_attempt(
             attempts.submit(attempt_id, now)
         except ReviewSessionEndedError as error:
             raise _error(status.HTTP_409_CONFLICT, "session_ended") from error
+        except QuestionNotAskableError as error:
+            raise _error(status.HTTP_409_CONFLICT, "question_not_askable") from error
         except AttemptNotDraftError:
             session.rollback()  # another request submitted it first: grade that one
     session.commit()  # the answer is kept, whatever grading does next
@@ -206,7 +212,7 @@ def read_attempt(attempt_id: uuid.UUID, user: VerifiedUser, session: DbSession) 
     found = AttemptRepository(session, user.id).get(attempt_id)
     if found is None:
         raise _error(status.HTTP_404_NOT_FOUND, "attempt_not_found")
-    return _view(session, user.id, found, None)
+    return attempt_view(session, user.id, found, None)
 
 
 def _graded_view(
@@ -234,4 +240,4 @@ def _graded_view(
         raise _error(status.HTTP_409_CONFLICT, "attempt_not_submitted") from error
     found = AttemptRepository(session, user.id).get(attempt_id)
     assert found is not None
-    return _view(session, user.id, found, outcome)
+    return attempt_view(session, user.id, found, outcome)

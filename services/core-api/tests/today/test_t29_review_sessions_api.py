@@ -96,7 +96,7 @@ def test_us04_ac1_current_shows_only_the_question(client: TestClient, db_session
     assert body["done"] is False
     assert (body["position"], body["total"]) == (1, 2)
     assert body["question"]["id"] in {str(i) for i in ids}
-    assert set(body["question"]) == {"id", "prompt", "subject"}
+    assert set(body["question"]) == {"id", "prompt", "subject", "unit_ids"}
     assert body["attempt"] is None
 
 

@@ -424,6 +424,25 @@
         "title": "Me",
         "type": "object"
       },
+      "OverrideIn": {
+        "additionalProperties": false,
+        "description": "\"Thực ra tôi đúng\" is `correct`, \"Thực ra tôi sai\" is `incorrect` (US-09 AC1).",
+        "properties": {
+          "verdict": {
+            "enum": [
+              "correct",
+              "incorrect"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "OverrideIn",
+        "type": "object"
+      },
       "PingResponse": {
         "properties": {
           "ai_service": {
@@ -463,24 +482,39 @@
           },
           "subject": {
             "$ref": "#/components/schemas/SubjectRef"
+          },
+          "unit_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Unit Ids",
+            "type": "array"
           }
         },
         "required": [
           "id",
           "prompt",
-          "subject"
+          "subject",
+          "unit_ids"
         ],
         "title": "QuestionOut",
         "type": "object"
       },
       "QuestionRef": {
         "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "prompt": {
             "title": "Prompt",
             "type": "string"
           }
         },
         "required": [
+          "id",
           "prompt"
         ],
         "title": "QuestionRef",
@@ -532,6 +566,11 @@
       },
       "ResultOut": {
         "properties": {
+          "grade_id": {
+            "format": "uuid",
+            "title": "Grade Id",
+            "type": "string"
+          },
           "missing": {
             "items": {
               "type": "string"
@@ -584,6 +623,7 @@
           }
         },
         "required": [
+          "grade_id",
           "overall",
           "understanding",
           "missing",
@@ -593,6 +633,61 @@
           "practice"
         ],
         "title": "ResultOut",
+        "type": "object"
+      },
+      "SkipIn": {
+        "additionalProperties": false,
+        "properties": {
+          "review_session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Session Id"
+          }
+        },
+        "title": "SkipIn",
+        "type": "object"
+      },
+      "SkipOut": {
+        "properties": {
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentOut"
+              },
+              {
+                "$ref": "#/components/schemas/DoneOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          }
+        },
+        "required": [
+          "session_id",
+          "next"
+        ],
+        "title": "SkipOut",
         "type": "object"
       },
       "Source": {
@@ -1516,6 +1611,56 @@
         "summary": "Resend Verification"
       }
     },
+    "/v1/grades/{grade_id}/override": {
+      "post": {
+        "operationId": "override_v1_grades__grade_id__override_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grade_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grade Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Override"
+      }
+    },
     "/v1/me": {
       "get": {
         "operationId": "me_v1_me_get",
@@ -1550,6 +1695,39 @@
           }
         },
         "summary": "Ping"
+      }
+    },
+    "/v1/questions/{question_id}/drop": {
+      "post": {
+        "operationId": "drop_question_v1_questions__question_id__drop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Drop Question"
       }
     },
     "/v1/review-sessions": {
@@ -1876,6 +2054,105 @@
           }
         },
         "summary": "Get Today"
+      }
+    },
+    "/v1/units/{unit_id}/skip": {
+      "delete": {
+        "description": "Undo a skip; 204 whether or not the unit was skipped. Nothing is added to or taken from an\nopen session here: a question hidden by the skip is asked again, and the session cap (20)\nhides the last replacement, if any (`progress`).",
+        "operationId": "unskip_unit_v1_units__unit_id__skip_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Unit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "review_session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Review Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unskip Unit"
+      },
+      "post": {
+        "operationId": "skip_unit_v1_units__unit_id__skip_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkipIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkipOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Skip Unit"
       }
     }
   }

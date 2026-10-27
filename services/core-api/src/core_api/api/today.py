@@ -97,6 +97,7 @@ def get_today(user: VerifiedUser, session: DbSession, now: Now) -> TodayOut:
         now=now,
         tz=tz,
         day_start_hour=user.day_start_hour,
+        unasked=reads.unasked_by_subject(),
     )
 
     in_progress = None
