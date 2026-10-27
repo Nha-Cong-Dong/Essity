@@ -8,6 +8,7 @@ import uuid
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event, insert
 from sqlalchemy.orm import Session
@@ -30,6 +31,8 @@ from core_api.db.models import (
 )
 from core_api.domain.learning_day import learning_day
 from core_api.repositories.review import MemoryStateRepository
+
+pytestmark = pytest.mark.timing
 
 RUN = uuid.uuid4()
 

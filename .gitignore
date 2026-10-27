@@ -38,6 +38,9 @@ out/
 infra/**/data/
 *.dump
 
+# --- Điều phối song song: Task Card, báo cáo luồng, BOARD (chỉ ở máy, sao lưu qua docs/) ---
+/.work/
+
 # --- Editor / OS ---
 .vscode/*
 !.vscode/extensions.json

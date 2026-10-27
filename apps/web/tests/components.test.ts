@@ -1,4 +1,4 @@
-// Core components of design system v3.1 (docs/plans/design-architecture-final.md §4.1–4.3),
+// Core components of design system v3.1 (docs/design/visual-system.md §4.1–4.3),
 // rendered to static markup in Node (plan V6): classes and attributes, not layout.
 import { existsSync } from "node:fs";
 import path from "node:path";

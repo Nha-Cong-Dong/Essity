@@ -271,6 +271,8 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 scripts/check_cross_imports.py
+      - name: One Alembic head per service
+        run: python3 scripts/check_alembic_heads.py
       - name: Test repo scripts
         run: python3 -m unittest discover -s scripts -p "test_*.py" -v
 

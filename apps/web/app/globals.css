@@ -3,7 +3,7 @@
 @import "shadcn/tailwind.css";
 
 /*
- * Design tokens v3.1 (docs/plans/design-architecture-final.md §1): one pink hue (333°), lighter
+ * Design tokens v3.1 (docs/design/visual-system.md §1): one pink hue (333°), lighter
  * or darker, plus three status colours. "Three pens on a page": ink is the app's text, the pink
  * pen is what you write and every action, pencil (the only italic) is the app's grading, and the
  * pink highlighter is evidence from the textbook, only ever a background under ink.

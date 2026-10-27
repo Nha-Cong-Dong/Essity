@@ -1,4 +1,4 @@
-// Design tokens v3 (docs/plans/design-architecture-final.md §1): every text and border pair the
+// Design tokens v3 (docs/design/visual-system.md §1): every text and border pair the
 // rules allow meets WCAG, and the three copies of the palette never drift apart. Values are read
 // from app/globals.css, never copied from the spec (plan V6, V15).
 import { describe, expect, it } from "vitest";

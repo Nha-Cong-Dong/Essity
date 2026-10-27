@@ -2,7 +2,7 @@ import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
-// Design system v3.1 (docs/plans/design-architecture-final.md §4.1): pills, four kinds, no more.
+// Design system v3.1 (docs/design/visual-system.md §4.1): pills, four kinds, no more.
 // - primary: at most one per screen. Bắt đầu, Gửi, Câu tiếp...
 // - secondary: Ôn thêm, Ghi buổi học, Thực ra tôi đúng / sai, Gửi lại...
 // - quiet: text only, for one-tap actions that must not shout: Không nhớ, Dừng tại đây,
