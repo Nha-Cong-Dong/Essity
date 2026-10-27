@@ -52,6 +52,8 @@ class EvalCase(_Strict):
 
     @model_validator(mode="after")
     def _label_is_consistent(self) -> Self:
+        if not self.answer.strip():
+            raise ValueError("answer must not be blank: the service grades it without a model")
         if len(self.expected.units) != len(self.units):
             raise ValueError("expected.units must have one verdict per unit")
         if self.expected.overall != derive_overall(list(self.expected.units)):

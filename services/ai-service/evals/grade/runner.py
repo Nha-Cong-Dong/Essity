@@ -26,6 +26,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Literal
 
+from pydantic import SecretStr
+
 from ai_service.config import Settings
 from ai_service.llm.anthropic_adapter import MAX_TOKENS, AnthropicAdapter
 from ai_service.llm.fake_adapter import FakeAdapter
@@ -272,6 +274,7 @@ class Metrics:
     stability: float | None  # AC6
     errors: dict[str, int]
     by_category: dict[str, tuple[int, int]]  # category -> (matched, total), first run
+    missed: list[tuple[str, str, str]] = field(default_factory=list[tuple[str, str, str]])
     right_idea_failed: list[str] = field(default_factory=list[str])  # AC5
     level_counts: dict[int, int] = field(default_factory=dict[int, int])  # AC10
 
@@ -288,6 +291,7 @@ def compute_metrics(cases: list[EvalCase], result: EvalResult) -> Metrics:
     wrong_total = wrong_correct = 0
     by_category: dict[str, list[int]] = {}
     right_idea_failed: list[str] = []
+    missed: list[tuple[str, str, str]] = []  # (case id, expected, got), first run
     for case in cases:
         run = first.get(case.id)
         if run is None:
@@ -298,6 +302,8 @@ def compute_metrics(cases: list[EvalCase], result: EvalResult) -> Metrics:
         unit_total += total_units
         if run.kind == "verdict":
             unit_hit += sum(g == e for g, e in zip(run.units, case.expected.units, strict=True))
+        if not matched:
+            missed.append((case.id, case.expected.overall, run.overall or run.kind))
         tally = by_category.setdefault(case.category, [0, 0])
         tally[0] += matched
         tally[1] += 1
@@ -326,6 +332,7 @@ def compute_metrics(cases: list[EvalCase], result: EvalResult) -> Metrics:
             "provider_error": sum(r.kind == "provider_error" for r in all_runs),
         },
         by_category={k: (v[0], v[1]) for k, v in by_category.items()},
+        missed=missed,
         right_idea_failed=right_idea_failed,
         level_counts={lvl: sum(c.level == lvl for c in cases) for lvl in (1, 2, 3)},
     )
@@ -398,6 +405,13 @@ def render_report(metrics: Metrics, result: EvalResult) -> str:
         + ("all correct." if not metrics.right_idea_failed else
            "not correct: " + ", ".join(metrics.right_idea_failed)),
         "",
+        "## Missed cases (first run)",
+        "",
+        *(
+            [f"- {cid}: expected {exp}, got {got}" for cid, exp, got in metrics.missed]
+            or ["- none"]
+        ),
+        "",
         "## Cases per question level (AC10)",
         "",
     ]  # fmt: skip
@@ -413,10 +427,10 @@ def render_report(metrics: Metrics, result: EvalResult) -> str:
 def _adapter(provider: str) -> Adapter:
     if provider == "fake":
         return FakeAdapter({"grade": fake_grade})
-    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not key:
+    key = SecretStr(os.environ.get("ANTHROPIC_API_KEY", "").strip())
+    if not key.get_secret_value():
         raise SystemExit("ANTHROPIC_API_KEY is not set: refusing to run before any call")
-    return AnthropicAdapter(key)
+    return AnthropicAdapter(key.get_secret_value())
 
 
 def main(argv: list[str] | None = None, *, out: Callable[[str], None] = print) -> int:
