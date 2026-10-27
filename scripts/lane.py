@@ -71,10 +71,17 @@ def up(
     return path
 
 
-def down(repo: Path, lane: int) -> None:
+def down(repo: Path, lane: int, force: bool = False) -> None:
     path = lane_path(repo, lane)
     if not path.exists():
         return
+    dirty = _git(path, "status", "--short").stdout.splitlines()
+    if dirty and not force:
+        # Removing the folder throws away what was never committed; the branch keeps the rest.
+        raise RuntimeError(
+            f"L{lane} has {len(dirty)} uncommitted file(s): commit and push first, "
+            f"or run `lane.py down L{lane} --force` to discard them"
+        )
     unlink_links(path)  # pnpm junctions point into the main repo (R45)
     result = _git(repo, "worktree", "remove", "--force", str(path))
     if result.returncode != 0:
@@ -114,6 +121,7 @@ def main(argv: list[str]) -> int:
     p_env.add_argument("--shell", choices=["bash", "powershell"], default="bash")
     p_down = sub.add_parser("down")
     p_down.add_argument("lane")
+    p_down.add_argument("--force", action="store_true", help="discard uncommitted files")
     sub.add_parser("status")
     args = parser.parse_args(argv)
     repo = main_repo()
@@ -128,7 +136,7 @@ def main(argv: list[str]) -> int:
                     else f"export {key}={value}"
                 )
         elif args.action == "down":
-            down(repo, parse_lane(args.lane))
+            down(repo, parse_lane(args.lane), args.force)
         else:
             print("\n".join(status(repo)))
     except (ValueError, RuntimeError) as error:

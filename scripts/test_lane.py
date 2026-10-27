@@ -57,6 +57,16 @@ class UpDown(unittest.TestCase):
         self.assertEqual(git(path, "branch", "--show-current"), "t9.8-y")
         down(self.repo, 2)
 
+    def test_down_refuses_a_lane_with_uncommitted_work(self) -> None:
+        # `worktree remove --force` would throw it away; the branch keeps only what was committed.
+        path = up(self.repo, 3, "t9.6-w", base="main", create_db=False)
+        (path / "draft.txt").write_text("not committed")
+        with self.assertRaises(RuntimeError):
+            down(self.repo, 3)
+        self.assertTrue((path / "draft.txt").exists())
+        down(self.repo, 3, force=True)
+        self.assertFalse(path.exists())
+
     def test_a_lane_in_use_is_refused(self) -> None:
         up(self.repo, 1, "t9.9-x", base="main", create_db=False)
         with self.assertRaises(RuntimeError):

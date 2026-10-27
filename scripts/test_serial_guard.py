@@ -38,8 +38,28 @@ class Guard(unittest.TestCase):
     def test_regenerating_the_api_client_outside_the_owner_is_blocked(self) -> None:
         self.assertIsNotNone(self.bash("bash scripts/gen_api_client.sh", self.l2))
 
+    def test_other_ways_to_regenerate_the_client_are_blocked(self) -> None:
+        for command in [
+            "just gen-api",
+            "cd packages/api-client && pnpm generate",
+            "pnpm --filter api-client generate",
+            "npx openapi-typescript openapi.json --output src/schema.d.ts",
+        ]:
+            self.assertIsNotNone(self.bash(command, self.l2), command)
+
+    def test_writing_the_exported_openapi_outside_the_owner_is_blocked(self) -> None:
+        self.assertIsNotNone(
+            self.edit(self.l2 / "packages" / "api-client" / "openapi.json", self.l2)
+        )
+
     def test_ordinary_commands_pass_anywhere(self) -> None:
-        for command in ["uv run alembic upgrade head", "uv run pytest -q", "git status"]:
+        for command in [
+            "uv run alembic upgrade head",
+            "uv run pytest -q",
+            "git status",
+            "pnpm --filter web test",
+            "git log --grep revision",
+        ]:
             self.assertIsNone(self.bash(command, self.l2), command)
 
     def test_writing_a_migration_file_outside_the_owner_is_blocked(self) -> None:

@@ -18,10 +18,14 @@ from pathlib import Path
 SERIAL_COMMANDS = [
     re.compile(r"\balembic\b.*\brevision\b"),
     re.compile(r"gen_api_client"),
+    re.compile(r"\bjust\s+gen-api\b"),
+    re.compile(r"openapi-typescript"),
+    re.compile(r"api-client\b.*\bgenerate\b"),
 ]
 SERIAL_PATHS = [
     re.compile(r"(^|/)services/[^/]+/migrations/versions/"),
     re.compile(r"(^|/)packages/api-client/src/"),
+    re.compile(r"(^|/)packages/api-client/openapi\.json$"),
 ]
 
 
