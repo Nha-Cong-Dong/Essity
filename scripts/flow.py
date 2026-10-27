@@ -205,8 +205,12 @@ def judge(
         if doc.get("verdict") not in ok_verdicts:
             reasons.append(f"{file}: verdict={doc.get('verdict')!r}")
             continue
-        if int(doc.get("open_orange") or 0) > 0:
-            reasons.append(f"{file}: còn {doc.get('open_orange')} 🟠 mở")
+        open_orange = doc.get("open_orange")
+        if isinstance(open_orange, bool) or not isinstance(open_orange, int):
+            reasons.append(f"{file}: open_orange thiếu/không hợp lệ ({open_orange!r})")
+            continue
+        if open_orange > 0:
+            reasons.append(f"{file}: còn {open_orange} 🟠 mở")
             continue
         if head and name in ("review", "pm") and not same_sha(doc.get("sha"), head):
             reasons.append(f"{file}: sha {doc.get('sha')} khác HEAD {head[:7]}")

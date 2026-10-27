@@ -108,6 +108,14 @@ class Gate(Fixture):
         self.assertIn("2 🟠", problems)
         self.assertIn("lane-report", problems)
 
+    def test_open_orange_missing_or_not_a_number_blocks(self) -> None:
+        self.all_red()
+        self.put("review.yaml", f"step: final\nverdict: merge\nsha: {FULL}\n")
+        self.put("pm.yaml", evidence("pm", "pass", open_orange="none"))
+        problems = self.run_gate()
+        self.assertTrue(any("review.yaml: open_orange thiếu/không hợp lệ" in p for p in problems))
+        self.assertTrue(any("pm.yaml: open_orange thiếu/không hợp lệ" in p for p in problems))
+
     def test_pass_verdict_is_not_a_merge_verdict(self) -> None:
         self.all_red()
         self.put("review.yaml", evidence("final", "pass"))
