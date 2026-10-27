@@ -39,6 +39,16 @@ class Run(unittest.TestCase):
         self.assertIn("--hook", out)
         self.assertIn(str(root), out)
 
+    def test_broken_tool_output_does_not_raise(self) -> None:
+        root = Path(tempfile.mkdtemp())
+        tool = root / "docs" / "_tools" / "config_drift.py"
+        tool.parent.mkdir(parents=True)
+        tool.write_text(
+            "import sys\nsys.stdout.buffer.write(b'bad \\xff byte')\nsys.exit(3)\n",
+            encoding="utf-8",
+        )
+        self.assertIn("bad", run(root))
+
 
 if __name__ == "__main__":
     unittest.main()

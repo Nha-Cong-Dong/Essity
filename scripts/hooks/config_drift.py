@@ -29,6 +29,7 @@ def run(root: Path) -> str:
         [sys.executable, str(tool), "--root", str(root), "--hook"],
         capture_output=True,
         encoding="utf-8",
+        errors="replace",
         timeout=10,
         check=False,
     )
@@ -39,7 +40,7 @@ def main() -> int:
     root = main_checkout(Path(os.environ.get("CLAUDE_PROJECT_DIR") or Path.cwd()))
     try:
         out = run(root)
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, ValueError, subprocess.SubprocessError):
         return 0  # a warning hook must never block a session
     if out:
         sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
