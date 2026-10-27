@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent_env import create_database_command, database_name, env_lines, redis_db
+from agent_env import create_database_command, database_name, env_lines, redis_db, release
 
 
 class Names(unittest.TestCase):
@@ -28,20 +28,39 @@ class Redis(unittest.TestCase):
 
     def test_each_agent_gets_its_own_db_and_keeps_it(self) -> None:
         # A hash could give two agents the same db, and one suite's flush breaks the other (R32).
-        dbs = [redis_db(f"agent-{i}", self.registry) for i in range(14)]
-        self.assertEqual(len(set(dbs)), 14)
+        dbs = [redis_db(f"agent-{i}", self.registry) for i in range(9)]
+        self.assertEqual(len(set(dbs)), 9)
         self.assertEqual(redis_db("agent-3", self.registry), dbs[3])
 
-    def test_dev_and_shared_test_dbs_are_never_given(self) -> None:
-        # 0 holds local data, 15 is the shared test db (conftest default).
-        dbs = {redis_db(f"a{i}", self.registry) for i in range(14)}
-        self.assertEqual(dbs, set(range(1, 15)))
+    def test_only_dbs_6_to_14_are_given(self) -> None:
+        # 0 holds local data, 1..5 belong to lanes L1..L5 (lane.py), 15 is the shared test db.
+        dbs = {redis_db(f"a{i}", self.registry) for i in range(9)}
+        self.assertEqual(dbs, set(range(6, 15)))
 
-    def test_a_fifteenth_agent_is_refused(self) -> None:
-        for i in range(14):
+    def test_a_tenth_agent_is_refused(self) -> None:
+        for i in range(9):
             redis_db(f"a{i}", self.registry)
         with self.assertRaises(RuntimeError):
             redis_db("one-too-many", self.registry)
+
+    def test_a_released_db_is_given_again(self) -> None:
+        # Agent names carry task codes, so without giving back the 9 dbs run out within days.
+        for i in range(9):
+            redis_db(f"a{i}", self.registry)
+        freed = redis_db("a4", self.registry)
+        self.assertTrue(release(["a4"], self.registry))
+        self.assertEqual(redis_db("newcomer", self.registry), freed)
+
+    def test_releasing_an_unknown_agent_changes_nothing(self) -> None:
+        redis_db("a0", self.registry)
+        self.assertFalse(release(["nobody"], self.registry))
+        self.assertEqual(redis_db("a0", self.registry), 6)
+
+    def test_release_all_empties_the_registry(self) -> None:
+        for i in range(3):
+            redis_db(f"a{i}", self.registry)
+        release(None, self.registry)
+        self.assertEqual(redis_db("fresh", self.registry), 6)
 
 
 class Env(unittest.TestCase):
