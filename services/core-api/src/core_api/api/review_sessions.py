@@ -240,6 +240,8 @@ def open_current_attempt(
         raise _error(status.HTTP_404_NOT_FOUND, "subject_deleted") from error
     except ReviewSessionNotFoundError as error:
         raise _error(status.HTTP_404_NOT_FOUND, "session_not_found") from error
+    except QuestionNotAskableError as error:  # a skip committed since the steps were read
+        raise _error(status.HTTP_409_CONFLICT, "question_not_askable") from error
     if not made:  # another tab opened it a moment ago
         response.status_code = status.HTTP_200_OK
     return _attempt_out(attempt)

@@ -57,6 +57,9 @@ class NewQuestion:
     question_id: uuid.UUID
     subject_id: uuid.UUID
     created_at: datetime
+    # The units of this question never asked (and not skipped). Empty: the question counts as one
+    # unit of its own for the exam quota.
+    unasked_units: frozenset[uuid.UUID] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -117,7 +120,7 @@ def compose_today(
 
     limit = _room() if room is None else min(room, _room())
     fresh = [q for q in new_questions if q.question_id not in exclude]
-    fresh.sort(key=lambda q: q.created_at, reverse=True)
+    fresh.sort(key=lambda q: (q.created_at, q.question_id), reverse=True)
     kept = _kept_for_new(fresh, exams, never, today, min(limit, MAX_QUESTIONS))
 
     items: list[PlannedQuestion] = []
@@ -170,9 +173,19 @@ def _kept_for_new(
     }
     places = min(limit, max(NEW_FLOOR, sum(quota.values())), len(fresh))
     kept: list[NewQuestion] = []
+    covered: set[uuid.UUID] = set()
     for subject in sorted(quota, key=lambda s: exams[s]):
-        mine = [q for q in fresh if q.subject_id == subject][: quota[subject]]
-        kept.extend(mine[: places - len(kept)])
+        # The quota counts units, so a question holds a place only for a unit no kept question
+        # covers yet: several questions on one unit must not crowd out another unit.
+        got: set[uuid.UUID] = set()
+        for question in (q for q in fresh if q.subject_id == subject):
+            if len(got) >= quota[subject] or len(kept) >= places:
+                break
+            units = (question.unasked_units or {question.question_id}) - covered
+            if units:
+                kept.append(question)
+                got |= units
+                covered |= units
     for question in fresh:
         if len(kept) >= places:
             break

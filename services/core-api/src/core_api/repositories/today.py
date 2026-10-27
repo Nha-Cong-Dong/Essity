@@ -128,8 +128,8 @@ class TodayRepository(UserScopedRepository[MemoryState]):
         scheduled = select(MemoryState.unit_id).where(
             MemoryState.user_id == self.user_id, MemoryState.facet == "core"
         )
-        with_unasked = (
-            select(QuestionUnit.question_id)
+        unasked_pairs = (
+            select(QuestionUnit.question_id, QuestionUnit.unit_id)
             .join(
                 KnowledgeUnit,
                 and_(
@@ -144,9 +144,15 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                 KnowledgeUnit.id.not_in(scheduled),
             )
         )
+        with_unasked = select(unasked_pairs.subquery().c.question_id)
         linked = select(QuestionUnit.question_id).where(QuestionUnit.user_id == self.user_id)
-        unlinked = select(Question.id).where(Question.id.not_in(linked))
+        unlinked = select(Question.id).where(
+            Question.user_id == self.user_id, Question.id.not_in(linked)
+        )
         candidates = with_unasked.union(unlinked).subquery()
+        unasked_units: dict[uuid.UUID, set[uuid.UUID]] = {}
+        for question_id, unit_id in self.session.execute(unasked_pairs):
+            unasked_units.setdefault(question_id, set()).add(unit_id)
         rows = self.session.execute(
             select(Question.id, Question.subject_id, Question.created_at).where(
                 Question.user_id == self.user_id,
@@ -157,7 +163,12 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             )
         ).all()
         return [
-            NewQuestion(question_id=id, subject_id=subject_id, created_at=created_at)
+            NewQuestion(
+                question_id=id,
+                subject_id=subject_id,
+                created_at=created_at,
+                unasked_units=frozenset(unasked_units.get(id, ())),
+            )
             for id, subject_id, created_at in rows
         ]
 

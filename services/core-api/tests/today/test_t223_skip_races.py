@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from clock import future_exam
 from core_api.api.review_sessions import stop_session
 from core_api.api.units import SkipIn, skip_unit
-from core_api.db.models import ReviewSession, ReviewSessionItem, User
+from core_api.db.models import Question, ReviewSession, ReviewSessionItem, User
 from core_api.repositories.question import QuestionRepository, QuestionUnitRepository
 from core_api.repositories.review import (
     AttemptRepository,
@@ -56,8 +56,8 @@ def ready(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Ready]:
         questions = QuestionRepository(session, user.id)
         units = KnowledgeUnitRepository(session, user.id)
         links = QuestionUnitRepository(session, user.id)
-        made = []
-        unit_ids = []
+        made: list[Question] = []
+        unit_ids: list[uuid.UUID] = []
         for n in range(5):
             unit = units.create(
                 subject.id, title=f"u{n}", summary="s", kind="concept", run_id=uuid.uuid4()
@@ -125,7 +125,6 @@ def test_t223_a_submit_waiting_on_a_skip_finds_its_question_gone(
 
         def submit() -> None:
             attempts = AttemptRepository(submitter, ready.user_id)
-            attempts.save_draft(ready.attempt_id, answer_text="TCP", dont_remember=False)
             attempts.submit(ready.attempt_id, NOW)
 
         thread, outcome = in_thread(submit)
