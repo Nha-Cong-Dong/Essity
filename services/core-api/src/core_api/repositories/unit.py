@@ -1,6 +1,9 @@
 import uuid
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
+
+from sqlalchemy import ColumnElement, update
 
 from core_api.db.models import Anchor, KnowledgeUnit
 from core_api.repositories.base import UserScopedRepository
@@ -39,6 +42,26 @@ class KnowledgeUnitRepository(UserScopedRepository[KnowledgeUnit]):
             .order_by(KnowledgeUnit.created_at, KnowledgeUnit.id)
         )
         return self.session.scalars(query.limit(1)).first()
+
+    def skip(self, id: uuid.UUID, now: datetime) -> bool:
+        """Mark the unit "không cần ôn phần này" (T2.23); False when it is not this user's or is
+        already skipped. Schedule and history stay as they are (ADR-0008)."""
+        return self._set_skipped(id, KnowledgeUnit.skipped_at.is_(None), now)
+
+    def unskip(self, id: uuid.UUID) -> bool:
+        """Undo `skip`; False when it is not this user's or is not skipped."""
+        return self._set_skipped(id, KnowledgeUnit.skipped_at.is_not(None), None)
+
+    def _set_skipped(
+        self, id: uuid.UUID, state: ColumnElement[bool], value: datetime | None
+    ) -> bool:
+        done = self.session.execute(
+            update(KnowledgeUnit)
+            .where(KnowledgeUnit.user_id == self.user_id, KnowledgeUnit.id == id, state)
+            .values(skipped_at=value)
+            .returning(KnowledgeUnit.id)
+        ).first()
+        return done is not None
 
     def lock(self, ids: Sequence[uuid.UUID]) -> None:
         """Hold these units FOR NO KEY UPDATE until commit, in id order (T2.13): two answers on
