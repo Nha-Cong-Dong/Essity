@@ -1,5 +1,9 @@
 {
   "attribution": { "commit": "", "pr": "" },
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet",
+    "CLAUDE_CODE_FORK_SUBAGENT": "0"
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -8,6 +12,17 @@
           {
             "type": "command",
             "command": "python \"$CLAUDE_PROJECT_DIR/scripts/hooks/serial_guard.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent|Task|SendMessage",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/scripts/hooks/context_budget.py\""
           }
         ]
       }

@@ -7,7 +7,25 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "hooks"))
 
-from serial_guard import blocked_reason, owner_path
+from serial_guard import blocked_reason, owner_path, serial_target
+
+
+class FastPath(unittest.TestCase):
+    # Every Bash/Edit/Write runs the hook: calls that cannot touch a serial resource must be
+    # answered before the ~90 ms `git rev-parse` that finds the repository.
+    def test_ordinary_calls_have_no_serial_target(self) -> None:
+        cwd = Path(tempfile.mkdtemp())
+        self.assertIsNone(serial_target("Bash", {"command": "uv run pytest -q"}, cwd))
+        self.assertIsNone(serial_target("Edit", {"file_path": str(cwd / "app.py")}, cwd))
+        self.assertIsNone(serial_target("Read", {"file_path": "x"}, cwd))
+
+    def test_serial_calls_name_where_they_act(self) -> None:
+        cwd = Path(tempfile.mkdtemp())
+        self.assertEqual(serial_target("Bash", {"command": "just gen-api"}, cwd), cwd.resolve())
+        migration = cwd / "services" / "core-api" / "migrations" / "versions" / "0012_x.py"
+        self.assertEqual(
+            serial_target("Write", {"file_path": str(migration)}, cwd), migration.resolve()
+        )
 
 
 class Guard(unittest.TestCase):

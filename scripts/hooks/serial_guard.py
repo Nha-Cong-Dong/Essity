@@ -49,23 +49,29 @@ def _in_other_worktree(where: Path, owner: Path, repo: Path) -> bool:
     return not _inside(owner, lane)
 
 
-def blocked_reason(tool: str, tool_input: dict[str, object], cwd: Path, repo: Path) -> str | None:
-    """Why the call must be blocked, or None to let it through."""
-    owner = owner_path(repo)
+def serial_target(tool: str, tool_input: dict[str, object], cwd: Path) -> Path | None:
+    """Where the call acts on a serial resource, or None when it cannot touch one."""
     if tool == "Bash":
         command = str(tool_input.get("command", ""))
         if not any(pattern.search(command) for pattern in SERIAL_COMMANDS):
             return None
-        where = cwd.resolve()
-    elif tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
+        return cwd.resolve()
+    if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
         file_path = Path(str(tool_input.get("file_path", "")))
         if not file_path.is_absolute():
             file_path = cwd / file_path
         if not any(p.search(file_path.as_posix()) for p in SERIAL_PATHS):
             return None
-        where = file_path.resolve()
-    else:
+        return file_path.resolve()
+    return None
+
+
+def blocked_reason(tool: str, tool_input: dict[str, object], cwd: Path, repo: Path) -> str | None:
+    """Why the call must be blocked, or None to let it through."""
+    where = serial_target(tool, tool_input, cwd)
+    if where is None:
         return None
+    owner = owner_path(repo)
     if _inside(where, owner) and not _in_other_worktree(where, owner, repo):
         return None
     return (
@@ -88,9 +94,10 @@ def _repo_of(cwd: Path) -> Path:
 def main() -> int:
     call = json.load(sys.stdin)
     cwd = Path(call.get("cwd") or ".")
-    reason = blocked_reason(
-        call.get("tool_name", ""), call.get("tool_input") or {}, cwd, _repo_of(cwd)
-    )
+    tool, tool_input = call.get("tool_name", ""), call.get("tool_input") or {}
+    if serial_target(tool, tool_input, cwd) is None:
+        return 0  # most calls: skip the git lookup below
+    reason = blocked_reason(tool, tool_input, cwd, _repo_of(cwd))
     if reason:
         print(reason, file=sys.stderr)
         return 2
