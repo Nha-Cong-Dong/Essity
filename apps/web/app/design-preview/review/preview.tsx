@@ -21,7 +21,7 @@ const STEP: Current = {
       LONG_WORD +
       "?",
     subject: { id: "0b8f1d2e-0000-4000-8000-000000000001", name: LONG_WORD },
-    unit_ids: [],
+    unit_ids: ["0b8f1d2e-0000-4000-8000-0000000000a1"],
   },
   attempt: {
     id: ATTEMPT,
@@ -37,7 +37,7 @@ function graded(text: string, dontRemember: boolean): AttemptView {
     grading: "graded",
     failure: null,
     result: {
-      grade_id: "0b8f1d2e-0000-4000-8000-0000000000e1",
+      grade_id: "0b8f1d2e-0000-4000-8000-0000000000f1",
       overall: dontRemember ? "forgot" : "partial",
       understanding: dontRemember ? null : 1,
       missing: dontRemember
@@ -76,6 +76,10 @@ const API: ReviewApi = {
   saveDraft: () => ok(null),
   submit: (_, answer) => ok(graded(answer.answer_text, answer.dont_remember)),
   regrade: () => ok(graded("", false)),
+  override: () => ok(graded("", false)),
+  drop: () => ok(null),
+  skip: () => ok({ session_id: null, next: null }),
+  unskip: () => ok(null),
   read: () => ok(graded("", false)),
 };
 

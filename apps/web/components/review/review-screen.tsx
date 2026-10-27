@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AnswerBox, clock, type SaveState } from "@/components/review/answer-box";
 import { GradeResult } from "@/components/review/grade-result";
+import { ResultActions } from "@/components/review/result-actions";
 import { Summary } from "@/components/review/summary";
 import { FocusShell } from "@/components/shells";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,9 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
   const [sent, setSent] = useState<Sent | null>(null);
   const [sendFailed, setSendFailed] = useState(false);
   const [busy, setBusy] = useState(false);
+  // T2.24: the units just skipped (for "Hoàn tác"), and a skip that did not go through.
+  const [undo, setUndo] = useState<string[] | null>(null);
+  const [skipFailed, setSkipFailed] = useState(false);
   const [last, setLast] = useState({ position: 0, total: 0 });
 
   // What the timers and late answers compare against: the attempt on screen and its text now.
@@ -180,9 +184,47 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
     timer.current = setTimeout(() => void saveNow(attemptId, value), SAVE_AFTER_MS);
   }
 
+  /** T2.24 (US-04 AC5): "Không cần ôn phần này" skips every unit of the question; the next
+   * question, or the end of the session, comes from the usual load. */
+  async function skipUnits(units: string[]) {
+    clearTimeout(timer.current);
+    setBusy(true);
+    setSkipFailed(false);
+    for (const unit of units) {
+      const reply = await api.skip(unit, sessionId);
+      if (!reply.ok) {
+        setBusy(false);
+        setSkipFailed(true);
+        return;
+      }
+    }
+    setBusy(false);
+    setUndo(units);
+    reload();
+  }
+
+  async function undoSkip() {
+    if (!undo) return;
+    setBusy(true);
+    setSkipFailed(false);
+    for (const unit of undo) {
+      const reply = await api.unskip(unit, sessionId);
+      if (!reply.ok) {
+        setBusy(false);
+        setSkipFailed(true); // the line stays: pressing again is safe (core-api answers 204 either way)
+        return;
+      }
+    }
+    setBusy(false);
+    setUndo(null);
+    reload();
+  }
+
   async function submit(dontRemember: boolean) {
     const attemptId = attemptRef.current;
     if (!attemptId) return;
+    setUndo(null);
+    setSkipFailed(false);
     clearTimeout(timer.current);
     setSendFailed(false);
     setSent({ text, dontRemember, view: null, late: false });
@@ -238,13 +280,11 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
     };
   }, [grading, api]);
 
+  const quietLink =
+    "h-11 cursor-pointer border-0 bg-transparent px-2 text-meta text-ink-soft underline decoration-line-strong underline-offset-4 hover:text-ink";
+  const skippable = phase.kind === "question" && !sent ? phase.step.question.unit_ids : [];
   const exit = (
-    <button
-      type="button"
-      disabled={busy}
-      onClick={() => void finish()}
-      className="h-11 cursor-pointer border-0 bg-transparent px-2 text-meta text-ink-soft underline decoration-line-strong underline-offset-4 hover:text-ink"
-    >
+    <button type="button" disabled={busy} onClick={() => void finish()} className={quietLink}>
       Dừng tại đây
     </button>
   );
@@ -304,6 +344,20 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
   return shell(
     step.position,
     step.total,
+    <div>
+      {undo && (
+        <p role="status" className="m-0 mb-6 flex flex-wrap items-center gap-2 rounded-control bg-sunken px-4 py-1 text-meta">
+          <span data-copy="tam">Đã bỏ qua phần này.</span>
+          <button type="button" disabled={busy} onClick={() => void undoSkip()} className={quietLink}>
+            Hoàn tác
+          </button>
+        </p>
+      )}
+      {skipFailed && (
+        <p role="alert" data-copy="tam" className="m-0 mb-6 text-meta">
+          Chưa gửi được. Bạn bấm lại nhé.
+        </p>
+      )}
     <div className="grid items-start gap-7 min-[901px]:grid-cols-2 min-[901px]:gap-16">
       <section className="min-w-0 min-[901px]:sticky min-[901px]:top-8" aria-labelledby="question">
         <p className="m-0 text-meta text-ink-soft wrap-anywhere">{step.question.subject.name}</p>
@@ -323,6 +377,14 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
               save={save}
               pending={null}
             />
+            {skippable.length > 0 && (
+              // Under the answer, not in the one-row header: its two buttons overflow at 320 px.
+              <p className="m-0 mt-2">
+                <button type="button" disabled={busy} onClick={() => void skipUnits(skippable)} className={quietLink}>
+                  Không cần ôn phần này
+                </button>
+              </p>
+            )}
             {sendFailed && (
               <p role="alert" data-copy="tam" className="m-0 mt-4 text-meta">
                 Chưa gửi được. Câu trả lời vẫn ở đây, bạn gửi lại nhé.
@@ -338,8 +400,11 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
           lastQuestion={lastQuestion}
           onNext={reload}
           onRegrade={() => void regrade()}
+          api={api}
+          onOverridden={(next) => setSent((before) => before && { ...before, view: next })}
         />
       </section>
+    </div>
     </div>,
   );
 }
@@ -369,7 +434,11 @@ function Rail({
   lastQuestion,
   onNext,
   onRegrade,
+  api,
+  onOverridden,
 }: {
+  api: ReviewApi;
+  onOverridden: (view: AttemptView) => void;
   sent: Sent | null;
   busy: boolean;
   /** Plan D-8: the last question's way on closes the session and shows the summary (T2.17). */
@@ -454,7 +523,17 @@ function Rail({
   return (
     <>
       {view.result && <GradeResult result={view.result} />}
-      <div className="mt-9 flex flex-wrap items-center gap-2">{next("primary")}</div>
+      {view.result ? (
+        <ResultActions
+          gradeId={view.result.grade_id}
+          questionId={view.question?.id ?? null}
+          api={api}
+          next={next("primary")}
+          onOverridden={onOverridden}
+        />
+      ) : (
+        <div className="mt-9 flex flex-wrap items-center gap-2">{next("primary")}</div>
+      )}
     </>
   );
 }

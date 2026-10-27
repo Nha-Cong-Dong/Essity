@@ -13,13 +13,14 @@ export type Summary = components["schemas"]["StoppedOut"];
 export type Started = { id: string };
 export type Draft = components["schemas"]["AttemptOut"];
 export type Answer = { answer_text: string; dont_remember: boolean };
+export type Skipped = components["schemas"]["SkipOut"];
 
 /** What ai-service grades at most (core-api's ANSWER_MAX, plan D-4): the box stops there. */
 export const ANSWER_MAX = 4000;
 
 export type Reply<T> = { ok: true; data: T } | { ok: false; error: string };
 
-async function call<T>(path: string, method: string, body?: Answer | Record<string, never>): Promise<Reply<T>> {
+async function call<T>(path: string, method: string, body?: object): Promise<Reply<T>> {
   let response: Response;
   try {
     response = await fetch(path, {
@@ -51,5 +52,12 @@ export const reviewApi = {
   saveDraft: (attemptId: string, answer: Answer) => call<null>(`/api/attempts/${attemptId}/draft`, "PUT", answer),
   submit: (attemptId: string, answer: Answer) => call<AttemptView>(`/api/attempts/${attemptId}/submit`, "POST", answer),
   regrade: (attemptId: string) => call<AttemptView>(`/api/attempts/${attemptId}/regrade`, "POST"),
+  override: (gradeId: string, verdict: "correct" | "incorrect") =>
+    call<AttemptView>(`/api/grades/${gradeId}/override`, "POST", { verdict }),
+  drop: (questionId: string) => call<null>(`/api/questions/${questionId}/drop`, "POST"),
+  skip: (unitId: string, sessionId: string) =>
+    call<Skipped>(`/api/units/${unitId}/skip`, "POST", { review_session_id: sessionId }),
+  unskip: (unitId: string, sessionId: string) =>
+    call<null>(`/api/units/${unitId}/skip?review_session_id=${sessionId}`, "DELETE"),
   read: (attemptId: string) => call<AttemptView>(`/api/attempts/${attemptId}`, "GET"),
 };
