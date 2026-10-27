@@ -278,6 +278,7 @@ OWN_METHODS = {
         "is_being_graded",
         "unit_verdicts",
         "graded",
+        "count_correct",  # T2.17: read-only count for the summary
     },
     ReviewLogRepository: {"append"},
 }
