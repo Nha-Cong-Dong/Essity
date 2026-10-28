@@ -184,6 +184,12 @@ services:
       # ANTHROPIC_API_KEY; disabled answers 503 grading_disabled.
       AI_LLM_PROVIDER: ${AI_LLM_PROVIDER:-fake}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # The SDK reads this; an empty value would be taken as the URL, so default it.
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.anthropic.com}
+      # Per-account AI cost quota (T2.11); the defaults are the code's.
+      AI_QUOTA_DAILY_USD: ${AI_QUOTA_DAILY_USD:-0.20}
+      AI_QUOTA_MONTHLY_USD: ${AI_QUOTA_MONTHLY_USD:-2.00}
+      AI_QUOTA_HARD_CAP_FACTOR: ${AI_QUOTA_HARD_CAP_FACTOR:-3}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     ports:
       - "127.0.0.1:8001:8001"

@@ -31,6 +31,19 @@ class EnvExample(unittest.TestCase):
         missing = compose_variables() - example_variables()
         self.assertEqual(missing, set(), f"add to .env.example: {sorted(missing)}")
 
+    def test_ai_service_gets_the_quota_and_provider_url(self) -> None:
+        # Red when: the AI cost quota or the provider URL set in .env never reaches the
+        # ai-service container, so it spends against the code defaults or the wrong endpoint.
+        block = COMPOSE.read_text("utf-8").split("\n  ai-service:\n", 1)[1].split("\n  web:\n")[0]
+        for name in (
+            "AI_QUOTA_DAILY_USD",
+            "AI_QUOTA_MONTHLY_USD",
+            "AI_QUOTA_HARD_CAP_FACTOR",
+            "ANTHROPIC_BASE_URL",
+        ):
+            with self.subTest(name):
+                self.assertRegex(block, rf"\n      {name}: \$\{{{name}")
+
     def test_r33_no_dockerfile_sets_the_environment(self) -> None:
         # Red when: an image bakes in CORE_/AI_ENVIRONMENT, so a deploy that forgets to set it
         # runs with that value instead of refusing to start.
