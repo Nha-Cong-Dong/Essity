@@ -232,10 +232,32 @@
             "title": "Created At",
             "type": "string"
           },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Reason"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "page_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Count"
           },
           "short_name": {
             "title": "Short Name",
@@ -253,6 +275,13 @@
             "format": "uuid",
             "title": "Subject Id",
             "type": "string"
+          },
+          "unreadable_pages": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Unreadable Pages",
+            "type": "array"
           }
         },
         "required": [
@@ -261,7 +290,10 @@
           "short_name",
           "status",
           "size_bytes",
-          "created_at"
+          "created_at",
+          "page_count",
+          "unreadable_pages",
+          "failure_reason"
         ],
         "title": "DocumentOut",
         "type": "object"
@@ -971,6 +1003,24 @@
           "name"
         ],
         "title": "SubjectRef",
+        "type": "object"
+      },
+      "TocOut": {
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "toc": {
+            "title": "Toc"
+          }
+        },
+        "required": [
+          "document_id",
+          "toc"
+        ],
+        "title": "TocOut",
         "type": "object"
       },
       "TodayOut": {
@@ -1819,6 +1869,50 @@
           }
         },
         "summary": "Confirm Upload"
+      }
+    },
+    "/v1/documents/{document_id}/toc": {
+      "get": {
+        "description": "The table of contents of an indexed document (US-02 AC2), read from its derived file.\n\nErrors: 404 `document_not_found` (another user's too); 409 `not_indexed`; 502 `toc_invalid`\n(the file is not JSON or too large); 503 `storage_unavailable`.",
+        "operationId": "read_toc_v1_documents__document_id__toc_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TocOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "The document is not indexed (yet)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Toc"
       }
     },
     "/v1/grades/{grade_id}/override": {

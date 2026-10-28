@@ -20,6 +20,7 @@ from core_api.clients.storage import ObjectStorage, S3Storage, StorageUnavailabl
 from core_api.config import get_settings
 from core_api.db.engine import get_engine
 from core_api.db.models import Document
+from core_api.db.models.document import UNCONFIRMED
 from core_api.jobs.handler import periodic_job
 
 DOCUMENT_CLEANUP = "document_cleanup"
@@ -37,7 +38,7 @@ def delete_abandoned_uploads(
     commit keeps those that were)."""
     due = session.scalars(
         select(Document)
-        .where(Document.status != "uploaded", Document.presigned_at < now - older_than)
+        .where(Document.status.in_(UNCONFIRMED), Document.presigned_at < now - older_than)
         .order_by(Document.presigned_at)
         .limit(BATCH)
         .with_for_update(skip_locked=True)

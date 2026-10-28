@@ -135,7 +135,7 @@ def test_two_users_may_hold_the_same_file(
         ({"sha256": "AB" * 32}, "sha256_hex"),
         ({"sha256": "ab" * 31}, "sha256_hex"),
         ({"size_bytes": 0}, "size_positive"),
-        ({"status": "indexed"}, "status_known"),
+        ({"status": "archived"}, "status_known"),
         ({"short_name": "   "}, "short_name_not_blank"),
         ({"status": "uploaded"}, "uploaded_at_iff_uploaded"),
         ({"uploaded_at": NOW}, "uploaded_at_iff_uploaded"),

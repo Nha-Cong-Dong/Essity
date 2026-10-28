@@ -8,9 +8,10 @@ answered 412 means the file is already there: confirm it.
 Nothing about the file is logged, not its name, key or SHA-256, and never the URL (ADR-0013).
 """
 
+import json
 import uuid
 from datetime import datetime, timedelta
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import JSONResponse
@@ -21,6 +22,7 @@ from core_api.api.text import storable_text
 from core_api.clients.storage import ObjectStorage, StorageUnavailableError
 from core_api.config import get_settings
 from core_api.db.models import Document
+from core_api.db.models.document import UNCONFIRMED
 from core_api.db.session import DbSession
 from core_api.domain.documents import (
     PDF_MAGIC,
@@ -67,6 +69,10 @@ class DocumentOut(BaseModel):
     status: str
     size_bytes: int
     created_at: datetime
+    # From ai-service (T4.8): set once indexed (page_count) or failed (failure_reason).
+    page_count: int | None
+    unreadable_pages: list[int]
+    failure_reason: str | None
 
 
 class UploadUrl(BaseModel):
@@ -95,6 +101,9 @@ def _out(document: Document) -> DocumentOut:
         status=document.status,
         size_bytes=document.size_bytes,
         created_at=document.created_at,
+        page_count=document.page_count,
+        unreadable_pages=document.unreadable_pages,
+        failure_reason=document.failure_reason,
     )
 
 
@@ -161,7 +170,7 @@ def request_upload(
 
     if not created:
         response.status_code = status.HTTP_200_OK
-    if document.status == "uploaded":
+    if document.status not in UNCONFIRMED:
         return UploadOut(document=_out(document), upload=None, duplicate=True)
     signed = storage.presign_put(
         document.object_key,
@@ -238,7 +247,7 @@ def confirm_upload(
     document = documents.lock(document_id)
     if document is None:  # cleaned up in between
         raise _error(404, "document_not_found")
-    if document.status == "uploaded":
+    if document.status not in UNCONFIRMED:
         return _out(document)
     if document.status == "rejected":
         return JSONResponse({"detail": "content_mismatch"}, status_code=422)
@@ -268,3 +277,50 @@ def confirm_upload(
         now=now,
     )
     return _out(document)
+
+
+# What ai-service writes at `toc_key`: a few hundred sections at most; more is not a table of
+# contents core should relay.
+TOC_MAX_BYTES = 1 << 20
+
+
+class TocOut(BaseModel):
+    document_id: uuid.UUID
+    # The table of contents as ai-service wrote it (T4.7): sections with their page ranges.
+    toc: Any
+
+
+@router.get(
+    "/documents/{document_id}/toc",
+    response_model=TocOut,
+    responses={409: {"description": "The document is not indexed (yet)"}},
+)
+def read_toc(
+    document_id: uuid.UUID,
+    user: VerifiedUser,
+    session: DbSession,
+    storage: Storage,
+    response: Response,
+) -> TocOut:
+    """The table of contents of an indexed document (US-02 AC2), read from its derived file.
+
+    Errors: 404 `document_not_found` (another user's too); 409 `not_indexed`; 502 `toc_invalid`
+    (the file is not JSON or too large); 503 `storage_unavailable`.
+    """
+    response.headers["Cache-Control"] = "no-store"
+    document = DocumentRepository(session, user.id).get(document_id)
+    if document is None:
+        raise _error(404, "document_not_found")
+    if document.status != "indexed" or document.toc_key is None:
+        raise _error(409, "not_indexed")
+    try:
+        raw = storage.read_start(document.toc_key, TOC_MAX_BYTES + 1)
+    except StorageUnavailableError:
+        raise _error(503, "storage_unavailable") from None
+    try:
+        if len(raw) > TOC_MAX_BYTES:
+            raise ValueError
+        toc = json.loads(raw)
+    except ValueError:
+        raise _error(502, "toc_invalid") from None
+    return TocOut(document_id=document.id, toc=toc)
