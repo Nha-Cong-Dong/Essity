@@ -40,7 +40,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             adapter,
             sessions,
             models=settings.llm_models,
-            quota_guard=DbQuotaGuard(sessions, limits),
+            quota_guard=DbQuotaGuard(
+                sessions, limits, hard_cap_tasks=frozenset({"grade", "extract_session"})
+            ),
         )
     )
     yield

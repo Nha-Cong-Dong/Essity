@@ -27,6 +27,7 @@ from ai_service.main import create_app
 from ai_service.security import SERVICE_TOKEN_HEADER
 from ai_service.tasks import extract_session as task
 from tests.extract.helpers import document, extract_body, output
+from tests.llm.helpers import NoQuota
 
 MODEL = "claude-haiku-5-5"
 TOKEN = "test-service-token-0123456789abcdef"
@@ -68,7 +69,9 @@ def app(sessions: sessionmaker[Session]) -> Iterator[FastAPI]:
 
 
 def client_with(app: FastAPI, adapter: Any, sessions: sessionmaker[Session]) -> TestClient:
-    llm = LlmClient(adapter, sessions, models={"grade": MODEL, "extract_session": MODEL})
+    llm = LlmClient(
+        adapter, sessions, models={"grade": MODEL, "extract_session": MODEL}, quota_guard=NoQuota()
+    )
     app.dependency_overrides[get_llm_client] = lambda: llm
     return TestClient(app, headers={SERVICE_TOKEN_HEADER: TOKEN})
 

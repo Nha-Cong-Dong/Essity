@@ -1,11 +1,9 @@
 """allow the task extract_session in pipeline_run and llm_call (T4.10)
 
-Revision ID: 0003
-Revises: 0002
+Revision ID: 0004
+Revises: 0003
 Create Date: 2026-10-28 09:00:00.000000
 
-PR #46 (T2.11) adds a migration 0003 too: whichever merges second renumbers this one to the next
-free number and points `down_revision` at the other (alembic must show one head).
 Downgrade only works while no row has task `extract_session`.
 """
 
@@ -14,8 +12,8 @@ from collections.abc import Sequence
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0003"
-down_revision: str | Sequence[str] | None = "0002"
+revision: str = "0004"
+down_revision: str | Sequence[str] | None = "0003"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

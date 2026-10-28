@@ -2,6 +2,7 @@ from collections.abc import Iterator
 
 import pytest
 from sqlalchemy import Engine, text
+from sqlalchemy.orm import Session, sessionmaker
 
 
 @pytest.fixture(autouse=True)
@@ -14,3 +15,8 @@ def _no_extract_rows_left(request: pytest.FixtureRequest) -> Iterator[None]:
         with engine.begin() as connection:
             connection.execute(text("DELETE FROM llm_call WHERE task = 'extract_session'"))
             connection.execute(text("DELETE FROM pipeline_run WHERE task = 'extract_session'"))
+
+
+@pytest.fixture
+def sessions(engine: Engine) -> sessionmaker[Session]:
+    return sessionmaker(engine, expire_on_commit=False)

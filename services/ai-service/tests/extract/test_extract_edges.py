@@ -30,6 +30,7 @@ from ai_service.tasks.extract_session import (
     resolve_pages,
 )
 from tests.extract.helpers import docs_of, document, extract_body, output, printed_labels, rng
+from tests.llm.helpers import NoQuota
 
 TOKEN = "test-service-token-0123456789abcdef"
 MODEL = "claude-haiku-5-5"
@@ -194,7 +195,9 @@ def app(engine: Engine) -> Iterator[tuple[FastAPI, sessionmaker[Session]]]:
 
 def client_with(app: tuple[FastAPI, sessionmaker[Session]], adapter: Scripted) -> TestClient:
     fastapi_app, sessions = app
-    llm = LlmClient(adapter, sessions, models={"grade": MODEL, "extract_session": MODEL})
+    llm = LlmClient(
+        adapter, sessions, models={"grade": MODEL, "extract_session": MODEL}, quota_guard=NoQuota()
+    )
     fastapi_app.dependency_overrides[get_llm_client] = lambda: llm
     return TestClient(fastapi_app, headers={SERVICE_TOKEN_HEADER: TOKEN})
 

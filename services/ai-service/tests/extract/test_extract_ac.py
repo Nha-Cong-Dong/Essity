@@ -22,6 +22,7 @@ from ai_service.main import create_app
 from ai_service.security import SERVICE_TOKEN_HEADER
 from ai_service.tasks.extract_session import fake_extract
 from tests.extract.helpers import TODAY, document, extract_body
+from tests.llm.helpers import NoQuota
 
 TOKEN = "test-service-token-0123456789abcdef"
 
@@ -35,6 +36,7 @@ def client(engine: Engine) -> Iterator[TestClient]:
         FakeAdapter({"extract_session": fake_extract}),
         sessions,
         models={"grade": "claude-haiku-5-5", "extract_session": "claude-haiku-5-5"},
+        quota_guard=NoQuota(),
     )
     app.dependency_overrides[get_llm_client] = lambda: llm
     yield TestClient(app, headers={SERVICE_TOKEN_HEADER: TOKEN})
