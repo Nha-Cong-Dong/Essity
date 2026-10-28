@@ -8,3 +8,9 @@ else
   aws --endpoint-url "$S3_ENDPOINT" s3api create-bucket --bucket "$S3_BUCKET"
   echo "bucket $S3_BUCKET created"
 fi
+
+# T4.6: the browser PUTs a PDF straight to the bucket from the web origin (ADR-0012), so the
+# bucket answers that origin's CORS preflight. Applied on every run: it replaces the old rules.
+cors="{\"CORSRules\":[{\"AllowedOrigins\":[\"$WEB_ORIGIN\"],\"AllowedMethods\":[\"PUT\"],\"AllowedHeaders\":[\"*\"],\"ExposeHeaders\":[\"ETag\"],\"MaxAgeSeconds\":600}]}"
+aws --endpoint-url "$S3_ENDPOINT" s3api put-bucket-cors --bucket "$S3_BUCKET" --cors-configuration "$cors"
+echo "bucket $S3_BUCKET allows PUT from $WEB_ORIGIN"
