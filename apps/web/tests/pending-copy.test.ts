@@ -46,6 +46,10 @@ const PENDING_COPY: [file: string, text: string][] = [
   ["components/review/review-screen.tsx", "Về trang chính"],
   ["components/review/review-screen.tsx", "Về trang chính"],
   ["components/review/review-screen.tsx", "Về trang chính"],
+  // T5.4 question reason (screens-html/screens/answer.html)
+  ["components/question-reason.tsx", "Câu mới, bạn chưa ôn lần nào."],
+  ["components/question-reason.tsx", "Khả năng bạn còn nhớ khoảng {percent}%, lần ôn trước là hôm nay."],
+  ["components/question-reason.tsx", "Khả năng bạn còn nhớ khoảng {percent}%, lần ôn trước cách đây {days} ngày."],
   // T2.17 summary (screens-html/screens/session-done.html)
   ["components/review/summary.tsx", "Đã lưu phần bạn làm"],
   ["components/review/summary.tsx", "Xong phiên hôm nay"],

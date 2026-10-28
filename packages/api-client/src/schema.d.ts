@@ -679,6 +679,7 @@ export interface components {
             id: string;
             /** Prompt */
             prompt: string;
+            reason: components["schemas"]["ReasonOut"];
             subject: components["schemas"]["SubjectRef"];
             /** Unit Ids */
             unit_ids: string[];
@@ -692,6 +693,23 @@ export interface components {
             id: string;
             /** Prompt */
             prompt: string;
+        };
+        /**
+         * ReasonOut
+         * @description Why this question (T5.4, US-07): data, the web writes the words. `review`: the weakest of
+         *     its units' estimated recall (0..1) and the whole days since that unit was last reviewed;
+         *     `new`: never reviewed, both null.
+         */
+        ReasonOut: {
+            /** Days Since Last */
+            days_since_last: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "review" | "new";
+            /** Retrievability */
+            retrievability: number | null;
         };
         /** RegisterBody */
         RegisterBody: {

@@ -480,6 +480,9 @@
             "title": "Prompt",
             "type": "string"
           },
+          "reason": {
+            "$ref": "#/components/schemas/ReasonOut"
+          },
           "subject": {
             "$ref": "#/components/schemas/SubjectRef"
           },
@@ -496,7 +499,8 @@
           "id",
           "prompt",
           "subject",
-          "unit_ids"
+          "unit_ids",
+          "reason"
         ],
         "title": "QuestionOut",
         "type": "object"
@@ -518,6 +522,48 @@
           "prompt"
         ],
         "title": "QuestionRef",
+        "type": "object"
+      },
+      "ReasonOut": {
+        "description": "Why this question (T5.4, US-07): data, the web writes the words. `review`: the weakest of\nits units' estimated recall (0..1) and the whole days since that unit was last reviewed;\n`new`: never reviewed, both null.",
+        "properties": {
+          "days_since_last": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Since Last"
+          },
+          "kind": {
+            "enum": [
+              "review",
+              "new"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "retrievability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrievability"
+          }
+        },
+        "required": [
+          "kind",
+          "retrievability",
+          "days_since_last"
+        ],
+        "title": "ReasonOut",
         "type": "object"
       },
       "RegisterBody": {

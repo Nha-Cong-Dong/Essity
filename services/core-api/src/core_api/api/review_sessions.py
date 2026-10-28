@@ -4,7 +4,7 @@ one session is open per learning day (plan C4). Submitting stores the answer; gr
 T2.13, so a submitted answer is "pending" here."""
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 from zoneinfo import ZoneInfo
 
@@ -15,6 +15,7 @@ from core_api.api.deps import Now, VerifiedUser, verified_user
 from core_api.api.text import AnswerText
 from core_api.db.models import Attempt
 from core_api.db.session import DbSession
+from core_api.domain.explain import explain
 from core_api.domain.learning_day import learning_day
 from core_api.domain.today import compose_today
 from core_api.repositories.question import QuestionNotFoundError, QuestionUnitRepository
@@ -53,11 +54,22 @@ class SubjectRef(BaseModel):
     name: str
 
 
+class ReasonOut(BaseModel):
+    """Why this question (T5.4, US-07): data, the web writes the words. `review`: the weakest of
+    its units' estimated recall (0..1) and the whole days since that unit was last reviewed;
+    `new`: never reviewed, both null."""
+
+    kind: Literal["review", "new"]
+    retrievability: float | None
+    days_since_last: int | None
+
+
 class QuestionOut(BaseModel):
     id: uuid.UUID
     prompt: str
     subject: SubjectRef
     unit_ids: list[uuid.UUID]  # what "Không cần ôn phần này" skips (T2.23)
+    reason: ReasonOut
 
 
 class AttemptOut(BaseModel):
@@ -191,7 +203,7 @@ def _current(steps: list[SessionStep]) -> SessionStep | None:
 
 
 def current_out(
-    ended: bool, steps: list[SessionStep], user_id: uuid.UUID, session: DbSession
+    ended: bool, steps: list[SessionStep], user_id: uuid.UUID, session: DbSession, now: datetime
 ) -> CurrentOut | DoneOut:
     """What the session screen shows next: the first question still to ask, or "done"."""
     step = _current(steps)
@@ -210,6 +222,10 @@ def current_out(
             unit_ids=[
                 u.id for u in QuestionUnitRepository(session, user_id).units_of(step.question.id)
             ],
+            reason=ReasonOut.model_validate(
+                explain(TodayRepository(session, user_id).schedules_of(step.question.id), now),
+                from_attributes=True,
+            ),
         ),
         attempt=_attempt_out(step.attempt) if step.attempt is not None else None,
     )
@@ -217,10 +233,10 @@ def current_out(
 
 @router.get("/review-sessions/{session_id}/current")
 def current_question(
-    session_id: uuid.UUID, user: VerifiedUser, session: DbSession
+    session_id: uuid.UUID, user: VerifiedUser, session: DbSession, now: Now
 ) -> CurrentOut | DoneOut:
     ended, steps = _open_steps(session_id, user.id, session)
-    return current_out(ended, steps, user.id, session)
+    return current_out(ended, steps, user.id, session, now)
 
 
 @router.post("/review-sessions/{session_id}/attempts", status_code=status.HTTP_201_CREATED)

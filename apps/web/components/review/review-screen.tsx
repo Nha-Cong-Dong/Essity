@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnswerBox, clock, type SaveState } from "@/components/review/answer-box";
 import { GradeResult } from "@/components/review/grade-result";
 import { ResultActions } from "@/components/review/result-actions";
+import { QuestionReason } from "@/components/question-reason";
 import { Summary } from "@/components/review/summary";
 import { FocusShell } from "@/components/shells";
 import { Button } from "@/components/ui/button";
@@ -364,6 +365,7 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
         <h1 id="question" className="m-0 mt-3.5 font-display text-question wrap-anywhere">
           {step.question.prompt}
         </h1>
+        <QuestionReason reason={step.question.reason} />
         {sent ? (
           <Written sent={sent} />
         ) : (

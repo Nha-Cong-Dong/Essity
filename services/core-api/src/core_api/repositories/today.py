@@ -118,6 +118,45 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             for row, subject_id, question_id in rows
         ]
 
+    def schedules_of(self, question_id: uuid.UUID) -> Sequence[State]:
+        """The core schedules of the active, not skipped units of a question (US-07): empty when
+        none of them has been reviewed."""
+        rows = self.session.scalars(
+            select(MemoryState)
+            .join(
+                QuestionUnit,
+                and_(
+                    QuestionUnit.unit_id == MemoryState.unit_id,
+                    QuestionUnit.user_id == self.user_id,
+                ),
+            )
+            .join(
+                KnowledgeUnit,
+                and_(
+                    KnowledgeUnit.id == MemoryState.unit_id,
+                    KnowledgeUnit.user_id == self.user_id,
+                ),
+            )
+            .where(
+                MemoryState.user_id == self.user_id,
+                MemoryState.facet == "core",
+                QuestionUnit.question_id == question_id,
+                KnowledgeUnit.status == "active",
+                KnowledgeUnit.skipped_at.is_(None),
+            )
+        ).all()
+        return [
+            State(
+                phase=Phase(row.phase),
+                step=row.step,
+                stability=row.stability,
+                difficulty=row.difficulty,
+                due=row.due,
+                last_review=row.last_review,
+            )
+            for row in rows
+        ]
+
     def new_questions(self) -> Sequence[NewQuestion]:
         """Active questions with a unit never asked and none skipped (a question of several units
         stays new while one of them has no schedule: T2.23 fixes the old "none reviewed" rule,
