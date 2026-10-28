@@ -16,8 +16,9 @@ On its `MAX_DELIVERIES`-th delivery a failing entry goes to the dead letter stre
 E9). A lost connection (the database or Redis down) is not a failure of the event: the entry is
 put back with its delivery count as it was (`is_outage`), so downtime does not use up deliveries.
 
-Handlers are added by the tasks that handle each event (T4.8 on); `HANDLERS` is empty until then,
-so there is no Compose service yet: a consumer without handlers would dead-letter every event.
+Handlers are added by the tasks that handle each event (T4.8 on); `HANDLERS` holds the document
+ones so far, and there is no Compose service until every event has one: the others would be
+dead-lettered.
 Logs hold ids, counts and class names, never an event (ADR-0013). Not shared with ai-service's
 consumer by import (ADR-0003, PLAN T4.4).
 """
@@ -46,6 +47,7 @@ from sqlalchemy import Engine
 from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
 from sqlalchemy.orm import Session
 
+from core_api.handlers.document_indexed import on_document_failed, on_document_indexed
 from core_api.logging import user_id_var
 from core_api.messaging.dead_letter import (
     DEAD_STREAM,
@@ -77,7 +79,10 @@ SPAN_NAME = "events.ai process"
 
 Handler = Callable[[Session, Event], None]
 # By event type; filled by the tasks that handle each ai → core event (T4.8 on).
-HANDLERS: dict[str, Handler] = {}
+HANDLERS: dict[str, Handler] = {
+    "document.indexed.v1": on_document_indexed,
+    "document.failed.v1": on_document_failed,
+}
 # Every event_type in the contract, to tell an unknown type from a malformed known one.
 EVENT_TYPES = frozenset(
     get_args(model.model_fields["event_type"].annotation)[0]

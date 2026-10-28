@@ -275,6 +275,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/documents/{document_id}/toc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Toc
+         * @description The table of contents of an indexed document (US-02 AC2), read from its derived file.
+         *
+         *     Errors: 404 `document_not_found` (another user's too); 409 `not_indexed`; 502 `toc_invalid`
+         *     (the file is not JSON or too large); 503 `storage_unavailable`.
+         */
+        get: operations["read_toc_v1_documents__document_id__toc_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/grades/{grade_id}/override": {
         parameters: {
             query?: never;
@@ -612,11 +635,15 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Failure Reason */
+            failure_reason: string | null;
             /**
              * Id
              * Format: uuid
              */
             id: string;
+            /** Page Count */
+            page_count: number | null;
             /** Short Name */
             short_name: string;
             /** Size Bytes */
@@ -628,6 +655,8 @@ export interface components {
              * Format: uuid
              */
             subject_id: string;
+            /** Unreadable Pages */
+            unreadable_pages: number[];
         };
         /** DoneOut */
         DoneOut: {
@@ -920,6 +949,16 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** TocOut */
+        TocOut: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Toc */
+            toc: unknown;
         };
         /** TodayOut */
         TodayOut: {
@@ -1479,6 +1518,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    read_toc_v1_documents__document_id__toc_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TocOut"];
+                };
+            };
+            /** @description The document is not indexed (yet) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
