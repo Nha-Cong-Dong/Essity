@@ -121,8 +121,8 @@ class Settings(DatabaseSettings):
     # Upload limits (T4.5; anti-abuse with open sign-up). Byte totals count files being uploaded
     # as well as stored ones. The global cap keeps the store under R2's free 10 GB.
     document_max_bytes: int = Field(default=100 * MIB, gt=0)
-    # 500 MiB is a placeholder until the user decides between 500 MiB and 1 GiB (28/10).
-    document_quota_bytes: int = Field(default=500 * MIB, gt=0)
+    # 1 GiB per account, decided by the user on 26/10 (PLAN.md:770).
+    document_quota_bytes: int = Field(default=1 * GIB, gt=0)
     storage_global_quota_bytes: int = Field(default=8 * GIB, gt=0)
     document_uploads_per_hour: int = Field(default=30, ge=1)
     # Each confirm calls the store (paid per call on R2): retries are fine, a loop is not.
