@@ -279,6 +279,31 @@ def confirm_upload(
     return _out(document)
 
 
+@router.get("/subjects/{subject_id}/documents", response_model=list[DocumentOut])
+def list_documents(
+    subject_id: uuid.UUID, user: VerifiedUser, session: DbSession, response: Response
+) -> list[DocumentOut]:
+    """The subject's documents, oldest first (T4.9). Errors: 404 `subject_not_found` (another
+    user's too)."""
+    response.headers["Cache-Control"] = "no-store"
+    if SubjectRepository(session, user.id).get(subject_id) is None:
+        raise _error(404, "subject_not_found")
+    return [_out(d) for d in DocumentRepository(session, user.id).of_subject(subject_id)]
+
+
+@router.get("/documents/{document_id}", response_model=DocumentOut)
+def read_document(
+    document_id: uuid.UUID, user: VerifiedUser, session: DbSession, response: Response
+) -> DocumentOut:
+    """One document with its processing status (T4.9). Errors: 404 `document_not_found`
+    (another user's too)."""
+    response.headers["Cache-Control"] = "no-store"
+    document = DocumentRepository(session, user.id).get(document_id)
+    if document is None:
+        raise _error(404, "document_not_found")
+    return _out(document)
+
+
 # What ai-service writes at `toc_key`: a few hundred sections at most; more is not a table of
 # contents core should relay.
 TOC_MAX_BYTES = 1 << 20

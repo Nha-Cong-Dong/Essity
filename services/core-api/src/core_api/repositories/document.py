@@ -51,6 +51,16 @@ class DocumentRepository(UserScopedRepository[Document]):
             .execution_options(populate_existing=True)
         ).one_or_none()
 
+    def of_subject(self, subject_id: uuid.UUID) -> list[Document]:
+        """This user's documents of one subject, oldest first (id breaks ties)."""
+        return list(
+            self.session.scalars(
+                self._select()
+                .where(Document.subject_id == subject_id)
+                .order_by(Document.created_at, Document.id)
+            )
+        )
+
     def reserve(
         self,
         subject_id: uuid.UUID,
