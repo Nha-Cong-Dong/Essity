@@ -63,6 +63,11 @@ const PENDING_COPY: [file: string, text: string][] = [
   ["components/subjects/uploader.tsx", "Thả file vào đây hoặc bấm để chọn"],
   ["components/subjects/uploader.tsx", "Chỉ PDF, tối đa 100 MB mỗi file"],
   ["components/subjects/uploader.tsx", "{uploadMessage(state.code)}"],
+  // T4.9 documents and toc (subject.html, toc.html); the failure sentences live in document-list.tsx
+  ["components/documents/document-list.tsx", "{failureText(doc.failure_reason)}"],
+  ["components/documents/toc-view.tsx", "Tài liệu này không có mục lục."],
+  ["components/documents/toc-view.tsx", "Chưa đọc được mục lục của tài liệu này."],
+  ["components/documents/toc-view.tsx", "Tài liệu này chưa đọc xong. Mục lục sẽ hiện khi đọc xong."],
 ];
 
 function sources(dir: string): string[] {
