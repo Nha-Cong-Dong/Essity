@@ -4,7 +4,7 @@ same `record_grade` as T2.13. Storage is a double; the database is real."""
 
 import json
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -142,6 +142,72 @@ def test_regrade_while_queued_does_not_ask_the_ai_or_queue_again(
     again = Stub()
     _, outcome = queue(desk, storage, again, attempt=attempt)
     assert outcome.grading == "in_progress" and again.calls == []
+    assert len(requested(desk)) == 1
+
+
+def _grade_at(desk: Desk, storage: FakeStorage, attempt: uuid.UUID, stub: Stub, now: datetime):  # noqa: ANN202
+    from core_api.grading import grade_attempt
+
+    return grade_attempt(
+        desk.session, desk.user, attempt, stub, environment="production", storage=storage, now=now
+    )
+
+
+def test_a_queued_grading_older_than_the_limit_is_asked_again(
+    desk: Desk, storage: FakeStorage
+) -> None:
+    attempt, _ = queue(desk, storage)
+    later = NOW + timedelta(hours=1, seconds=1)
+    outcome = _grade_at(desk, storage, attempt, Stub(failure=UNAVAILABLE), later)
+    assert outcome.grading == "in_progress"
+    events = requested(desk)
+    assert len(events) == 2
+    assert events[0].payload["request_key"] != events[1].payload["request_key"]
+    job = GradeJobRepository(desk.session, desk.user.id).for_attempt(attempt)
+    assert job is not None and job.updated_at == later
+
+
+def test_a_queued_grading_within_the_limit_stays_in_progress(
+    desk: Desk, storage: FakeStorage
+) -> None:
+    attempt, _ = queue(desk, storage)
+    again = Stub()
+    outcome = _grade_at(desk, storage, attempt, again, NOW + timedelta(minutes=59))
+    assert outcome.grading == "in_progress" and again.calls == []
+    assert len(requested(desk)) == 1
+
+
+def test_the_view_of_an_overdue_queued_grading_offers_regrade(
+    desk: Desk, storage: FakeStorage
+) -> None:
+    from core_api.repositories.review import AttemptRepository
+
+    attempt, _ = queue(desk, storage)
+    found = AttemptRepository(desk.session, desk.user.id).get(attempt)
+    assert found is not None
+    fresh = attempt_view(desk.session, desk.user.id, found, None, now=NOW + timedelta(minutes=5))
+    assert fresh.grading == "in_progress"
+    late = attempt_view(desk.session, desk.user.id, found, None, now=NOW + timedelta(hours=2))
+    assert (late.grading, late.failure) == ("failed", "unavailable")
+
+
+def test_another_user_cannot_ask_an_overdue_grading_again(
+    desk: Desk, storage: FakeStorage, two_users: tuple[User, User]
+) -> None:
+    from core_api.grading import grade_attempt
+    from core_api.repositories.review import AttemptNotFoundError
+
+    attempt, _ = queue(desk, storage)
+    with pytest.raises(AttemptNotFoundError):
+        grade_attempt(
+            desk.session,
+            two_users[1],
+            attempt,
+            Stub(),
+            environment="production",
+            storage=storage,
+            now=NOW + timedelta(hours=5),
+        )
     assert len(requested(desk)) == 1
 
 

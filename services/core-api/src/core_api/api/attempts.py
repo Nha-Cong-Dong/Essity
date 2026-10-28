@@ -21,7 +21,7 @@ from core_api.clients.ai_client import AiServiceClient, Failure
 from core_api.config import get_settings
 from core_api.db.models import Attempt, Grade
 from core_api.db.session import DbSession
-from core_api.grading import GradingOutcome, grade_attempt
+from core_api.grading import GradingOutcome, grade_attempt, queued_in_progress
 from core_api.repositories.grade_job import GradeJobRepository
 from core_api.repositories.question import QuestionRepository, QuestionUnitRepository
 from core_api.repositories.review import (
@@ -127,7 +127,11 @@ def result_of(session: DbSession, user_id: uuid.UUID, attempt: Attempt, grade: G
 
 
 def attempt_view(
-    session: DbSession, user_id: uuid.UUID, attempt: Attempt, outcome: GradingOutcome | None
+    session: DbSession,
+    user_id: uuid.UUID,
+    attempt: Attempt,
+    outcome: GradingOutcome | None,
+    now: dt.datetime | None = None,
 ) -> AttemptView:
     question = QuestionRepository(session, user_id).get(attempt.question_id)
     if attempt.status != "submitted":
@@ -151,8 +155,10 @@ def attempt_view(
         else:
             # Waiting for ai-service (T4.19), or its result could not become a grade.
             job = GradeJobRepository(session, user_id).for_attempt(attempt.id)
-            if job is not None and job.status == "queued":
+            if job is not None and queued_in_progress(job, now or dt.datetime.now(dt.UTC)):
                 outcome = GradingOutcome("in_progress")
+            elif job is not None and job.status == "queued":
+                outcome = GradingOutcome("failed", "unavailable")  # lost in the queue: "Chấm lại"
             else:
                 outcome = GradingOutcome("failed", job.failure if job else None)  # type: ignore[arg-type]
     result = None
@@ -220,12 +226,14 @@ def regrade_attempt(
 
 
 @router.get("/attempts/{attempt_id}")
-def read_attempt(attempt_id: uuid.UUID, user: VerifiedUser, session: DbSession) -> AttemptView:
+def read_attempt(
+    attempt_id: uuid.UUID, user: VerifiedUser, session: DbSession, now: Now
+) -> AttemptView:
     """The attempt as the answer and result screens show it (after a reload too). Never grades."""
     found = AttemptRepository(session, user.id).get(attempt_id)
     if found is None:
         raise _error(status.HTTP_404_NOT_FOUND, "attempt_not_found")
-    return attempt_view(session, user.id, found, None)
+    return attempt_view(session, user.id, found, None, now)
 
 
 def _graded_view(

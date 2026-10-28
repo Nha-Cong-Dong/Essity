@@ -23,7 +23,7 @@ import logging
 import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Literal, Protocol
 from zoneinfo import ZoneInfo
 
@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session
 
 from core_api.clients.ai_client import Failure, Graded, NotGraded
 from core_api.clients.storage import ObjectStorage, StorageUnavailableError
-from core_api.db.models import Attempt, Grade, User
+from core_api.db.models import Attempt, Grade, GradeJob, User
 from core_api.domain.grading import (
     AnchorIn,
     CheckedGrade,
@@ -61,6 +61,9 @@ from core_api.repositories.subject import SubjectNotFoundError, SubjectRepositor
 from core_api.repositories.unit import AnchorRepository, KnowledgeUnitRepository
 
 _log = logging.getLogger(__name__)
+# A queued grading that has not come back by then is lost (an event in the dead letter): the
+# screen offers "Chấm lại" and asking again queues it anew (PR #49 review, 28/10).
+QUEUED_GRADING_LIMIT = timedelta(hours=1)
 Grading = Literal["graded", "failed", "in_progress"]
 
 
@@ -104,7 +107,7 @@ def grade_attempt(
     if existing is not None:
         return GradingOutcome("graded", grade=existing)
     job = GradeJobRepository(session, user.id).for_attempt(attempt_id)
-    if job is not None and job.status == "queued":
+    if job is not None and queued_in_progress(job, now or _now()):
         return GradingOutcome("in_progress")  # asked once; ai-service answers when it is back
 
     question = QuestionRepository(session, user.id).get(attempt.question_id)
@@ -172,6 +175,11 @@ def units_of(session: Session, user_id: uuid.UUID, question_id: uuid.UUID) -> li
 
 def _now() -> datetime:
     return datetime.now(UTC)
+
+
+def queued_in_progress(job: GradeJob, now: datetime) -> bool:
+    """A job still waiting for ai-service, and not for longer than `QUEUED_GRADING_LIMIT`."""
+    return job.status == "queued" and now - job.updated_at <= QUEUED_GRADING_LIMIT
 
 
 def _queued(
