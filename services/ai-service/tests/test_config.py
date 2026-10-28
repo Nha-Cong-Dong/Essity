@@ -108,3 +108,20 @@ def test_t210_database_url_is_required(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_t210_disabled_starts_anywhere_without_a_key(monkeypatch: pytest.MonkeyPatch) -> None:
     # T0.13 must be able to deploy before the user turns a key on.
     assert settings_for(monkeypatch, "production", "disabled", None).llm_provider == "disabled"
+
+
+# --- T4.3: Redis, for the event consumer only ---
+
+
+def test_t43_redis_url_is_optional_for_the_api(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Red when: redis_url is required, and the grading API refuses to start without Redis.
+    monkeypatch.delenv("AI_REDIS_URL", raising=False)
+    assert Settings(_env_file=None).redis_url is None  # pyright: ignore[reportCallIssue]
+
+
+def test_t43_redis_url_is_a_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Red when: redis_url is a plain str, and its password prints with the settings.
+    monkeypatch.setenv("AI_REDIS_URL", "redis://:hunter2-not-real@redis:6379/0")
+    settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
+    assert settings.redis_url is not None
+    assert "hunter2" not in repr(settings)

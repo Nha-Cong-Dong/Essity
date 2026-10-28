@@ -18,6 +18,7 @@ dependencies = [
     "anthropic>=1.13.0,<2",
     "pypdfium2>=5.14.0",
     "pillow>=12.3.0",
+    "redis>=8.1",
 ]
 
 [dependency-groups]

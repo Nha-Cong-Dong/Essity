@@ -91,3 +91,21 @@ class LlmCall(Base):
     # A stable code (provider_error, timeout, invalid_output, ...), never an exception message.
     error_code: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ProcessedEvent(Base):
+    """An event a consumer has handled (T4.3, ADR-0006: delivery is at least once).
+
+    The consumer inserts the row in the same transaction as the handler's own writes, so the
+    two commit or roll back together: a redelivered event finds the row and is skipped. Ids
+    only: nothing here belongs to a user, so deleting a user (T6.3) leaves this table alone.
+    """
+
+    __tablename__ = "processed_event"
+
+    # The consumer group (`ai-service`): another group reading the same stream claims apart.
+    consumer: Mapped[str] = mapped_column(primary_key=True)
+    event_id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    processed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

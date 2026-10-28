@@ -30,6 +30,9 @@ class Settings(DatabaseSettings):
     # Shared secret core-api sends in X-Service-Token. No default: the service refuses to start
     # without one rather than run unprotected.
     service_token: SecretStr = Field(min_length=32)
+    # redis://... for the event consumer (T4.3). Optional: the grading API does not need Redis,
+    # and the consumer refuses to start without it. Secret because it may hold a password.
+    redis_url: SecretStr | None = None
 
     # Who grades (T2.10). The only place a provider is chosen: the task table picks models.
     # No default: a deploy must say it. `fake` grades without a model and only runs in local and
