@@ -33,7 +33,7 @@ from ai_service.clients.storage import (
     ObjectTooLarge,
     StorageUnavailable,
 )
-from ai_service.messaging.consumer import Deferred
+from ai_service.messaging.consumer import Deferred, keys_belong_to_user
 from ai_service.messaging.dead_letter import STREAM_MAXLEN
 from ai_service.messaging.envelope import (
     DocumentFailed,
@@ -204,6 +204,10 @@ class IndexDocument:
                 )
             )
 
+        # F2 again (the consumer already dead-letters it): a key outside the event's user is
+        # refused before the storage is touched.
+        if not keys_belong_to_user(event):
+            return fail("unsupported")
         named = _RAW_KEY.search(payload.object_key)
         if named is None or named.group(2) != "pdf":
             return fail("unsupported")

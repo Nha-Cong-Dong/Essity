@@ -274,3 +274,16 @@ def test_t47_registered_for_document_uploaded() -> None:
 
     handlers = build_handlers(redis=None, storage=FakeStorage())  # pyright: ignore[reportArgumentType]
     assert "document.uploaded.v1" in handlers
+
+
+def test_t47_key_of_another_user_is_failed_without_reading_storage(
+    handler: IndexDocument, storage: FakeStorage, redis_client: Redis, stream: str, session: Session
+) -> None:
+    event = upload(storage, deck())
+    other = event.model_copy(update={"user_id": uuid.uuid4()})
+    storage.get_error = AssertionError("storage must not be read")
+    handler(session, other)
+    (out,) = sent(redis_client, stream)
+    assert isinstance(out, DocumentFailedEvent)
+    assert out.payload.reason == "unsupported"
+    assert storage.puts == []
