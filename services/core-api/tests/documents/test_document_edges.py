@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from accounts import signed_in
 from clock import future_exam
 from core_api.api import documents as documents_api
+from core_api.clients.storage import StorageUnavailableError
 from core_api.config import get_settings
 from core_api.db.models import Document, Outbox
 from core_api.jobs import document_cleanup
@@ -283,3 +284,55 @@ def test_a_confirm_that_waited_for_the_row_sees_it_as_the_other_left_it(
         assert isinstance(locked, Document), locked
         assert locked.status == "uploaded"
         second.rollback()
+
+
+class _DownAfterFirstDelete(FakeStorage):
+    """Deletes one file, then the store goes down."""
+
+    def delete(self, key: str) -> None:
+        if self.deleted:
+            raise StorageUnavailableError("storage unreachable (test)")
+        super().delete(key)
+
+
+def test_the_cleanup_job_keeps_what_it_cleared_before_the_store_went_down(
+    engine: Engine, account: Account, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Red when: the job rolls back, or does not commit, when the store fails mid-run: the row
+    # whose file is already deleted comes back, a row with no file behind it (feature-tester
+    # round 1 on 3768cfe, mutation M37 `commit` -> `rollback` survived every other test).
+    long_ago = datetime(2000, 1, 1, tzinfo=UTC)  # first in the job's presigned_at order
+    with Session(engine) as setup:
+        first = pending_document(setup, account, long_ago)
+        other, _ = SubjectRepository(setup, account.user_id).create_with_exam(
+            "Toán", future_exam(60)
+        )
+        setup.flush()
+        second, _ = DocumentRepository(setup, account.user_id).reserve(
+            other.id,
+            sha256="cd" * 32,
+            size_bytes=10,
+            short_name="Sau",
+            now=long_ago + timedelta(seconds=1),
+            quota_bytes=10**12,
+            global_quota_bytes=10**15,
+        )
+        ids, first_key = (first.id, second.id), first.object_key
+        setup.commit()
+    storage = _DownAfterFirstDelete()
+
+    class FakeS3:
+        @staticmethod
+        def from_settings(_: object) -> FakeStorage:
+            return storage
+
+    monkeypatch.setattr(document_cleanup, "S3Storage", FakeS3)
+    monkeypatch.setattr(document_cleanup, "get_engine", lambda: engine)
+
+    with pytest.raises(StorageUnavailableError):
+        document_cleanup.document_cleanup_job({})
+
+    assert storage.deleted == [first_key]
+    with Session(engine) as session:
+        assert session.get(Document, ids[0]) is None  # its file went: its row too, for good
+        assert session.get(Document, ids[1]) is not None  # its file is still there: kept
