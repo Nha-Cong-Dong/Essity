@@ -333,27 +333,22 @@ describe("SubjectList day count (DESIGN.md §6.8)", () => {
   });
 });
 
-describe("UploadStep (US-01 AC7, plan K5)", () => {
+describe("UploadStep (US-01 AC7, plan K5; T4.6)", () => {
   beforeEach(() => {
-    render(<UploadStep name="Mạng máy tính" />);
+    render(<UploadStep name="Mạng máy tính" subjectId="9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b" />);
   });
 
-  it("US-01 AC7: names the subject, says \"Sắp có\", and offers \"Làm sau\" back to /subjects", () => {
+  it("US-01 AC7: names the subject and offers \"Làm sau\" back to /subjects", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Tải tài liệu cho Mạng máy tính");
-    expect(screen.getByText("Sắp có")).toBeTruthy();
+    expect(screen.queryByText("Sắp có")).toBeNull();
     expect(screen.getByRole("link", { name: "Làm sau" }).getAttribute("href")).toBe("/subjects");
   });
 
-  // Red when: a real uploader lands before T4.6, or the drop zone looks usable.
-  it("US-01 AC7: the drop zone is disabled and there is no file input", () => {
-    expect(document.querySelector('input[type="file"]')).toBeNull();
-    expect(document.querySelector('[aria-disabled="true"]')).not.toBeNull();
-  });
-
-  // Red when: the disabled zone tells the user to drop or pick a file it cannot take (flow-expert
-  // 23/10, the same kind of untrue sentence as /today's before plan K16).
-  it("US-01 AC7: asks for no action the page cannot do", () => {
-    expect(screen.queryByText(/Thả file|bấm để chọn/)).toBeNull();
-    expect(screen.getByText("Tải tài liệu sẽ có ở bản sau.")).toBeTruthy();
+  // Red when: the step goes back to a disabled zone, or takes files other than PDF.
+  it("T4.6: a file input takes PDFs, several at a time", () => {
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input.accept).toContain("pdf");
+    expect(input.multiple).toBe(true);
+    expect(document.querySelector('[aria-disabled="true"]')).toBeNull();
   });
 });
