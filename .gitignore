@@ -55,3 +55,6 @@ Thumbs.db
 
 # Working files of design skills (taste-skill)
 .taste-skill/
+
+# verify-screens output (apps/web)
+.verify/
