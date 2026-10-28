@@ -85,7 +85,7 @@ def skip_unit(
         if missing:
             _replace(session, user, held.subject_id, held.id, missing, now)
     steps = items.progress(held.id)
-    return SkipOut(session_id=held.id, next=current_out(False, steps, user.id, session))
+    return SkipOut(session_id=held.id, next=current_out(False, steps, user.id, session, now))
 
 
 def _replace(
