@@ -28,6 +28,7 @@ function step(prompt: string, unit_ids: string[], attemptId: string): Current {
       prompt,
       subject: { id: "9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b", name: "Địa lý" },
       unit_ids,
+      reason: { kind: "review", retrievability: 0.7, days_since_last: 6 },
     },
     attempt: { id: attemptId, status: "draft", answer_text: "", dont_remember: false },
   };

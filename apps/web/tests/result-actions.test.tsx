@@ -26,6 +26,7 @@ const current: Current = {
     prompt: "Vì sao có ngày và đêm?",
     subject: { id: "9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b", name: "Địa lý tự nhiên" },
     unit_ids: ["b2c3d4e5-6f7a-4b8c-9d0e-1f2a3b4c5d6e"],
+    reason: { kind: "review", retrievability: 0.7, days_since_last: 6 },
   },
   attempt: { id: ATTEMPT, status: "draft", answer_text: "", dont_remember: false },
 };

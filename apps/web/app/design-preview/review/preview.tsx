@@ -22,6 +22,7 @@ const STEP: Current = {
       "?",
     subject: { id: "0b8f1d2e-0000-4000-8000-000000000001", name: LONG_WORD },
     unit_ids: ["0b8f1d2e-0000-4000-8000-0000000000a1"],
+    reason: { kind: "review", retrievability: 0.7, days_since_last: 6 },
   },
   attempt: {
     id: ATTEMPT,
