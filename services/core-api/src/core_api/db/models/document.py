@@ -12,6 +12,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core_api.db.base import Base, UserOwned, not_blank, one_of
@@ -19,8 +20,11 @@ from core_api.db.base import Base, UserOwned, not_blank, one_of
 # pending: a URL was signed, the file is not confirmed yet. uploaded: confirmed, the event sent.
 # rejected: the file stored was not the PDF declared; its object is gone, the row stays (and
 # counts against the quota) until cleanup, so the URL cannot store it again unseen (plan R1).
-# T4.8 adds indexed/failed by swapping the CHECK.
-DOCUMENT_STATUSES = frozenset({"pending", "uploaded", "rejected"})
+# indexed / failed (T4.8): ai-service's answer to `document.uploaded.v1`; the file is confirmed
+# in both, so they hold `uploaded_at` too.
+DOCUMENT_STATUSES = frozenset({"pending", "uploaded", "rejected", "indexed", "failed"})
+UNCONFIRMED = ("pending", "rejected")
+FAILURE_REASONS = frozenset({"unreadable", "unsupported", "too_large", "internal_error"})
 
 
 class Document(UserOwned, Base):
@@ -47,7 +51,7 @@ class Document(UserOwned, Base):
         Index(
             "ix_document_unconfirmed",
             "presigned_at",
-            postgresql_where=text("status <> 'uploaded'"),
+            postgresql_where=text("status IN ('pending', 'rejected')"),
         ),
         CheckConstraint(one_of("status", DOCUMENT_STATUSES), name="status_known"),
         CheckConstraint(not_blank("short_name"), name="short_name_not_blank"),
@@ -61,8 +65,19 @@ class Document(UserOwned, Base):
             name="object_key_is_raw_key",
         ),
         CheckConstraint(
-            "(status = 'uploaded') = (uploaded_at IS NOT NULL)", name="uploaded_at_iff_uploaded"
+            "(status NOT IN ('pending', 'rejected')) = (uploaded_at IS NOT NULL)",
+            name="uploaded_at_iff_uploaded",
         ),
+        CheckConstraint(
+            "(status = 'indexed') = (run_id IS NOT NULL AND toc_key IS NOT NULL"
+            " AND page_labels_key IS NOT NULL AND page_text_key IS NOT NULL"
+            " AND thumbnails_prefix IS NOT NULL AND page_count IS NOT NULL)",
+            name="indexed_iff_derived",
+        ),
+        CheckConstraint(
+            "(status = 'failed') = (failure_reason IS NOT NULL)", name="failed_iff_reason"
+        ),
+        CheckConstraint(one_of("failure_reason", FAILURE_REASONS), name="failure_reason_known"),
         CheckConstraint("page_count IS NULL OR page_count >= 1", name="page_count_from_one"),
     )
 
@@ -75,4 +90,14 @@ class Document(UserOwned, Base):
     # When the last upload URL was signed: cleanup waits until it is long dead.
     presigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    page_count: Mapped[int | None] = mapped_column(Integer)  # set by T4.8
+    # Set by T4.8 from ai-service's answer. The files are keys under `derived/{run_id}/` (ADR-0012);
+    # core never copies their content, the table of contents is read from `toc_key` on request.
+    page_count: Mapped[int | None] = mapped_column(Integer)
+    run_id: Mapped[uuid.UUID | None]
+    toc_key: Mapped[str | None] = mapped_column(String(1024))
+    page_labels_key: Mapped[str | None] = mapped_column(String(1024))
+    page_text_key: Mapped[str | None] = mapped_column(String(1024))
+    thumbnails_prefix: Mapped[str | None] = mapped_column(String(1024))
+    # Pages with no text to read (scans), 1-based: the web offers reading them as images.
+    unreadable_pages: Mapped[list[int]] = mapped_column(ARRAY(Integer), server_default=text("'{}'"))
+    failure_reason: Mapped[str | None] = mapped_column(String(20))
