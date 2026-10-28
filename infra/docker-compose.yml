@@ -148,6 +148,22 @@ services:
       postgres:
         condition: service_healthy
 
+  # Sends the outbox to Redis Streams every second (T4.2, ADR-0006). On SIGTERM it finishes the
+  # round it is in (one batch, well under a second) and stops; a round cut short is sent again.
+  core-relay:
+    build: ../services/core-api
+    command: ["uv", "run", "--no-sync", "python", "-m", "core_api.messaging.relay"]
+    environment: *core-environment
+    stop_grace_period: 10s
+    # A round that fails is logged and retried, but the process can still die (out of memory,
+    # Redis refusing at start): events are owed, so bring it back.
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   ai-service:
     build: ../services/ai-service
     environment:

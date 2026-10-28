@@ -2,6 +2,8 @@
 
 from core_api.db.models.auth_session import AuthSession
 from core_api.db.models.email_token import EmailToken
+from core_api.db.models.outbox import Outbox
+from core_api.db.models.processed_event import ProcessedEvent
 from core_api.db.models.question import Question, QuestionUnit
 from core_api.db.models.review import (
     Attempt,
@@ -26,6 +28,8 @@ __all__ = [
     "GradeUnit",
     "KnowledgeUnit",
     "MemoryState",
+    "Outbox",
+    "ProcessedEvent",
     "Question",
     "QuestionUnit",
     "ReviewLog",

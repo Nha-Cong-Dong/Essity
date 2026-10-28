@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/grade.completed.v1.schema.json",
+  "title": "grade.completed.v1",
+  "description": "ai → core: the grade of an attempt is ready in the result file.",
+  "$ref": "envelope.schema.json",
+  "unevaluatedProperties": false,
+  "properties": {
+    "event_type": {
+      "const": "grade.completed.v1"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attempt_id",
+        "result_key"
+      ],
+      "properties": {
+        "attempt_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "result_key": {
+          "$ref": "envelope.schema.json#/$defs/object_key"
+        }
+      }
+    }
+  }
+}

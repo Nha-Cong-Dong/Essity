@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/session.processed.v1.schema.json",
+  "title": "session.processed.v1",
+  "description": "ai → core: the session is processed; the key names the result file (units, anchors, questions).",
+  "$ref": "envelope.schema.json",
+  "unevaluatedProperties": false,
+  "properties": {
+    "event_type": {
+      "const": "session.processed.v1"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "study_session_id",
+        "run_id",
+        "result_key"
+      ],
+      "properties": {
+        "study_session_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "run_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "result_key": {
+          "$ref": "envelope.schema.json#/$defs/object_key"
+        }
+      }
+    }
+  }
+}

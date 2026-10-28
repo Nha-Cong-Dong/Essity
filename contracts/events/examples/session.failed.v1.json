@@ -1,0 +1,15 @@
+{
+  "event_id": "6e5d4c3b-2a19-4807-a6b5-c4d3e2f1a006",
+  "event_type": "session.failed.v1",
+  "schema_version": 1,
+  "occurred_at": "2026-10-25T08:30:00.123456Z",
+  "user_id": "3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11",
+  "trace_context": {
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+  },
+  "payload": {
+    "study_session_id": "5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f",
+    "run_id": "9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b",
+    "reason": "llm_unavailable"
+  }
+}

@@ -64,6 +64,24 @@ def test_sensitive_fields_are_dropped_with_their_values(
     assert line["status"] == 200
 
 
+def test_messaging_fields_are_logged(log_lines: Lines) -> None:
+    # Red when: the relay, the consumer or job_health log a count or an id that is dropped, so
+    # an outage of the event pipeline leaves no trace (T4.2, T4.4, plan Y8).
+    fields = {
+        "event_id": "6e5d4c3b-2a19-4807-a6b5-c4d3e2f1a000",
+        "event_type": "session.confirmed.v1",
+        "event_count": 3,
+        "error_type": "ConnectionError",
+        "deliveries": 5,
+        "reason": "invalid_envelope",
+        "outbox_unsent_stale": 2,
+    }
+    logging.getLogger("core_api.messaging").info("relayed", extra=fields)
+    [line] = log_lines()
+    assert {name: line.get(name) for name in fields} == fields
+    assert "dropped_fields" not in line
+
+
 def test_every_line_has_the_base_fields(log_lines: Lines) -> None:
     logging.getLogger("core_api.test").warning("something")
     [line] = log_lines()
