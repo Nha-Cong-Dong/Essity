@@ -66,3 +66,10 @@ every consumer has moved.
 - `python -m core_api.messaging.dead_letter purge --user <uuid>` (core-api) and
   `python -m ai_service.messaging.dead_letter purge --user <uuid>` (ai-service) delete every
   `events.dead` entry that mentions the user, in any case and anywhere in the envelope (T6.3).
+
+## Derived files
+
+`../files/` holds the schemas of files ai-service writes to object storage and core-api reads:
+`toc.v1.schema.json` (`toc.json`, T4.9). Same rules as above: closed objects, an example and
+`invalid-*` examples; each service checks its side in its tests (writer: ai-service, reader:
+core-api).
