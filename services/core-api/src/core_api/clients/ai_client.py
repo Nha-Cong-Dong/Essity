@@ -31,7 +31,7 @@ GRADE_TOTAL_SECONDS = 20.0
 GRADE_MIN_RETRY_SECONDS = 3.0
 GRADE_CONNECT_SECONDS = 2.0
 
-Failure = Literal["unavailable", "invalid", "disabled"]
+Failure = Literal["unavailable", "invalid", "disabled", "quota"]
 _log = logging.getLogger(__name__)
 
 
@@ -57,6 +57,9 @@ _CODES: dict[str, tuple[Failure, bool]] = {
     "invalid_request": ("invalid", False),
     "grading_disabled": ("disabled", False),
     "audit_unavailable": ("unavailable", False),
+    # The account is at its hard cost cap (T2.11): a retry or a queued job would only be refused
+    # again, so it ends here and the answer stays saved (T2.11b).
+    "quota_hard_cap": ("quota", False),
 }
 
 
@@ -164,6 +167,6 @@ def _error_code(response: httpx2.Response) -> str | None:
 def _failed(failure: Failure, reason: str, status: int | None, *, retry: bool = False) -> NotGraded:
     # What a retry cannot clear is a fault to look at (plan "Bảng retry", review 🟡4); grading
     # switched off on purpose is not.
-    level = logging.WARNING if retry or failure == "disabled" else logging.ERROR
+    level = logging.WARNING if retry or failure in ("disabled", "quota") else logging.ERROR
     _log.log(level, "grade call failed", extra={"outcome": reason, "upstream_status": status})
     return NotGraded(failure, reason)

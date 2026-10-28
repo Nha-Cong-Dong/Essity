@@ -79,6 +79,8 @@ REDIRECTS = httpx2.TooManyRedirects("loop")
         ([code(422, "invalid_request")], 1, "invalid"),
         ([code(503, "grading_disabled")], 1, "disabled"),
         ([code(503, "audit_unavailable")], 1, "unavailable"),
+        # T2.11b, US-05 §3 "Vượt trần cứng", US-12 AC9: at the hard cap, no retry, no queue.
+        ([code(429, "quota_hard_cap")], 1, "quota"),
         ([httpx2.Response(401, json={"detail": "x"})], 1, "unavailable"),
         ([httpx2.Response(200, json={**OK, "overall": "brilliant"})], 1, "invalid"),
         ([httpx2.Response(200, text="not json")], 1, "invalid"),
