@@ -22,6 +22,7 @@ from ai_service.messaging.envelope import GradeCompletedEvent, parse_event
 from ai_service.tasks.grade import fake_grade
 from ai_service.tasks.grade_async import GradeAsync, completed_event_id, result_key_for
 from tests.grade.helpers import grade_body
+from tests.llm.helpers import NoQuota
 from tests.tasks.helpers import FakeStorage
 
 RESULT_SCHEMA: Any = Draft202012Validator(
@@ -98,6 +99,7 @@ def handler(
             adapter or FakeAdapter({"grade": fake_grade}),
             sessions,
             models={"grade": "claude-haiku-5-5"},
+            quota_guard=NoQuota(),
         )
     )
     return GradeAsync(storage=storage, redis=redis, llm=llm, sessions=sessions, stream=stream)

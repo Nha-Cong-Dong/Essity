@@ -27,6 +27,7 @@ from ai_service.main import create_app
 from ai_service.security import SERVICE_TOKEN_HEADER
 from ai_service.tasks.grade import load_prompt
 from tests.grade.helpers import anchor, grade_body, unit
+from tests.llm.helpers import NoQuota
 
 MODEL = "claude-haiku-5-5"
 GOOD = json.dumps(
@@ -76,7 +77,7 @@ def app(sessions: sessionmaker[Session]) -> Iterator[FastAPI]:
 
 
 def client_with(app: FastAPI, adapter: Any, sessions: sessionmaker[Session]) -> TestClient:
-    llm = LlmClient(adapter, sessions, models={"grade": MODEL})
+    llm = LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=NoQuota())
     app.dependency_overrides[get_llm_client] = lambda: llm
     return TestClient(app, headers={SERVICE_TOKEN_HEADER: "test-service-token-0123456789abcdef"})
 
@@ -373,7 +374,9 @@ def test_b3_llm_call_write_failure_is_503(app: FastAPI, sessions: sessionmaker[S
         session.commit = commit  # type: ignore[method-assign]
         return session
 
-    llm = LlmClient(Scripted(GOOD), second_commit_fails, models={"grade": MODEL})
+    llm = LlmClient(
+        Scripted(GOOD), second_commit_fails, models={"grade": MODEL}, quota_guard=NoQuota()
+    )
     app.dependency_overrides[get_llm_client] = lambda: llm
     app.dependency_overrides[get_audit_sessions] = lambda: second_commit_fails
     client = TestClient(app, headers={SERVICE_TOKEN_HEADER: "test-service-token-0123456789abcdef"})

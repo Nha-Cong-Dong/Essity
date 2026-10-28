@@ -34,6 +34,7 @@ from sqlalchemy import func, update
 from ai_service.db.models import PipelineRun
 from ai_service.db.session import SessionFactory
 from ai_service.llm.client import AuditUnavailableError, LlmClient, LlmUnavailableError
+from ai_service.llm.quota import QuotaExceededError
 from ai_service.llm.types import LlmRequest
 from ai_service.tasks.grade_models import (
     MAX_ANCHORS_PER_UNIT,
@@ -357,6 +358,9 @@ def grade_answer(
         raise
     except LlmUnavailableError:
         _finish_run(sessions, run_id, "llm_unavailable")
+        raise
+    except QuotaExceededError:
+        _finish_run(sessions, run_id, "quota_hard_cap")  # grading is held to the hard cap only
         raise
     except Exception:
         with suppress(AuditUnavailableError):

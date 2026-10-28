@@ -93,6 +93,29 @@ class LlmCall(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class LlmReservation(Base):
+    """Money set aside for a call that has been admitted and not yet recorded (T2.11).
+
+    The quota guard writes one under a per-user lock, before the call, so two requests at once
+    cannot both see "nothing spent". It is deleted in the same transaction as the `llm_call` row
+    that records the real cost. If the spend cannot be recorded it is kept (`expires_at` moved
+    to the end of the month): the money may have been spent. A process that dies mid-call
+    leaves one that expires by itself.
+    """
+
+    __tablename__ = "llm_reservation"
+    __table_args__ = (
+        CheckConstraint("amount_usd >= 0", name="amount_not_negative"),
+        Index(None, "user_id", "expires_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID]
+    amount_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class ProcessedEvent(Base):
     """An event a consumer has handled (T4.3, ADR-0006: delivery is at least once).
 

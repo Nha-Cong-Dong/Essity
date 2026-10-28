@@ -8,6 +8,7 @@ from ai_service.api import grade, health, ping
 from ai_service.config import get_settings
 from ai_service.db.session import get_session_factory
 from ai_service.llm.client import LlmClient, build_adapter
+from ai_service.llm.quota import DbQuotaGuard, QuotaLimits
 from ai_service.logging import configure_logging, log_requests
 from ai_service.security import require_service_token
 from ai_service.tasks.grade import fake_grade, load_prompt
@@ -22,10 +23,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # A missing prompt file stops the startup instead of failing the first grade.
     load_prompt()
     adapter = build_adapter(settings, {"grade": fake_grade})
+    sessions = get_session_factory()
+    limits = QuotaLimits(
+        daily=settings.quota_daily_usd,
+        monthly=settings.quota_monthly_usd,
+        hard_cap_factor=settings.quota_hard_cap_factor,
+    )
     app.state.llm_client = (
         None
         if adapter is None
-        else LlmClient(adapter, get_session_factory(), models=settings.llm_models)
+        else LlmClient(
+            adapter,
+            sessions,
+            models=settings.llm_models,
+            quota_guard=DbQuotaGuard(sessions, limits),
+        )
     )
     yield
 

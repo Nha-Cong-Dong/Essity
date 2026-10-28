@@ -30,7 +30,7 @@ import threading
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from types import UnionType
-from typing import Annotated, Any, Protocol, Union, cast, get_args, get_origin
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, Union, cast, get_args, get_origin
 
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind, StatusCode
@@ -43,6 +43,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
 from sqlalchemy.orm import Session
 
+from ai_service.llm.quota import QuotaExceededError
 from ai_service.logging import user_id_var
 from ai_service.messaging.dead_letter import (
     INVALID_ENVELOPE,
@@ -54,6 +55,11 @@ from ai_service.messaging.dead_letter import (
 )
 from ai_service.messaging.envelope import OBJECT_KEY_PATTERN, Event, parse_event
 from ai_service.messaging.idempotency import claim, was_processed
+
+if TYPE_CHECKING:
+    from ai_service.config import Settings
+    from ai_service.db.session import SessionFactory
+    from ai_service.llm.client import LlmClient
 
 SERVICE = "ai-consumer"
 STREAM = "events.core"
@@ -372,6 +378,10 @@ class Consumer:
         except Deferred:
             self._put_back(entry_id, deliveries)
             return _Result("deferred")
+        except QuotaExceededError:
+            # Over the quota (T2.11): wait, as `Deferred` does, even if the handler forgot to.
+            self._put_back(entry_id, deliveries)
+            return _Result("deferred")
         except Exception as error:
             if is_outage(error):
                 self._put_back(entry_id, deliveries)
@@ -499,15 +509,35 @@ def install_signal_handlers(stop: threading.Event) -> None:
         signal.signal(sig, lambda signum, frame: stop.set())
 
 
+def build_llm(settings: "Settings", sessions: "SessionFactory") -> "LlmClient | None":
+    """The LLM client for queued grading: same quota guard as the synchronous route (T2.11)."""
+    from ai_service.llm.client import LlmClient, build_adapter
+    from ai_service.llm.quota import DbQuotaGuard, QuotaLimits
+    from ai_service.tasks.grade import fake_grade
+
+    adapter = build_adapter(settings, {"grade": fake_grade})
+    if adapter is None:
+        return None
+    limits = QuotaLimits(
+        daily=settings.quota_daily_usd,
+        monthly=settings.quota_monthly_usd,
+        hard_cap_factor=settings.quota_hard_cap_factor,
+    )
+    return LlmClient(
+        adapter,
+        sessions,
+        models=settings.llm_models,
+        quota_guard=DbQuotaGuard(sessions, limits),
+    )
+
+
 def main() -> None:
     from ai_service.clients.redis import redis_from_url
     from ai_service.clients.storage import S3Storage
     from ai_service.config import get_settings
     from ai_service.db.session import get_session_factory
     from ai_service.handlers import build_handlers
-    from ai_service.llm.client import LlmClient, build_adapter
     from ai_service.logging import configure_logging
-    from ai_service.tasks.grade import fake_grade
     from ai_service.telemetry import configure_tracing
 
     settings = get_settings()
@@ -531,8 +561,7 @@ def main() -> None:
         region=settings.s3_region,
     )
     sessions = get_session_factory()
-    adapter = build_adapter(settings, {"grade": fake_grade})
-    llm = None if adapter is None else LlmClient(adapter, sessions, models=settings.llm_models)
+    llm = build_llm(settings, sessions)
     consumer = Consumer(
         redis=redis,
         session_factory=sessions,

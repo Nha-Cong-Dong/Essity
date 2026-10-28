@@ -1,3 +1,4 @@
+from decimal import Decimal
 from functools import lru_cache
 from typing import Literal
 
@@ -57,6 +58,17 @@ class Settings(DatabaseSettings):
         default_factory=lambda: {"grade": "claude-haiku-5-5"}, validate_default=True
     )
 
+    # Per-user AI cost quota in USD (T2.11, ADR-0010). Proposed defaults, waiting for the owner to
+    # settle them (T6.6): a grade costs about 0.0007 USD, so 0.20 a day is some 250 grades, plenty
+    # for one person; the whole system's LLM budget is about 10 USD a month (PRD Q8). Grading
+    # stops at `daily x hard_cap_factor` (a day) or `monthly x hard_cap_factor` (a month);
+    # other tasks, such as indexing a document, wait at the plain limit.
+    quota_daily_usd: Decimal = Field(default=Decimal("0.20"), gt=0, allow_inf_nan=False)
+    quota_monthly_usd: Decimal = Field(
+        default=Decimal("2.00"), gt=0, allow_inf_nan=False, validate_default=True
+    )
+    quota_hard_cap_factor: Decimal = Field(default=Decimal(3), ge=1, allow_inf_nan=False)
+
     # Field validators, not a model one: a model validator's error prints the whole input,
     # secrets included, to the startup traceback.
     @field_validator("llm_provider")
@@ -92,6 +104,14 @@ class Settings(DatabaseSettings):
         if unpriced:
             raise ValueError(f"llm_models names models with no price: {unpriced}")
         return models
+
+    @field_validator("quota_monthly_usd")
+    @classmethod
+    def _a_month_holds_a_day(cls, monthly: Decimal, info: ValidationInfo) -> Decimal:
+        daily = info.data.get("quota_daily_usd")
+        if daily is not None and daily > monthly:
+            raise ValueError("quota_daily_usd is above quota_monthly_usd")
+        return monthly
 
     @property
     def grading_enabled(self) -> bool:

@@ -7,9 +7,11 @@ what the SDK would send over the wire.
 import json
 import uuid
 from collections.abc import Callable
+from decimal import Decimal
 from typing import Any
 
 import httpx2
+from sqlalchemy.orm import Session
 
 from ai_service.llm.types import LlmRequest
 
@@ -77,3 +79,16 @@ def answering(text: str = '{"ok": true}') -> FakeAnthropicApi:
 def failing(status: int) -> FakeAnthropicApi:
     error = {"type": "error", "error": {"type": "overloaded_error", "message": "Overloaded"}}
     return FakeAnthropicApi(lambda _: httpx2.Response(status, json=error))
+
+
+class NoQuota:
+    """A quota guard for tests not about the quota: admits every call, sets nothing aside."""
+
+    def reserve(self, request: LlmRequest, estimate: Decimal) -> uuid.UUID | None:
+        return None
+
+    def release(self, reservation_id: uuid.UUID, session: Session | None = None) -> None:
+        raise AssertionError("no reservation was made")
+
+    def hold(self, reservation_id: uuid.UUID) -> None:
+        raise AssertionError("no reservation was made")
