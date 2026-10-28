@@ -265,6 +265,8 @@ describe("ReviewScreen (T2.15)", () => {
     ["unavailable", "Chưa chấm được. Câu trả lời của bạn đã được lưu."],
     ["invalid", "Chưa chấm được. Câu trả lời của bạn đã được lưu."],
     ["disabled", "Chấm bài đang tạm tắt. Câu trả lời của bạn đã được lưu."],
+    // T2.11b, US-05 §3 "Vượt trần cứng", US-12 AC9: the cap is named, the answer is kept.
+    ["quota", "Hôm nay chấm bài đã chạm mức tạm dừng. Câu trả lời của bạn đã được lưu."],
   ] as const)("grading failed (%s): the answer stays and Chấm lại grades it", async (failure, text) => {
     const api = await show(
       fakeApi({
