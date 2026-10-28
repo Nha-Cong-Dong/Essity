@@ -246,6 +246,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/documents/{document_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Upload
+         * @description The file is stored: check it, mark the document uploaded and announce it to ai-service
+         *     (`document.uploaded.v1`, in the same transaction). Confirming again changes nothing.
+         *
+         *     Errors: 404 `document_not_found` (another user's too) or `subject_not_found` (deleted since);
+         *     409 `upload_incomplete` (nothing stored yet: upload, or ask for a new URL, then confirm);
+         *     422 `size_mismatch` or `content_mismatch`: the file is deleted and the document stays
+         *     refused, so the same file cannot be uploaded again; 503 `storage_unavailable`.
+         *
+         *     Locks the subject FOR SHARE, then the document FOR UPDATE: the order `reserve` takes them.
+         *     Limited per account (429): each confirm calls the store.
+         */
+        post: operations["confirm_upload_v1_documents__document_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/grades/{grade_id}/override": {
         parameters: {
             query?: never;
@@ -432,6 +461,33 @@ export interface paths {
         patch: operations["change_subject_v1_subjects__subject_id__patch"];
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Upload
+         * @description A URL to upload one PDF to the subject (201), or the document it already is (200).
+         *
+         *     The same file (SHA-256) again: uploaded → `duplicate: true` and no URL; still uploading →
+         *     a fresh URL for the same document. Errors: 404 `subject_not_found`; 422
+         *     `unsupported_file_type`, `invalid_filename`, `file_too_large`, `size_mismatch` (the same
+         *     file asked with another size), `content_mismatch` (the same file was refused before); 409
+         *     `storage_quota_exceeded`; 429 with Retry-After; 503 `storage_full` or when a dependency is
+         *     down.
+         */
+        post: operations["request_upload_v1_subjects__subject_id__documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/today": {
         parameters: {
             query?: never;
@@ -548,6 +604,30 @@ export interface components {
              * @default []
              */
             ungraded: string[];
+        };
+        /** DocumentOut */
+        DocumentOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Short Name */
+            short_name: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Status */
+            status: string;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
         };
         /** DoneOut */
         DoneOut: {
@@ -897,6 +977,42 @@ export interface components {
              * @enum {string}
              */
             verdict: "correct" | "partial" | "incorrect";
+        };
+        /** UploadOut */
+        UploadOut: {
+            document: components["schemas"]["DocumentOut"];
+            /** Duplicate */
+            duplicate: boolean;
+            upload: components["schemas"]["UploadUrl"] | null;
+        };
+        /** UploadRequest */
+        UploadRequest: {
+            /** Filename */
+            filename: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** UploadUrl */
+        UploadUrl: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Headers */
+            headers: {
+                [key: string]: string;
+            };
+            /**
+             * Method
+             * @default PUT
+             * @constant
+             */
+            method: "PUT";
+            /** Url */
+            url: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -1337,6 +1453,35 @@ export interface operations {
             };
         };
     };
+    confirm_upload_v1_documents__document_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description The file stored is not the PDF declared */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     override_v1_grades__grade_id__override_post: {
         parameters: {
             query?: never;
@@ -1671,6 +1816,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubjectOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_upload_v1_subjects__subject_id__documents_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadRequest"];
+            };
+        };
+        responses: {
+            /** @description The file is already in the subject */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadOut"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadOut"];
                 };
             };
             /** @description Validation Error */
