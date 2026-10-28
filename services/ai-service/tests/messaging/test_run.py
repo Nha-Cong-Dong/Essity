@@ -178,4 +178,4 @@ def test_t43_main_without_redis_url_fails(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_t43_handlers_only_for_events_core_sends() -> None:
     # A handler for an event ai-service itself sends would never run.
-    assert set(build_handlers(redis=None, storage=None)) <= CORE_TO_AI  # pyright: ignore[reportArgumentType]
+    assert set(build_handlers(redis=None, storage=None, llm=None, sessions=None)) <= CORE_TO_AI  # pyright: ignore[reportArgumentType]

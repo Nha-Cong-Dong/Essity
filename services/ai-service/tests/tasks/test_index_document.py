@@ -285,8 +285,8 @@ def test_t47_nothing_in_the_log_names_the_document(
 def test_t47_registered_for_document_uploaded() -> None:
     from ai_service.handlers import build_handlers
 
-    handlers = build_handlers(redis=None, storage=FakeStorage())  # pyright: ignore[reportArgumentType]
-    assert "document.uploaded.v1" in handlers
+    handlers = build_handlers(redis=None, storage=FakeStorage(), llm=None, sessions=None)  # pyright: ignore[reportArgumentType]
+    assert {"document.uploaded.v1", "grade.requested.v1"} <= set(handlers)
 
 
 def test_t47_key_of_another_user_is_failed_without_reading_storage(

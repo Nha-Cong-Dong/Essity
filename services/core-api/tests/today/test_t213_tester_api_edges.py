@@ -66,8 +66,8 @@ def test_t213_the_21st_grading_in_a_minute_is_not_sent_to_the_ai(
     app.dependency_overrides[get_rate_limiter] = lambda: RateLimiter(get_redis(), now=lambda: NOW)
     try:
         _, headers, _, attempt_id = opened(client, db_session)
-        stub.failure = NotGraded("unavailable", "timeout")
-        assert submit(client, headers, attempt_id).json()["failure"] == "unavailable"
+        stub.failure = NotGraded("invalid", "grade_invalid")
+        assert submit(client, headers, attempt_id).json()["failure"] == "invalid"
         for _ in range(19):
             client.post(f"/v1/attempts/{attempt_id}/regrade", headers=headers)
         assert len(stub.calls) == 20
@@ -162,6 +162,7 @@ def test_t213_the_answer_is_kept_when_grading_raises(
                     user,
                     session,
                     NOW,
+                    None,  # type: ignore[arg-type]
                     None,  # type: ignore[arg-type]
                     None,  # type: ignore[arg-type]
                 )

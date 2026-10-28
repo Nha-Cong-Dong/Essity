@@ -65,6 +65,21 @@ class FakeStorage:
             raise StorageUnavailableError("storage unreachable (test)")
         return self.objects[key][0][:length]
 
+    def write(self, key: str, data: bytes, *, content_type: str) -> None:
+        if self.down:
+            raise StorageUnavailableError("storage unreachable (test)")
+        self.objects[key] = (data, None)
+
+    def read(self, key: str, *, max_bytes: int) -> bytes | None:
+        if self.down:
+            raise StorageUnavailableError("storage unreachable (test)")
+        found = self.objects.get(key)
+        if found is None:
+            return None
+        if len(found[0]) > max_bytes:
+            raise StorageUnavailableError("storage object too large (test)")
+        return found[0]
+
     def delete(self, key: str) -> None:
         if self.down or self.delete_fails:
             raise StorageUnavailableError("storage unreachable (test)")

@@ -505,7 +505,9 @@ def main() -> None:
     from ai_service.config import get_settings
     from ai_service.db.session import get_session_factory
     from ai_service.handlers import build_handlers
+    from ai_service.llm.client import LlmClient, build_adapter
     from ai_service.logging import configure_logging
+    from ai_service.tasks.grade import fake_grade
     from ai_service.telemetry import configure_tracing
 
     settings = get_settings()
@@ -528,10 +530,13 @@ def main() -> None:
         bucket=settings.s3_bucket,
         region=settings.s3_region,
     )
+    sessions = get_session_factory()
+    adapter = build_adapter(settings, {"grade": fake_grade})
+    llm = None if adapter is None else LlmClient(adapter, sessions, models=settings.llm_models)
     consumer = Consumer(
         redis=redis,
-        session_factory=get_session_factory(),
-        handlers=build_handlers(redis=redis, storage=storage),
+        session_factory=sessions,
+        handlers=build_handlers(redis=redis, storage=storage, llm=llm, sessions=sessions),
         # A handler may run for minutes (T4.7): one entry per read, so `stop` is looked at
         # between documents and a SIGKILL costs one entry, not ten.
         batch=1,
