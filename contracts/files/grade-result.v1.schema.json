@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/files/grade-result.v1.schema.json",
+  "title": "grade result v1",
+  "description": "ai-service writes it at `result_key` (grade.completed.v1); core-api reads it, checks it against the request it sent and records the grade. `graded` holds the body ai-service's POST /v1/grade answers with; `failed` says the request can never be graded (`invalid`) or that grading is switched off (`disabled`).",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "response"],
+      "properties": {
+        "status": {"const": "graded"},
+        "response": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provider", "model", "prompt_version", "run_id", "llm_call_id", "overall", "understanding", "missing", "units", "anchors_used"],
+          "properties": {
+            "provider": {"enum": ["anthropic", "fake", "none"]},
+            "model": {"type": ["string", "null"]},
+            "prompt_version": {"type": "string"},
+            "run_id": {"type": "string", "format": "uuid"},
+            "llm_call_id": {"type": ["string", "null"], "format": "uuid"},
+            "overall": {"enum": ["correct", "partial", "incorrect"]},
+            "understanding": {"enum": [1, 2, 3, null]},
+            "missing": {"type": "array", "items": {"type": "string"}},
+            "units": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["unit_id", "verdict"],
+                "properties": {
+                  "unit_id": {"type": "string", "format": "uuid"},
+                  "verdict": {"enum": ["correct", "partial", "incorrect"]}
+                }
+              }
+            },
+            "anchors_used": {"type": "array", "items": {"type": "string", "format": "uuid"}}
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "failure"],
+      "properties": {
+        "status": {"const": "failed"},
+        "failure": {"enum": ["invalid", "disabled"]}
+      }
+    }
+  ]
+}
