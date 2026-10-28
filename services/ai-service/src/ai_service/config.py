@@ -55,7 +55,11 @@ class Settings(DatabaseSettings):
     # Task -> model for a real provider (ADR-0010), changeable without code: AI_LLM_MODELS as
     # JSON. Every task needs a model and every model a price, or the service refuses to start.
     llm_models: dict[str, str] = Field(
-        default_factory=lambda: {"grade": "claude-haiku-5-5"}, validate_default=True
+        default_factory=lambda: {
+            "grade": "claude-haiku-5-5",
+            "extract_session": "claude-haiku-5-5",
+        },
+        validate_default=True,
     )
 
     # Per-user AI cost quota in USD (T2.11, ADR-0010). Proposed defaults, waiting for the owner to

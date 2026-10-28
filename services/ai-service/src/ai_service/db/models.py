@@ -21,7 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from ai_service.db.base import Base, one_of
 
-TASKS = frozenset({"grade"})
+TASKS = frozenset({"grade", "extract_session"})
 PROVIDERS = frozenset({"anthropic", "fake"})
 RUN_STATUSES = frozenset({"running", "succeeded", "failed"})
 

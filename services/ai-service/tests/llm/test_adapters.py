@@ -216,7 +216,7 @@ def test_t210_settings_give_the_task_table_a_priced_model(monkeypatch: pytest.Mo
     monkeypatch.setenv("AI_LLM_PROVIDER", "anthropic")
     monkeypatch.setenv("ANTHROPIC_API_KEY", FAKE_KEY)
     settings = Settings(_env_file=None)  # pyright: ignore[reportCallIssue]
-    assert settings.llm_models == {"grade": MODEL}
+    assert settings.llm_models == {"grade": MODEL, "extract_session": MODEL}
 
 
 def test_t210_startup_refuses_a_model_without_a_price(monkeypatch: pytest.MonkeyPatch) -> None:
