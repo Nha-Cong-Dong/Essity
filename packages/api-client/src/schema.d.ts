@@ -246,6 +246,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Document
+         * @description One document with its processing status (T4.9). Errors: 404 `document_not_found`
+         *     (another user's too).
+         */
+        get: operations["read_document_v1_documents__document_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/documents/{document_id}/confirm": {
         parameters: {
             query?: never;
@@ -269,6 +290,29 @@ export interface paths {
          *     Limited per account (429): each confirm calls the store.
          */
         post: operations["confirm_upload_v1_documents__document_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/documents/{document_id}/toc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Toc
+         * @description The table of contents of an indexed document (US-02 AC2), read from its derived file.
+         *
+         *     Errors: 404 `document_not_found` (another user's too); 409 `not_indexed`; 502 `toc_invalid`
+         *     (the file is not JSON or too large); 503 `storage_unavailable`.
+         */
+        get: operations["read_toc_v1_documents__document_id__toc_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -468,7 +512,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Documents
+         * @description The subject's documents, oldest first (T4.9). Errors: 404 `subject_not_found` (another
+         *     user's too).
+         */
+        get: operations["list_documents_v1_subjects__subject_id__documents_get"];
         put?: never;
         /**
          * Request Upload
@@ -612,11 +661,15 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Failure Reason */
+            failure_reason: string | null;
             /**
              * Id
              * Format: uuid
              */
             id: string;
+            /** Page Count */
+            page_count: number | null;
             /** Short Name */
             short_name: string;
             /** Size Bytes */
@@ -628,6 +681,8 @@ export interface components {
              * Format: uuid
              */
             subject_id: string;
+            /** Unreadable Pages */
+            unreadable_pages: number[];
         };
         /** DoneOut */
         DoneOut: {
@@ -920,6 +975,16 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** TocOut */
+        TocOut: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Toc */
+            toc: unknown;
         };
         /** TodayOut */
         TodayOut: {
@@ -1453,6 +1518,37 @@ export interface operations {
             };
         };
     };
+    read_document_v1_documents__document_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     confirm_upload_v1_documents__document_id__confirm_post: {
         parameters: {
             query?: never;
@@ -1479,6 +1575,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    read_toc_v1_documents__document_id__toc_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TocOut"];
+                };
+            };
+            /** @description The document is not indexed (yet) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -1816,6 +1950,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubjectOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_documents_v1_subjects__subject_id__documents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"][];
                 };
             };
             /** @description Validation Error */

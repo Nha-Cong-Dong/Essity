@@ -66,17 +66,42 @@ def test_t213_a_failed_grading_keeps_the_answer_and_chấm_lại_grades_it(
     client: TestClient, db_session: Session, stub: Stub
 ) -> None:
     _, headers, _, attempt_id = opened(client, db_session)
-    stub.failure = NotGraded("unavailable", "timeout")
+    # A failure that cannot clear; one that may goes to the queue (test_t419_async_grading).
+    stub.failure = NotGraded("invalid", "grade_invalid")
     body = submit(client, headers, attempt_id).json()
     assert (body["status"], body["grading"], body["failure"], body["result"]) == (
         "submitted",
         "failed",
-        "unavailable",
+        "invalid",
         None,
     )
     stub.failure = None
     again = client.post(f"/v1/attempts/{attempt_id}/regrade", headers=headers).json()
     assert again["grading"] == "graded" and again["result"]["overall"] == "correct"
+
+
+# T4.19 (US-05). Red when: a grading the AI could not take is lost or shown as failed instead of
+# waiting, or "Chấm lại" pays for it a second time.
+def test_t419_an_unavailable_ai_queues_the_grading_and_the_screen_waits(
+    client: TestClient, db_session: Session, stub: Stub
+) -> None:
+    _, headers, _, attempt_id = opened(client, db_session)
+    stub.failure = NotGraded("unavailable", "timeout")
+    body = submit(client, headers, attempt_id).json()
+    assert (body["status"], body["grading"], body["failure"], body["result"]) == (
+        "submitted",
+        "in_progress",
+        None,
+        None,
+    )
+    calls = len(stub.calls)
+    stub.failure = None
+    for again in (
+        client.post(f"/v1/attempts/{attempt_id}/regrade", headers=headers),
+        client.get(f"/v1/attempts/{attempt_id}", headers=headers),
+    ):
+        assert again.json()["grading"] == "in_progress"
+    assert len(stub.calls) == calls  # the queued request is not asked a second time
 
 
 # Plan 🟠3, US-04 AC1. Red when: reading a draft gives away the reference answer or the sources.
@@ -183,7 +208,7 @@ def test_t213_current_lists_answers_left_ungraded(
     client: TestClient, db_session: Session, stub: Stub
 ) -> None:
     _, headers, session_id, attempt_id = opened(client, db_session)
-    stub.failure = NotGraded("unavailable", "timeout")
+    stub.failure = NotGraded("invalid", "grade_invalid")
     submit(client, headers, attempt_id)
     done = client.get(f"/v1/review-sessions/{session_id}/current", headers=headers).json()
     assert done["done"] is True and done["ungraded"] == [attempt_id]

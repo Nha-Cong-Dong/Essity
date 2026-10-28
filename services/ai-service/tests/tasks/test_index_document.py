@@ -10,9 +10,11 @@ import json
 import logging
 import uuid
 from collections.abc import Iterator
-from typing import Any
+from pathlib import Path
+from typing import Any, cast
 
 import pytest
+from jsonschema import Draft202012Validator
 from pypdf import PdfReader, PdfWriter
 from redis import Redis
 from sqlalchemy.orm import Session
@@ -30,6 +32,15 @@ from tests.pdf.helpers import Bookmark, Page, make_pdf
 from tests.tasks.helpers import FakeStorage, derived_prefix, unavailable, upload
 
 TEXT = "TCP three way handshake"
+
+
+TOC_SCHEMA = Draft202012Validator(
+    json.loads(
+        (
+            Path(__file__).resolve().parents[4] / "contracts" / "files" / "toc.v1.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+)
 
 
 @pytest.fixture
@@ -91,6 +102,8 @@ def test_t47_indexed_event_and_derived_files(
         ("Chapter 1", 0, 1),
         ("Section 1.1", 1, 2),
     ]
+    # contracts/files/toc.v1.schema.json: the writer's side (T4.9).
+    assert cast(Any, TOC_SCHEMA).is_valid(toc)
     assert json.loads(storage.objects[p.page_labels_key])["labels"] == ["i", "1", "2"]
     pages = json.loads(storage.objects[p.page_text_key])["pages"]
     assert [x["page"] for x in pages] == [1, 2, 3]
@@ -272,8 +285,8 @@ def test_t47_nothing_in_the_log_names_the_document(
 def test_t47_registered_for_document_uploaded() -> None:
     from ai_service.handlers import build_handlers
 
-    handlers = build_handlers(redis=None, storage=FakeStorage())  # pyright: ignore[reportArgumentType]
-    assert "document.uploaded.v1" in handlers
+    handlers = build_handlers(redis=None, storage=FakeStorage(), llm=None, sessions=None)  # pyright: ignore[reportArgumentType]
+    assert {"document.uploaded.v1", "grade.requested.v1"} <= set(handlers)
 
 
 def test_t47_key_of_another_user_is_failed_without_reading_storage(

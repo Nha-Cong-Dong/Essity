@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/files/toc.v1.schema.json",
+  "title": "toc.json v1",
+  "description": "ai-service writes it at `toc_key` (document.indexed.v1); core-api relays it as the `toc` of GET /v1/documents/{id}/toc. Entries are in reading order; `level` 0 is a top-level section.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["entries"],
+  "properties": {
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "level", "page"],
+        "properties": {
+          "title": {"type": "string"},
+          "level": {"type": "integer", "minimum": 0},
+          "page": {"type": ["integer", "null"], "minimum": 1}
+        }
+      }
+    }
+  }
+}

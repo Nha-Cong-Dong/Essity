@@ -59,6 +59,15 @@ class ObjectStorage(Protocol):
 
     def delete(self, key: str) -> None: ...
 
+    def write(self, key: str, data: bytes, *, content_type: str) -> None:
+        """Store a small file core-api itself makes (a grading request, T4.19)."""
+        ...
+
+    def read(self, key: str, *, max_bytes: int) -> bytes | None:
+        """A small file ai-service wrote (a grading result), or None when it is not there.
+        StorageUnavailableError when it is longer than `max_bytes`, as when the store fails."""
+        ...
+
 
 def _client(
     endpoint: str, access_key: str, secret_key: str, region: str, timeout_seconds: float
@@ -210,4 +219,26 @@ class S3Storage:
         try:
             self._internal.delete_object(Bucket=self._bucket, Key=key)
         except (ClientError, BotoCoreError) as error:
+            raise StorageUnavailableError(_reason(error)) from None
+
+    def write(self, key: str, data: bytes, *, content_type: str) -> None:
+        try:
+            self._internal.put_object(
+                Bucket=self._bucket, Key=key, Body=data, ContentType=content_type
+            )
+        except (ClientError, BotoCoreError) as error:
+            raise StorageUnavailableError(_reason(error)) from None
+
+    def read(self, key: str, *, max_bytes: int) -> bytes | None:
+        try:
+            found = self._internal.get_object(Bucket=self._bucket, Key=key)
+            with closing(found["Body"]) as body:
+                if int(found.get("ContentLength", 0)) > max_bytes:
+                    raise StorageUnavailableError("storage object too large")
+                return body.read()
+        except ClientError as error:
+            if _not_found(error) and self._bucket_exists():
+                return None
+            raise StorageUnavailableError(_reason(error)) from None
+        except BotoCoreError as error:
             raise StorageUnavailableError(_reason(error)) from None

@@ -53,6 +53,17 @@ describe("security headers in production (R06)", () => {
     expect([...csp.values()].join(";")).not.toMatch(/unsafe-eval|upgrade-insecure-requests/);
   });
 
+  // Red when: connect-src stays 'self' once the browser must PUT a PDF to storage (T4.6), or it
+  // takes anything but an http(s) origin (a path or a script URL must not widen it).
+  it("t4.6: connect-src adds the storage's origin only, and only when UPLOAD_ORIGIN is a URL", async () => {
+    vi.stubEnv("UPLOAD_ORIGIN", "https://files.example.com/bucket/x?y=1");
+    const csp = directives((await effective("/", "production")).get("Content-Security-Policy"));
+    expect(csp.get("connect-src")).toBe("connect-src 'self' https://files.example.com");
+    vi.stubEnv("UPLOAD_ORIGIN", "javascript:alert(1)");
+    const bad = directives((await effective("/", "production")).get("Content-Security-Policy"));
+    expect(bad.get("connect-src")).toBe("connect-src 'self'");
+  });
+
   // Red when: the general Referrer-Policy rule comes after the token pages' rule and wins.
   it.each(["/verify-email", "/reset-password"])("r06: %s still sends no Referer", async (page) => {
     expect((await effective(page, "production")).get("Referrer-Policy")).toBe("no-referrer");

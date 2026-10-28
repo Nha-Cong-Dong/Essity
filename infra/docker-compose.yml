@@ -72,6 +72,7 @@ services:
       AWS_DEFAULT_REGION: us-east-1
       S3_ENDPOINT: ${S3_ENDPOINT:?set in .env}
       S3_BUCKET: ${S3_BUCKET:?set in .env}
+      WEB_ORIGIN: ${WEB_ORIGIN:?set in .env}
     volumes:
       - ./storage/init.sh:/init.sh:ro
     depends_on:
@@ -199,6 +200,9 @@ services:
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
+      args:
+        # The browser PUTs the PDF straight to storage (ADR-0012): the CSP's connect-src names it.
+        UPLOAD_ORIGIN: ${S3_PUBLIC_ENDPOINT:-}
     environment:
       CORE_API_URL: ${CORE_API_URL}
       WEB_TO_CORE_TOKEN: ${WEB_TO_CORE_TOKEN:?set in .env}

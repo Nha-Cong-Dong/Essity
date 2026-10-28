@@ -3,6 +3,7 @@
 from core_api.db.models.auth_session import AuthSession
 from core_api.db.models.document import Document
 from core_api.db.models.email_token import EmailToken
+from core_api.db.models.grade_job import GradeJob
 from core_api.db.models.outbox import Outbox
 from core_api.db.models.processed_event import ProcessedEvent
 from core_api.db.models.question import Question, QuestionUnit
@@ -27,6 +28,7 @@ __all__ = [
     "EmailToken",
     "Exam",
     "Grade",
+    "GradeJob",
     "GradeUnit",
     "KnowledgeUnit",
     "MemoryState",

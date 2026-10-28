@@ -232,10 +232,32 @@
             "title": "Created At",
             "type": "string"
           },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Reason"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "page_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Count"
           },
           "short_name": {
             "title": "Short Name",
@@ -253,6 +275,13 @@
             "format": "uuid",
             "title": "Subject Id",
             "type": "string"
+          },
+          "unreadable_pages": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Unreadable Pages",
+            "type": "array"
           }
         },
         "required": [
@@ -261,7 +290,10 @@
           "short_name",
           "status",
           "size_bytes",
-          "created_at"
+          "created_at",
+          "page_count",
+          "unreadable_pages",
+          "failure_reason"
         ],
         "title": "DocumentOut",
         "type": "object"
@@ -971,6 +1003,24 @@
           "name"
         ],
         "title": "SubjectRef",
+        "type": "object"
+      },
+      "TocOut": {
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "toc": {
+            "title": "Toc"
+          }
+        },
+        "required": [
+          "document_id",
+          "toc"
+        ],
+        "title": "TocOut",
         "type": "object"
       },
       "TodayOut": {
@@ -1787,6 +1837,47 @@
         "summary": "Resend Verification"
       }
     },
+    "/v1/documents/{document_id}": {
+      "get": {
+        "description": "One document with its processing status (T4.9). Errors: 404 `document_not_found`\n(another user's too).",
+        "operationId": "read_document_v1_documents__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Document"
+      }
+    },
     "/v1/documents/{document_id}/confirm": {
       "post": {
         "description": "The file is stored: check it, mark the document uploaded and announce it to ai-service\n(`document.uploaded.v1`, in the same transaction). Confirming again changes nothing.\n\nErrors: 404 `document_not_found` (another user's too) or `subject_not_found` (deleted since);\n409 `upload_incomplete` (nothing stored yet: upload, or ask for a new URL, then confirm);\n422 `size_mismatch` or `content_mismatch`: the file is deleted and the document stays\nrefused, so the same file cannot be uploaded again; 503 `storage_unavailable`.\n\nLocks the subject FOR SHARE, then the document FOR UPDATE: the order `reserve` takes them.\nLimited per account (429): each confirm calls the store.",
@@ -1819,6 +1910,50 @@
           }
         },
         "summary": "Confirm Upload"
+      }
+    },
+    "/v1/documents/{document_id}/toc": {
+      "get": {
+        "description": "The table of contents of an indexed document (US-02 AC2), read from its derived file.\n\nErrors: 404 `document_not_found` (another user's too); 409 `not_indexed`; 502 `toc_invalid`\n(the file is not JSON or too large); 503 `storage_unavailable`.",
+        "operationId": "read_toc_v1_documents__document_id__toc_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TocOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "The document is not indexed (yet)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Toc"
       }
     },
     "/v1/grades/{grade_id}/override": {
@@ -2249,6 +2384,49 @@
       }
     },
     "/v1/subjects/{subject_id}/documents": {
+      "get": {
+        "description": "The subject's documents, oldest first (T4.9). Errors: 404 `subject_not_found` (another\nuser's too).",
+        "operationId": "list_documents_v1_subjects__subject_id__documents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentOut"
+                  },
+                  "title": "Response List Documents V1 Subjects  Subject Id  Documents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Documents"
+      },
       "post": {
         "description": "A URL to upload one PDF to the subject (201), or the document it already is (200).\n\nThe same file (SHA-256) again: uploaded → `duplicate: true` and no URL; still uploading →\na fresh URL for the same document. Errors: 404 `subject_not_found`; 422\n`unsupported_file_type`, `invalid_filename`, `file_too_large`, `size_mismatch` (the same\nfile asked with another size), `content_mismatch` (the same file was refused before); 409\n`storage_quota_exceeded`; 429 with Retry-After; 503 `storage_full` or when a dependency is\ndown.",
         "operationId": "request_upload_v1_subjects__subject_id__documents_post",

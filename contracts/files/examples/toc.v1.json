@@ -1,0 +1,7 @@
+{
+  "entries": [
+    {"title": "Chapter 1", "level": 0, "page": 1},
+    {"title": "Section 1.1", "level": 1, "page": 2},
+    {"title": "Appendix", "level": 0, "page": null}
+  ]
+}

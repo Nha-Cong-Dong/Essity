@@ -12,6 +12,9 @@ RUN pnpm install --frozen-lockfile --filter web...
 FROM deps AS build
 COPY packages packages
 COPY apps/web apps/web
+# T4.6: next.config.ts bakes the CSP into the build, so the storage's origin is a build argument.
+ARG UPLOAD_ORIGIN=
+ENV UPLOAD_ORIGIN=$UPLOAD_ORIGIN
 RUN pnpm --filter web build
 
 FROM node:24-slim AS runtime
