@@ -16,9 +16,10 @@ On its `MAX_DELIVERIES`-th delivery a failing entry goes to the dead letter stre
 E9). A lost connection (the database or Redis down) is not a failure of the event: the entry is
 put back with its delivery count as it was (`is_outage`), so downtime does not use up deliveries.
 
-Handlers are added by the tasks that handle each event (T4.8 on); `HANDLERS` holds the document
-ones so far, and there is no Compose service until every event has one: the others would be
-dead-lettered.
+Handlers are added by the tasks that handle each event (T4.8 on); `HANDLERS` holds the ones that
+need nothing but the database (the document ones), `build_handlers` adds those that read files
+(`grade.completed.v1`, T4.19). There is no Compose service until every event has a handler: the
+others would be dead-lettered.
 Logs hold ids, counts and class names, never an event (ADR-0013). Not shared with ai-service's
 consumer by import (ADR-0003, PLAN T4.4).
 """
@@ -83,6 +84,21 @@ HANDLERS: dict[str, Handler] = {
     "document.indexed.v1": on_document_indexed,
     "document.failed.v1": on_document_failed,
 }
+
+
+def build_handlers() -> dict[str, Handler]:
+    """Every handler of this process: `HANDLERS` and the ones that read the object storage."""
+    from core_api.clients.storage import S3Storage
+    from core_api.config import get_settings
+    from core_api.handlers.grade_completed import OnGradeCompleted
+
+    settings = get_settings()
+    storage = S3Storage.from_settings(settings)
+    return HANDLERS | {
+        "grade.completed.v1": OnGradeCompleted(storage, environment=settings.environment)
+    }
+
+
 # Every event_type in the contract, to tell an unknown type from a malformed known one.
 EVENT_TYPES = frozenset(
     get_args(model.model_fields["event_type"].annotation)[0]
@@ -517,7 +533,7 @@ def main() -> None:
     install_signal_handlers(stop)
     _log.info("consumer starting")
     try:
-        run(Consumer(get_engine(), redis, HANDLERS), stop)
+        run(Consumer(get_engine(), redis, build_handlers()), stop)
     finally:
         provider.shutdown()
         _log.info("consumer stopped")

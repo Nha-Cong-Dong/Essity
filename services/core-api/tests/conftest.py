@@ -13,6 +13,7 @@ from redis import Redis
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
+from core_api.api.deps import get_storage
 from core_api.clients.redis import get_redis, redis_from_url
 from core_api.clients.storage import S3Storage
 from core_api.config import get_settings
@@ -25,6 +26,7 @@ from core_api.main import app
 from core_api.repositories.user import UserRepository
 from core_api.security.client_ip import CLIENT_IP_HEADER
 from core_api.security.service_token import SERVICE_TOKEN_HEADER
+from fake_storage import FakeStorage
 from ips import fresh_ip
 from object_store import (
     S3_ACCESS_KEY,
@@ -165,9 +167,12 @@ def client(
         db_session.flush()
 
     app.dependency_overrides[get_session] = session_override
+    # Grading queues its request in the storage (T4.19); a double, unless a test brings its own.
+    app.dependency_overrides.setdefault(get_storage, lambda: FakeStorage())
     headers = {SERVICE_TOKEN_HEADER: WEB_TOKEN, CLIENT_IP_HEADER: client_ip}
     yield TestClient(app, headers=headers)
     app.dependency_overrides.pop(get_session)
+    app.dependency_overrides.pop(get_storage, None)
 
 
 @pytest.fixture
