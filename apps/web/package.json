@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "verify": "node scripts/verify-screens.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
