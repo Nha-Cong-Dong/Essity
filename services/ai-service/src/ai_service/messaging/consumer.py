@@ -43,6 +43,7 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
 from sqlalchemy.orm import Session
 
+from ai_service.llm.quota import QuotaExceededError
 from ai_service.logging import user_id_var
 from ai_service.messaging.dead_letter import (
     INVALID_ENVELOPE,
@@ -370,6 +371,10 @@ class Consumer:
                     handler(session, event)
                     outcome = "processed"
         except Deferred:
+            self._put_back(entry_id, deliveries)
+            return _Result("deferred")
+        except QuotaExceededError:
+            # Over the quota (T2.11): wait, as `Deferred` does, even if the handler forgot to.
             self._put_back(entry_id, deliveries)
             return _Result("deferred")
         except Exception as error:

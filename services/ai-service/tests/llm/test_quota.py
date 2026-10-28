@@ -20,7 +20,7 @@ from ai_service.config import Settings
 from ai_service.db.models import LlmCall, LlmReservation, PipelineRun
 from ai_service.llm.client import AuditUnavailableError, LlmClient
 from ai_service.llm.fake_adapter import FakeAdapter
-from ai_service.llm.pricing import price_for
+from ai_service.llm.pricing import FAKE_MODEL, price_for
 from ai_service.llm.quota import (
     DbQuotaGuard,
     QuotaExceededError,
@@ -227,7 +227,7 @@ def test_t211_estimate_is_the_worst_case_of_the_request() -> None:
     request = make_request()
     est = estimate_cost(price_for(MODEL), request, {"max_tokens": 1_000_000})
     assert Decimal("0.50") <= est < Decimal("0.51")
-    assert estimate_cost(price_for("fake"), request, {}) == 0
+    assert estimate_cost(price_for(FAKE_MODEL), request, {}) == 0
 
 
 # --- The race: requests at once never pass the cap together ----------------------------------
@@ -306,9 +306,7 @@ def test_t211_reservation_is_kept_when_the_audit_row_cannot_be_written(
     def broken() -> Session:
         raise RuntimeError("database down")
 
-    client = LlmClient(
-        Scripted(), broken, models={"grade": MODEL}, quota_guard=guard_for(sessions)
-    )
+    client = LlmClient(Scripted(), broken, models={"grade": MODEL}, quota_guard=guard_for(sessions))
     with pytest.raises(AuditUnavailableError):
         client.call(request_for(run), deadline=deadline())
     [held] = reservations_of(engine, run)

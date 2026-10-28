@@ -28,6 +28,7 @@ from tests.grade.test_grade_endpoint import (
     client_with,
     runs_of,
 )
+from tests.llm.helpers import NoQuota
 
 HEADERS = {"Content-Type": "application/json"}
 
@@ -165,7 +166,9 @@ def test_b3_run_that_cannot_be_closed_is_503_not_a_grade(
         return session
 
     body = grade_body()
-    llm = LlmClient(Scripted(GOOD), third_commit_fails, models={"grade": MODEL})
+    llm = LlmClient(
+        Scripted(GOOD), third_commit_fails, models={"grade": MODEL}, quota_guard=NoQuota()
+    )
     app.dependency_overrides[get_llm_client] = lambda: llm
     app.dependency_overrides[get_audit_sessions] = lambda: third_commit_fails
     client = TestClient(app, headers={SERVICE_TOKEN_HEADER: "test-service-token-0123456789abcdef"})

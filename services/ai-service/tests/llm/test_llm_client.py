@@ -20,13 +20,12 @@ from ai_service.llm.client import (
     AuditUnavailableError,
     LlmClient,
     LlmUnavailableError,
-    QuotaGuard,
     build_adapter,
 )
 from ai_service.llm.fake_adapter import FakeAdapter
 from ai_service.llm.pricing import FAKE_MODEL, UnknownModelPriceError
 from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError, ProviderName
-from tests.llm.helpers import FAKE_KEY, answering, failing, make_request
+from tests.llm.helpers import FAKE_KEY, NoQuota, answering, failing, make_request
 
 MODEL = "claude-haiku-5-5"
 
@@ -71,7 +70,7 @@ def deadline(seconds: float = 9.0) -> float:
 
 def fake_client(sessions: sessionmaker[Session], **kwargs: Any) -> LlmClient:
     adapter = FakeAdapter({"grade": lambda _: '{"ok": true}'})
-    return LlmClient(adapter, sessions, models={"grade": MODEL}, **kwargs)
+    return LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=NoQuota(), **kwargs)
 
 
 class Scripted:
@@ -140,7 +139,7 @@ def test_t210_row_keeps_the_provider_params_and_stop_reason(
     # Red when: max_tokens/thinking are not recorded, and a call cannot be run again as it was
     # (review 🟡2); or the stop reason is lost (🟢4).
     adapter = AnthropicAdapter(api_key=FAKE_KEY, http_client=answering().client())
-    LlmClient(adapter, sessions, models={"grade": MODEL}).call(
+    LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=NoQuota()).call(
         request_for(run), deadline=deadline()
     )
     [row] = rows_of(engine, run)
@@ -152,7 +151,7 @@ def test_t210_cost_is_computed_from_the_price_table(
     engine: Engine, sessions: sessionmaker[Session], run: PipelineRun
 ) -> None:
     adapter = Scripted(AdapterResult(text="{}", input_tokens=1000, output_tokens=200))
-    LlmClient(adapter, sessions, models={"grade": MODEL}).call(
+    LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=NoQuota()).call(
         request_for(run), deadline=deadline()
     )
     [row] = rows_of(engine, run)
@@ -165,7 +164,7 @@ def test_t210_failed_call_is_written_too(
 ) -> None:
     # Red when: only successes are written, and failures vanish from the audit and the bill.
     adapter = Scripted(ProviderError("provider_error"))
-    client = LlmClient(adapter, sessions, models={"grade": MODEL})
+    client = LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=NoQuota())
     with pytest.raises(LlmUnavailableError):
         client.call(request_for(run), deadline=deadline())
     [row] = rows_of(engine, run)
@@ -176,7 +175,7 @@ def test_t210_unexpected_failure_is_written_and_raised(
     engine: Engine, sessions: sessionmaker[Session], run: PipelineRun
 ) -> None:
     adapter = Scripted(RuntimeError("bug in an adapter"))
-    client = LlmClient(adapter, sessions, models={"grade": MODEL})
+    client = LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=NoQuota())
     with pytest.raises(RuntimeError):
         client.call(request_for(run), deadline=deadline())
     [row] = rows_of(engine, run)
@@ -205,33 +204,20 @@ def test_t210_unpriced_model_is_refused_before_the_call(
 ) -> None:
     # Red when: the price is looked up after the call, and money is spent on an unpriced model.
     adapter = Scripted(AdapterResult(text="{}", input_tokens=1, output_tokens=1))
-    client = LlmClient(adapter, sessions, models={"grade": "claude-unknown-9"})
+    client = LlmClient(
+        adapter, sessions, models={"grade": "claude-unknown-9"}, quota_guard=NoQuota()
+    )
     with pytest.raises(UnknownModelPriceError):
         client.call(request_for(run), deadline=deadline())
     assert adapter.calls == 0
     assert rows_of(engine, run) == []
 
 
-def test_t211_quota_guard_is_asked_before_each_call(
-    engine: Engine, sessions: sessionmaker[Session], run: PipelineRun
-) -> None:
-    # The hook T2.11 fills in: a guard that refuses stops the call before any money is spent.
-    class Refuse(QuotaGuard):
-        def check(self, request: LlmRequest) -> None:
-            raise LlmUnavailableError("quota")
-
-    adapter = Scripted(AdapterResult(text="{}", input_tokens=1, output_tokens=1))
-    client = LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=Refuse())
-    with pytest.raises(LlmUnavailableError):
-        client.call(request_for(run), deadline=deadline())
-    assert adapter.calls == 0
-
-
 def test_b2_no_call_once_the_deadline_has_passed(
     engine: Engine, sessions: sessionmaker[Session], run: PipelineRun
 ) -> None:
     adapter = Scripted(AdapterResult(text="{}", input_tokens=1, output_tokens=1))
-    client = LlmClient(adapter, sessions, models={"grade": MODEL})
+    client = LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=NoQuota())
     with pytest.raises(LlmUnavailableError):
         client.call(request_for(run), deadline=time.monotonic() - 0.1)
     assert adapter.calls == 0
@@ -245,7 +231,7 @@ def test_b2_adapter_gets_the_time_left(sessions: sessionmaker[Session], run: Pip
             seen.append(timeout)
             return AdapterResult(text="{}", input_tokens=1, output_tokens=1)
 
-    LlmClient(Timed(), sessions, models={"grade": MODEL}).call(
+    LlmClient(Timed(), sessions, models={"grade": MODEL}, quota_guard=NoQuota()).call(
         request_for(run), deadline=deadline(4.0)
     )
     assert 3.0 < seen[0] <= 4.0
@@ -257,7 +243,7 @@ def test_o1_overloaded_api_is_one_request_one_row(
     # 🟠1: the real SDK on a 529 makes exactly one HTTP request; the client writes one row.
     api = failing(529)
     adapter = AnthropicAdapter(api_key=FAKE_KEY, http_client=api.client())
-    client = LlmClient(adapter, sessions, models={"grade": MODEL})
+    client = LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=NoQuota())
     with pytest.raises(LlmUnavailableError):
         client.call(request_for(run), deadline=deadline())
     assert len(api.requests) == 1
@@ -270,7 +256,7 @@ def test_t210_anthropic_end_to_end_writes_tokens_and_cost(
 ) -> None:
     api = answering('{"ok": true}')
     adapter = AnthropicAdapter(api_key=FAKE_KEY, http_client=api.client())
-    LlmClient(adapter, sessions, models={"grade": MODEL}).call(
+    LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=NoQuota()).call(
         request_for(run), deadline=deadline()
     )
     [row] = rows_of(engine, run)

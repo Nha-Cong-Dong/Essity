@@ -1,7 +1,7 @@
 """POST /v1/grade (T2.12): grade one answer. Behind X-Service-Token; core-api is the caller.
 
 Errors are `{"code": ...}` with a stable code, never the model's raw output (🟠9). What core
-should retry (T2.13): `llm_unavailable` and connection errors only.
+should retry (T2.13): `llm_unavailable` and connection errors only; never `quota_hard_cap`.
 
 | Status | code | When |
 |---|---|---|
@@ -9,6 +9,7 @@ should retry (T2.13): `llm_unavailable` and connection errors only.
 | 413 | request_too_large | body over `MAX_BODY_BYTES` |
 | 502 | grade_invalid | the output broke R03 twice |
 | 502 | llm_unavailable | provider error, timeout, or the 9 s deadline |
+| 429 | quota_hard_cap | the account is at its hard cost cap (T2.11); core must not retry |
 | 503 | grading_disabled | AI_LLM_PROVIDER=disabled; nothing is written |
 | 503 | audit_unavailable | pipeline_run or llm_call could not be written |
 """
@@ -22,6 +23,7 @@ from fastapi.responses import JSONResponse
 
 from ai_service.db.session import SessionFactory, get_session_factory
 from ai_service.llm.client import AuditUnavailableError, LlmClient, LlmUnavailableError
+from ai_service.llm.quota import QuotaExceededError
 from ai_service.logging import set_user_id
 from ai_service.tasks.grade import GradeInvalidError, grade_answer
 from ai_service.tasks.grade_models import GradeRequest, GradeResponse
@@ -93,6 +95,7 @@ def add_error_handlers(app: FastAPI) -> None:
         (RequestTooLargeError, 413, "request_too_large"),
         (GradeInvalidError, 502, "grade_invalid"),
         (LlmUnavailableError, 502, "llm_unavailable"),
+        (QuotaExceededError, 429, "quota_hard_cap"),
         (GradingDisabledError, 503, "grading_disabled"),
         (AuditUnavailableError, 503, "audit_unavailable"),
     ]

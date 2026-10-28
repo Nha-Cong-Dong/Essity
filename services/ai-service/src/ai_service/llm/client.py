@@ -4,11 +4,12 @@ Every call, success or failure, writes one `llm_call` row in a transaction of it
 before the result goes back to the task. If that write fails the call's result is not used:
 `AuditUnavailableError` (B3, fail closed). Order of a call:
 
-1. the quota guard (T2.11 fills it in; today it lets everything through);
-2. the price of the model (an unpriced model is refused before any money is spent);
+1. the price of the model (an unpriced model is refused before any money is spent);
+2. the quota guard (T2.11): the worst-case cost of the call is reserved, or the call is refused;
 3. the deadline (no time left: no call);
 4. one request through the adapter, with the time left as its timeout (B2);
-5. the `llm_call` row, then the result or the error.
+5. the `llm_call` row (and the reservation's release, in the same transaction), then the result
+   or the error. If a call was made but its spend is not recorded, the reservation is kept.
 """
 
 import logging
@@ -22,6 +23,7 @@ from ai_service.db.session import SessionFactory
 from ai_service.llm.anthropic_adapter import AnthropicAdapter
 from ai_service.llm.fake_adapter import FakeAdapter, Responder
 from ai_service.llm.pricing import Price, cost_usd, price_for
+from ai_service.llm.quota import QuotaGuard, QuotaUnavailableError, estimate_cost
 from ai_service.llm.types import (
     Adapter,
     AdapterResult,
@@ -46,11 +48,9 @@ class AuditUnavailableError(Exception):
     """The audit row could not be written; the call's result must not be used (B3)."""
 
 
-class QuotaGuard:
-    """Asked before every call. T2.11 replaces this with per-user daily and monthly quotas."""
-
-    def check(self, request: LlmRequest) -> None:
-        return None
+# Provider errors after which the provider has certainly not charged (it refused the request).
+# Any other failure may have been billed without usage to count: its reservation is kept.
+_NOT_CHARGED = frozenset({"rate_limited", "provider_error", "provider_rejected", "no_responder"})
 
 
 class LlmClient:
@@ -60,12 +60,12 @@ class LlmClient:
         sessions: SessionFactory,
         *,
         models: Mapping[str, str],
-        quota_guard: QuotaGuard | None = None,
+        quota_guard: QuotaGuard,
     ) -> None:
         self._adapter = adapter
         self._sessions = sessions
         self._models = dict(models)
-        self._quota_guard = quota_guard or QuotaGuard()
+        self._quota_guard = quota_guard
 
     @property
     def provider(self) -> ProviderName:
@@ -73,25 +73,41 @@ class LlmClient:
 
     def call(self, request: LlmRequest, *, deadline: float) -> LlmResult:
         """One call to the model; `deadline` is a `time.monotonic()` value."""
-        self._quota_guard.check(request)
         model = self._adapter.fixed_model or self._models[request.task]
         price = price_for(model)
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            raise LlmUnavailableError("deadline")
-
-        started = time.perf_counter()
+        estimate = estimate_cost(price, request, self._adapter.params)
+        try:
+            reservation = self._quota_guard.reserve(request, estimate)
+        except QuotaUnavailableError as error:
+            raise AuditUnavailableError from error
         result: AdapterResult | None = None
         error_code: str | None = None
+        called = settled = False
         try:
-            result = self._adapter.complete(request, model=model, timeout=remaining)
-        except ProviderError as error:
-            error_code = error.code
-        except Exception:
-            error_code = "internal_error"
-            self._write(request, model, None, "internal_error", started, price)
-            raise
-        call_id = self._write(request, model, result, error_code, started, price)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise LlmUnavailableError("deadline")
+
+            started = time.perf_counter()
+            called = True
+            try:
+                result = self._adapter.complete(request, model=model, timeout=remaining)
+            except ProviderError as error:
+                error_code = error.code
+            except Exception:
+                self._write(request, model, None, "internal_error", started, price)
+                raise
+            charged = result is not None or error_code in _NOT_CHARGED
+            call_id = self._write(
+                request, model, result, error_code, started, price, reservation if charged else None
+            )
+            settled = charged
+        finally:
+            if reservation is not None and not settled:
+                if called:
+                    self._quota_guard.hold(reservation)
+                else:
+                    self._quota_guard.release(reservation)
         if result is None:
             raise LlmUnavailableError(error_code or "provider_error")
         return LlmResult(text=result.text, llm_call_id=call_id, provider=self.provider, model=model)
@@ -104,6 +120,7 @@ class LlmClient:
         error_code: str | None,
         started: float,
         price: Price,
+        reservation: uuid.UUID | None = None,
     ) -> uuid.UUID:
         latency_ms = round((time.perf_counter() - started) * 1000)
         row = LlmCall(
@@ -136,6 +153,8 @@ class LlmClient:
         try:
             with self._sessions() as session:
                 session.add(row)
+                if reservation is not None:
+                    self._quota_guard.release(reservation, session)
                 session.commit()
         except Exception as error:
             _log.exception("llm_call not written", extra={"provider": self.provider})

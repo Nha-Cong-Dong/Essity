@@ -3,6 +3,7 @@
 import uuid
 from decimal import Decimal
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine
@@ -15,14 +16,12 @@ from ai_service.llm.types import LlmRequest
 from ai_service.main import create_app
 from ai_service.security import SERVICE_TOKEN_HEADER
 from tests.grade.helpers import grade_body
-from tests.grade.test_grade_endpoint import (  # noqa: F401  # `sessions` is a fixture
-    BAD,
-    GOOD,
-    MODEL,
-    Scripted,
-    runs_of,
-    sessions,  # pyright: ignore[reportUnusedImport]
-)
+from tests.grade.test_grade_endpoint import BAD, GOOD, MODEL, Scripted, runs_of
+
+
+@pytest.fixture
+def sessions(engine: Engine) -> sessionmaker[Session]:
+    return sessionmaker(engine, expire_on_commit=False)
 
 
 class CapAfter:

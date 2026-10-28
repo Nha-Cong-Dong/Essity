@@ -29,7 +29,7 @@ from ai_service.security import SERVICE_TOKEN_HEADER
 from ai_service.tasks.grade import build_llm_request, fake_grade
 from ai_service.tasks.grade_models import MAX_MISSING_CHARS, GradeRequest
 from tests.grade.helpers import anchor, grade_body, unit
-from tests.llm.helpers import FAKE_KEY, FakeAnthropicApi, message_json
+from tests.llm.helpers import FAKE_KEY, FakeAnthropicApi, NoQuota, message_json
 
 HEADERS = {SERVICE_TOKEN_HEADER: "test-service-token-0123456789abcdef"}
 
@@ -291,6 +291,7 @@ def test_adr0013_answer_not_in_app_log(
         AnthropicAdapter(api_key=FAKE_KEY, http_client=api.client()),
         sessions,
         models={"grade": "claude-haiku-5-5"},
+        quota_guard=NoQuota(),
     )
     app = create_app()
     app.dependency_overrides[get_llm_client] = lambda: llm
