@@ -1,5 +1,6 @@
 // Pure parts of verify-screens.mjs (arguments, uncovered routes, per-check verdict), kept apart
 // so Vitest covers them without a browser or a server.
+import { connect } from "node:net";
 
 export const DEFAULT_WIDTHS = [390, 1440];
 
@@ -56,6 +57,15 @@ export function uncoveredRoutes(pageSegments, screenPaths, needsBackend) {
 export function selectScreens(screens, filters) {
   if (filters.length === 0) return screens;
   return screens.filter((s) => filters.some((f) => s.path.includes(f)));
+}
+
+/** True when something already accepts connections on the port (a stale server would answer for ours). */
+export function isPortOpen(port, host = "127.0.0.1") {
+  return new Promise((resolve) => {
+    const socket = connect({ port, host });
+    socket.once("connect", () => (socket.destroy(), resolve(true)));
+    socket.once("error", () => resolve(false));
+  });
 }
 
 /** Verdict for one screen at one width; every failure starts with the check name. */

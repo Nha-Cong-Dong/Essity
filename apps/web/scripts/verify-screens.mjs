@@ -10,6 +10,7 @@ import path from "node:path";
 import {
   checkResult,
   HELP,
+  isPortOpen,
   parseArgs,
   selectScreens,
   uncoveredRoutes,
@@ -153,6 +154,10 @@ async function main() {
 
   rmSync(OUT, { recursive: true, force: true });
   mkdirSync(OUT, { recursive: true });
+  // A server left on the port would answer in place of ours and the new one would die silently.
+  if (await isPortOpen(PORT)) {
+    throw new VerifyError(`Port ${PORT} is already in use`, `Stop the process holding port ${PORT}, then run again.`);
+  }
   const server = startServer();
   const stop = () => server.child.kill();
   process.on("SIGINT", () => (stop(), process.exit(130)));

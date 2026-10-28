@@ -1,8 +1,12 @@
 // Pure parts of scripts/verify-screens.mjs: argument parsing, uncovered routes, per-check verdict.
+import { createServer } from "node:net";
+import type { AddressInfo } from "node:net";
+
 import { describe, expect, it } from "vitest";
 
 import {
   checkResult,
+  isPortOpen,
   parseArgs,
   routePath,
   selectScreens,
@@ -50,7 +54,20 @@ describe("uncoveredRoutes", () => {
   });
 
   it("matches the real app routes helper shape", () => {
-    expect(uncoveredRoutes(appRoutes("page"), ["/"], {}).length).toBeGreaterThan(0);
+    const out = uncoveredRoutes(appRoutes("page"), ["/"], {});
+    expect(out).toContain("/login");
+    expect(out).not.toContain("/");
+  });
+});
+
+describe("isPortOpen", () => {
+  it("is true while something listens on the port and false once it is closed", async () => {
+    const server = createServer();
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address() as AddressInfo;
+    expect(await isPortOpen(port)).toBe(true);
+    await new Promise((resolve) => server.close(resolve));
+    expect(await isPortOpen(port)).toBe(false);
   });
 });
 
