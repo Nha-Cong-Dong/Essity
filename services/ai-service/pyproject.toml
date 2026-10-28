@@ -19,6 +19,7 @@ dependencies = [
     "pypdfium2>=5.14.0",
     "pillow>=12.3.0",
     "redis>=8.1",
+    "boto3>=1.43.120",
 ]
 
 [dependency-groups]
