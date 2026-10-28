@@ -207,7 +207,17 @@ def test_t211_the_day_window_resets_at_utc_midnight(
 def test_t211_other_users_spend_is_ignored(
     sessions: sessionmaker[Session], run: PipelineRun
 ) -> None:
-    spend(sessions, new_run(sessions), "50.00")
+    other = new_run(sessions)
+    spend(sessions, other, "50.00")
+    with sessions() as session:  # and money another user has set aside for a call in flight
+        session.add(
+            LlmReservation(
+                user_id=other.user_id,
+                amount_usd=Decimal("50.00"),
+                expires_at=datetime.now(UTC) + timedelta(hours=1),
+            )
+        )
+        session.commit()
     guard_for(sessions, hard_cap_tasks=frozenset()).reserve(request_for(run), Decimal("0.01"))
 
 
