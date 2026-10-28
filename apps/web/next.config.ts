@@ -2,14 +2,27 @@ import path from "node:path";
 
 import type { NextConfig } from "next";
 
+// T4.6: the browser sends a PDF straight to object storage (ADR-0012), so connect-src names the
+// storage's origin (S3_PUBLIC_ENDPOINT's, as core-api signs it). Read when headers() runs; a value
+// that is not an http(s) URL adds nothing.
+function storageOrigin(): string {
+  try {
+    const url = new URL(process.env.UPLOAD_ORIGIN ?? "");
+    return url.protocol === "https:" || url.protocol === "http:" ? ` ${url.origin}` : "";
+  } catch {
+    return "";
+  }
+}
+
 function contentSecurityPolicy(production: boolean): string {
+  const storage = storageOrigin();
   return [
     "default-src 'self'",
     production ? "script-src 'self' 'unsafe-inline'" : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:", // the paper grain is an SVG data: URL
     "font-src 'self'",
-    production ? "connect-src 'self'" : "connect-src 'self' ws: wss:",
+    production ? `connect-src 'self'${storage}` : `connect-src 'self'${storage} ws: wss:`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

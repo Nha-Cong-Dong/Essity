@@ -59,6 +59,10 @@ const PENDING_COPY: [file: string, text: string][] = [
   ["components/review/summary.tsx", "Phiên tiếp theo:"],
   ["components/review/summary.tsx", "Về trang chính"],
   ["components/review/summary.tsx", "Ôn thêm"],
+  // T4.6 upload step (subject-new.html); the refusal sentences live in lib/upload-copy.ts
+  ["components/subjects/uploader.tsx", "Thả file vào đây hoặc bấm để chọn"],
+  ["components/subjects/uploader.tsx", "Chỉ PDF, tối đa 100 MB mỗi file"],
+  ["components/subjects/uploader.tsx", "{uploadMessage(state.code)}"],
 ];
 
 function sources(dir: string): string[] {

@@ -19,7 +19,7 @@ async function Upload({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   await requireVerifiedSession();
   const subject = await subjectForUpload((await params).id);
-  return <UploadStep name={subject.name} />;
+  return <UploadStep name={subject.name} subjectId={subject.id} />;
 }
 
 export default function UploadPage({ params }: { params: Promise<{ id: string }> }) {
