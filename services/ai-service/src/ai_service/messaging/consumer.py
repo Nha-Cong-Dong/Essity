@@ -501,21 +501,40 @@ def install_signal_handlers(stop: threading.Event) -> None:
 
 def main() -> None:
     from ai_service.clients.redis import redis_from_url
+    from ai_service.clients.storage import S3Storage
     from ai_service.config import get_settings
     from ai_service.db.session import get_session_factory
-    from ai_service.handlers import HANDLERS
+    from ai_service.handlers import build_handlers
     from ai_service.logging import configure_logging
     from ai_service.telemetry import configure_tracing
 
     settings = get_settings()
     if settings.redis_url is None:
         sys.exit("AI_REDIS_URL is not set: the event consumer needs Redis")
+    if (
+        settings.s3_endpoint is None
+        or settings.s3_access_key is None
+        or settings.s3_secret_key is None
+        or settings.s3_bucket is None
+    ):
+        sys.exit("AI_S3_* is not set: the document indexer needs the object storage")
     configure_logging(SERVICE, settings.log_level)
     provider = configure_tracing(SERVICE)
+    redis = redis_from_url(settings.redis_url.get_secret_value())
+    storage = S3Storage(
+        endpoint=settings.s3_endpoint,
+        access_key=settings.s3_access_key.get_secret_value(),
+        secret_key=settings.s3_secret_key.get_secret_value(),
+        bucket=settings.s3_bucket,
+        region=settings.s3_region,
+    )
     consumer = Consumer(
-        redis=redis_from_url(settings.redis_url.get_secret_value()),
+        redis=redis,
         session_factory=get_session_factory(),
-        handlers=HANDLERS,
+        handlers=build_handlers(redis=redis, storage=storage),
+        # A handler may run for minutes (T4.7): one entry per read, so `stop` is looked at
+        # between documents and a SIGKILL costs one entry, not ten.
+        batch=1,
     )
     stop = threading.Event()
     install_signal_handlers(stop)
