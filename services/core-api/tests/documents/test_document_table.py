@@ -181,11 +181,11 @@ def test_an_uploaded_document_has_its_time(
     db_session.flush()
 
 
-def test_0013_up_down_up(engine: Engine, alembic_cfg: Config) -> None:
+def test_0016_up_down_up(engine: Engine, alembic_cfg: Config) -> None:
     try:
-        command.downgrade(alembic_cfg, "0012")
+        command.downgrade(alembic_cfg, "0015")
         assert "document" not in inspect(engine).get_table_names()
-        command.upgrade(alembic_cfg, "0013")
+        command.upgrade(alembic_cfg, "0016")
         with engine.connect() as connection:
             index = connection.execute(
                 text("SELECT indexdef FROM pg_indexes WHERE indexname = 'ix_document_unconfirmed'")

@@ -110,7 +110,7 @@ def test_storage_calls_time_out_quickly_by_default() -> None:
 def test_document_limits_default() -> None:
     values = settings()
     assert values.document_max_bytes == 100 * MIB
-    assert values.document_quota_bytes == 1 * GIB
+    assert values.document_quota_bytes == 500 * MIB
     assert values.storage_global_quota_bytes == 8 * GIB
     assert values.document_uploads_per_hour == 30
     assert values.document_cleanup_after_seconds == 3600

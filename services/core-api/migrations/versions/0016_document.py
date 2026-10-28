@@ -1,7 +1,7 @@
 """document
 
-Revision ID: 0013
-Revises: 0012
+Revision ID: 0016
+Revises: 0015
 Create Date: 2026-10-26 01:33:49.321841
 
 T4.5 (ADR-0012): a subject's reference files. The object key is checked to be the row's own raw
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0013"
-down_revision: str | Sequence[str] | None = "0012"
+revision: str = "0016"
+down_revision: str | Sequence[str] | None = "0015"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
