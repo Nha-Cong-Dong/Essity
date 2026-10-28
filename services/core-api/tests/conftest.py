@@ -1,6 +1,7 @@
 import io
 import logging
 import os
+import uuid
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from core_api.clients.redis import get_redis, redis_from_url
+from core_api.clients.storage import S3Storage
 from core_api.config import get_settings
 from core_api.db.engine import create_db_engine, get_engine
 from core_api.db.models import User
@@ -24,6 +26,14 @@ from core_api.repositories.user import UserRepository
 from core_api.security.client_ip import CLIENT_IP_HEADER
 from core_api.security.service_token import SERVICE_TOKEN_HEADER
 from ips import fresh_ip
+from object_store import (
+    S3_ACCESS_KEY,
+    S3_ENDPOINT,
+    S3_SECRET_KEY,
+    create_bucket,
+    drop_bucket,
+    storage_on,
+)
 
 TEST_AI_SERVICE_TOKEN = "test-ai-service-token-0123456789abcdef"
 WEB_TOKEN = "test-web-token-0123456789abcdefghij"
@@ -49,6 +59,12 @@ def test_settings_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setenv("CORE_AI_SERVICE_TOKEN", TEST_AI_SERVICE_TOKEN)
     monkeypatch.setenv("CORE_DATABASE_URL", TEST_DATABASE_URL)
     monkeypatch.setenv("CORE_REDIS_URL", TEST_REDIS_URL)
+    # The shared S3_* names (.env.example); API tests swap in a storage of their own.
+    monkeypatch.setenv("S3_ENDPOINT", S3_ENDPOINT)
+    monkeypatch.setenv("S3_PUBLIC_ENDPOINT", "")
+    monkeypatch.setenv("S3_BUCKET", "essity-test-unused")
+    monkeypatch.setenv("S3_ACCESS_KEY", S3_ACCESS_KEY)
+    monkeypatch.setenv("S3_SECRET_KEY", S3_SECRET_KEY)
     get_settings.cache_clear()
     get_engine.cache_clear()
     get_redis.cache_clear()
@@ -162,3 +178,24 @@ def log_output() -> Iterator[Callable[[], str]]:
     configure_logging("core-api", "DEBUG", stream=buffer)
     yield buffer.getvalue
     root.handlers, root.level = saved
+
+
+# --- The real object store (T4.5): a bucket of this run's own, see object_store.py.
+
+
+@pytest.fixture(scope="session")
+def s3_bucket() -> Iterator[str]:
+    bucket = create_bucket()
+    yield bucket
+    drop_bucket(bucket)
+
+
+@pytest.fixture
+def s3_storage(s3_bucket: str) -> S3Storage:
+    return storage_on(s3_bucket)
+
+
+@pytest.fixture
+def object_key() -> str:
+    """A key no other test uses: the bucket is shared by the whole run."""
+    return f"users/{uuid.uuid4()}/subjects/{uuid.uuid4()}/raw/{uuid.uuid4().hex}.pdf"

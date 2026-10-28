@@ -70,8 +70,8 @@ services:
       AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
       AWS_DEFAULT_REGION: us-east-1
-      S3_ENDPOINT: ${S3_ENDPOINT}
-      S3_BUCKET: ${S3_BUCKET}
+      S3_ENDPOINT: ${S3_ENDPOINT:?set in .env}
+      S3_BUCKET: ${S3_BUCKET:?set in .env}
     volumes:
       - ./storage/init.sh:/init.sh:ro
     depends_on:
@@ -123,6 +123,14 @@ services:
       CORE_LOG_HASH_KEY: ${LOG_HASH_KEY:-}
       # Requests carrying this token come from web, so core-api trusts their X-Client-IP.
       CORE_WEB_TOKEN: ${WEB_TO_CORE_TOKEN:?set in .env}
+      # Object storage (T4.5): the same S3_* variables storage-init uses. Upload URLs are
+      # signed for S3_PUBLIC_ENDPOINT, the address the browser reaches.
+      S3_ENDPOINT: ${S3_ENDPOINT:?set in .env}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:?set in .env}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?set in .env}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?set in .env}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     ports:
       - "127.0.0.1:8000:8000"

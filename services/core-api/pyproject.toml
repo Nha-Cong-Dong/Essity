@@ -26,10 +26,12 @@ dependencies = [
     "argon2-cffi>=25.1",
     "procrastinate>=3.10,<4",
     "pyyaml>=6.0.2",
+    "boto3>=1.40",
 ]
 
 [dependency-groups]
 dev = [
+    "boto3-stubs[s3]>=1.40",
     "hypothesis>=6.170.0",
     "jsonschema[format-nongpl]>=4.23",
     "pyright>=1.1.390",

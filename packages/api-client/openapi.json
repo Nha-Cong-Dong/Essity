@@ -225,6 +225,47 @@
         "title": "CurrentOut",
         "type": "object"
       },
+      "DocumentOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "short_name": {
+            "title": "Short Name",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject_id",
+          "short_name",
+          "status",
+          "size_bytes",
+          "created_at"
+        ],
+        "title": "DocumentOut",
+        "type": "object"
+      },
       "DoneOut": {
         "properties": {
           "done": {
@@ -1088,6 +1129,95 @@
         "title": "UnitResult",
         "type": "object"
       },
+      "UploadOut": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocumentOut"
+          },
+          "duplicate": {
+            "title": "Duplicate",
+            "type": "boolean"
+          },
+          "upload": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UploadUrl"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "document",
+          "upload",
+          "duplicate"
+        ],
+        "title": "UploadOut",
+        "type": "object"
+      },
+      "UploadRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "filename": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "exclusiveMinimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "size_bytes",
+          "sha256"
+        ],
+        "title": "UploadRequest",
+        "type": "object"
+      },
+      "UploadUrl": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "method": {
+            "const": "PUT",
+            "default": "PUT",
+            "title": "Method",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "headers",
+          "expires_at"
+        ],
+        "title": "UploadUrl",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1657,6 +1787,40 @@
         "summary": "Resend Verification"
       }
     },
+    "/v1/documents/{document_id}/confirm": {
+      "post": {
+        "description": "The file is stored: check it, mark the document uploaded and announce it to ai-service\n(`document.uploaded.v1`, in the same transaction). Confirming again changes nothing.\n\nErrors: 404 `document_not_found` (another user's too) or `subject_not_found` (deleted since);\n409 `upload_incomplete` (nothing stored yet: upload, or ask for a new URL, then confirm);\n422 `size_mismatch` or `content_mismatch`: the file is deleted and the document stays\nrefused, so the same file cannot be uploaded again; 503 `storage_unavailable`.\n\nLocks the subject FOR SHARE, then the document FOR UPDATE: the order `reserve` takes them.\nLimited per account (429): each confirm calls the store.",
+        "operationId": "confirm_upload_v1_documents__document_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "The file stored is not the PDF declared"
+          }
+        },
+        "summary": "Confirm Upload"
+      }
+    },
     "/v1/grades/{grade_id}/override": {
       "post": {
         "operationId": "override_v1_grades__grade_id__override_post",
@@ -2082,6 +2246,67 @@
           }
         },
         "summary": "Change Subject"
+      }
+    },
+    "/v1/subjects/{subject_id}/documents": {
+      "post": {
+        "description": "A URL to upload one PDF to the subject (201), or the document it already is (200).\n\nThe same file (SHA-256) again: uploaded → `duplicate: true` and no URL; still uploading →\na fresh URL for the same document. Errors: 404 `subject_not_found`; 422\n`unsupported_file_type`, `invalid_filename`, `file_too_large`, `size_mismatch` (the same\nfile asked with another size), `content_mismatch` (the same file was refused before); 409\n`storage_quota_exceeded`; 429 with Retry-After; 503 `storage_full` or when a dependency is\ndown.",
+        "operationId": "request_upload_v1_subjects__subject_id__documents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadOut"
+                }
+              }
+            },
+            "description": "The file is already in the subject"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Upload"
       }
     },
     "/v1/today": {
