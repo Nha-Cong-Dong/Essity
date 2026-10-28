@@ -156,6 +156,9 @@ class Section:
     title: str
     level: int
     page: int  # file page, 1-based
+    # Last page of the section, worked out on the whole toc as T4.7 wrote it (entries the
+    # prompt does not show, with no title or cut for length, still end a section).
+    end: int
 
 
 @dataclass(frozen=True)
@@ -171,6 +174,16 @@ _CONTROL = re.compile(r"[\x00-\x1f\x7f  |]+")
 def _clean(text: str, limit: int) -> str:
     """One line, no `|` (the toc line's separator), cut to `limit`."""
     return re.sub(r"\s+", " ", _CONTROL.sub(" ", text)).strip()[:limit].strip()
+
+
+def _raw_section_end(document: ExtractDocument, index: int) -> int:
+    """Before the next entry of the same level or above that has a page, in the toc as sent."""
+    entry = document.toc[index]
+    assert entry.page is not None
+    for other in document.toc[index + 1 :]:
+        if other.page is not None and other.level <= entry.level:
+            return max(entry.page, other.page - 1)
+    return document.page_count
 
 
 def normalize_documents(request: ExtractRequest) -> list[Doc]:
@@ -197,8 +210,14 @@ def normalize_documents(request: ExtractRequest) -> list[Doc]:
         else:
             keep = entries
         sections = [
-            Section(label=f"S{s}", title=title, level=level, page=page)
-            for s, (_, title, level, page) in enumerate(keep, 1)
+            Section(
+                label=f"S{s}",
+                title=title,
+                level=level,
+                page=page,
+                end=_raw_section_end(document, index),
+            )
+            for s, (index, title, level, page) in enumerate(keep, 1)
         ]
         docs.append(Doc(label=f"D{d}", source=document, sections=sections))
     return docs
@@ -318,12 +337,7 @@ def _find_section(doc: Doc, label: str | None, *, doc_label: str) -> Section:
 
 
 def _section_end(doc: Doc, section: Section) -> int:
-    """The last page of a section: before the next section of its level or above."""
-    after = doc.sections[doc.sections.index(section) + 1 :]
-    for other in after:
-        if other.level <= section.level:
-            return max(section.page, other.page - 1)
-    return doc.source.page_count
+    return section.end
 
 
 def _printed_to_file(document: ExtractDocument, first: int, last: int) -> tuple[int, int] | None:
@@ -347,6 +361,18 @@ def _printed_to_file(document: ExtractDocument, first: int, last: int) -> tuple[
     if not ends:
         return None
     return start, ends[0]
+
+
+def _printed_end(document: ExtractDocument, number: int, start: int) -> int | None:
+    """The first file page at or after `start` printed as `number`, or None."""
+    labels = document.page_labels
+    if labels is None:
+        return None
+    for index in range(start - 1, len(labels)):
+        label = labels[index].strip()
+        if label == str(number) and len(label) <= MAX_LABEL_SHOWN_CHARS:
+            return index + 1
+    return None
 
 
 def resolve_pages(doc: Doc, reference: Reference) -> Pages:
@@ -381,11 +407,11 @@ def resolve_pages(doc: Doc, reference: Reference) -> Pages:
         elif reference.to_page is not None and reference.basis is not None:
             end = reference.to_page
             if reference.basis == "printed":
-                converted = _printed_to_file(document, reference.to_page, reference.to_page)
-                if converted is None:
+                converted_end = _printed_end(document, reference.to_page, start)
+                if converted_end is None:
                     assumed = True
                 else:
-                    end = converted[0]
+                    end = converted_end
         else:
             raise OutputViolation("x8")
     if not 1 <= start <= end <= document.page_count:
@@ -527,9 +553,8 @@ def check_output(text: str, docs: list[Doc], today: datetime.date) -> Outcome:
         if (
             not question.strip()
             or len(question) > MAX_QUESTION_CHARS
-            or "\n" in question
-            or "\r" in question
-            or question.count("?") > 1
+            or len(question.splitlines()) != 1
+            or question.count("?") + question.count("？") > 1
         ):
             raise OutputViolation("x9")
         if parsed.reason == "ambiguous_document" and len(parsed.candidates) < 2:
@@ -558,8 +583,8 @@ def extract_session(
     deadline = time.monotonic() + DEADLINE_SECONDS
     prompt = load_prompt()
     run_id = _start_run(sessions, request, prompt)
-    docs = normalize_documents(request)
     try:
+        docs = normalize_documents(request)
         response = _ask_model(request, docs, run_id, prompt, llm, deadline)
     except AuditUnavailableError:
         raise

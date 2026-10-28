@@ -128,3 +128,11 @@ def test_pages_reference_with_missing_numbers_is_x4() -> None:
     with pytest.raises(OutputViolation) as raised:
         resolve_pages(book(), ref(from_page=None, to_page=5))
     assert raised.value.rule == "x4"
+
+
+def test_section_end_counts_entries_dropped_from_the_prompt() -> None:
+    # Review T1: an untitled entry (kept by T4.7) still ends the section before it.
+    toc = [("Chương 3", 0, 51), ("", 0, 70), ("Chương 5", 0, 90)]
+    doc = book(toc=toc, page_count=100, labels=None)
+    pages = resolve_pages(doc, ref("section", basis=None, from_section="D1.S1"))
+    assert (pages.start, pages.end) == (51, 69)
