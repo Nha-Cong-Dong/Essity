@@ -12,7 +12,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
-from ai_service.handlers import HANDLERS
+from ai_service.handlers import build_handlers
 from ai_service.logging import configure_logging
 from ai_service.messaging import consumer as consumer_module
 from ai_service.messaging.consumer import Consumer, run
@@ -177,5 +177,5 @@ def test_t43_main_without_redis_url_fails(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_t43_handlers_only_for_events_core_sends() -> None:
-    # T4.7 fills the registry; a handler for an event ai-service itself sends would never run.
-    assert set(HANDLERS) <= CORE_TO_AI
+    # A handler for an event ai-service itself sends would never run.
+    assert set(build_handlers(redis=None, storage=None)) <= CORE_TO_AI  # pyright: ignore[reportArgumentType]

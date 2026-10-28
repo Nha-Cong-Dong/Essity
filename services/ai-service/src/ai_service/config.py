@@ -34,6 +34,14 @@ class Settings(DatabaseSettings):
     # and the consumer refuses to start without it. Secret because it may hold a password.
     redis_url: SecretStr | None = None
 
+    # The object storage the document indexer reads and writes (T4.7), AI_S3_*. Optional like
+    # Redis: only the consumer needs it, and it refuses to start without it.
+    s3_endpoint: str | None = None
+    s3_access_key: SecretStr | None = None
+    s3_secret_key: SecretStr | None = None
+    s3_bucket: str | None = None
+    s3_region: str = "us-east-1"
+
     # Who grades (T2.10). The only place a provider is chosen: the task table picks models.
     # No default: a deploy must say it. `fake` grades without a model and only runs in local and
     # test (R41); `disabled` starts without a key and answers 503 grading_disabled.
