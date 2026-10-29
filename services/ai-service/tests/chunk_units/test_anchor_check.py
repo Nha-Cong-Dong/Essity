@@ -89,3 +89,17 @@ def test_mapping_invariant_random_AC3() -> None:
             assert found is not None
             s, e = found
             assert normalize_with_map(text[s:e])[0].strip() == quote.strip()
+
+
+def test_match_starting_inside_a_cluster_refused_AC3() -> None:
+    # "q" + combining acute has no precomposed form, so NFC keeps two chars that both map to
+    # the same original cluster. A quote starting at the mark would get an anchor that also
+    # covers the "q" (more than the model quoted). Red when: the final re-check is removed.
+    page = "xq\u0301 the rest of the sentence here"
+    assert find_quote(page, "\u0301 the rest of the sentence here") is None
+
+
+def test_unescape_touches_only_the_three_prompt_entities() -> None:
+    # The prompt escapes only & < >; any other entity is page text. Red when: html.unescape
+    # (or a wider table) is used.
+    assert unescape_quote("&copy; &#60; &quot; &nbsp;") == "&copy; &#60; &quot; &nbsp;"
