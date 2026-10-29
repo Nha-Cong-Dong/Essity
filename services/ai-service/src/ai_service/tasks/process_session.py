@@ -145,6 +145,7 @@ class _Work:
     dropped_units: int = 0
     dropped_questions: int = 0
     higher: list[HigherQuestion] = field(default_factory=lambda: list[HigherQuestion]())
+    higher_batches: int = 0  # higher batches finished; kept in the cache like level 1
     questions_done: bool = False  # level 1 paid for; kept in the cache across a redelivery
 
 
@@ -220,6 +221,7 @@ class ProcessSession:
                 except _Fail as failure:
                     _log.warning("session failed", extra={"outcome": failure.code})
                     self._send(event, "failed", failure.reason, None)
+                    self._forget(event)  # derived text must not linger a day (ADR-0001/0007)
                     return
                 self._remember(f"result:{event.event_id}", body)
             self._put(key, body)
@@ -308,6 +310,8 @@ class ProcessSession:
             "questions": [json.loads(q.model_dump_json()) for q in work.questions],
             "dropped_questions": work.dropped_questions,
             "questions_done": work.questions_done,
+            "higher": [json.loads(q.model_dump_json()) for q in work.higher],
+            "higher_batches": work.higher_batches,
         }
         self._remember(f"chunk:{event.event_id}", json.dumps(data).encode())
 
@@ -323,10 +327,12 @@ class ProcessSession:
                 dropped_units=data["dropped_units"],
                 dropped_questions=data.get("dropped_questions", 0),
                 questions_done=data.get("questions_done", False),
+                higher_batches=data.get("higher_batches", 0),
             )
             work.questions = [
                 GeneratedQuestion.model_validate(q) for q in data.get("questions", [])
             ]
+            work.higher = [HigherQuestion.model_validate(q) for q in data.get("higher", [])]
             work.units = [
                 _Unit(uuid.UUID(u["unit_id"]), NewUnit.model_validate(u["new"]))
                 for u in data["units"]
@@ -513,6 +519,8 @@ class ProcessSession:
                 for i in range(0, len(work.units), QUESTION_BATCH)
             ]
             for n, group in enumerate(groups):
+                if n < work.higher_batches:
+                    continue
                 request = QuestionRequest(units=[_question_unit(u) for u in group])
                 asker = _Asker(
                     llm,
@@ -528,9 +536,13 @@ class ProcessSession:
                     _log.warning("higher questions dropped", extra={"outcome": "output_invalid"})
                     work.dropped_questions += len(group)
                     refused = True
+                    work.higher_batches = n + 1
+                    self._save_work(event, work)
                     continue
                 work.higher.extend(result.questions)
                 work.dropped_questions += len(result.dropped)
+                work.higher_batches = n + 1
+                self._save_work(event, work)
                 self._progress(event, "writing_questions", 90 + 5 * (n + 1) // len(groups))
         except BaseException as error:
             self._finish_run(run_id, _code(error))

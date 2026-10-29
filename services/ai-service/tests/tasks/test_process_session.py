@@ -775,3 +775,44 @@ def test_t51b_redelivery_after_storage_down_does_not_pay_again(
     run(h, event)
     assert llm_calls(sessions) == paid
     assert _levels(result(storage, event))[2]
+
+
+def test_t51b_redelivery_after_audit_down_in_batch_2_does_not_pay_batch_1_again(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    pages = {n: f"Page number {n} says something distinct about topic {n}." for n in range(1, 46)}
+    index(storage, pages)
+    event = confirmed(ranges=[(DOC, 1, 45)])
+    state = {"v2": 0, "fail": True}
+
+    def higher(request: Any) -> str:
+        state["v2"] += 1
+        if state["v2"] == 2 and state["fail"]:
+            state["fail"] = False
+            raise AuditUnavailableError
+        return fake_questions(request)
+
+    h = handler(storage, redis_client, stream, sessions, _adapter(higher))
+    with pytest.raises(Deferred):
+        run(h, event)
+    assert state["v2"] == 2  # batch 1 paid, batch 2 refused by the audit
+    run(h, event)
+    assert state["v2"] == 4  # batch 2 and 3 only: batch 1 not asked again
+    assert len(_levels(result(storage, event))[2]) == 45
+
+
+def test_t51b_a_failed_session_leaves_nothing_in_the_cache(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+
+    def down(request: Any) -> str:
+        raise ProviderError("timeout")
+
+    adapter = FakeAdapter({"chunk_units": fake_chunk, "generate_questions": down})
+    run(handler(storage, redis_client, stream, sessions, adapter), event)
+    assert isinstance(sent(redis_client, stream)[-1], SessionFailedEvent)
+    assert cast(Any, redis_client).keys(f"ai:session:*:{event.event_id}") == []
