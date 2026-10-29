@@ -373,3 +373,114 @@ def test_log_has_no_description(
     post(client, headers, subject.id)
 
     assert SENTENCE not in log_output()
+
+
+def test_description_survives_unexpected_error(
+    client: TestClient,
+    db_session: Session,
+    fake_storage: FakeStorage,
+    fake_ai: FakeAi,
+) -> None:
+    # The request's own session rolls back on an exception; the draft was committed before.
+    from collections.abc import Iterator
+
+    from core_api.db.session import get_session
+    from core_api.main import app
+
+    def rolling_back() -> Iterator[Session]:
+        try:
+            yield db_session
+            db_session.flush()
+        except BaseException:
+            db_session.rollback()
+            raise
+
+    app.dependency_overrides[get_session] = rolling_back
+    user, headers = signed_in(db_session)
+    subject = subject_of(db_session, user)
+    indexed_document(db_session, fake_storage, user, subject)
+    db_session.commit()
+    fake_ai.answer = RuntimeError("boom")  # not an httpx2 error: nothing catches it
+
+    with pytest.raises(RuntimeError):
+        post(client, headers, subject.id)
+
+    [draft] = rows(db_session)
+    assert draft.description_raw == SENTENCE
+    assert draft.extraction == "failed"
+
+
+def test_session_create_rate_limited(
+    client: TestClient,
+    db_session: Session,
+    fake_storage: FakeStorage,
+    fake_ai: FakeAi,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from core_api.config import get_settings
+
+    monkeypatch.setenv("CORE_SESSION_CREATES_PER_HOUR", "2")
+    get_settings.cache_clear()
+    user, headers = signed_in(db_session)
+    subject = subject_of(db_session, user)
+    indexed_document(db_session, fake_storage, user, subject)
+    for _ in range(2):
+        assert post(client, headers, subject.id).status_code == 201
+    asked = len(fake_ai.requests)
+
+    response = post(client, headers, subject.id)
+
+    assert response.status_code == 429
+    assert int(response.headers["Retry-After"]) > 0
+    assert len(rows(db_session)) == 2
+    assert len(fake_ai.requests) == asked
+
+
+def test_redis_down_is_a_503_and_saves_nothing(
+    client: TestClient, db_session: Session, fake_ai: FakeAi, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from core_api.clients.redis import redis_from_url
+    from core_api.security import rate_limit
+
+    user, headers = signed_in(db_session)
+    subject = subject_of(db_session, user)
+    dead = redis_from_url("redis://127.0.0.1:1/0", timeout=0.2)
+    monkeypatch.setattr(rate_limit, "get_redis", lambda: dead)
+
+    assert post(client, headers, subject.id).status_code == 503
+    assert rows(db_session) == []
+    assert fake_ai.requests == []
+
+
+def test_slow_store_stays_in_budget(
+    client: TestClient,
+    db_session: Session,
+    fake_storage: FakeStorage,
+    fake_ai: FakeAi,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user, headers = signed_in(db_session)
+    subject = subject_of(db_session, user)
+    for n in range(4):
+        indexed_document(db_session, fake_storage, user, subject, sha=f"{n:02x}" * 32)
+    reads: list[str] = []
+    original = fake_storage.read_start
+
+    def slow_read(key: str, length: int) -> bytes:
+        reads.append(key)
+        return original(key, length)
+
+    monkeypatch.setattr(fake_storage, "read_start", slow_read)
+    now = [0.0]
+
+    def monotonic() -> float:
+        now[0] += 1.5  # every look at the clock is 1.5 s later: a slow store
+        return now[0] - 1.5
+
+    monkeypatch.setattr("core_api.api.sessions.monotonic", monotonic)
+
+    card = post(client, headers, subject.id).json()
+
+    assert card["card"] == "manual"
+    assert fake_ai.requests == []
+    assert len(reads) <= 2  # the toc and labels of one document, then no more reads

@@ -47,6 +47,7 @@ router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
 # ai-service takes at most 12 documents and 6000 toc entries in all (T4.10).
 MAX_DOCUMENTS = 12
+MAX_RANGES = 6
 MAX_TOC_ENTRIES = 5000
 MAX_TOC_TOTAL = 6000
 # What a toc.json or page_labels.json may weigh for core to read it into a request.
@@ -177,8 +178,10 @@ def _documents_payload(
     whose files cannot be read is left out: the learner can still pick it on the manual form."""
     out: list[dict[str, Any]] = []
     toc_total = 0
+    # One read may take connect + read timeout; start none that could end past the budget.
+    worst_read = 2 * get_settings().s3_timeout_seconds
     for document in documents:
-        if remaining() <= 0:
+        if remaining() < worst_read:
             break
         count = document.page_count
         toc = _read_json(storage, document.toc_key)
@@ -194,7 +197,12 @@ def _documents_payload(
                 "document_id": str(document.id),
                 "short_name": document.short_name,
                 "page_count": count,
-                "page_labels": _labels(_read_json(storage, document.page_labels_key), count),
+                "page_labels": _labels(
+                    _read_json(storage, document.page_labels_key)
+                    if remaining() >= worst_read
+                    else None,
+                    count,
+                ),
                 "toc": entries,
                 "last_end_page": last if last is not None and last <= count else None,
             }
@@ -227,6 +235,8 @@ def _card(
         return "note_only", SessionCard(
             session_id=session_id, card="note_only", studied_on=studied_on, documents=choices
         )
+    if not answer.ranges or len(answer.ranges) > MAX_RANGES:
+        return None
     ranges: list[CardRange] = []
     for r in answer.ranges:
         document = known.get(r.document_id)
