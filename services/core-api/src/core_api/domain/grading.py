@@ -80,7 +80,12 @@ def build_request(
     units: Sequence[UnitIn],
 ) -> dict[str, object]:
     """The JSON body of POST /v1/grade, or RequestRefused when ai-service would refuse it."""
-    rubric = None if question.rubric is None else json.dumps(question.rubric, ensure_ascii=False)
+    # A text rubric (the session result, T4.17) goes as it is; json.dumps would quote it.
+    rubric = (
+        question.rubric
+        if question.rubric is None or isinstance(question.rubric, str)
+        else json.dumps(question.rubric, ensure_ascii=False)
+    )
     texts = [question.text, question.reference_answer, rubric or ""]
     if any(len(text) > MAX_QUESTION_CHARS for text in texts) or len(answer) > MAX_ANSWER_CHARS:
         raise RequestRefused("text over the limit")

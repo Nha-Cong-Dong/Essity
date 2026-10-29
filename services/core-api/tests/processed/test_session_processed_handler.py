@@ -512,3 +512,26 @@ def test_merge_into_inactive_unit_is_skipped(world: World) -> None:
         )
     )
     assert count(world.db, Anchor) == 0
+
+
+def test_rubric_written_here_reaches_the_grading_prompt_unquoted(world: World) -> None:
+    from core_api.domain.grading import QuestionIn, build_request
+
+    world.run(world.body(units=[world.unit(U1)], questions=[question([U1], rubric="Nêu đúng ý.")]))
+    q = world.db.scalars(select(Question)).one()
+    body: Any = build_request(
+        user_id=world.user.id,
+        subject_id=world.subject.id,
+        attempt_id=uuid.uuid4(),
+        question=QuestionIn(text=q.prompt, rubric=q.rubric, reference_answer=q.reference_answer),
+        answer="x",
+        units=[_unit_in(world, q.id)],
+    )
+    assert body["question"]["rubric"] == "Nêu đúng ý."
+
+
+def _unit_in(world: World, question_id: uuid.UUID) -> Any:
+    from core_api.domain.grading import AnchorIn, UnitIn
+
+    row = world.db.scalars(select(KnowledgeUnit)).one()
+    return UnitIn(row.id, row.title, [AnchorIn(uuid.uuid4(), "trích")])
