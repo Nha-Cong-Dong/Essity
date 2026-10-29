@@ -2,7 +2,6 @@
 follows the current rule (Q20 tạm), so changing the rule replays review_log to the new states."""
 
 import uuid
-from collections.abc import Iterator
 from dataclasses import replace
 
 import pytest
@@ -28,12 +27,6 @@ HARSHER = replace(
 @pytest.fixture
 def desk(db_session: Session, two_users: tuple[User, User]) -> Desk:
     return Desk(db_session, two_users[0], units=3)
-
-
-@pytest.fixture
-def harsher_current(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    monkeypatch.setattr(multi_unit, "CURRENT_RULE", HARSHER)
-    yield
 
 
 def states(desk: Desk) -> dict[uuid.UUID, MemoryState | None]:
@@ -76,6 +69,18 @@ def test_ac9_override_of_a_three_unit_question_rates_every_unit_under_the_rule(
     assert sorted(rows) == [ReviewRating.AGAIN] + [ReviewRating.GOOD] * 5
     now = states(desk)
     assert len({now[u] for u in desk.units}) == 1  # the override made all three Good
+
+
+# Red when: a late answer (older than the unit's last review) rates its units by anything but
+# their own verdicts, or the replay it triggers differs from a full rebuild.
+def test_ac9_late_three_unit_answer_replays_each_unit_with_its_own_rating(desk: Desk) -> None:
+    desk.grade(desk.submitted(), Stub())
+    desk.grade(desk.submitted(days_ago=3), Stub(verdicts={desk.units[2]: "incorrect"}))
+    after_late = states(desk)
+    MemoryStateRepository(desk.session, desk.user.id).rebuild()
+    assert states(desk) == after_late
+    assert after_late[desk.units[2]] != after_late[desk.units[0]]
+    assert after_late[desk.units[0]] == after_late[desk.units[1]]
 
 
 # Red when: replay is not repeatable.
