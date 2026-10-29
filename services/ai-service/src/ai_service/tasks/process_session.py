@@ -78,6 +78,7 @@ from ai_service.tasks.question_models import (
     MAX_SUMMARY_CHARS,
     MAX_TITLE_CHARS,
     GeneratedQuestion,
+    HigherQuestion,
     QuestionRequest,
     QuestionUnit,
 )
@@ -143,6 +144,8 @@ class _Work:
     dropped_anchors: int = 0
     dropped_units: int = 0
     dropped_questions: int = 0
+    higher: list[HigherQuestion] = field(default_factory=lambda: list[HigherQuestion]())
+    questions_done: bool = False  # level 1 paid for; kept in the cache across a redelivery
 
 
 def _anchor_key(a: Anchor) -> tuple[object, ...]:
@@ -250,6 +253,7 @@ class ProcessSession:
                 self._save_work(event, work)
             self._progress(event, "anchoring", 70)
             self._ask_questions(event, self.llm, work)
+            self._ask_higher(event, self.llm, work)
         except (LlmUnavailableError, QuotaExceededError):
             raise _Fail("llm_unavailable", "llm_unavailable") from None
         except AuditUnavailableError:
@@ -301,6 +305,9 @@ class ProcessSession:
             "skipped": work.skipped,
             "dropped_anchors": work.dropped_anchors,
             "dropped_units": work.dropped_units,
+            "questions": [json.loads(q.model_dump_json()) for q in work.questions],
+            "dropped_questions": work.dropped_questions,
+            "questions_done": work.questions_done,
         }
         self._remember(f"chunk:{event.event_id}", json.dumps(data).encode())
 
@@ -314,7 +321,12 @@ class ProcessSession:
                 skipped=data["skipped"],
                 dropped_anchors=data["dropped_anchors"],
                 dropped_units=data["dropped_units"],
+                dropped_questions=data.get("dropped_questions", 0),
+                questions_done=data.get("questions_done", False),
             )
+            work.questions = [
+                GeneratedQuestion.model_validate(q) for q in data.get("questions", [])
+            ]
             work.units = [
                 _Unit(uuid.UUID(u["unit_id"]), NewUnit.model_validate(u["new"]))
                 for u in data["units"]
@@ -458,7 +470,7 @@ class ProcessSession:
         self._finish_run(run_id, None)
 
     def _ask_questions(self, event: SessionConfirmedEvent, llm: LlmClient, work: _Work) -> None:
-        if not work.units:
+        if not work.units or work.questions_done:
             return
         run_id = self._start_run(event, question_task.TASK, question_task.load_prompt())
         try:
@@ -479,11 +491,51 @@ class ProcessSession:
                 result = question_task.generate_questions(request, asker)
                 work.questions.extend(result.questions)
                 work.dropped_questions += len(result.dropped)
-                self._progress(event, "writing_questions", 70 + 25 * (n + 1) // len(groups))
+                self._progress(event, "writing_questions", 70 + 20 * (n + 1) // len(groups))
         except BaseException as error:
             self._finish_run(run_id, _code(error))
             raise
         self._finish_run(run_id, None)
+        work.questions_done = True
+        self._save_work(event, work)
+
+    def _ask_higher(self, event: SessionConfirmedEvent, llm: LlmClient, work: _Work) -> None:
+        """Levels 2 and 3 (T5.1b), one call per batch. A batch the model cannot get right after
+        the core's retry is dropped and counted: the level-1 questions still stand."""
+        if not work.units:
+            return
+        prompt = question_task.load_prompt(question_task.HIGHER_PROMPT_VERSION)
+        refused = False
+        run_id = self._start_run(event, question_task.TASK, prompt)
+        try:
+            groups = [
+                work.units[i : i + QUESTION_BATCH]
+                for i in range(0, len(work.units), QUESTION_BATCH)
+            ]
+            for n, group in enumerate(groups):
+                request = QuestionRequest(units=[_question_unit(u) for u in group])
+                asker = _Asker(
+                    llm,
+                    task="generate_questions",
+                    version=question_task.HIGHER_PROMPT_VERSION,
+                    event=event,
+                    pipeline_run_id=run_id,
+                    payload={"labels": [f"U{i}" for i in range(1, len(group) + 1)], "higher": True},
+                )
+                try:
+                    result = question_task.generate_higher_questions(request, asker)
+                except QuestionsInvalidError:
+                    _log.warning("higher questions dropped", extra={"outcome": "output_invalid"})
+                    work.dropped_questions += len(group)
+                    refused = True
+                    continue
+                work.higher.extend(result.questions)
+                work.dropped_questions += len(result.dropped)
+                self._progress(event, "writing_questions", 90 + 5 * (n + 1) // len(groups))
+        except BaseException as error:
+            self._finish_run(run_id, _code(error))
+            raise
+        self._finish_run(run_id, "output_invalid" if refused else None)
 
     # --- the result file ----------------------------------------------------------------
 
@@ -502,7 +554,8 @@ class ProcessSession:
                 }
                 for unit_id, anchors in work.merges.items()
             ],
-            "questions": [_question_body(q) for q in work.questions],
+            "questions": [_question_body(q) for q in work.questions]
+            + [json.loads(q.model_dump_json()) for q in work.higher],
             "dropped": {
                 "anchors": work.dropped_anchors,
                 "units": work.dropped_units,
@@ -690,7 +743,10 @@ def fake_chunk(request: LlmRequest) -> str:
 
 
 def fake_questions(request: LlmRequest) -> str:
-    """One question per unit."""
+    """One question per unit; for the higher prompt (payload `higher`) a level-2 question per
+    unit and, with two units or more, one level-3 question over the first two."""
+    if request.payload.get("higher"):
+        return _fake_higher(request.payload["labels"])
     return json.dumps(
         {
             "questions": [
@@ -705,3 +761,27 @@ def fake_questions(request: LlmRequest) -> str:
         },
         ensure_ascii=False,
     )
+
+
+def _fake_higher(labels: list[str]) -> str:
+    questions: list[dict[str, Any]] = [
+        {
+            "level": 2,
+            "units": [label],
+            "prompt": f"Áp dụng ý chính của {label} vào một tình huống mới.",
+            "reference_answer": f"Vận dụng đúng ý chính của {label}.",
+            "rubric": "Nêu đúng ý chính; điểm một phần nếu thiếu.",
+        }
+        for label in labels
+    ]
+    if len(labels) >= 2:
+        questions.append(
+            {
+                "level": 3,
+                "units": labels[:2],
+                "prompt": f"So sánh {labels[0]} và {labels[1]}.",
+                "reference_answer": f"Nối ý chính của {labels[0]} với {labels[1]}.",
+                "rubric": "Nêu phần của từng ý; điểm một phần nếu thiếu một ý.",
+            }
+        )
+    return json.dumps({"questions": questions}, ensure_ascii=False)
