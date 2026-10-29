@@ -481,13 +481,38 @@ export interface paths {
          *
          *     Errors: 404 `session_not_found` (another user's too), `subject_not_found` (deleted since),
          *     `document_not_found` (another subject's or user's too); 409 `not_indexed`, `upload_incomplete`;
-         *     422 `bad_range`, `bad_date`, `bad_note`, `size_mismatch`, `content_mismatch`; 503
-         *     `storage_unavailable`.
+         *     422 `bad_range`, `bad_date`, `bad_note`, `size_mismatch`, `content_mismatch`; 429 with
+         *     Retry-After (each confirm calls the store once per note, R60a); 503 `storage_unavailable`.
          *
          *     Locks the subject FOR SHARE, then the session FOR UPDATE (the order `create_draft` and a
          *     subject's delete agree on).
          */
         post: operations["confirm_session_v1_sessions__session_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sessions/{session_id}/notes/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Note Upload
+         * @description A URL to upload one note file of a draft session (201), or a fresh one for a file asked
+         *     before (200).
+         *
+         *     Errors: 404 `session_not_found` (another user's too); 409 `session_confirmed`,
+         *     `too_many_notes`, `storage_quota_exceeded`; 422 `file_too_large`, `bad_note` (the same file
+         *     asked with another type or size); 429 with Retry-After; 503 when a dependency is down.
+         */
+        post: operations["request_note_upload_v1_sessions__session_id__notes_upload_url_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -914,6 +939,38 @@ export interface components {
             sha256: string;
             /** Size Bytes */
             size_bytes: number;
+        };
+        /** NoteUploadRequest */
+        NoteUploadRequest: {
+            /**
+             * Mime
+             * @enum {string}
+             */
+            mime: "image/jpeg" | "image/png" | "application/pdf" | "text/plain" | "text/markdown";
+            /** Sha256 */
+            sha256: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** NoteUploadUrl */
+        NoteUploadUrl: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Headers */
+            headers: {
+                [key: string]: string;
+            };
+            /**
+             * Method
+             * @default PUT
+             * @constant
+             */
+            method: "PUT";
+            /** Url */
+            url: string;
         };
         /**
          * OverrideIn
@@ -2143,6 +2200,50 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    request_note_upload_v1_sessions__session_id__notes_upload_url_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description A fresh URL for a file asked before */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteUploadUrl"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteUploadUrl"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
