@@ -58,6 +58,8 @@ class Settings(DatabaseSettings):
         default_factory=lambda: {
             "grade": "claude-haiku-5-5",
             "extract_session": "claude-haiku-5-5",
+            "chunk_units": "claude-haiku-5-5",
+            "generate_questions": "claude-haiku-5-5",
         },
         validate_default=True,
     )

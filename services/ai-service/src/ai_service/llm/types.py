@@ -6,10 +6,10 @@ from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Task = Literal["grade", "extract_session"]
+Task = Literal["grade", "extract_session", "chunk_units", "generate_questions"]
 # The providers a call can go to (CHECK provider_known on llm_call).
 ProviderName = Literal["anthropic", "fake"]
-TASKS: tuple[Task, ...] = ("grade", "extract_session")
+TASKS: tuple[Task, ...] = ("grade", "extract_session", "chunk_units", "generate_questions")
 
 
 class LlmRequest(BaseModel):
