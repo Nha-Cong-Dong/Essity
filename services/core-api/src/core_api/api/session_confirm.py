@@ -51,7 +51,7 @@ MAX_EXISTING_UNITS = 500
 Depth = Literal["deep", "skim", "unclear"]
 Mime = Literal["image/jpeg", "image/png", "application/pdf", "text/plain", "text/markdown"]
 Label = Annotated[StrictStr, Field(min_length=1, max_length=40), AfterValidator(storable_text)]
-Sha256 = Annotated[StrictStr, Field(pattern=r"^[0-9a-f]{64}$")]
+Sha256 = Annotated[StrictStr, Field(pattern=r"^[0-9a-f]{64}$"), AfterValidator(storable_text)]
 
 
 class RangeIn(BaseModel):

@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 from session_helpers import indexed_document, subject_of
-from sqlalchemy import func, select
+from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from accounts import signed_in
@@ -25,6 +25,7 @@ from core_api.db.models import (
     Subject,
     User,
 )
+from core_api.repositories.auth_session import AuthSessionRepository
 from core_api.repositories.subject import SubjectRepository
 from fake_storage import FakeStorage
 
@@ -418,3 +419,73 @@ def test_no_description_in_the_log(
     confirm(client, world.headers, world.draft)
 
     assert SENTENCE not in log_output()
+
+
+def test_confirm_concurrent(
+    client: TestClient, engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Two real connections, a double click: the second waits for the session's row lock, then
+    # finds it confirmed. Without FOR UPDATE both would announce it.
+    import threading
+    import time
+    from collections.abc import Iterator
+
+    from sqlalchemy import text
+
+    from core_api.api import session_confirm
+    from core_api.db.session import get_session
+    from core_api.main import app
+
+    with Session(engine, expire_on_commit=False) as setup:
+        user, first_headers = signed_in(setup)
+        # One login per click: a shared login would serialize them on its own row (the sliding
+        # expiry), hiding the session's lock.
+        token, _ = AuthSessionRepository(setup).create(user.id, FROZEN_NOW)
+        subject = subject_of(setup, user)
+        draft = draft_of(setup, user, subject)
+        setup.commit()
+    heads = iter([first_headers, {"Authorization": f"Bearer {token}"}])
+
+    def real_session() -> Iterator[Session]:
+        with Session(engine, expire_on_commit=False) as own:
+            try:
+                yield own
+                own.commit()
+            except BaseException:
+                own.rollback()
+                raise
+
+    real_enqueue = session_confirm.enqueue_event
+
+    def slow_enqueue(*args: Any, **kwargs: Any) -> uuid.UUID:
+        time.sleep(0.4)  # the first confirm holds the lock while the second arrives
+        return real_enqueue(*args, **kwargs)
+
+    monkeypatch.setattr(session_confirm, "enqueue_event", slow_enqueue)
+    previous = app.dependency_overrides[get_session]
+    app.dependency_overrides[get_session] = real_session
+    results: list[Any] = []
+
+    def click() -> None:
+        results.append(confirm(client, next(heads), draft))
+
+    try:
+        threads = [threading.Thread(target=click) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+            time.sleep(0.1)
+        for thread in threads:
+            thread.join(timeout=10)
+        with engine.connect() as check:
+            events = check.execute(
+                text("SELECT count(*) FROM outbox WHERE user_id = :u"), {"u": user.id}
+            ).scalar_one()
+    finally:
+        app.dependency_overrides[get_session] = previous
+        with engine.begin() as connection:
+            connection.execute(text("DELETE FROM outbox WHERE user_id = :u"), {"u": user.id})
+            connection.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": user.id})
+
+    assert [r.status_code for r in results] == [200, 200]
+    assert results[0].json() == results[1].json()
+    assert events == 1
