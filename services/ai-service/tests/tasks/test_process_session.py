@@ -19,6 +19,7 @@ from ai_service.clients.storage import StorageUnavailable
 from ai_service.db.models import LlmCall, PipelineRun
 from ai_service.llm.client import AuditUnavailableError, LlmClient
 from ai_service.llm.fake_adapter import FakeAdapter
+from ai_service.llm.quota import QuotaExceededError
 from ai_service.llm.types import ProviderError
 from ai_service.messaging.consumer import Deferred
 from ai_service.messaging.envelope import (
@@ -573,4 +574,245 @@ def test_t416b_cached_results_are_deleted_after_a_successful_write(
     index(storage)
     event = confirmed()
     run(handler(storage, redis_client, stream, sessions), event)
+    assert cast(Any, redis_client).keys(f"ai:session:*:{event.event_id}") == []
+
+
+# --- T5.1b: levels 2 and 3 after level 1 (US-04b, US-02 AC7/AC8, ADR-0010) --------------------
+
+
+def _levels(body: dict[str, Any]) -> dict[int, list[dict[str, Any]]]:
+    out: dict[int, list[dict[str, Any]]] = {1: [], 2: [], 3: []}
+    for q in body["questions"]:
+        out[q["level"]].append(q)
+    return out
+
+
+def _not_json(request: Any) -> str:
+    return "not json"
+
+
+def _adapter(higher: Any) -> FakeAdapter:
+    def ask(request: Any) -> str:
+        return higher(request) if request.prompt_version == "v2" else fake_questions(request)
+
+    return FakeAdapter({"chunk_units": fake_chunk, "generate_questions": ask})
+
+
+def test_t51b_result_has_level_1_2_and_3_questions(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed(notes=[note(storage)])
+    run(handler(storage, redis_client, stream, sessions), event)
+    body = result(storage, event)  # validates against session-result.v1
+    by_level = _levels(body)
+    unit_ids = {u["unit_id"] for u in body["units"]}
+    assert len(unit_ids) == 3
+    assert {q["unit_ids"][0] for q in by_level[1]} == unit_ids
+    assert {q["unit_ids"][0] for q in by_level[2]} == unit_ids
+    assert len(by_level[3]) >= 1
+    for q in by_level[3]:
+        assert len(set(q["unit_ids"])) >= 2 and set(q["unit_ids"]) <= unit_ids
+    assert body["dropped"]["questions"] == 0
+    with sessions() as s:
+        runs = s.scalars(select(PipelineRun).where(PipelineRun.user_id == USER)).all()
+    assert sorted((r.task, r.prompt_version) for r in runs) == [
+        ("chunk_units", "v1"),
+        ("generate_questions", "v1"),
+        ("generate_questions", "v2"),
+    ]
+    assert all(r.status == "succeeded" for r in runs)
+
+
+def test_t51b_one_unit_gets_level_2_and_no_level_3(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage, {1: PAGE_TEXTS[1]})
+    event = confirmed(ranges=[(DOC, 1, 1)])
+    run(handler(storage, redis_client, stream, sessions), event)
+    by_level = _levels(result(storage, event))
+    assert len(by_level[2]) == 1 and by_level[3] == []
+
+
+def test_t51b_many_units_make_one_higher_call_per_batch(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    pages = {n: f"Page number {n} says something distinct about topic {n}." for n in range(1, 46)}
+    index(storage, pages)
+    event = confirmed(ranges=[(DOC, 1, 45)])
+    run(handler(storage, redis_client, stream, sessions), event)
+    with sessions() as s:
+        v2 = s.scalars(
+            select(LlmCall).where(LlmCall.user_id == USER, LlmCall.prompt_version == "v2")
+        ).all()
+    assert len(v2) == 3  # 45 units, 20 a batch
+    assert len(_levels(result(storage, event))[2]) == 45
+
+
+def test_t51b_a_failing_higher_call_keeps_level_1_and_records_the_drop(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+    adapter = _adapter(_not_json)
+    run(handler(storage, redis_client, stream, sessions, adapter), event)
+    out = sent(redis_client, stream)
+    assert isinstance(out[-1], SessionProcessedEvent)
+    body = result(storage, event)
+    by_level = _levels(body)
+    assert len(by_level[1]) == 2 and by_level[2] == [] and by_level[3] == []
+    assert body["dropped"]["questions"] == 2  # the two units left without level 2/3
+    with sessions() as s:
+        runs = s.scalars(
+            select(PipelineRun).where(
+                PipelineRun.user_id == USER, PipelineRun.prompt_version == "v2"
+            )
+        ).all()
+    assert [r.status for r in runs] == ["failed"]
+
+
+def test_t51b_level_3_with_one_unit_is_refused_and_the_batch_dropped(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    def one_unit_level_3(request: Any) -> str:
+        labels = request.payload["labels"]
+        qs = [
+            {"level": 2, "units": [x], "prompt": f"p {x}", "reference_answer": "a", "rubric": "r"}
+            for x in labels
+        ]
+        qs.append(
+            {
+                "level": 3,
+                "units": [labels[0]],
+                "prompt": "p3",
+                "reference_answer": "a",
+                "rubric": "r",
+            }
+        )
+        return json.dumps({"questions": qs})
+
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+    run(handler(storage, redis_client, stream, sessions, _adapter(one_unit_level_3)), event)
+    by_level = _levels(result(storage, event))
+    assert by_level[3] == [] and by_level[2] == []  # whole higher batch dropped, level 1 kept
+    assert len(by_level[1]) == 2
+
+
+def test_t51b_quota_exceeded_on_the_higher_call_fails_like_level_1(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    class OverOnHigher(NoQuota):
+        def reserve(self, request: Any, estimate: Any) -> None:
+            if request.prompt_version == "v2":
+                raise QuotaExceededError(hard=True, window="day")  # pyright: ignore[reportArgumentType]
+
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+    llm = LlmClient(
+        FakeAdapter({"chunk_units": fake_chunk, "generate_questions": fake_questions}),
+        sessions,
+        models={"chunk_units": "claude-haiku-5-5", "generate_questions": "claude-haiku-5-5"},
+        quota_guard=OverOnHigher(),
+    )
+    h = ProcessSession(
+        storage=storage, redis=redis_client, llm=llm, sessions=sessions, stream=stream
+    )
+    run(h, event)
+    out = sent(redis_client, stream)
+    assert isinstance(out[-1], SessionFailedEvent) and out[-1].payload.reason == "llm_unavailable"
+    assert result_key_for(event) not in storage.objects
+
+
+def test_t51b_redelivery_after_audit_down_on_the_higher_run_does_not_pay_level_1_again(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+    h = handler(storage, redis_client, stream, sessions)
+    real = h._start_run  # pyright: ignore[reportPrivateUsage]
+    state = {"fail": True}
+
+    def flaky(ev: SessionConfirmedEvent, task: str, prompt: Any) -> uuid.UUID:
+        if prompt.version == "v2" and state["fail"]:
+            state["fail"] = False
+            raise AuditUnavailableError
+        return real(ev, task, prompt)
+
+    h._start_run = flaky  # type: ignore[method-assign]  # pyright: ignore[reportPrivateUsage]
+    with pytest.raises(Deferred):
+        run(h, event)
+    paid = llm_calls(sessions)
+    run(h, event)
+    with sessions() as s:
+        calls = s.scalars(select(LlmCall).where(LlmCall.user_id == USER)).all()
+    kinds = sorted((c.task, c.prompt_version) for c in calls)
+    assert kinds.count(("chunk_units", "v1")) == 1
+    assert kinds.count(("generate_questions", "v1")) == 1  # level 1 not paid twice
+    assert len(calls) == paid + 1  # only the higher call is new
+    assert _levels(result(storage, event))[3]
+
+
+def test_t51b_redelivery_after_storage_down_does_not_pay_again(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+    h = handler(storage, redis_client, stream, sessions)
+    storage.put_error = StorageUnavailable()
+    with pytest.raises(Deferred):
+        run(h, event)
+    paid = llm_calls(sessions)
+    storage.put_error = None
+    run(h, event)
+    assert llm_calls(sessions) == paid
+    assert _levels(result(storage, event))[2]
+
+
+def test_t51b_redelivery_after_audit_down_in_batch_2_does_not_pay_batch_1_again(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    pages = {n: f"Page number {n} says something distinct about topic {n}." for n in range(1, 46)}
+    index(storage, pages)
+    event = confirmed(ranges=[(DOC, 1, 45)])
+    state = {"v2": 0, "fail": True}
+
+    def higher(request: Any) -> str:
+        state["v2"] += 1
+        if state["v2"] == 2 and state["fail"]:
+            state["fail"] = False
+            raise AuditUnavailableError
+        return fake_questions(request)
+
+    h = handler(storage, redis_client, stream, sessions, _adapter(higher))
+    with pytest.raises(Deferred):
+        run(h, event)
+    assert state["v2"] == 2  # batch 1 paid, batch 2 refused by the audit
+    run(h, event)
+    assert state["v2"] == 4  # batch 2 and 3 only: batch 1 not asked again
+    assert len(_levels(result(storage, event))[2]) == 45
+
+
+def test_t51b_a_failed_session_leaves_nothing_in_the_cache(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+
+    def down(request: Any) -> str:
+        raise ProviderError("timeout")
+
+    adapter = FakeAdapter({"chunk_units": fake_chunk, "generate_questions": down})
+    run(handler(storage, redis_client, stream, sessions, adapter), event)
+    assert isinstance(sent(redis_client, stream)[-1], SessionFailedEvent)
     assert cast(Any, redis_client).keys(f"ai:session:*:{event.event_id}") == []
