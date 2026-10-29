@@ -32,7 +32,7 @@ from ai_service.config import Settings
 from ai_service.llm.anthropic_adapter import MAX_TOKENS, AnthropicAdapter
 from ai_service.llm.fake_adapter import FakeAdapter
 from ai_service.llm.pricing import Price, cost_usd, price_for
-from ai_service.llm.types import Adapter, LlmRequest, ProviderError
+from ai_service.llm.types import Adapter, LlmRequest
 from ai_service.tasks.grade import (
     DEADLINE_SECONDS,
     Labels,
@@ -203,7 +203,7 @@ def grade_case(
             return result("provider_error")
         try:
             completed = adapter.complete(llm_request, model=model, timeout=remaining)
-        except ProviderError:
+        except Exception:  # noqa: BLE001 - R55: whatever one case raises, the run goes on
             return result("provider_error")
         spent = cost_usd(
             price, input_tokens=completed.input_tokens, output_tokens=completed.output_tokens
