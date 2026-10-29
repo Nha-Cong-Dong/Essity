@@ -574,3 +574,21 @@ def test_t416b_cached_results_are_deleted_after_a_successful_write(
     event = confirmed()
     run(handler(storage, redis_client, stream, sessions), event)
     assert cast(Any, redis_client).keys(f"ai:session:*:{event.event_id}") == []
+
+
+def test_t5r_a_session_asks_level_1_only_and_one_question_call_per_batch(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    """T5.R: levels 2 and 3 are practice made on demand later, never part of a session."""
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed(notes=[note(storage)])
+    run(handler(storage, redis_client, stream, sessions), event)
+
+    body = result(storage, event)
+    assert body["questions"] and {q["level"] for q in body["questions"]} == {1}
+    with sessions() as s:
+        asked = s.scalars(
+            select(LlmCall).where(LlmCall.user_id == USER, LlmCall.task == "generate_questions")
+        ).all()
+    assert len(asked) == 1  # 3 units fit one batch; a higher call would make it 2
