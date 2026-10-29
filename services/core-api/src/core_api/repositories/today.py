@@ -279,7 +279,8 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                 unasked_units=frozenset(unasked_units.get(id, ())),
             )
             for id, subject_id, created_at in rows
-            if is_eligible(ladder[id], correct, self.ladder)  # a level above the unit's: later
+            # a level above the unit's waits; a question gone since the first read is left out
+            if (found := ladder.get(id)) is not None and is_eligible(found, correct, self.ladder)
         ]
 
     def has_questions(self) -> bool:

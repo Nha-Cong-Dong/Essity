@@ -53,5 +53,5 @@ def test_t216_a_whole_session_with_the_fake_grader(
     logs = db_session.scalar(
         select(func.count()).select_from(ReviewLog).where(ReviewLog.user_id == user.id)
     )
-    assert logs == 4  # one per unit of each question: 1 + 2 + 1
-    assert len(stub.calls) == 2  # "Không nhớ" never calls the AI (US-04 AC2)
+    assert logs == 2  # one per unit of each answered question; the level-2 one waits (T5.2)
+    assert len(stub.calls) == 1  # "Không nhớ" never calls the AI (US-04 AC2)

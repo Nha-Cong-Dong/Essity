@@ -158,3 +158,26 @@ def test_us03_ac3_a_stricter_config_keeps_the_unit_at_level_one(
         LadderConfig(version=2, min_correct_level1=2, min_correct_level2=1),
     )
     assert s.chosen(a) == l1
+
+
+# US-03 AC3, ADR-0008. Red when: another user's Correct opens level 2 for this user.
+def test_us03_ac3_another_users_correct_does_not_open_the_next_level(
+    db_session: Session, two_users: tuple[User, User]
+) -> None:
+    mine, theirs = Ladder(db_session, two_users[0]), Ladder(db_session, two_users[1])
+    a, b = mine.unit("TCP"), theirs.unit("TCP")
+    l1 = mine.level_one_of(a)
+    mine.asking(2, "TCP khi mất gói?", a)
+    theirs.asking(2, "TCP khi mất gói?", b)
+    theirs.answer(theirs.level_one_of(b), Verdict.CORRECT, [b])
+    assert mine.chosen(a) == l1
+
+
+# Red when: a question archived or skipped between the two reads raises KeyError.
+def test_us03_ac3_a_question_missing_from_the_ladder_read_is_left_out(
+    db_session: Session, two_users: tuple[User, User], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    s = space(db_session, two_users)
+    s.question(s.subject_id, "UDP")
+    monkeypatch.setattr(TodayRepository, "_ladder_questions", lambda *_: {})  # type: ignore[reportUnknownLambdaType]
+    assert list(TodayRepository(db_session, s.user.id).new_questions()) == []
