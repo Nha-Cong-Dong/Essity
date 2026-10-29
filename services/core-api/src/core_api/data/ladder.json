@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "note": "Q19 tạm: the user's to settle. Correct answers a unit needs at level 1 before it is asked at level 2, and at level 2 before level 3 (PRD AC3; level 3 also needs every unit of the question).",
+  "min_correct_level1": 1,
+  "min_correct_level2": 1
+}
