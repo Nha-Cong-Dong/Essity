@@ -509,6 +509,8 @@ function Rail({
         <Notice calm={false}>
           {view.failure === "disabled" ? (
             <span data-copy="tam">Chấm bài đang tạm tắt. Câu trả lời của bạn đã được lưu.</span>
+          ) : view.failure === "quota" ? (
+            <span data-copy="tam">Hôm nay chấm bài đã chạm mức tạm dừng. Câu trả lời của bạn đã được lưu.</span>
           ) : (
             <span data-copy="tam">Chưa chấm được. Câu trả lời của bạn đã được lưu.</span>
           )}

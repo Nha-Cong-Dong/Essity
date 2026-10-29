@@ -69,7 +69,8 @@
                 "enum": [
                   "unavailable",
                   "invalid",
-                  "disabled"
+                  "disabled",
+                  "quota"
                 ],
                 "type": "string"
               },

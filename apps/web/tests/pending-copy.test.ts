@@ -29,6 +29,7 @@ const PENDING_COPY: [file: string, text: string][] = [
   ["components/review/review-screen.tsx", "Chưa gửi được. Câu trả lời vẫn ở đây, bạn gửi lại nhé."],
   ["components/review/review-screen.tsx", "Chưa chấm được. Câu trả lời của bạn đã được lưu."],
   ["components/review/review-screen.tsx", "Chấm bài đang tạm tắt. Câu trả lời của bạn đã được lưu."],
+  ["components/review/review-screen.tsx", "Hôm nay chấm bài đã chạm mức tạm dừng. Câu trả lời của bạn đã được lưu."],
   ["components/review/review-screen.tsx", "Phiên ôn này đã kết thúc."],
   ["components/review/review-screen.tsx", "Còn {ids.length} câu chưa chấm"],
   ["components/review/review-screen.tsx", "Chưa chấm được"],

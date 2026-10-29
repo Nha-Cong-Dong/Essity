@@ -607,7 +607,7 @@ export interface components {
             /** Answer Text */
             answer_text: string | null;
             /** Failure */
-            failure: ("unavailable" | "invalid" | "disabled") | null;
+            failure: ("unavailable" | "invalid" | "disabled" | "quota") | null;
             /** Grading */
             grading: ("graded" | "failed" | "in_progress") | null;
             question: components["schemas"]["QuestionRef"] | null;

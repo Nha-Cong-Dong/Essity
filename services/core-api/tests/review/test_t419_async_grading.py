@@ -107,7 +107,7 @@ def view(desk: Desk, attempt: uuid.UUID):  # noqa: ANN201
 
     found = AttemptRepository(desk.session, desk.user.id).get(attempt)
     assert found is not None
-    return attempt_view(desk.session, desk.user.id, found, None)
+    return attempt_view(desk.session, desk.user.id, found, None, now=NOW)
 
 
 # --- The way in: the synchronous grading fails ---------------------------------------------------

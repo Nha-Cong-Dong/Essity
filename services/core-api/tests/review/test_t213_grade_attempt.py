@@ -143,7 +143,12 @@ def test_t213_graded_in_time_writes_grade_units_log_and_state(desk: Desk) -> Non
 # T2.13 case 2 and `grading_disabled` (plan test table). Red when: a failed or switched-off
 # grading writes a grade or loses the answer.
 @pytest.mark.parametrize(
-    "failure", [NotGraded("unavailable", "timeout"), NotGraded("disabled", "grading_disabled")]
+    "failure",
+    [
+        NotGraded("unavailable", "timeout"),
+        NotGraded("disabled", "grading_disabled"),
+        NotGraded("quota", "quota_hard_cap"),  # T2.11b, US-05 §3: stopped at the cap, not queued
+    ],
 )
 def test_t213_a_failure_writes_no_grade_and_keeps_the_answer(
     desk: Desk, failure: NotGraded
