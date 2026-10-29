@@ -250,6 +250,7 @@ def check_output(text: str, labels: Labels) -> ChunkResult:
     dropped: list[Dropped] = []
     new_units: list[NewUnit] = []
     merges: dict[uuid.UUID, dict[tuple[object, ...], Anchor]] = {}
+    new_by_title: dict[str, dict[tuple[object, ...], Anchor]] = {}
     for unit in parsed.units:
         anchors = _resolve_anchors(unit, labels, dropped)
         if not anchors:
@@ -261,6 +262,12 @@ def check_output(text: str, labels: Labels) -> ChunkResult:
             for anchor in anchors:
                 bucket.setdefault(_anchor_key(anchor), anchor)
             continue
+        folded = _fold(unit.title)
+        if folded in new_by_title:  # same title twice in one call: one unit, anchors united
+            for anchor in anchors:
+                new_by_title[folded].setdefault(_anchor_key(anchor), anchor)
+            continue
+        new_by_title[folded] = {_anchor_key(a): a for a in anchors}
         lineage: list[uuid.UUID] = []
         for label in unit.lineage:
             known = labels.units.get(label)
@@ -275,6 +282,12 @@ def check_output(text: str, labels: Labels) -> ChunkResult:
                 single_source=len({a.source for a in anchors}) == 1,
                 anchors=anchors,
             )
+        )
+    for folded, anchor_map in new_by_title.items():
+        merged = list(anchor_map.values())
+        index = next(i for i, u in enumerate(new_units) if _fold(u.title) == folded)
+        new_units[index] = new_units[index].model_copy(
+            update={"anchors": merged, "single_source": len({a.source for a in merged}) == 1}
         )
     return ChunkResult(
         new_units=new_units,

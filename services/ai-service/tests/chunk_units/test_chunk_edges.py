@@ -227,3 +227,21 @@ def test_valid_output_over_size_cap_refused() -> None:
     with pytest.raises(ChunkInvalidError):
         chunk_units(request(), ask)
     assert len(ask.prompts) == 2
+
+
+def test_input_models_hide_input_in_validation_errors() -> None:
+    from pydantic import ValidationError
+
+    from ai_service.tasks.chunk_models import PageInput
+
+    with pytest.raises(ValidationError) as caught:
+        PageInput(page_no=1, text="secret\x00learner text")
+    assert "secret" not in str(caught.value)
+
+
+def test_nul_in_llm_title_or_summary_is_a_schema_violation() -> None:
+    from ai_service.tasks.chunk_units import ChunkInvalidError
+
+    for bad in (unit_json(title="ab\x00cd"), unit_json(summary="ab\x00cd")):
+        with pytest.raises(ChunkInvalidError):
+            chunk_units(request(), FakeAsk(output(bad)))
