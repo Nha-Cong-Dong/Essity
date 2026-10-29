@@ -14,6 +14,7 @@ from core_api.api import (
     ping,
     review_sessions,
     session_confirm,
+    session_notes,
     sessions,
     subjects,
     today,
@@ -67,5 +68,6 @@ app.include_router(grades.router)
 app.include_router(units.router)
 app.include_router(sessions.router)
 app.include_router(session_confirm.router)
+app.include_router(session_notes.router)
 # Outermost middleware: the request span is open while log_requests writes its line.
 FastAPIInstrumentor.instrument_app(app, excluded_urls="healthz", exclude_spans=["receive", "send"])

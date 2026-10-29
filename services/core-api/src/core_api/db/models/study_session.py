@@ -128,3 +128,39 @@ class NoteFile(UserOwned, Base):
     sha256: Mapped[str] = mapped_column(String(64))
     mime: Mapped[str] = mapped_column(String(20))
     size_bytes: Mapped[int] = mapped_column(Integer)
+
+
+class NoteUpload(UserOwned, Base):
+    """A note file whose upload URL was signed and that no confirmed session holds yet.
+
+    Counts against the account's note quota while the file is on its way, and tells the cleanup
+    job what to delete if it never is confirmed. Confirming the session turns it into a
+    `note_file` and deletes this row.
+    """
+
+    __tablename__ = "note_upload"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["session_id", "user_id"],
+            ["study_session.id", "study_session.user_id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "object_key LIKE 'users/' || user_id || '/sessions/' || session_id || '/notes/'"
+            " || sha256 || '.%'",
+            name="object_key_is_notes_key",
+        ),
+        CheckConstraint("sha256 ~ '^[0-9a-f]{64}$'", name="sha256_hex"),
+        CheckConstraint(one_of("mime", NOTE_MIMES), name="mime_known"),
+        CheckConstraint("size_bytes > 0", name="size_positive"),
+        UniqueConstraint("session_id", "sha256"),
+        Index(None, "presigned_at"),
+    )
+
+    session_id: Mapped[uuid.UUID]
+    object_key: Mapped[str] = mapped_column(String(1024))
+    sha256: Mapped[str] = mapped_column(String(64))
+    mime: Mapped[str] = mapped_column(String(20))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    # When the last URL was signed: cleanup waits until it is long dead.
+    presigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

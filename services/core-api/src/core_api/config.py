@@ -132,6 +132,17 @@ class Settings(DatabaseSettings):
     # An upload never confirmed, or refused, is deleted this long after its URL was signed.
     document_cleanup_after_seconds: int = Field(default=3600, gt=0)
 
+    # Notebook photos and note files of a session (T4.13b): a photo is a few MiB, the account's
+    # notes together stay small. Counted from the URL's signing, like documents.
+    note_max_bytes: int = Field(default=20 * MIB, gt=0)
+    note_quota_bytes: int = Field(default=200 * MIB, gt=0)
+    note_uploads_per_hour: int = Field(default=60, ge=1)
+    # Each confirm calls the store once per note while it holds its rows (R60a).
+    session_confirms_per_hour: int = Field(default=120, ge=1)
+    # A note never confirmed is deleted this long after its URL was signed: a draft may wait for
+    # its confirm longer than a PDF does.
+    note_cleanup_after_seconds: int = Field(default=24 * 3600, gt=0)
+
     # A field validator, not a model one: a model validator's error prints the whole input,
     # secrets included, to the startup traceback; this one prints only the URL.
     @field_validator("web_token")
@@ -240,15 +251,13 @@ class Settings(DatabaseSettings):
             raise ValueError("s3_bucket must be set outside local and test")
         return bucket
 
-    @field_validator("document_cleanup_after_seconds")
+    @field_validator("document_cleanup_after_seconds", "note_cleanup_after_seconds")
     @classmethod
     def _cleanup_after_urls_expire(cls, seconds: int, info: ValidationInfo) -> int:
         # A row deleted while its URL still works would let a PUT store a file nothing counts.
         presign = info.data.get("s3_presign_seconds")
         if presign is not None and seconds < 2 * presign:
-            raise ValueError(
-                "document_cleanup_after_seconds must be at least twice s3_presign_seconds"
-            )
+            raise ValueError(f"{info.field_name} must be at least twice s3_presign_seconds")
         return seconds
 
 
