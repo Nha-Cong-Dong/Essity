@@ -18,7 +18,7 @@ from core_api.db.models.review import (
 )
 from core_api.db.models.study_session import NoteFile, NoteUpload, SessionRange, StudySession
 from core_api.db.models.subject import Exam, Subject
-from core_api.db.models.unit import Anchor, KnowledgeUnit
+from core_api.db.models.unit import Anchor, KnowledgeUnit, UnitLineage
 from core_api.db.models.user import User
 
 __all__ = [
@@ -45,5 +45,6 @@ __all__ = [
     "SessionRange",
     "StudySession",
     "Subject",
+    "UnitLineage",
     "User",
 ]

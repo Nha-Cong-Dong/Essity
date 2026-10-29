@@ -43,6 +43,14 @@ def request(**changes: object) -> dict[str, object]:
     return build_request(**args)  # type: ignore[arg-type]
 
 
+# T4.17 F1. Red when: a text rubric is sent JSON-quoted (`"..."`) into the grading prompt.
+def test_a_text_rubric_is_sent_verbatim() -> None:
+    text = 'Nêu "đúng" ý chính; điểm một phần nếu thiếu.'
+    question = QuestionIn(text="q", rubric=text, reference_answer="a")
+    body: Any = request(question=question)
+    assert body["question"]["rubric"] == text
+
+
 # US-05 AC8. Red when: a unit's source is left out, or the rubric is not sent as text.
 def test_us05_ac8_request_carries_every_unit_and_anchor() -> None:
     body: Any = request()

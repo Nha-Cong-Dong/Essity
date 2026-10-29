@@ -5,7 +5,7 @@ from typing import Any
 
 from sqlalchemy import ColumnElement, update
 
-from core_api.db.models import Anchor, KnowledgeUnit
+from core_api.db.models import Anchor, KnowledgeUnit, UnitLineage
 from core_api.repositories.base import UserScopedRepository
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
 
@@ -124,3 +124,20 @@ class AnchorRepository(UserScopedRepository[Anchor]):
             .order_by(Anchor.unit_id, Anchor.created_at, Anchor.id)
         )
         return self.session.scalars(query).all()
+
+
+class UnitLineageRepository(UserScopedRepository[UnitLineage]):
+    model = UnitLineage
+
+    def create(
+        self, old_unit_id: uuid.UUID, new_unit_id: uuid.UUID, run_id: uuid.UUID
+    ) -> UnitLineage:
+        """Record that `old_unit_id` went to `new_unit_id`. Both must be this user's
+        (UnitNotFoundError otherwise); the database refuses another account's unit all the same."""
+        units = KnowledgeUnitRepository(self.session, self.user_id)
+        for unit_id in (old_unit_id, new_unit_id):
+            if units.get(unit_id) is None:
+                raise UnitNotFoundError(unit_id)
+        row = self.add(UnitLineage(old_unit_id=old_unit_id, new_unit_id=new_unit_id, run_id=run_id))
+        self.session.flush()
+        return row
