@@ -50,6 +50,7 @@ const NEEDS_BACKEND = {
   "/subjects/[id]/documents": "needs a session and core-api (redirects to /login)",
   "/subjects/[id]/upload": "needs a session and core-api (redirects to /login)",
   "/subjects/[id]/documents/[docId]": "needs a session and core-api (redirects to /login)",
+  "/subjects/[id]/sessions/new": "needs a session and core-api (redirects to /login)",
 };
 
 /** Each page.* under app/, as URL segments (route groups dropped). */
