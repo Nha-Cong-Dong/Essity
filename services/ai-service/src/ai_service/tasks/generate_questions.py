@@ -26,11 +26,15 @@ from pydantic import ValidationError
 
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
 from ai_service.tasks.question_models import (
+    MAX_LEVEL3_QUESTIONS,
     MAX_OUTPUT_CHARS,
     MAX_QUESTIONS_PER_UNIT,
     MAX_TOTAL_CHARS,
     DroppedQuestion,
     GeneratedQuestion,
+    HigherQuestion,
+    HigherQuestionResult,
+    LlmHigherQuestions,
     LlmQuestions,
     QuestionRequest,
     QuestionResult,
@@ -42,9 +46,11 @@ TASK = "generate_questions"
 PROMPT_VERSION = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
 _NONCE_PLACEHOLDER = "{{NONCE}}"
+HIGHER_PROMPT_VERSION = "v2"
 ATTEMPTS = 2
 
 OUTPUT_SCHEMA: dict[str, Any] = LlmQuestions.model_json_schema()
+HIGHER_OUTPUT_SCHEMA: dict[str, Any] = LlmHigherQuestions.model_json_schema()
 
 
 class QuestionInputError(Exception):
@@ -111,7 +117,11 @@ def _corpus(request: QuestionRequest) -> str:
     return "\n".join(t for u in request.units for t in (u.title, u.summary, *u.quotes))
 
 
-def build_prompt(request: QuestionRequest) -> QuestionPrompt:
+def build_prompt(
+    request: QuestionRequest,
+    version: str = PROMPT_VERSION,
+    output_schema: dict[str, Any] | None = None,
+) -> QuestionPrompt:
     corpus = _corpus(request)
     nonce = new_nonce()
     while nonce in corpus:
@@ -122,7 +132,7 @@ def build_prompt(request: QuestionRequest) -> QuestionPrompt:
         blocks.append(wrap_untrusted("unit", f"{unit.title}\n{unit.summary}", nonce, label=label))
         for a, quote in enumerate(unit.quotes, start=1):
             blocks.append(wrap_untrusted("source", quote, nonce, label=f"{label}.A{a}"))
-    system = load_prompt().text.replace(_NONCE_PLACEHOLDER, nonce)
+    system = load_prompt(version).text.replace(_NONCE_PLACEHOLDER, nonce)
     return QuestionPrompt(system, "\n\n".join(blocks), OUTPUT_SCHEMA, nonce)
 
 
@@ -180,6 +190,79 @@ def generate_questions(
     for attempt in range(1, ATTEMPTS + 1):
         try:
             return check_questions(ask(prompt), labels)
+        except OutputViolation as violation:
+            _log.warning(
+                "question output refused", extra={"outcome": violation.rule, "attempt": attempt}
+            )
+    raise QuestionsInvalidError
+
+
+# --- T5.1: level 2 ("van dung") and level 3 ("van dung cao") ---------------------------------
+
+
+def check_higher_questions(text: str, labels: dict[str, uuid.UUID]) -> HigherQuestionResult:
+    """Parse and verify a level-2/3 reply. A level-3 question must name >= 2 distinct units."""
+    if len(text) > MAX_OUTPUT_CHARS:
+        raise OutputViolation("too_long")
+    try:
+        parsed = LlmHigherQuestions.model_validate_json(text)
+    except ValidationError:
+        raise OutputViolation("schema") from None
+    questions: list[HigherQuestion] = []
+    dropped: list[DroppedQuestion] = []
+    seen: set[tuple[int, str]] = set()
+    covered2: set[uuid.UUID] = set()
+    for item in parsed.questions:
+        ids = [labels.get(label) for label in item.units]
+        unit_ids = list(dict.fromkeys(i for i in ids if i is not None))
+        if len(unit_ids) < len(set(item.units)):
+            dropped.append(DroppedQuestion(reason="unknown_unit"))
+            continue
+        if item.level == 2 and len(unit_ids) > 2:
+            raise OutputViolation("level2_units")
+        if item.level == 3 and len(unit_ids) < 2:
+            raise OutputViolation("level3_units")
+        key = (item.level, _fold(item.prompt))
+        if key in seen:
+            dropped.append(DroppedQuestion(reason="duplicate"))
+            continue
+        seen.add(key)
+        if item.level == 2:
+            covered2.update(unit_ids)
+        questions.append(
+            HigherQuestion(
+                level=item.level,
+                unit_ids=unit_ids,
+                prompt=item.prompt.strip(),
+                reference_answer=item.reference_answer.strip(),
+                rubric=item.rubric.strip(),
+            )
+        )
+    if any(unit_id not in covered2 for unit_id in labels.values()):
+        raise OutputViolation("unit_uncovered")
+    n3 = sum(q.level == 3 for q in questions)
+    if len(labels) >= 2 and n3 == 0:
+        raise OutputViolation("level3_missing")
+    if n3 > MAX_LEVEL3_QUESTIONS:
+        raise OutputViolation("too_many_level3")
+    return HigherQuestionResult(questions=questions, dropped=dropped)
+
+
+def generate_higher_questions(
+    request: QuestionRequest, ask: Callable[[QuestionPrompt], str]
+) -> HigherQuestionResult:
+    """Level 2 for every unit, plus level 3 across >= 2 units (needs >= 2 units), checked by code.
+
+    Additive to `generate_questions`: that level-1 API is unchanged.
+    """
+    _check_limits(request)
+    labels = _labels(request)
+    if not labels:
+        return HigherQuestionResult(questions=[], dropped=[])
+    prompt = build_prompt(request, HIGHER_PROMPT_VERSION, HIGHER_OUTPUT_SCHEMA)
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            return check_higher_questions(ask(prompt), labels)
         except OutputViolation as violation:
             _log.warning(
                 "question output refused", extra={"outcome": violation.rule, "attempt": attempt}

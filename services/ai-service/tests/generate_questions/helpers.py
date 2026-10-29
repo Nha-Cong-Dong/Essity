@@ -55,3 +55,21 @@ class FakeAsk:
     def __call__(self, prompt: QuestionPrompt) -> str:
         self.prompts.append(prompt)
         return self.replies[min(len(self.prompts) - 1, len(self.replies) - 1)]
+
+
+def higher_json(level: int, *labels: str, **kw: Any) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "level": level,
+        "units": list(labels),
+        "prompt": f"Level {level} on {'+'.join(labels)}?",
+        "reference_answer": "Because of both ideas.",
+        "rubric": "Must use each unit. Partial if one.",
+    }
+    base.update(kw)
+    return base
+
+
+def higher_full(n: int = 2) -> str:
+    qs = [higher_json(2, f"U{i}") for i in range(1, n + 1)]
+    qs.append(higher_json(3, "U1", "U2"))
+    return output(*qs)
