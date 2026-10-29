@@ -127,6 +127,8 @@ class Settings(DatabaseSettings):
     document_uploads_per_hour: int = Field(default=30, ge=1)
     # Each confirm calls the store (paid per call on R2): retries are fine, a loop is not.
     document_confirms_per_hour: int = Field(default=120, ge=1)
+    # Each new session calls the AI (paid): a few a day is normal, a loop is not (T4.12).
+    session_creates_per_hour: int = Field(default=30, ge=1)
     # An upload never confirmed, or refused, is deleted this long after its URL was signed.
     document_cleanup_after_seconds: int = Field(default=3600, gt=0)
 

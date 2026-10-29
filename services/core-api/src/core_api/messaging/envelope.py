@@ -118,9 +118,19 @@ class DocumentFailed(_Closed):
     unreadable_pages: Annotated[list[Page], Field(max_length=5000)]
 
 
-class PageRange(_Closed):
+class SessionRange(_Closed):
+    """One page range of the session, in FILE pages. `first <= last` is not in the JSON Schema:
+    core-api checks it before it enqueues, ai-service on receipt."""
+
+    document_id: Id
     first: Page
     last: Page
+    depth: Literal["deep", "skim", "unclear"]
+
+
+class NoteFile(_Closed):
+    object_key: ObjectKey
+    mime: Literal["image/jpeg", "image/png", "application/pdf", "text/plain", "text/markdown"]
 
 
 class ExistingUnit(_Closed):
@@ -132,9 +142,8 @@ class ExistingUnit(_Closed):
 class SessionConfirmed(_Closed):
     study_session_id: Id
     subject_id: Id
-    document_id: Id | None
-    page_range: PageRange | None
-    note_image_keys: Annotated[list[ObjectKey], Field(max_length=20)]
+    ranges: Annotated[list[SessionRange], Field(max_length=6)]
+    notes: Annotated[list[NoteFile], Field(max_length=20)]
     existing_units: Annotated[list[ExistingUnit], Field(max_length=500)]
 
 

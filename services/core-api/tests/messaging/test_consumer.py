@@ -785,10 +785,11 @@ def test_object_key_of_another_user_goes_to_dead_letter_without_the_handler(
 
 
 def test_foreign_key_inside_a_list_is_caught() -> None:
-    # Red when: only top-level keys are checked: note_image_keys is a list of keys.
+    # Red when: only top-level keys are checked: `notes` is a list of objects with a key.
     text = (EXAMPLES / "session.confirmed.v1.json").read_text(encoding="utf-8")
     event = json.loads(text)
-    event["payload"]["note_image_keys"].append(f"users/{uuid.uuid4()}/subjects/x/notes/y/2.jpg")
+    foreign = f"users/{uuid.uuid4()}/sessions/x/notes/y.jpg"
+    event["payload"]["notes"].append({"object_key": foreign, "mime": "image/jpeg"})
     assert keys_belong_to_user(parse_event(json.dumps(event))) is False
 
 

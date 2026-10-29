@@ -15,9 +15,8 @@
       "required": [
         "study_session_id",
         "subject_id",
-        "document_id",
-        "page_range",
-        "note_image_keys",
+        "ranges",
+        "notes",
         "existing_units"
       ],
       "properties": {
@@ -27,48 +26,68 @@
         "subject_id": {
           "$ref": "envelope.schema.json#/$defs/uuid"
         },
-        "document_id": {
-          "anyOf": [
-            {
-              "$ref": "envelope.schema.json#/$defs/uuid"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "page_range": {
-          "anyOf": [
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "first",
-                "last"
-              ],
-              "properties": {
-                "first": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 5000
-                },
-                "last": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 5000
-                }
+        "ranges": {
+          "description": "Page ranges the session covered, FILE pages, 1-based; `first <= last` is checked by core-api before it enqueues (JSON Schema cannot say it). Empty: notes only (US-02 AC10).",
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "document_id",
+              "first",
+              "last",
+              "depth"
+            ],
+            "properties": {
+              "document_id": {
+                "$ref": "envelope.schema.json#/$defs/uuid"
+              },
+              "first": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5000
+              },
+              "last": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5000
+              },
+              "depth": {
+                "enum": [
+                  "deep",
+                  "skim",
+                  "unclear"
+                ]
               }
-            },
-            {
-              "type": "null"
             }
-          ]
+          }
         },
-        "note_image_keys": {
+        "notes": {
+          "description": "Files of notes the learner added, in the learner's own prefix.",
           "type": "array",
           "maxItems": 20,
           "items": {
-            "$ref": "envelope.schema.json#/$defs/object_key"
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "object_key",
+              "mime"
+            ],
+            "properties": {
+              "object_key": {
+                "$ref": "envelope.schema.json#/$defs/object_key"
+              },
+              "mime": {
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "application/pdf",
+                  "text/plain",
+                  "text/markdown"
+                ]
+              }
+            }
           }
         },
         "existing_units": {

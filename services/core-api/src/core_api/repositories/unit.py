@@ -30,6 +30,22 @@ class KnowledgeUnitRepository(UserScopedRepository[KnowledgeUnit]):
         self.session.flush()  # gives the unit its id, for the anchors and links that follow
         return unit
 
+    def for_event(self, subject_id: uuid.UUID, limit: int) -> list[KnowledgeUnit]:
+        """The subject's active units that are not skipped, newest first, for the units
+        ai-service merges new ones with (session.confirmed.v1)."""
+        return list(
+            self.session.scalars(
+                self._select()
+                .where(
+                    KnowledgeUnit.subject_id == subject_id,
+                    KnowledgeUnit.status == "active",
+                    KnowledgeUnit.skipped_at.is_(None),
+                )
+                .order_by(KnowledgeUnit.created_at.desc(), KnowledgeUnit.id)
+                .limit(limit)
+            )
+        )
+
     def find_by_title(self, subject_id: uuid.UUID, title: str) -> KnowledgeUnit | None:
         """The subject's active unit with this title, oldest first (the seed script, T2.2)."""
         query = (

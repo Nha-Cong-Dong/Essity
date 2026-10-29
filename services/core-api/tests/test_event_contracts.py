@@ -304,16 +304,15 @@ def test_empty_trace_context_dumps_valid() -> None:
     assert parse_event(wire).trace_context == TraceContext()
 
 
-def test_required_null_payload_fields_are_dumped() -> None:
-    # Red when: dumping drops every None, including the payload's required nullable fields
-    # (a session confirmed without a document has `document_id: null`, `page_range: null`).
+def test_a_session_of_notes_only_has_no_ranges() -> None:
+    # Red when: an empty `ranges` is refused or dropped on the way out (US-02 AC10).
     from core_api.messaging.envelope import dump_event, parse_event
 
     event = parse_event((EXAMPLES / "session.confirmed.v1.json").read_text(encoding="utf-8"))
     payload = event.payload.model_dump(exclude_none=True)
-    no_document = {**payload, "document_id": None, "page_range": None}
-    wire = dump_event(rebuilt(event, payload=no_document))  # pyright: ignore[reportArgumentType]
-    assert json.loads(wire)["payload"]["document_id"] is None
+    notes_only: dict[str, Any] = {**payload, "ranges": []}
+    wire = dump_event(rebuilt(event, payload=notes_only))  # pyright: ignore[reportArgumentType]
+    assert json.loads(wire)["payload"]["ranges"] == []
     validator("session.confirmed.v1").validate(json.loads(wire))
 
 

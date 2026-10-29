@@ -61,6 +61,17 @@ class DocumentRepository(UserScopedRepository[Document]):
             )
         )
 
+    def indexed_of_subject(self, subject_id: uuid.UUID, limit: int) -> list[Document]:
+        """This user's indexed documents of one subject, newest first (id breaks ties)."""
+        return list(
+            self.session.scalars(
+                self._select()
+                .where(Document.subject_id == subject_id, Document.status == "indexed")
+                .order_by(Document.created_at.desc(), Document.id)
+                .limit(limit)
+            )
+        )
+
     def reserve(
         self,
         subject_id: uuid.UUID,

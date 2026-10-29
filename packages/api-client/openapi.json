@@ -178,6 +178,135 @@
         "title": "BacklogOut",
         "type": "object"
       },
+      "CardRange": {
+        "properties": {
+          "basis_assumed_file": {
+            "title": "Basis Assumed File",
+            "type": "boolean"
+          },
+          "depth": {
+            "enum": [
+              "deep",
+              "skim",
+              "unclear"
+            ],
+            "title": "Depth",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "end_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Label"
+          },
+          "end_page": {
+            "title": "End Page",
+            "type": "integer"
+          },
+          "sections": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "short_name": {
+            "title": "Short Name",
+            "type": "string"
+          },
+          "start_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Label"
+          },
+          "start_page": {
+            "title": "Start Page",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "short_name",
+          "start_page",
+          "end_page",
+          "start_label",
+          "end_label",
+          "depth",
+          "sections",
+          "basis_assumed_file"
+        ],
+        "title": "CardRange",
+        "type": "object"
+      },
+      "ConfirmRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "notes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/NoteIn"
+            },
+            "maxItems": 20,
+            "title": "Notes",
+            "type": "array"
+          },
+          "ranges": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RangeIn"
+            },
+            "maxItems": 6,
+            "title": "Ranges",
+            "type": "array"
+          },
+          "studied_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Studied On"
+          }
+        },
+        "title": "ConfirmRequest",
+        "type": "object"
+      },
+      "CreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "title": "CreateRequest",
+        "type": "object"
+      },
       "CurrentOut": {
         "properties": {
           "attempt": {
@@ -224,6 +353,30 @@
           "attempt"
         ],
         "title": "CurrentOut",
+        "type": "object"
+      },
+      "DocumentChoice": {
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "page_count": {
+            "title": "Page Count",
+            "type": "integer"
+          },
+          "short_name": {
+            "title": "Short Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "short_name",
+          "page_count"
+        ],
+        "title": "DocumentChoice",
         "type": "object"
       },
       "DocumentOut": {
@@ -498,6 +651,62 @@
         "title": "Me",
         "type": "object"
       },
+      "NoteIn": {
+        "additionalProperties": false,
+        "properties": {
+          "mime": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "application/pdf",
+              "text/plain",
+              "text/markdown"
+            ],
+            "title": "Mime",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "exclusiveMinimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sha256",
+          "mime",
+          "size_bytes"
+        ],
+        "title": "NoteIn",
+        "type": "object"
+      },
+      "NoteOut": {
+        "properties": {
+          "mime": {
+            "title": "Mime",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sha256",
+          "mime",
+          "size_bytes"
+        ],
+        "title": "NoteOut",
+        "type": "object"
+      },
       "OverrideIn": {
         "additionalProperties": false,
         "description": "\"Thực ra tôi đúng\" is `correct`, \"Thực ra tôi sai\" is `incorrect` (US-09 AC1).",
@@ -596,6 +805,129 @@
           "prompt"
         ],
         "title": "QuestionRef",
+        "type": "object"
+      },
+      "RangeIn": {
+        "additionalProperties": false,
+        "properties": {
+          "depth": {
+            "enum": [
+              "deep",
+              "skim",
+              "unclear"
+            ],
+            "title": "Depth",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "end_label": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Label"
+          },
+          "end_page": {
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "End Page",
+            "type": "integer"
+          },
+          "start_label": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Label"
+          },
+          "start_page": {
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Start Page",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "start_page",
+          "end_page",
+          "depth"
+        ],
+        "title": "RangeIn",
+        "type": "object"
+      },
+      "RangeOut": {
+        "properties": {
+          "depth": {
+            "enum": [
+              "deep",
+              "skim",
+              "unclear"
+            ],
+            "title": "Depth",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "end_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Label"
+          },
+          "end_page": {
+            "title": "End Page",
+            "type": "integer"
+          },
+          "start_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Label"
+          },
+          "start_page": {
+            "title": "Start Page",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "start_page",
+          "end_page",
+          "start_label",
+          "end_label",
+          "depth"
+        ],
+        "title": "RangeOut",
         "type": "object"
       },
       "ReasonOut": {
@@ -753,6 +1085,112 @@
           "practice"
         ],
         "title": "ResultOut",
+        "type": "object"
+      },
+      "SessionCard": {
+        "properties": {
+          "candidate_document_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Candidate Document Ids",
+            "type": "array"
+          },
+          "card": {
+            "enum": [
+              "proposed",
+              "note_only",
+              "clarify",
+              "manual"
+            ],
+            "title": "Card",
+            "type": "string"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentChoice"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "manual_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "failed",
+                  "disabled",
+                  "quota"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Reason"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          },
+          "ranges": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CardRange"
+            },
+            "title": "Ranges",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "draft",
+            "default": "draft",
+            "title": "Status",
+            "type": "string"
+          },
+          "studied_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Studied On"
+          }
+        },
+        "required": [
+          "session_id",
+          "card",
+          "documents"
+        ],
+        "title": "SessionCard",
         "type": "object"
       },
       "SkipIn": {
@@ -1329,6 +1767,66 @@
           "id",
           "answered",
           "total"
+        ],
+        "title": "SessionOut",
+        "type": "object"
+      },
+      "core_api__api__session_confirm__SessionOut": {
+        "properties": {
+          "confirmed_at": {
+            "format": "date-time",
+            "title": "Confirmed At",
+            "type": "string"
+          },
+          "learning_day": {
+            "format": "date",
+            "title": "Learning Day",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/NoteOut"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "ranges": {
+            "items": {
+              "$ref": "#/components/schemas/RangeOut"
+            },
+            "title": "Ranges",
+            "type": "array"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "confirmed",
+            "default": "confirmed",
+            "title": "Status",
+            "type": "string"
+          },
+          "studied_on": {
+            "format": "date",
+            "title": "Studied On",
+            "type": "string"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "subject_id",
+          "studied_on",
+          "learning_day",
+          "confirmed_at",
+          "ranges",
+          "notes"
         ],
         "title": "SessionOut",
         "type": "object"
@@ -2244,6 +2742,56 @@
         "summary": "Stop Session"
       }
     },
+    "/v1/sessions/{session_id}/confirm": {
+      "post": {
+        "description": "Confirm the card: write the session's ranges, notes and dates and announce it to\nai-service (`session.confirmed.v1`), all in one transaction. Confirming again returns the\nsession as it was saved and announces nothing more.\n\nErrors: 404 `session_not_found` (another user's too), `subject_not_found` (deleted since),\n`document_not_found` (another subject's or user's too); 409 `not_indexed`, `upload_incomplete`;\n422 `bad_range`, `bad_date`, `bad_note`, `size_mismatch`, `content_mismatch`; 503\n`storage_unavailable`.\n\nLocks the subject FOR SHARE, then the session FOR UPDATE (the order `create_draft` and a\nsubject's delete agree on).",
+        "operationId": "confirm_session_v1_sessions__session_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/core_api__api__session_confirm__SessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "session_not_found, subject_not_found or document_not_found"
+          },
+          "409": {
+            "description": "upload_incomplete (a note not stored yet) or not_indexed"
+          },
+          "422": {
+            "description": "bad_range, bad_date, bad_note, size_mismatch or content_mismatch"
+          }
+        },
+        "summary": "Confirm Session"
+      }
+    },
     "/v1/subjects": {
       "get": {
         "operationId": "list_subjects_v1_subjects_get",
@@ -2486,6 +3034,57 @@
           }
         },
         "summary": "Request Upload"
+      }
+    },
+    "/v1/subjects/{subject_id}/sessions": {
+      "post": {
+        "description": "Save the sentence as a draft and return the card to confirm (US-02 AC3-AC5, AC11).\n\nNever a 5xx for the AI: no answer, over the budget, hard cap or an answer that does not fit\nthe subject's documents all give `card: \"manual\"`. Errors: 404 `subject_not_found`; 429 with\nRetry-After (each call may cost AI money).",
+        "operationId": "create_session_v1_subjects__subject_id__sessions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionCard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Session"
       }
     },
     "/v1/today": {
