@@ -91,11 +91,13 @@ def build_handlers() -> dict[str, Handler]:
     from core_api.clients.storage import S3Storage
     from core_api.config import get_settings
     from core_api.handlers.grade_completed import OnGradeCompleted
+    from core_api.handlers.session_processed import OnSessionProcessed
 
     settings = get_settings()
     storage = S3Storage.from_settings(settings)
     return HANDLERS | {
-        "grade.completed.v1": OnGradeCompleted(storage, environment=settings.environment)
+        "grade.completed.v1": OnGradeCompleted(storage, environment=settings.environment),
+        "session.processed.v1": OnSessionProcessed(storage),
     }
 
 
