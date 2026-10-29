@@ -16,6 +16,7 @@ from core_api.db.models.review import (
     ReviewSession,
     ReviewSessionItem,
 )
+from core_api.db.models.study_session import NoteFile, SessionRange, StudySession
 from core_api.db.models.subject import Exam, Subject
 from core_api.db.models.unit import Anchor, KnowledgeUnit
 from core_api.db.models.user import User
@@ -32,6 +33,7 @@ __all__ = [
     "GradeUnit",
     "KnowledgeUnit",
     "MemoryState",
+    "NoteFile",
     "Outbox",
     "ProcessedEvent",
     "Question",
@@ -39,6 +41,8 @@ __all__ = [
     "ReviewLog",
     "ReviewSession",
     "ReviewSessionItem",
+    "SessionRange",
+    "StudySession",
     "Subject",
     "User",
 ]
