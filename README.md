@@ -66,4 +66,4 @@ Local endpoints (bound to `127.0.0.1` only):
 
 ## License
 
-Not yet specified. All rights reserved until a `LICENSE` file is added.
+MIT, see [LICENSE](LICENSE).
