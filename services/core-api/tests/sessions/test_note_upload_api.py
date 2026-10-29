@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from accounts import signed_in
 from clock import FROZEN_NOW
 from core_api.config import get_settings
-from core_api.db.models import NoteUpload, StudySession, User
+from core_api.db.models import NoteFile, NoteUpload, StudySession, User
 from fake_storage import FakeStorage
 
 MB = 1024 * 1024
@@ -215,3 +215,31 @@ def test_asking_too_often_is_a_429(
     )
     assert response.status_code == 429
     assert int(response.headers["Retry-After"]) > 0
+
+
+def test_confirmed_notes_count_toward_the_quota(
+    client: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Red when: the quota sums only note_upload: confirming deletes those rows, so a confirmed
+    # note would stop counting and the account could upload without end.
+    monkeypatch.setenv("CORE_NOTE_QUOTA_BYTES", str(3 * MB))
+    get_settings.cache_clear()
+    user, headers = signed_in(db_session)
+    draft = draft_of(db_session, user)
+    db_session.add(
+        NoteFile(
+            user_id=user.id,
+            session_id=draft.id,
+            object_key=f"users/{user.id}/sessions/{draft.id}/notes/{'01' * 32}.jpg",
+            sha256="01" * 32,
+            mime="image/jpeg",
+            size_bytes=2 * MB,
+        )
+    )
+    db_session.flush()
+    other = draft_of(db_session, user)
+    assert ask(client, headers, other.id, sha256="02" * 32, size_bytes=2 * MB) == (
+        409,
+        {"detail": "storage_quota_exceeded"},
+    )
+    assert ask(client, headers, other.id, sha256="02" * 32, size_bytes=MB)[0] == 201
