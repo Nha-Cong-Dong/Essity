@@ -16,7 +16,7 @@ EXAMPLES = sorted((FILES / "examples").glob("session-result.v1*.json"))
 
 
 def test_the_examples_are_found() -> None:
-    assert len(EXAMPLES) == 6
+    assert len(EXAMPLES) == 5
 
 
 @pytest.mark.parametrize("path", EXAMPLES, ids=lambda path: path.name)
