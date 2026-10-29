@@ -57,9 +57,10 @@ def test_grade_of_a_level_1_question_still_moves_fsrs(desk: Desk) -> None:
     assert all(state is not None for state in states(desk).values())
 
 
-# Red when: an override of a level-2 grade writes review_log or memory_state.
-def test_override_of_a_higher_grade_does_not_move_fsrs(desk: Desk) -> None:
-    desk.question.level = 2
+# Red when: an override of a level-2 or level-3 grade writes review_log or memory_state.
+@pytest.mark.parametrize("level", [2, 3])
+def test_override_of_a_higher_grade_does_not_move_fsrs(desk: Desk, level: int) -> None:
+    desk.question.level = level
     desk.session.flush()
     attempt = desk.submitted()
     desk.grade(attempt, Stub(verdicts={desk.units[1]: "incorrect"}))
