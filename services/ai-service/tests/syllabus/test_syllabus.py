@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from ai_service.pdf import PageText, open_pdf
+from ai_service.pdf import OutlineEntry, PageText, open_pdf
 from ai_service.tasks.syllabus import (
     CHUNK_PAGES,
     SyllabusNode,
@@ -42,6 +42,7 @@ def _assert_tiles(nodes: list[SyllabusNode], page_count: int) -> None:
     assert leaves[0].page_start == 1 and leaves[-1].page_end == page_count
     for a, b in zip(leaves, leaves[1:], strict=False):
         assert b.page_start == a.page_end + 1
+    assert all(n.page_start <= n.page_end and n.weight >= 1 for n in nodes)
     assert all(n.weight == n.page_end - n.page_start + 1 for n in nodes)
     assert sum(n.weight for n in leaves) == page_count
     assert [n.ord for n in nodes] == list(range(len(nodes)))
@@ -119,7 +120,7 @@ def test_chapter_lines_without_bookmarks() -> None:
 
 def test_a_chapter_named_on_the_contents_page_resolves_to_its_real_page() -> None:
     texts = {
-        "p1": "Chapter 1 Intro",  # the contents page lists both
+        "p1": "Contents\nChapter 1 Intro",  # the contents page lists both
         "p6": "Chapter 1 Intro",
         "p9": "Chapter 2 More",
     }
@@ -232,3 +233,85 @@ def test_vietnamese_chapter_heading_with_diacritics() -> None:
         ("Chương 2 Tiếp", 6),
     ]
     _assert_tiles(nodes, 6)
+
+
+def _outline(*items: tuple[str, int, int]) -> list[OutlineEntry]:
+    return [OutlineEntry(title, level, page) for title, level, page in items]
+
+
+def _blank(count: int) -> list[PageText]:
+    return [PageText(f"Body {i}", False) for i in range(count)]
+
+
+_SAME_PAGE_CASES = [
+    [("Ch1", 0, 0), ("1.1", 1, 0), ("1.1.1", 2, 0), ("1.2", 1, 0), ("Ch2", 0, 5)],
+    [("A", 0, 0), ("B", 1, 0), ("C", 0, 0), ("D", 0, 5)],
+    [("A", 0, 3), ("B", 1, 3), ("C", 0, 3), ("D", 0, 6)],
+    [("A", 0, 0), ("B", 0, 0), ("C", 0, 0)],
+    [("A", 0, 2), ("B", 1, 2), ("C", 2, 2), ("D", 1, 2)],
+]
+
+
+@pytest.mark.parametrize("items", _SAME_PAGE_CASES)
+def test_headings_sharing_a_page_never_leave_an_empty_node(
+    items: list[tuple[str, int, int]],
+) -> None:
+    nodes = build_syllabus(10, _outline(*items), [], FakeAsk())
+    _assert_tiles(nodes, 10)
+
+
+def test_hostile_model_reply_with_same_page_headings_still_tiles() -> None:
+    pages = [PageText("Contents\nA 1", False), *_blank(9)]
+    reply = _toc_reply(("Alpha", 0, 1), ("Beta", 1, 1), ("Gamma", 0, 1), ("Delta", 0, 6))
+    nodes = build_syllabus(10, [], pages, FakeAsk(reply))
+    _assert_tiles(nodes, 10)
+
+
+def test_bookmark_levels_are_clamped() -> None:
+    items = [("A", 0, 0), ("B", 1, 2), ("C", 2, 4), ("D", 3, 6), ("E", 4, 7), ("F", 9, 8)]
+    nodes = build_syllabus(10, _outline(*items), [], FakeAsk())
+    assert max(n.level for n in nodes) <= 3
+    _assert_tiles(nodes, 10)
+
+
+def test_running_headers_do_not_move_a_chapter() -> None:
+    pages = _blank(10)
+    for index in (2, 3, 4):
+        pages[index] = PageText("Chuong 1 Intro\ntext", False)
+    for index in (7, 8):
+        pages[index] = PageText("Chuong 2 More\ntext", False)
+    nodes = build_syllabus(10, [], pages, FakeAsk())
+    assert [n.page_start for n in nodes if n.title.startswith("Chuong")] == [3, 8]
+
+
+def test_prose_mentioning_contents_does_not_call_the_model() -> None:
+    pages = _blank(10)
+    pages[1] = PageText("The contents of this box are heavy.\nNoi dung bai hoc nay.", False)
+    ask = FakeAsk(_toc_reply(("A", 0, 1), ("B", 0, 5)))
+    nodes = build_syllabus(10, [], pages, ask)
+    assert not ask.prompts
+    assert {n.source for n in nodes} == {"chunk10"}
+
+
+def test_unusable_but_valid_reply_is_not_retried() -> None:
+    ask = FakeAsk(_toc_reply(("Only one", 0, 2)))
+    build_syllabus(10, [], [PageText("Contents", False), *_blank(9)], ask)
+    assert len(ask.prompts) == 1
+
+
+def test_short_titles_do_not_set_the_page_offset() -> None:
+    pages = [PageText("Contents", False), *_blank(5), PageText("Part\npage 1 text", False)]
+    pages += _blank(2)
+    reply = _toc_reply(("1", 0, 1), ("Methods", 0, 3), ("Results", 0, 6))
+    nodes = build_syllabus(9, [], pages, FakeAsk(reply))
+    # no usable offset: printed pages are file pages
+    assert [n.page_start for n in nodes if n.title == "Methods"] == [3]
+
+
+def test_a_negative_offset_is_applied() -> None:
+    pages = [PageText("Contents", False), *_blank(3), PageText("Methods\ntext", False)]
+    pages += _blank(5)
+    reply = _toc_reply(("Methods", 0, 1), ("Results", 0, 3))
+    nodes = build_syllabus(10, [], pages, FakeAsk(reply))
+    # printed 1 is file page 5, so printed 3 is file page 7
+    assert [n.page_start for n in nodes if n.title == "Results"] == [7]

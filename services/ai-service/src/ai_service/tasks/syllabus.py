@@ -51,10 +51,17 @@ FRONT_MATTER_TITLE = "Front matter"
 
 Source = Literal["bookmarks", "regex", "llm_toc", "chunk10"]
 
-_TOC_WORDS = re.compile(r"m[uụ]c\s+l[uụ]c|table\s+of\s+contents|\bcontents\b|n[oộ]i\s+dung", re.I)
+# The keyword must stand alone on its line, so prose that mentions "contents" does not match.
+_TOC_WORDS = re.compile(
+    r"^\s*(?:m[uụ]c\s+l[uụ]c|table\s+of\s+contents|contents)\s*:?\s*$",
+    re.I | re.M,
+)
 _CHAPTER = re.compile(r"^\s*(?:ch[uư][oơ]ng|chapter)\s+(\d+|[ivxlc]+)\b", re.I)
 _HEADING_LINES = 6
 _MAX_HEADING_CHARS = 120
+# Shorter titles ("1", "A") would match any page when looking for the page offset.
+_MIN_MATCH_CHARS = 4
+_LISTING_LINES = 40
 
 
 @dataclass(frozen=True)
@@ -154,15 +161,18 @@ def _tidy(headings: Sequence[_Heading], page_count: int) -> list[_Heading]:
     fixed: list[_Heading] = []
     previous = -1
     for title, level, page in kept:
-        level = min(level, previous + 1)
+        level = min(level, previous + 1, MAX_LEVEL)
         fixed.append((title, level, page))
         previous = level
+    # Back to front, against the nearest heading kept after it, so a run of headings on one page
+    # collapses to the ones that nest.
     result: list[_Heading] = []
-    for index, heading in enumerate(fixed):
-        following = fixed[index + 1] if index + 1 < len(fixed) else None
+    for heading in reversed(fixed):
+        following = result[-1] if result else None
         if following and following[2] == heading[2] and following[1] <= heading[1]:
             continue
         result.append(heading)
+    result.reverse()
     return result
 
 
@@ -208,14 +218,26 @@ def _from_bookmarks(outline: Sequence[OutlineEntry], page_count: int) -> list[_H
     return tidy if len(tidy) >= 2 else None
 
 
+def _is_listing(lines: Sequence[str]) -> bool:
+    """A page naming two or more chapters in its first lines lists them (a contents page)."""
+    names = {
+        m.group(1).casefold() for line in lines[:_LISTING_LINES] if (m := _CHAPTER.match(line))
+    }
+    return len(names) >= 2
+
+
 def _from_regex(pages: Sequence[PageText], page_count: int) -> list[_Heading] | None:
     found: dict[str, _Heading] = {}
     for index, page in enumerate(pages[:page_count]):
-        for line in page.text.splitlines()[:_HEADING_LINES]:
+        lines = page.text.splitlines()
+        if _TOC_WORDS.search(page.text[:400]) or _is_listing(lines):
+            continue
+        for line in lines[:_HEADING_LINES]:
             match = _CHAPTER.match(line)
             if match and len(line.strip()) <= _MAX_HEADING_CHARS:
-                # A chapter named again later wins: the first mention is the contents page.
-                found[match.group(1).casefold()] = (line.strip(), 0, index)
+                # The first mention outside the contents pages is where the chapter starts;
+                # later ones are running headers.
+                found.setdefault(match.group(1).casefold(), (line.strip(), 0, index))
                 break
     tidy = _tidy(list(found.values()), page_count)
     return tidy if len(tidy) >= 2 else None
@@ -249,11 +271,12 @@ def _page_offset(entries: Sequence[LlmTocEntry], pages: Sequence[PageText], afte
     contents pages. 0 when none is found (printed numbers then are taken as file numbers)."""
     for entry in entries[:10]:
         title = _norm(entry.title)
-        if not title:
+        if len(title) < _MIN_MATCH_CHARS:
             continue
+        pattern = re.compile(rf"(?<!\w){re.escape(title)}(?!\w)")
         for index in range(after, len(pages)):
             head = _norm(" ".join(pages[index].text.splitlines()[:_HEADING_LINES]))
-            if title in head:
+            if pattern.search(head):
                 return entry.page - (index + 1)
     return 0
 
@@ -287,7 +310,23 @@ def _from_llm(
         if len(tidy) >= 2:
             return tidy
         _log.warning("syllabus toc output unusable", extra={"attempt": attempt})
+        return None
     return None
+
+
+def _tiles(nodes: Sequence[SyllabusNode], page_count: int) -> bool:
+    """The invariant every source must meet: leaves contiguous over 1..page_count, no empty node."""
+    if not nodes or any(n.page_end < n.page_start or n.weight < 1 for n in nodes):
+        return False
+    leaves = [
+        n for i, n in enumerate(nodes) if i + 1 == len(nodes) or nodes[i + 1].level <= n.level
+    ]
+    expected = 1
+    for leaf in leaves:
+        if leaf.page_start != expected:
+            return False
+        expected = leaf.page_end + 1
+    return expected == page_count + 1
 
 
 def chunk10(page_count: int) -> list[SyllabusNode]:
@@ -327,6 +366,6 @@ def build_syllabus(
         headings = find()
         if headings:
             nodes = _tree(headings, page_count, source)
-            if len(nodes) <= MAX_NODES:
+            if len(nodes) <= MAX_NODES and _tiles(nodes, page_count):
                 return nodes
     return chunk10(page_count)
