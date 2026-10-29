@@ -154,3 +154,11 @@ def test_too_many_documents_or_long_name_rejected() -> None:
     long_name = doc.model_copy(update={"name": "n" * 301})
     with pytest.raises(ChunkInputTooLarge):
         chunk_units(request().model_copy(update={"documents": [long_name]}), ask)
+
+
+def test_two_new_units_same_title_merge_anchors_in_one_call() -> None:
+    first = unit_json(title="Ty the")
+    second = unit_json(title="  TY  the ", anchors=[("D1.p2", "Krebs cycle oxidises acetyl-CoA")])
+    result = chunk_units(request(), FakeAsk(output(first, second)))
+    assert len(result.new_units) == 1
+    assert [a.page_no for a in result.new_units[0].anchors] == [1, 2]
