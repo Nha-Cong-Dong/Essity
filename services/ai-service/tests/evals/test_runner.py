@@ -338,3 +338,17 @@ def test_threshold_boundaries() -> None:
     assert status(0.06, 0.05, higher_is_better=False, complete=True) == "FAIL"
     assert status(None, 0.85, higher_is_better=True, complete=True) == "n/a"
     assert status(1.0, 0.85, higher_is_better=True, complete=False) == "n/a"
+
+
+def test_any_exception_in_one_case_is_a_provider_error_and_the_run_continues() -> None:
+    # R55 (T3.2): a bug or an odd error from the SDK in one case must not end the whole run.
+    def script(n: int, request: LlmRequest) -> str | ProviderError:
+        if n == 1:
+            raise RuntimeError("boom")
+        return output(["correct"])
+
+    data = [case_dict("c1"), case_dict("c2")]
+    adapter = ScriptedAdapter(script)
+    result = run_eval(cases(*data), adapter, model="fake-grader-v1", runs=1)  # must not raise
+    assert [r.kind for r in result.results["c1"]] == ["provider_error"]
+    assert [r.kind for r in result.results["c2"]] == ["verdict"]
