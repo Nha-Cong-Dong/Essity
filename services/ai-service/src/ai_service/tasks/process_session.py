@@ -217,6 +217,7 @@ class ProcessSession:
                 except _Fail as failure:
                     _log.warning("session failed", extra={"outcome": failure.code})
                     self._send(event, "failed", failure.reason, None)
+                    self._forget(event)  # derived text must not linger a day (ADR-0001/0007)
                     return
                 self._remember(f"result:{event.event_id}", body)
             self._put(key, body)

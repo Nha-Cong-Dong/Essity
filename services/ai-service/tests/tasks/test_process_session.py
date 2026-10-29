@@ -592,3 +592,22 @@ def test_t5r_a_session_asks_level_1_only_and_one_question_call_per_batch(
             select(LlmCall).where(LlmCall.user_id == USER, LlmCall.task == "generate_questions")
         ).all()
     assert len(asked) == 1  # 3 units fit one batch; a higher call would make it 2
+
+
+# Tester T5.R. Red when: a failed session leaves its paid chunk result (units, anchors: text
+# derived from the user's pages) in Redis for a day instead of deleting it. T5.1b (#64) added
+# this clean-up; the T5.R revert of T5.1b removed it with the level-2/3 wiring.
+def test_t5r_a_failed_session_leaves_nothing_in_the_cache(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+
+    def down(request: Any) -> str:
+        raise ProviderError("timeout")
+
+    adapter = FakeAdapter({"chunk_units": fake_chunk, "generate_questions": down})
+    run(handler(storage, redis_client, stream, sessions, adapter), event)
+    assert isinstance(sent(redis_client, stream)[-1], SessionFailedEvent)
+    assert cast(Any, redis_client).keys(f"ai:session:*:{event.event_id}") == []
