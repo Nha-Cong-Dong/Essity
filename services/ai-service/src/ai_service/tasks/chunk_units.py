@@ -53,6 +53,8 @@ MAX_PAGE_CHARS = 20_000
 MAX_NOTES_CHARS = 8_000
 MAX_TOTAL_CHARS = 200_000
 MAX_EXISTING = 200
+MAX_DOCUMENTS = 20
+MAX_DOC_NAME_CHARS = 300
 PROMPT_TITLE_CHARS = 120
 PROMPT_SUMMARY_CHARS = 300
 ATTEMPTS = 2
@@ -150,6 +152,10 @@ def _labels(request: ChunkRequest) -> Labels:
 def _check_limits(request: ChunkRequest) -> None:
     pages = [p for doc in request.documents for p in doc.pages]
     notes = request.notes_text or ""
+    if len(request.documents) > MAX_DOCUMENTS:
+        raise ChunkInputTooLarge("documents")
+    if any(len(d.name) > MAX_DOC_NAME_CHARS for d in request.documents):
+        raise ChunkInputTooLarge("doc_name")
     if len(pages) > MAX_PAGES:
         raise ChunkInputTooLarge("pages")
     if any(len(p.text) > MAX_PAGE_CHARS for p in pages):

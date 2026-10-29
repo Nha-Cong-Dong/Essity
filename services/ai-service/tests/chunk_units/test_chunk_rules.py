@@ -8,6 +8,7 @@ import pytest
 
 from ai_service.tasks.chunk_models import DocInput, ExistingUnit, PageInput
 from ai_service.tasks.chunk_units import (
+    ChunkInputError,
     ChunkInputTooLarge,
     ChunkInvalidError,
     chunk_units,
@@ -133,3 +134,23 @@ def test_errors_and_logs_carry_no_source_text(caplog: pytest.LogCaptureFixture) 
     anchors = [("D1.p1", quote), ("D1.p1", "zzz not in the page at all")]
     result = chunk_units(request([page], notes=None), FakeAsk(output(unit_json(anchors=anchors))))
     assert canary not in repr(result.dropped)
+
+
+def test_duplicate_page_no_rejected() -> None:
+    page = PageInput(page_no=1, text=P1)
+    doc = DocInput(document_id=DOC_ID, name="d", pages=[page, page])
+    req = request().model_copy(update={"documents": [doc]})
+    ask = FakeAsk(output(unit_json()))
+    with pytest.raises(ChunkInputError):
+        chunk_units(req, ask)
+    assert ask.prompts == []
+
+
+def test_too_many_documents_or_long_name_rejected() -> None:
+    doc = DocInput(document_id=DOC_ID, name="d", pages=[])
+    ask = FakeAsk(output(unit_json()))
+    with pytest.raises(ChunkInputTooLarge):
+        chunk_units(request().model_copy(update={"documents": [doc] * 21}), ask)
+    long_name = doc.model_copy(update={"name": "n" * 301})
+    with pytest.raises(ChunkInputTooLarge):
+        chunk_units(request().model_copy(update={"documents": [long_name]}), ask)
