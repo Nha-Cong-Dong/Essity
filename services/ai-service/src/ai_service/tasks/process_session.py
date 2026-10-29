@@ -221,6 +221,7 @@ class ProcessSession:
                 self._remember(f"result:{event.event_id}", body)
             self._put(key, body)
         self._send(event, "processed", key, None)
+        self._forget(event)
 
     # --- the work -----------------------------------------------------------------------
 
@@ -278,6 +279,15 @@ class ProcessSession:
             self.redis.set(f"{CACHE_PREFIX}{name}", body, ex=CACHE_SECONDS)
         except Exception:
             _log.warning("paid result not cached")
+
+    def _forget(self, event: SessionConfirmedEvent) -> None:
+        """The result is stored: session text must not linger in Redis (ADR-0001/0007)."""
+        try:
+            self.redis.delete(
+                f"{CACHE_PREFIX}result:{event.event_id}", f"{CACHE_PREFIX}chunk:{event.event_id}"
+            )
+        except Exception:
+            _log.warning("paid result cache not deleted")
 
     def _save_work(self, event: SessionConfirmedEvent, work: _Work) -> None:
         data: dict[str, Any] = {

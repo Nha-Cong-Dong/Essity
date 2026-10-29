@@ -564,3 +564,13 @@ def test_t416b_a_blank_title_drops_that_unit_not_the_session(
     run(handler(storage, redis_client, stream, sessions, adapter), event)
     assert isinstance(sent(redis_client, stream)[-1], SessionProcessedEvent)
     assert len(result(storage, event)["units"]) == 1
+
+
+def test_t416b_cached_results_are_deleted_after_a_successful_write(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+    run(handler(storage, redis_client, stream, sessions), event)
+    assert redis_client.keys(f"ai:session:*:{event.event_id}") == []

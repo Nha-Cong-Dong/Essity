@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://essity.invalid/contracts/files/session-result.v1.schema.json",
   "title": "session result v1",
-  "description": "ai-service writes it at `result_key` (session.processed.v1); core-api persists it (T4.17). `units` are new knowledge units with anchors (offsets are Python code points into the page text, `end` exclusive); `merges` add anchors to units that already exist; `questions` are level-1 questions, one unit each. `skipped` and `dropped` carry rule names and counts only, never text.",
+  "description": "ai-service writes it at `result_key` (session.processed.v1); core-api persists it (T4.17). `units` are new knowledge units with anchors (offsets are Python code points into the page text, `end` exclusive); `merges` add anchors to units that already exist; `questions` are questions of level 1 to 3, each covering the units in `unit_ids`. `skipped` and `dropped` carry rule names and counts only, never text.",
   "type": "object",
   "additionalProperties": false,
   "required": [
