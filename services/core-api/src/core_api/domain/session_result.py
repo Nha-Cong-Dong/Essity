@@ -22,6 +22,8 @@ TITLE_MAX = 200
 # Level 1 and 2 ask about one unit; level 3 joins two or more (us-04b AC1).
 LEVEL_SINGLE = (1, 2)
 LEVEL_JOIN = 3
+# `anchor.page_no`, `char_start` and `char_end` are int32 columns.
+INT32_MAX = 2_147_483_647
 
 _UNSAFE = re.compile("[\x00\ud800-\udfff]")
 
@@ -37,9 +39,9 @@ class _Closed(BaseModel):
 class FileAnchor(_Closed):
     source: Literal["document", "notes"]
     document_id: uuid.UUID | None
-    page_no: Annotated[int, Field(ge=1)] | None
-    start: Annotated[int, Field(ge=0)]
-    end: Annotated[int, Field(ge=0)]
+    page_no: Annotated[int, Field(ge=1, le=INT32_MAX)] | None
+    start: Annotated[int, Field(ge=0, le=INT32_MAX)]
+    end: Annotated[int, Field(ge=0, le=INT32_MAX)]
     quote_text: str
 
 

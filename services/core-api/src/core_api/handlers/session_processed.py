@@ -48,6 +48,7 @@ from core_api.repositories.question import (
     QuestionUnitRepository,
 )
 from core_api.repositories.study_session import StudySessionRepository
+from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.unit import (
     AnchorRepository,
     KnowledgeUnitRepository,
@@ -74,6 +75,9 @@ class OnSessionProcessed:
         study = StudySessionRepository(session, user_id).lock(payload.study_session_id)
         if study is None or study.status != "confirmed":
             _log.warning("session result ignored", extra=extra | {"found": study is not None})
+            return
+        if SubjectRepository(session, user_id).get(study.subject_id) is None:
+            _log.warning("session result ignored", extra=extra | {"reason": "subject_gone"})
             return
         if not _is_result_key(payload.result_key, study):
             _log.error("session result refused", extra=extra | {"reason": "key"})

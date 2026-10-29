@@ -480,3 +480,35 @@ def test_question_on_dropped_unit_dropped_rest_written(world: World) -> None:
         )
     )
     assert [q.prompt for q in world.db.scalars(select(Question))] == ["Còn"]
+
+
+def test_subject_gone_after_confirm_is_ignored(world: World) -> None:
+    from sqlalchemy import text
+
+    key = world.put(world.body(units=[world.unit(U1)]))
+    event = world.event(key)
+    world.db.execute(
+        text("UPDATE subject SET deleted_at = now() WHERE id = :i"), {"i": world.subject.id}
+    )
+    OnSessionProcessed(world.storage)(world.db, event)
+    assert count(world.db, KnowledgeUnit) == 0
+
+
+def test_merge_into_inactive_unit_is_skipped(world: World) -> None:
+    old = KnowledgeUnit(
+        user_id=world.user.id,
+        subject_id=world.subject.id,
+        title="Đã gộp",
+        summary="s",
+        kind="concept",
+        status="merged",
+        run_id=RUN,
+    )
+    world.db.add(old)
+    world.db.flush()
+    world.run(
+        world.body(
+            merges=[{"existing_unit_id": str(old.id), "anchors": [anchor(world.document.id)]}]
+        )
+    )
+    assert count(world.db, Anchor) == 0

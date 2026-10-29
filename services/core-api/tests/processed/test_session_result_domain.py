@@ -40,12 +40,30 @@ def _kind(body: dict[str, Any]) -> None:
     body["units"].append(unit(U1, DOC, kind="poem"))
 
 
+def _huge_page(body: dict[str, Any]) -> None:
+    body["units"].append(unit(U1, DOC, anchors=[anchor(DOC, page_no=2**31)]))
+
+
+def _huge_offset(body: dict[str, Any]) -> None:
+    body["units"].append(unit(U1, DOC, anchors=[anchor(DOC, end=2**31)]))
+
+
 def _bad_uuid(body: dict[str, Any]) -> None:
     body["units"].append(unit(U1, DOC) | {"unit_id": "not-a-uuid"})
 
 
 @pytest.mark.parametrize(
-    "mutate", [_missing_field, _extra_field, _version, _level_four, _kind, _bad_uuid]
+    "mutate",
+    [
+        _missing_field,
+        _extra_field,
+        _version,
+        _level_four,
+        _kind,
+        _bad_uuid,
+        _huge_page,
+        _huge_offset,
+    ],
 )
 def test_result_breaking_the_schema_is_refused(mutate: Callable[[dict[str, Any]], None]) -> None:
     body = result(SESSION)
