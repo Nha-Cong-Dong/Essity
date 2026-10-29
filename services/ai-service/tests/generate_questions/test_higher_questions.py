@@ -6,6 +6,8 @@ from typing import Any
 import pytest
 
 from ai_service.tasks.generate_questions import (
+    HIGHER_OUTPUT_SCHEMA,
+    OUTPUT_SCHEMA,
     OutputViolation,
     QuestionsInvalidError,
     check_higher_questions,
@@ -100,3 +102,12 @@ def test_empty_request_makes_no_call() -> None:
 def test_level1_api_unchanged() -> None:
     result = generate_questions(request(2), FakeAsk(full_output(2)))
     assert {q.level for q in result.questions} == {1}
+
+
+def test_prompt_carries_the_schema_of_its_level() -> None:
+    higher = FakeAsk(higher_full())
+    generate_higher_questions(request(2), higher)
+    assert higher.prompts[0].output_schema == HIGHER_OUTPUT_SCHEMA
+    first = FakeAsk(full_output(2))
+    generate_questions(request(2), first)
+    assert first.prompts[0].output_schema == OUTPUT_SCHEMA

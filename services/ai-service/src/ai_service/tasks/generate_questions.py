@@ -133,7 +133,7 @@ def build_prompt(
         for a, quote in enumerate(unit.quotes, start=1):
             blocks.append(wrap_untrusted("source", quote, nonce, label=f"{label}.A{a}"))
     system = load_prompt(version).text.replace(_NONCE_PLACEHOLDER, nonce)
-    return QuestionPrompt(system, "\n\n".join(blocks), OUTPUT_SCHEMA, nonce)
+    return QuestionPrompt(system, "\n\n".join(blocks), output_schema or OUTPUT_SCHEMA, nonce)
 
 
 def _fold(text: str) -> str:
