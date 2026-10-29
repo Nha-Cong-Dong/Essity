@@ -24,6 +24,8 @@ MAX_RUBRIC_CHARS = 1500
 MAX_QUESTIONS_PER_UNIT = 2
 MAX_QUESTIONS_OUT = MAX_UNITS * MAX_QUESTIONS_PER_UNIT * 2
 MAX_OUTPUT_CHARS = 120_000
+MAX_LEVEL3_QUESTIONS = MAX_UNITS
+MAX_UNITS_PER_QUESTION = 6
 
 
 def _no_nul(text: str) -> str:
@@ -91,4 +93,34 @@ class DroppedQuestion(_Strict):
 
 class QuestionResult(_Strict):
     questions: list[GeneratedQuestion]
+    dropped: list[DroppedQuestion]
+
+
+# --- Levels 2 and 3 (T5.1) ------------------------------------------------------------------
+
+
+class LlmHigherQuestion(_Strict):
+    level: Literal[2, 3]
+    units: Annotated[list[str], Field(min_length=1, max_length=MAX_UNITS_PER_QUESTION)]
+    prompt: Annotated[Filled, Field(max_length=MAX_PROMPT_CHARS)]
+    reference_answer: Annotated[Filled, Field(max_length=MAX_REFERENCE_CHARS)]
+    rubric: Annotated[Filled, Field(max_length=MAX_RUBRIC_CHARS)]
+
+
+class LlmHigherQuestions(_Strict):
+    questions: Annotated[list[LlmHigherQuestion], Field(max_length=MAX_QUESTIONS_OUT)]
+
+
+class HigherQuestion(_Strict):
+    """Level 2 covers 1-2 units, level 3 at least 2 (US-04b AC1). Ids stay on the code side."""
+
+    level: Literal[2, 3]
+    unit_ids: list[uuid.UUID]
+    prompt: str
+    reference_answer: str
+    rubric: str
+
+
+class HigherQuestionResult(_Strict):
+    questions: list[HigherQuestion]
     dropped: list[DroppedQuestion]
