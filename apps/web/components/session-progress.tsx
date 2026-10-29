@@ -54,7 +54,7 @@ export function SessionProgress({
       } else if (result.code === "session_not_found") {
         return setLost(true);
       } else if (++failures >= MAX_FAILURES) {
-        setLost(true);
+        return setLost(true); // a persistent 403/5xx or network error: stop, say so
       }
       timer = setTimeout(() => void read(), nextDelay(attempt++));
     }
@@ -66,7 +66,7 @@ export function SessionProgress({
     };
   }, [sessionId]);
 
-  if (lost && !progress) {
+  if (lost) {
     return (
       <p className="m-0 mt-4 text-read" data-copy="tam">
         Chưa xem được tiến trình. Tải lại trang để thử lại.

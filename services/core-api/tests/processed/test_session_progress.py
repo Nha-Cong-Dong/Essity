@@ -17,6 +17,7 @@ from clock import FROZEN_NOW
 from core_api.db.models import StudySession, User
 from core_api.handlers.session_processed import OnSessionProcessed
 from core_api.handlers.session_progress import on_session_failed, on_session_progress
+from core_api.messaging.consumer import HANDLERS
 from core_api.messaging.envelope import Event, parse_event
 from fake_storage import FakeStorage
 from sessions.session_helpers import subject_of
@@ -230,3 +231,8 @@ def test_endpoint_unverified_is_403(client: TestClient, db_session: Session) -> 
 
 def test_endpoint_needs_sign_in(client: TestClient) -> None:
     assert client.get(f"/v1/sessions/{uuid.uuid4()}/progress").status_code in (401, 403)
+
+
+def test_consumer_routes_progress_and_failed_events() -> None:
+    assert HANDLERS["session.progress.v1"] is on_session_progress
+    assert HANDLERS["session.failed.v1"] is on_session_failed

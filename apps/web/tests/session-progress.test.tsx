@@ -128,4 +128,12 @@ describe("SessionProgress", () => {
     await tick(60_000);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it.each([403, 500, 503])("stops polling after five reads that answer %i", async (status) => {
+    fetchMock.mockImplementation(async () => answer({ error: "x" }, status));
+    render(<SessionProgress sessionId={ID} />);
+    await tick(120_000);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(screen.getByText(/Chưa xem được/)).toBeTruthy();
+  });
 });
