@@ -76,6 +76,8 @@ const PENDING_COPY: [file: string, text: string][] = [
   ["components/log-session.tsx", "Môn này chưa có tài liệu nào đọc xong để chọn trang."],
   ["components/log-session.tsx", "Đã lưu buổi học. Câu hỏi sẽ được soạn từ những trang này."],
   ["components/confirm-card.tsx", "Buổi này không gắn với trang tài liệu nào."],
+  // T4.13b: why a note file was refused; the sentences live in lib/log-session-copy.ts.
+  ["components/note-drop.tsx", "{logMessage(state.code)}"],
 ];
 
 function sources(dir: string): string[] {

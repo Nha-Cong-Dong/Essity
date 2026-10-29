@@ -20,6 +20,7 @@ import {
 } from "@/lib/log-session";
 import { logMessage } from "@/lib/log-session-copy";
 import { go } from "@/lib/navigate";
+import { NoteDrop, NoteList, useNotes } from "@/components/note-drop";
 
 // T4.13a (US-02 AC1, AC4, AC5, AC11; DESIGN.md §6.10; screens-html log-session.html): three steps
 // on one page. Tell it in a sentence, read the card, press Lưu. A sentence that could not be read
@@ -32,6 +33,15 @@ type Phase =
   | { kind: "ask"; card: Card }
   | { kind: "form"; card: Card; rows: RangeDraft[] }
   | { kind: "saved" };
+
+// What a failed save says besides "chưa lưu được": the limit hit, or the file that is wrong.
+const SAVE_CODES = new Set([
+  "rate_limited",
+  "upload_incomplete",
+  "content_mismatch",
+  "size_mismatch",
+  "bad_note",
+]);
 
 const FIELD =
   "h-13 w-full min-w-0 rounded-control border border-line-strong bg-sheet px-4 font-sans text-body text-ink outline-none hover:border-ink-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus aria-invalid:border-2 aria-invalid:border-partial";
@@ -55,6 +65,7 @@ function RangeForm({
   card,
   rows,
   saving,
+  waiting,
   failure,
   onRows,
   onSave,
@@ -62,6 +73,7 @@ function RangeForm({
   card: Card;
   rows: RangeDraft[];
   saving: boolean;
+  waiting: boolean;
   failure: string | null;
   onRows: (rows: RangeDraft[]) => void;
   onSave: () => void;
@@ -136,7 +148,7 @@ function RangeForm({
       })}
       {failure && <Problem code={failure} />}
       <div className="mt-6">
-        <Button type="submit" pending={saving}>
+        <Button type="submit" pending={saving} disabled={waiting}>
           Lưu
         </Button>
       </div>
@@ -171,8 +183,10 @@ export function LogSession({ subjectId, subjectName }: { subjectId: string; subj
   const [problem, setProblem] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
+  const notes = useNotes();
 
   function enter(card: Card) {
+    notes.begin(card.session_id); // the draft exists: the files chosen go to storage
     if (card.card === "clarify") return setPhase({ kind: "ask", card });
     if (card.card === "manual") return setPhase({ kind: "form", card, rows: startingRows(card) });
     setPhase({ kind: "card", card });
@@ -194,11 +208,11 @@ export function LogSession({ subjectId, subjectName }: { subjectId: string; subj
     if (saving) return;
     setSaving(true);
     setProblem(null);
-    const result = await confirmSession(card.session_id, ranges, card.studied_on);
+    const result = await confirmSession(card.session_id, ranges, card.studied_on, notes.notes);
     setSaving(false);
     if (result.ok) return setPhase({ kind: "saved" });
     if (result.code === "signed_out") return go("/login");
-    setProblem(result.code === "rate_limited" ? "rate_limited" : "save_failed");
+    setProblem(SAVE_CODES.has(result.code) ? result.code : "save_failed");
   }
 
   function editSentence() {
@@ -244,6 +258,8 @@ export function LogSession({ subjectId, subjectName }: { subjectId: string; subj
                 className="block field-sizing-content max-h-112 min-h-32 w-full resize-none rounded-none border-0 bg-transparent bg-[linear-gradient(transparent_31px,var(--line)_31px,var(--line)_32px)] bg-size-[100%_32px] [background-attachment:local] p-0 text-answer text-hong outline-none placeholder:text-ink-soft focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus aria-invalid:rounded-control aria-invalid:outline-2 aria-invalid:outline-offset-8 aria-invalid:outline-partial aria-invalid:outline-dashed"
               />
               {problem && <Problem code={problem} />}
+              <NoteDrop onAdd={notes.add} />
+              <NoteList rows={notes.rows} onRemove={notes.remove} />
               <div className="mt-6">
                 <Button type="button" onClick={() => void send()}>
                   Gửi
@@ -267,11 +283,13 @@ export function LogSession({ subjectId, subjectName }: { subjectId: string; subj
       ) : (
         <>
           <Said text={text} />
+          {phase.kind !== "saved" && <NoteList rows={notes.rows} onRemove={notes.remove} />}
           {phase.kind === "card" && (
             <>
               <ConfirmCard
                 card={phase.card}
                 saving={saving}
+                waiting={notes.busy}
                 onSave={() => void save(phase.card, cardToRanges(phase.card))}
                 onSentence={editSentence}
                 onRanges={() => setPhase({ kind: "form", card: phase.card, rows: startingRows(phase.card) })}
@@ -301,6 +319,7 @@ export function LogSession({ subjectId, subjectName }: { subjectId: string; subj
                     card={phase.card}
                     rows={phase.rows}
                     saving={saving}
+                    waiting={notes.busy}
                     failure={problem}
                     onRows={(rows) => setPhase({ kind: "form", card: phase.card, rows })}
                     onSave={() => void save(phase.card, rowsToRanges(phase.rows))}
