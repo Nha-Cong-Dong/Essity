@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from ai_service.clients.storage import StorageUnavailable
 from ai_service.db.models import LlmCall, PipelineRun
-from ai_service.llm.client import LlmClient
+from ai_service.llm.client import AuditUnavailableError, LlmClient
 from ai_service.llm.fake_adapter import FakeAdapter
 from ai_service.llm.types import ProviderError
 from ai_service.messaging.consumer import Deferred
@@ -449,3 +449,118 @@ def test_t416b_the_handler_is_registered() -> None:
 
     handlers = build_handlers(redis=None, storage=None, llm=None, sessions=None)  # pyright: ignore[reportArgumentType]
     assert isinstance(handlers["session.confirmed.v1"], ProcessSession)
+
+
+def test_t416b_overlapping_ranges_read_each_page_once_in_one_batch(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed(ranges=[(DOC, 1, 2), (DOC, 2, 3)])
+    run(handler(storage, redis_client, stream, sessions), event)
+    assert [type(e) for e in sent(redis_client, stream)][-1] is SessionProcessedEvent
+    body = result(storage, event)
+    assert sorted(a["page_no"] for u in body["units"] for a in u["anchors"]) == [1, 2, 3]
+
+
+def test_t416b_overlapping_ranges_across_batches_make_no_duplicate_units(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    pages = {n: f"Page number {n} says something distinct about topic {n}." for n in range(1, 31)}
+    index(storage, pages)
+    event = confirmed(ranges=[(DOC, 1, 25), (DOC, 5, 30)])
+    run(handler(storage, redis_client, stream, sessions), event)
+    assert len(result(storage, event)["units"]) == 30
+
+
+def llm_calls(sessions: sessionmaker[Session]) -> int:
+    with sessions() as s:
+        return len(s.scalars(select(LlmCall).where(LlmCall.user_id == USER)).all())
+
+
+def test_t416b_redelivery_after_storage_down_does_not_pay_again(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+    h = handler(storage, redis_client, stream, sessions)
+    storage.put_error = StorageUnavailable()
+    with pytest.raises(Deferred):
+        run(h, event)
+    paid = llm_calls(sessions)
+    assert paid > 0
+    storage.put_error = None
+    run(h, event)
+    assert llm_calls(sessions) == paid
+    assert result(storage, event)["questions"]
+
+
+def test_t416b_redelivery_after_audit_down_keeps_the_chunk_result(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+    h = handler(storage, redis_client, stream, sessions)
+    real = h._start_run  # pyright: ignore[reportPrivateUsage]
+    state = {"fail": True}
+
+    def flaky(ev: SessionConfirmedEvent, task: str, prompt: Any) -> uuid.UUID:
+        if task == "generate_questions" and state["fail"]:
+            state["fail"] = False
+            raise AuditUnavailableError
+        return real(ev, task, prompt)
+
+    h._start_run = flaky  # type: ignore[method-assign]  # pyright: ignore[reportPrivateUsage]
+    with pytest.raises(Deferred):
+        run(h, event)
+    paid = llm_calls(sessions)
+    run(h, event)
+    with sessions() as s:
+        chunk_calls = s.scalars(
+            select(LlmCall).where(LlmCall.user_id == USER, LlmCall.task == "chunk_units")
+        ).all()
+    assert len(chunk_calls) == paid  # no second chunk_units call
+    assert result(storage, event)["questions"]
+
+
+def test_t416b_a_progress_failure_does_not_fail_the_session(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = confirmed()
+    h = handler(storage, redis_client, stream, sessions)
+
+    class FlakyRedis:
+        def xadd(self, name: str, fields: dict[str, str], **kw: Any) -> Any:
+            if "session.progress" in fields["envelope"]:
+                raise ConnectionError("redis blinked")
+            return redis_client.xadd(name, cast(Any, fields), **kw)
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(redis_client, name)
+
+    h.redis = cast(Redis, FlakyRedis())
+    run(h, event)
+    assert isinstance(sent(redis_client, stream)[-1], SessionProcessedEvent)
+
+
+def test_t416b_a_blank_title_drops_that_unit_not_the_session(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+
+    def chunk(request: Any) -> str:
+        data = json.loads(fake_chunk(request))
+        data["units"][0]["title"] = "   "
+        return json.dumps(data)
+
+    adapter = FakeAdapter({"chunk_units": chunk, "generate_questions": fake_questions})
+    event = confirmed()
+    run(handler(storage, redis_client, stream, sessions, adapter), event)
+    assert isinstance(sent(redis_client, stream)[-1], SessionProcessedEvent)
+    assert len(result(storage, event)["units"]) == 1

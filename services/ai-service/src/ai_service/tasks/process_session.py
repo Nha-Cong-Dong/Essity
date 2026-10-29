@@ -93,6 +93,8 @@ BATCH_PAGES = 20
 BATCH_CHARS = 100_000
 QUESTION_BATCH = 20
 CALL_SECONDS = 90.0
+CACHE_PREFIX = "ai:session:"
+CACHE_SECONDS = 86_400
 TEXT_NOTES = frozenset({"text/plain", "text/markdown"})
 
 _log = logging.getLogger(__name__)
@@ -208,12 +210,15 @@ class ProcessSession:
             raise TypeError("ProcessSession handles session.confirmed.v1 only")
         key = result_key_for(event)
         if not self._written(key):
-            try:
-                body = self._result(event)
-            except _Fail as failure:
-                _log.warning("session failed", extra={"outcome": failure.code})
-                self._send(event, "failed", failure.reason, None)
-                return
+            body = self._recall(f"result:{event.event_id}")
+            if body is None:
+                try:
+                    body = self._result(event)
+                except _Fail as failure:
+                    _log.warning("session failed", extra={"outcome": failure.code})
+                    self._send(event, "failed", failure.reason, None)
+                    return
+                self._remember(f"result:{event.event_id}", body)
             self._put(key, body)
         self._send(event, "processed", key, None)
 
@@ -225,14 +230,23 @@ class ProcessSession:
             raise _Fail("internal_error", "range_inverted")
         if self.llm is None:
             raise _Fail("llm_unavailable", "disabled")
-        work = _Work()
-        pages = self._read_pages(event, work)
-        notes = self._read_notes(event, work)
-        if not pages and not notes:
-            raise _Fail("unreadable", "nothing_readable")
-        self._progress(event, "reading_notes", 10)
+        work = self._load_work(event)
+        pages: list[tuple[uuid.UUID, int, str]] = []
+        notes: str | None = None
+        if work is None:
+            work = _Work()
+            pages = self._read_pages(event, work)
+            notes = self._read_notes(event, work)
+            if not pages and not notes:
+                raise _Fail("unreadable", "nothing_readable")
+            self._progress(event, "reading_notes", 10)
+            split = True
+        else:
+            split = False
         try:
-            self._split(event, self.llm, pages, notes, work)
+            if split:
+                self._split(event, self.llm, pages, notes, work)
+                self._save_work(event, work)
             self._progress(event, "anchoring", 70)
             self._ask_questions(event, self.llm, work)
         except (LlmUnavailableError, QuotaExceededError):
@@ -248,6 +262,61 @@ class ProcessSession:
             raise _Fail("internal_error", "unexpected") from None
         return self._dump(event, work)
 
+    # --- paid results kept across a redelivery (Deferred): Redis, best effort, one day ---------
+
+    def _recall(self, name: str) -> bytes | None:
+        try:
+            value = self.redis.get(f"{CACHE_PREFIX}{name}")
+        except Exception:
+            return None
+        if isinstance(value, str):
+            return value.encode()
+        return value if isinstance(value, bytes) else None
+
+    def _remember(self, name: str, body: bytes) -> None:
+        try:
+            self.redis.set(f"{CACHE_PREFIX}{name}", body, ex=CACHE_SECONDS)
+        except Exception:
+            _log.warning("paid result not cached")
+
+    def _save_work(self, event: SessionConfirmedEvent, work: _Work) -> None:
+        data: dict[str, Any] = {
+            "units": [
+                {"unit_id": str(u.unit_id), "new": json.loads(u.new.model_dump_json())}
+                for u in work.units
+            ],
+            "merges": {
+                str(k): [json.loads(a.model_dump_json()) for a in v] for k, v in work.merges.items()
+            },
+            "skipped": work.skipped,
+            "dropped_anchors": work.dropped_anchors,
+            "dropped_units": work.dropped_units,
+        }
+        self._remember(f"chunk:{event.event_id}", json.dumps(data).encode())
+
+    def _load_work(self, event: SessionConfirmedEvent) -> _Work | None:
+        raw = self._recall(f"chunk:{event.event_id}")
+        if raw is None:
+            return None
+        try:
+            data = json.loads(raw)
+            work = _Work(
+                skipped=data["skipped"],
+                dropped_anchors=data["dropped_anchors"],
+                dropped_units=data["dropped_units"],
+            )
+            work.units = [
+                _Unit(uuid.UUID(u["unit_id"]), NewUnit.model_validate(u["new"]))
+                for u in data["units"]
+            ]
+            work.merges = {
+                uuid.UUID(k): [Anchor.model_validate(a) for a in v]
+                for k, v in data["merges"].items()
+            }
+        except (ValueError, KeyError, TypeError):
+            return None
+        return work
+
     def _get(self, key: str, max_bytes: int) -> bytes | None:
         try:
             return self.storage.get(key, max_bytes=max_bytes)
@@ -261,6 +330,7 @@ class ProcessSession:
     ) -> list[tuple[uuid.UUID, int, str]]:
         owner = f"users/{event.user_id}/"
         out: list[tuple[uuid.UUID, int, str]] = []
+        seen: set[tuple[uuid.UUID, int]] = set()  # ranges may overlap; a page counts once
         for r in event.payload.ranges:
             pointer = self._get(
                 f"{subject_prefix(event)}/documents/{r.document_id}/index.json", MAX_NOTE_BYTES
@@ -276,6 +346,9 @@ class ProcessSession:
                 except (ValueError, KeyError, TypeError):
                     pages_by_no = None
             for number in range(r.first, r.last + 1):
+                if (r.document_id, number) in seen:
+                    continue
+                seen.add((r.document_id, number))
                 text = None if pages_by_no is None else pages_by_no.get(number)
                 if not isinstance(text, str) or not text.strip():
                     work.skipped.append({"kind": "page", "ref": number, "reason": "no_text"})
@@ -356,6 +429,9 @@ class ProcessSession:
                         have = work.merges.get(merge.existing_unit_id, [])
                         work.merges[merge.existing_unit_id] = _add_anchors(have, merge.anchors)
                 for unit in result.new_units:
+                    if not unit.title.strip():  # one bad unit is dropped, not the session
+                        work.dropped_units += 1
+                        continue
                     made = _Unit(unit_id_for(event.event_id, len(work.units) + 1), unit)
                     work.units.append(made)
                     known.append(
@@ -480,7 +556,10 @@ class ProcessSession:
             _log.exception("pipeline_run not closed")  # the work is done; the row stays running
 
     def _progress(self, event: SessionConfirmedEvent, step: str, percent: int) -> None:
-        self._send(event, "progress", step, percent)
+        try:
+            self._send(event, "progress", step, percent)
+        except Exception:  # progress is best effort: it must not cost a paid run
+            _log.warning("progress not sent")
 
     def _send(
         self, event: SessionConfirmedEvent, kind: str, value: str, percent: int | None
