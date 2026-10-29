@@ -75,6 +75,11 @@ def indexed_event_id(event_id: uuid.UUID) -> uuid.UUID:
     return uuid.uuid5(_NAMESPACE, f"indexed:{event_id}")
 
 
+def pointer_key(subject_prefix: str, document_id: uuid.UUID) -> str:
+    """`users/<u>/subjects/<s>/documents/<document>/index.json`: the latest index of a document."""
+    return f"{subject_prefix}/documents/{document_id}/index.json"
+
+
 def failed_event_id(event_id: uuid.UUID) -> uuid.UUID:
     return uuid.uuid5(_NAMESPACE, f"failed:{event_id}")
 
@@ -239,7 +244,7 @@ class IndexDocument:
             unreadable_pages=[n for n, page in enumerate(analysis.pages, 1) if page.needs_vision],
         )
         try:
-            self._write(keys, analysis)
+            self._write(keys, analysis, payload.object_key[: named.start()], payload.document_id)
         except StorageUnavailable:
             raise Deferred from None
         self._send(
@@ -254,7 +259,13 @@ class IndexDocument:
             )
         )
 
-    def _write(self, keys: DocumentIndexed, analysis: Analysis) -> None:
+    def _write(
+        self,
+        keys: DocumentIndexed,
+        analysis: Analysis,
+        subject_prefix: str,
+        document_id: uuid.UUID,
+    ) -> None:
         put = self.storage.put
         json_type = "application/json"
         toc = [
@@ -272,6 +283,13 @@ class IndexDocument:
         put(keys.toc_key, _json({"entries": toc}), content_type=json_type)
         put(keys.page_labels_key, _json({"labels": analysis.page_labels}), content_type=json_type)
         put(keys.page_text_key, _json({"pages": pages}), content_type=json_type)
+        # Written last among the text files: session.confirmed.v1 names a document by id only
+        # (T4.16b), and this is where process_session finds the page text of its latest index.
+        put(
+            pointer_key(subject_prefix, document_id),
+            _json({"page_text_key": keys.page_text_key, "page_count": keys.page_count}),
+            content_type=json_type,
+        )
         for number, png in enumerate(analysis.thumbnails, 1):
             put(f"{keys.thumbnails_prefix}/{number}.png", png, content_type="image/png")
 
