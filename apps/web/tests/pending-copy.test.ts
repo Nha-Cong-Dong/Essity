@@ -16,7 +16,6 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 // T2.15/T2.13 add the answer screen's (plan t2.15-t2.13-t2.16-answer-grade.md "Câu tạm").
 const PENDING_COPY: [file: string, text: string][] = [
   ["components/today/today-screen.tsx", "Các môn của bạn đều đã thi xong."],
-  ["components/today/today-screen.tsx", "Môn của bạn chưa có câu hỏi nào để ôn."],
   [
     "components/today/today-screen.tsx",
     'Để kịp thi {today.backlog.subject_name} cần thêm khoảng{" "} {extraSessions(today.backlog.sessions, today.backlog.days)} phiên trong{" "} {today.backlog.days} ngày.',
@@ -69,6 +68,14 @@ const PENDING_COPY: [file: string, text: string][] = [
   ["components/documents/toc-view.tsx", "Tài liệu này không có mục lục."],
   ["components/documents/toc-view.tsx", "Chưa đọc được mục lục của tài liệu này."],
   ["components/documents/toc-view.tsx", "Tài liệu này chưa đọc xong. Mục lục sẽ hiện khi đọc xong."],
+  // T4.13a log a session (screens-html/screens/log-session.html); the failure sentences live in
+  // lib/log-session-copy.ts. T2.14's "chưa có câu hỏi nào để ôn" is gone: the mockup's first-session tile.
+  ["components/log-session.tsx", "{logMessage(code)}"],
+  ["components/log-session.tsx", "{logMessage(problem)}"],
+  ["components/log-session.tsx", "hỏi lại một câu"],
+  ["components/log-session.tsx", "Môn này chưa có tài liệu nào đọc xong để chọn trang."],
+  ["components/log-session.tsx", "Đã lưu buổi học. Câu hỏi sẽ được soạn từ những trang này."],
+  ["components/confirm-card.tsx", "Buổi này không gắn với trang tài liệu nào."],
 ];
 
 function sources(dir: string): string[] {
