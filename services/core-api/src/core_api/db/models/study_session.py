@@ -12,7 +12,9 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core_api.db.base import Base, UserOwned, not_blank, one_of
@@ -193,3 +195,45 @@ class NoteUpload(UserOwned, Base):
     size_bytes: Mapped[int] = mapped_column(Integer)
     # When the last URL was signed: cleanup waits until it is long dead.
     presigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+# queued: stored, waiting for ai-service. pending_ai: the AI quota is spent, tried again when there
+# is some (spec v2 §16.3). failed / done end it.
+SUBMISSION_STATUSES = frozenset({"queued", "processing", "pending_ai", "failed", "done"})
+
+
+class Submission(UserOwned, Base):
+    """What the learner handed in for a study session (T7.1, spec v2 §16.2): the files are stored
+    before they are processed, so a failure or a spent quota never loses them.
+
+    `file_keys` has no prefix CHECK yet: the task that first writes it (T7.3) adds one like
+    `note_file.object_key_is_notes_key` before anything does.
+    """
+
+    __tablename__ = "submission"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["session_id", "user_id"],
+            ["study_session.id", "study_session.user_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("id", "user_id"),
+        Index(None, "session_id"),
+        # What the retry job reads.
+        Index(
+            "ix_submission_waiting",
+            "created_at",
+            postgresql_where=text("status IN ('queued', 'pending_ai')"),
+        ),
+        CheckConstraint(one_of("status", SUBMISSION_STATUSES), name="status_known"),
+        CheckConstraint(
+            "(status IN ('done', 'failed')) = (finished_at IS NOT NULL)",
+            name="finished_iff_ended",
+        ),
+    )
+
+    session_id: Mapped[uuid.UUID]
+    status: Mapped[str] = mapped_column(String(10))
+    file_keys: Mapped[list[str]] = mapped_column(ARRAY(String(1024)), server_default=text("'{}'"))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

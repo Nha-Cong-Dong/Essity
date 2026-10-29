@@ -1,12 +1,12 @@
 """Every table model, imported here so Alembic autogenerate sees all of them."""
 
 from core_api.db.models.auth_session import AuthSession
-from core_api.db.models.document import Document
+from core_api.db.models.document import DocSection, Document
 from core_api.db.models.email_token import EmailToken
 from core_api.db.models.grade_job import GradeJob
 from core_api.db.models.outbox import Outbox
 from core_api.db.models.processed_event import ProcessedEvent
-from core_api.db.models.question import Question, QuestionUnit
+from core_api.db.models.question import Question, QuestionSection, QuestionType, QuestionUnit
 from core_api.db.models.review import (
     Attempt,
     Grade,
@@ -16,15 +16,22 @@ from core_api.db.models.review import (
     ReviewSession,
     ReviewSessionItem,
 )
-from core_api.db.models.study_session import NoteFile, NoteUpload, SessionRange, StudySession
+from core_api.db.models.study_session import (
+    NoteFile,
+    NoteUpload,
+    SessionRange,
+    StudySession,
+    Submission,
+)
 from core_api.db.models.subject import Exam, Subject
-from core_api.db.models.unit import Anchor, KnowledgeUnit, UnitLineage
+from core_api.db.models.unit import Anchor, KnowledgeUnit, UnitLineage, UnitRevision, UnitSection
 from core_api.db.models.user import User
 
 __all__ = [
     "Anchor",
     "Attempt",
     "AuthSession",
+    "DocSection",
     "Document",
     "EmailToken",
     "Exam",
@@ -38,6 +45,8 @@ __all__ = [
     "Outbox",
     "ProcessedEvent",
     "Question",
+    "QuestionSection",
+    "QuestionType",
     "QuestionUnit",
     "ReviewLog",
     "ReviewSession",
@@ -45,6 +54,9 @@ __all__ = [
     "SessionRange",
     "StudySession",
     "Subject",
+    "Submission",
     "UnitLineage",
+    "UnitRevision",
+    "UnitSection",
     "User",
 ]
