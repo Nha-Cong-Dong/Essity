@@ -6,6 +6,8 @@ from dataclasses import replace
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from core_api.domain.scheduling import multi_unit
 from core_api.domain.scheduling.multi_unit import (
     CURRENT_RULE,
@@ -69,3 +71,16 @@ def test_replay_under_rule_is_deterministic_and_follows_the_rule() -> None:
     assert first == replay_under_rule(outcomes, Q20_TAM, **kwargs)  # type: ignore[arg-type]
     assert first != replay_under_rule(outcomes, harsher, **kwargs)  # type: ignore[arg-type]
     assert multi_unit.RULES.get("test-harsher") is None
+
+
+# Red when: a rule misses a verdict or the current rule is not in RULES and nothing notices.
+def test_rules_config_fails_fast() -> None:
+    multi_unit.check_rules(RULES, CURRENT_RULE)
+    partial = {k: v for k, v in Q20_TAM.rating_by_verdict.items() if k is not Verdict.PARTIAL}
+    broken = replace(Q20_TAM, version="broken", rating_by_verdict=partial)
+    with pytest.raises(KeyError):
+        multi_unit.check_rules({**RULES, "broken": broken}, CURRENT_RULE)
+    with pytest.raises(ValueError, match="not in RULES"):
+        multi_unit.check_rules(RULES, replace(Q20_TAM, version="elsewhere"))
+    with pytest.raises(ValueError, match="filed under"):
+        multi_unit.check_rules({**RULES, "other": Q20_TAM}, Q20_TAM)

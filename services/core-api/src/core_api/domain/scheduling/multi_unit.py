@@ -35,6 +35,20 @@ Q20_TAM = MultiUnitRule(
 )
 RULES: Mapping[str, MultiUnitRule] = MappingProxyType({Q20_TAM.version: Q20_TAM})
 CURRENT_RULE = Q20_TAM
+LEVELS = (1, 2, 3)
+
+
+def check_rules(rules: Mapping[str, MultiUnitRule], current: MultiUnitRule) -> None:
+    """Fail fast on a broken config: every rule rates every verdict at every level, and the
+    current rule is one of `rules`."""
+    if rules.get(current.version) is not current:
+        raise ValueError(f"current rule {current.version!r} is not in RULES")
+    for version, rule in rules.items():
+        if rule.version != version:
+            raise ValueError(f"rule filed under {version!r} says {rule.version!r}")
+        for verdict in Verdict:
+            for level in LEVELS:
+                rating_under(rule, verdict, level)  # KeyError: a verdict this rule leaves out
 
 
 def current_rule() -> MultiUnitRule:
@@ -69,3 +83,6 @@ def replay_under_rule(
         tz=tz,
         day_start_hour=day_start_hour,
     )
+
+
+check_rules(RULES, CURRENT_RULE)
