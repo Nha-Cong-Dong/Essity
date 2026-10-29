@@ -24,7 +24,7 @@ def test_t216_a_whole_session_with_the_fake_grader(
     assert started.status_code == 201, started.text
     session_id = started.json()["id"]
     total = started.json()["total"]
-    assert total == 2  # the demo's level-2 question waits for a Correct at level 1 (T5.2)
+    assert total == 2  # the demo's level-2 question is practice, never in today (T5.R)
 
     for position in range(1, total + 1):
         current = client.get(f"/v1/review-sessions/{session_id}/current", headers=headers).json()
@@ -53,5 +53,5 @@ def test_t216_a_whole_session_with_the_fake_grader(
     logs = db_session.scalar(
         select(func.count()).select_from(ReviewLog).where(ReviewLog.user_id == user.id)
     )
-    assert logs == 2  # one per unit of each answered question; the level-2 one waits (T5.2)
+    assert logs == 2  # one per unit of each answered question; level 2 is not asked (T5.R)
     assert len(stub.calls) == 1  # "Không nhớ" never calls the AI (US-04 AC2)
