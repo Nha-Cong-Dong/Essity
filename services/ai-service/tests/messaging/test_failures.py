@@ -200,10 +200,11 @@ def test_t43_foreign_user_object_key_goes_to_dead_letter_without_calling_handler
 
 
 def test_t43_foreign_key_inside_a_list_is_caught() -> None:
-    # Review 🟡8: note_image_keys is a list of keys.
+    # Review 🟡8: `notes` is a list of objects with a key.
     event = example("session.confirmed.v1")
     other = str(uuid.uuid4())
-    event["payload"]["note_image_keys"].append(f"users/{other}/subjects/x/notes/y/2.jpg")
+    foreign = f"users/{other}/sessions/x/notes/y.jpg"
+    event["payload"]["notes"].append({"object_key": foreign, "mime": "image/jpeg"})
     assert keys_belong_to_user(parse_event(json.dumps(event))) is False
 
 

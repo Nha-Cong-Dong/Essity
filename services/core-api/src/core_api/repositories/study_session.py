@@ -4,7 +4,7 @@ import uuid
 
 from sqlalchemy import func, select
 
-from core_api.db.models import SessionRange, StudySession
+from core_api.db.models import NoteFile, SessionRange, StudySession
 from core_api.repositories.base import UserScopedRepository
 from core_api.repositories.subject import SubjectRepository
 
@@ -37,3 +37,31 @@ class StudySessionRepository(UserScopedRepository[StudySession]):
             .group_by(SessionRange.document_id)
         )
         return {document_id: last for document_id, last in rows}
+
+    def lock(self, id: uuid.UUID) -> StudySession | None:
+        """This user's session, held FOR UPDATE until commit and read afresh: one confirm at a
+        time, so a second one finds it confirmed."""
+        return self.session.scalars(
+            self._select()
+            .where(StudySession.id == id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).one_or_none()
+
+    def ranges_of(self, session_id: uuid.UUID) -> list[SessionRange]:
+        return list(
+            self.session.scalars(
+                select(SessionRange)
+                .where(SessionRange.session_id == session_id, SessionRange.user_id == self.user_id)
+                .order_by(SessionRange.position)
+            )
+        )
+
+    def notes_of(self, session_id: uuid.UUID) -> list[NoteFile]:
+        return list(
+            self.session.scalars(
+                select(NoteFile)
+                .where(NoteFile.session_id == session_id, NoteFile.user_id == self.user_id)
+                .order_by(NoteFile.created_at, NoteFile.sha256)
+            )
+        )
