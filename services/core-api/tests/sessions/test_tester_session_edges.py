@@ -15,6 +15,8 @@ from session_helpers import indexed_document, proposed, subject_of
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from test_confirm_session import (
+    JPEG,
+    PNG,
     SHA,
     World,
     confirm,
@@ -166,12 +168,14 @@ def test_full_card_at_the_limits_matches_the_contract(client: TestClient, world:
     mimes = ["image/jpeg", "image/png", "application/pdf", "text/plain", "text/markdown"]
     ext = {"image/jpeg": "jpg", "image/png": "png", "application/pdf": "pdf"}
     ext |= {"text/plain": "txt", "text/markdown": "md"}
+    heads = {"image/jpeg": JPEG, "image/png": PNG, "application/pdf": b"%PDF-"}
     notes: list[dict[str, Any]] = []
     for n in range(20):
         sha, mime = f"{n:02x}" * 32, mimes[n % 5]
         key = f"users/{world.user.id}/sessions/{world.draft.id}/notes/{sha}.{ext[mime]}"
-        world.storage.put(key, b"y" * (n + 1), None)
-        notes.append({"sha256": sha, "mime": mime, "size_bytes": n + 1})
+        body = heads.get(mime, b"") + b"y" * (n + 1)
+        world.storage.put(key, body, None)
+        notes.append({"sha256": sha, "mime": mime, "size_bytes": len(body)})
     ranges = [range_of(world.document, 5 * n + 1, 5 * n + 3) for n in range(6)]
 
     response = confirm(client, world.headers, world.draft, ranges=ranges, notes=notes)
@@ -189,7 +193,7 @@ def test_a_note_stored_under_another_type_is_not_found(client: TestClient, world
     # checks does not follow the declared type (a note row would point at a file that is not
     # there, and ai-service would read the wrong thing).
     key = f"users/{world.user.id}/sessions/{world.draft.id}/notes/{SHA}.jpg"
-    world.storage.put(key, b"x" * 10, None)
+    world.storage.put(key, JPEG + b"x" * 7, None)
 
     response = confirm(client, world.headers, world.draft, notes=[note(mime="application/pdf")])
 
@@ -211,10 +215,10 @@ def test_another_users_note_file_cannot_be_claimed(client: TestClient, world: Wo
     world.db.add(other_draft)
     world.db.flush()
     world.storage.put(
-        f"users/{other.id}/sessions/{other_draft.id}/notes/{SHA}.jpg", b"x" * 10, None
+        f"users/{other.id}/sessions/{other_draft.id}/notes/{SHA}.jpg", JPEG + b"x" * 7, None
     )
     world.storage.put(
-        f"users/{other.id}/sessions/{world.draft.id}/notes/{SHA}.jpg", b"x" * 10, None
+        f"users/{other.id}/sessions/{world.draft.id}/notes/{SHA}.jpg", JPEG + b"x" * 7, None
     )
 
     response = confirm(client, world.headers, world.draft, notes=[note()])

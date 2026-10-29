@@ -15,10 +15,12 @@ from sqlalchemy.orm import Session
 
 from accounts import signed_in
 from clock import FROZEN_NOW
+from core_api.config import get_settings
 from core_api.db.models import (
     Document,
     KnowledgeUnit,
     NoteFile,
+    NoteUpload,
     Outbox,
     SessionRange,
     StudySession,
@@ -31,6 +33,8 @@ from fake_storage import FakeStorage
 
 SENTENCE = "hôm qua tôi học chương 3"
 SHA = "ab" * 32
+JPEG = b"\xff\xd8\xff"
+PNG = b"\x89PNG\r\n\x1a\n"
 pytestmark = pytest.mark.usefixtures("fake_storage")
 
 
@@ -52,7 +56,7 @@ def range_of(document: Document, first: int = 3, last: int = 9, **over: Any) -> 
 
 
 def put_note(storage: FakeStorage, user: User, draft: StudySession, sha: str = SHA) -> None:
-    storage.put(f"users/{user.id}/sessions/{draft.id}/notes/{sha}.jpg", b"x" * 10, None)
+    storage.put(f"users/{user.id}/sessions/{draft.id}/notes/{sha}.jpg", JPEG + b"x" * 7, None)
 
 
 def note(sha: str = SHA, **over: Any) -> dict[str, Any]:
@@ -489,3 +493,71 @@ def test_confirm_concurrent(
     assert [r.status_code for r in results] == [200, 200]
     assert results[0].json() == results[1].json()
     assert events == 1
+
+
+def test_note_that_is_not_the_type_declared_is_content_mismatch(
+    client: TestClient, world: World
+) -> None:
+    # Red when: a file of any bytes is accepted as the photo it claims to be (US-02 Bảo mật).
+    key = f"users/{world.user.id}/sessions/{world.draft.id}/notes/{SHA}.jpg"
+    world.storage.put(key, b"<html>" + b"x" * 4, None)
+
+    response = confirm(client, world.headers, world.draft, notes=[note()])
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "content_mismatch"}
+    assert outbox(world.db) == []
+    assert world.draft.status == "draft"
+
+
+def test_png_and_text_notes_pass_their_checks(client: TestClient, world: World) -> None:
+    png_sha, txt_sha = "cd" * 32, "ef" * 32
+    base = f"users/{world.user.id}/sessions/{world.draft.id}/notes"
+    world.storage.put(f"{base}/{png_sha}.png", PNG + b"xx", None)
+    world.storage.put(f"{base}/{txt_sha}.txt", b"hello", None)
+
+    response = confirm(
+        client,
+        world.headers,
+        world.draft,
+        notes=[
+            note(png_sha, mime="image/png", size_bytes=10),
+            note(txt_sha, mime="text/plain", size_bytes=5),
+        ],
+    )
+
+    assert response.status_code == 200, response.text
+
+
+def test_confirm_turns_pending_note_rows_into_note_files(client: TestClient, world: World) -> None:
+    # The URL asked for the note left a row; confirming accounts the file as note_file instead
+    # (so the quota counts it once) and leaves cleanup nothing to delete.
+    put_note(world.storage, world.user, world.draft)
+    ask = client.post(
+        f"/v1/sessions/{world.draft.id}/notes/upload-url",
+        json=note(),
+        headers=world.headers,
+    )
+    assert ask.status_code == 201
+    assert count(world.db, NoteUpload) == 1
+
+    assert confirm(client, world.headers, world.draft, notes=[note()]).status_code == 200
+
+    assert count(world.db, NoteUpload) == 0
+    assert count(world.db, NoteFile) == 1
+
+
+def test_confirm_is_rate_limited_per_account(
+    client: TestClient, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # R60a: each confirm calls the store; a loop must stop at a 429.
+    monkeypatch.setenv("CORE_SESSION_CONFIRMS_PER_HOUR", "2")
+    get_settings.cache_clear()
+    assert confirm(client, world.headers, world.draft, ranges=[]).status_code == 200
+    assert confirm(client, world.headers, world.draft, ranges=[]).status_code == 200
+    response = confirm(client, world.headers, world.draft, ranges=[])
+    assert response.status_code == 429
+    assert int(response.headers["Retry-After"]) > 0
+    other, other_headers = signed_in(world.db)
+    other_draft = draft_of(world.db, other, subject_of(world.db, other))
+    assert confirm(client, other_headers, other_draft, ranges=[]).status_code == 200
