@@ -30,7 +30,7 @@ def _no_nul(text: str) -> str:
 
 
 class _Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
 
 class PageInput(_Strict):
@@ -65,8 +65,8 @@ class LlmAnchor(_Strict):
 
 
 class LlmUnit(_Strict):
-    title: Annotated[str, Field(min_length=1, max_length=300)]
-    summary: Annotated[str, Field(min_length=1, max_length=MAX_SUMMARY_CHARS)]
+    title: Annotated[str, Field(min_length=1, max_length=300), AfterValidator(_no_nul)]
+    summary: Annotated[str, Field(min_length=1, max_length=MAX_SUMMARY_CHARS), AfterValidator(_no_nul)]
     kind: Kind
     merge_into: str | None
     lineage: Annotated[list[str], Field(max_length=20)]

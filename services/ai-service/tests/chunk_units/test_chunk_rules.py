@@ -162,3 +162,12 @@ def test_two_new_units_same_title_merge_anchors_in_one_call() -> None:
     result = chunk_units(request(), FakeAsk(output(first, second)))
     assert len(result.new_units) == 1
     assert [a.page_no for a in result.new_units[0].anchors] == [1, 2]
+
+
+def test_merged_same_title_units_from_two_sources_are_not_single_source() -> None:
+    notes_quote = "ty the la noi hop ho hap te bao"
+    first = unit_json(title="Ty the", anchors=[("notes", notes_quote)])
+    second = unit_json(title="ty THE", anchors=[("D1.p1", Q1)])
+    result = chunk_units(request(), FakeAsk(output(first, second)))
+    assert len(result.new_units) == 1
+    assert result.new_units[0].single_source is False
