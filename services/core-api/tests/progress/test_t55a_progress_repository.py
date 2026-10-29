@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 """T5.5a (US-10): what `ProgressRepository` computes from the database, for one user. The pure
 rules are in tests/domain/test_progress.py. Isolation of two users is tested at the end."""
 
@@ -317,6 +318,11 @@ def test_us10_ac3_two_users_never_see_each_others_progress(
     theirs = ProgressRepository(db_session, bob.id)
     assert theirs.subjects(NOW, TODAY) == []
     assert theirs.weeks() == []
+    # each read on its own: the user filter must hold in every query, not only through subjects
+    assert theirs._pages() == {}
+    assert theirs._units(NOW) == ({}, {})
+    assert theirs._confirmed_sessions() == []
+    assert theirs._review_sittings() == []
     other = parse(theirs.export_csv(NOW, TODAY))
     assert [r["section"] for r in other] == ["summary"]  # only weeks_studied = 0
     assert other[0]["value"] == "0"

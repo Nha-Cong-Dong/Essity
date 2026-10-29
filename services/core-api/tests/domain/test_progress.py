@@ -6,6 +6,8 @@ import io
 import uuid
 from datetime import UTC, date, datetime
 
+import pytest
+
 from core_api.domain.progress import (
     READY_SHARE,
     SOLID_RECALL,
@@ -119,11 +121,16 @@ def test_us10_ac3_csv_has_header_and_one_line_per_row() -> None:
 
 
 # US-10 AC3 + Bảo mật. Red when: a subject name starting with = runs as a formula in a sheet.
-def test_us10_ac3_csv_defuses_formulas_in_text() -> None:
-    out = parse(csv_text([CsvRow("subject", "=HYPERLINK(1)", "", "ready", "no")]))
-    assert out[1][1] == "'=HYPERLINK(1)"
-    out = parse(csv_text([CsvRow("subject", "+1", "", "k", "-5")]))
-    assert out[1][1] == "'+1" and out[1][4] == "-5"  # a number stays a number
+@pytest.mark.parametrize("start", ["=", "+", "-", "@", chr(9), chr(13)])
+def test_us10_ac3_csv_defuses_formulas_in_text(start: str) -> None:
+    text = start + "HYPERLINK(1)"
+    out = csv.reader(io.StringIO(csv_text([CsvRow("subject", text, "", "ready", "no")])))
+    assert list(out)[1][1] == "'" + text
+
+
+def test_us10_ac3_csv_value_stays_a_number() -> None:
+    out = parse(csv_text([CsvRow("subject", "x", "", "k", "-5")]))
+    assert out[1][4] == "-5"
 
 
 def test_us10_ac3_csv_quotes_commas_and_newlines() -> None:
