@@ -300,3 +300,19 @@ def test_t47_key_of_another_user_is_failed_without_reading_storage(
     assert isinstance(out, DocumentFailedEvent)
     assert out.payload.reason == "unsupported"
     assert storage.puts == []
+
+
+def test_t416b_a_pointer_names_the_page_text_of_the_document(
+    handler: IndexDocument, storage: FakeStorage, redis_client: Redis, stream: str, session: Session
+) -> None:
+    # session.confirmed.v1 carries a document id only: process_session finds the page text here.
+    event = upload(storage, deck())
+    handler(session, event)
+
+    (out,) = sent(redis_client, stream)
+    assert isinstance(out, DocumentIndexedEvent)
+    base = event.payload.object_key.split("/raw/")[0]
+    pointer = json.loads(
+        storage.objects[f"{base}/documents/{event.payload.document_id}/index.json"]
+    )
+    assert pointer == {"page_text_key": out.payload.page_text_key, "page_count": 3}

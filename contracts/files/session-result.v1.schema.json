@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/files/session-result.v1.schema.json",
+  "title": "session result v1",
+  "description": "ai-service writes it at `result_key` (session.processed.v1); core-api persists it (T4.17). `units` are new knowledge units with anchors (offsets are Python code points into the page text, `end` exclusive); `merges` add anchors to units that already exist; `questions` are questions of level 1 to 3, each covering the units in `unit_ids`. `skipped` and `dropped` carry rule names and counts only, never text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "study_session_id",
+    "units",
+    "merges",
+    "questions",
+    "dropped",
+    "skipped"
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "document_id",
+        "page_no",
+        "start",
+        "end",
+        "quote_text"
+      ],
+      "properties": {
+        "source": {
+          "enum": [
+            "document",
+            "notes"
+          ]
+        },
+        "document_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "page_no": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "quote_text": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "study_session_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "units": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit_id",
+          "title",
+          "summary",
+          "kind",
+          "section_id",
+          "lineage",
+          "single_source",
+          "anchors"
+        ],
+        "properties": {
+          "unit_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "concept",
+              "mechanism",
+              "comparison",
+              "formula",
+              "example"
+            ]
+          },
+          "section_id": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lineage": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/uuid"
+            }
+          },
+          "single_source": {
+            "type": "boolean"
+          },
+          "anchors": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/anchor"
+            }
+          }
+        }
+      }
+    },
+    "merges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "existing_unit_id",
+          "anchors"
+        ],
+        "properties": {
+          "existing_unit_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "anchors": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/anchor"
+            }
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit_ids",
+          "level",
+          "prompt",
+          "reference_answer",
+          "rubric"
+        ],
+        "properties": {
+          "unit_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/uuid"
+            }
+          },
+          "level": {
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reference_answer": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rubric": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "dropped": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "anchors",
+        "units",
+        "questions"
+      ],
+      "properties": {
+        "anchors": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "units": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "questions": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "ref",
+          "reason"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "page",
+              "note"
+            ]
+          },
+          "ref": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "enum": [
+              "no_text",
+              "truncated",
+              "needs_ocr",
+              "unreadable"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
