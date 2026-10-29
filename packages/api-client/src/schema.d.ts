@@ -464,6 +464,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sessions/{session_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Session
+         * @description Confirm the card: write the session's ranges, notes and dates and announce it to
+         *     ai-service (`session.confirmed.v1`), all in one transaction. Confirming again returns the
+         *     session as it was saved and announces nothing more.
+         *
+         *     Errors: 404 `session_not_found` (another user's too), `subject_not_found` (deleted since),
+         *     `document_not_found` (another subject's or user's too); 409 `not_indexed`, `upload_incomplete`;
+         *     422 `bad_range`, `bad_date`, `bad_note`, `size_mismatch`, `content_mismatch`; 503
+         *     `storage_unavailable`.
+         *
+         *     Locks the subject FOR SHARE, then the session FOR UPDATE (the order `create_draft` and a
+         *     subject's delete agree on).
+         */
+        post: operations["confirm_session_v1_sessions__session_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects": {
         parameters: {
             query?: never;
@@ -531,6 +561,30 @@ export interface paths {
          *     down.
          */
         post: operations["request_upload_v1_subjects__subject_id__documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subjects/{subject_id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Session
+         * @description Save the sentence as a draft and return the card to confirm (US-02 AC3-AC5, AC11).
+         *
+         *     Never a 5xx for the AI: no answer, over the budget, hard cap or an answer that does not fit
+         *     the subject's documents all give `card: "manual"`. Errors: 404 `subject_not_found`; 429 with
+         *     Retry-After (each call may cost AI money).
+         */
+        post: operations["create_session_v1_subjects__subject_id__sessions_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -634,6 +688,53 @@ export interface components {
             /** Subject Name */
             subject_name: string;
         };
+        /** CardRange */
+        CardRange: {
+            /** Basis Assumed File */
+            basis_assumed_file: boolean;
+            /**
+             * Depth
+             * @enum {string}
+             */
+            depth: "deep" | "skim" | "unclear";
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** End Label */
+            end_label: string | null;
+            /** End Page */
+            end_page: number;
+            /** Sections */
+            sections: string[];
+            /** Short Name */
+            short_name: string;
+            /** Start Label */
+            start_label: string | null;
+            /** Start Page */
+            start_page: number;
+        };
+        /** ConfirmRequest */
+        ConfirmRequest: {
+            /**
+             * Notes
+             * @default []
+             */
+            notes: components["schemas"]["NoteIn"][];
+            /**
+             * Ranges
+             * @default []
+             */
+            ranges: components["schemas"]["RangeIn"][];
+            /** Studied On */
+            studied_on?: string | null;
+        };
+        /** CreateRequest */
+        CreateRequest: {
+            /** Description */
+            description: string;
+        };
         /** CurrentOut */
         CurrentOut: {
             attempt: components["schemas"]["AttemptOut"] | null;
@@ -653,6 +754,18 @@ export interface components {
              * @default []
              */
             ungraded: string[];
+        };
+        /** DocumentChoice */
+        DocumentChoice: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Page Count */
+            page_count: number;
+            /** Short Name */
+            short_name: string;
         };
         /** DocumentOut */
         DocumentOut: {
@@ -781,6 +894,27 @@ export interface components {
             /** Timezone */
             timezone: string;
         };
+        /** NoteIn */
+        NoteIn: {
+            /**
+             * Mime
+             * @enum {string}
+             */
+            mime: "image/jpeg" | "image/png" | "application/pdf" | "text/plain" | "text/markdown";
+            /** Sha256 */
+            sha256: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** NoteOut */
+        NoteOut: {
+            /** Mime */
+            mime: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
         /**
          * OverrideIn
          * @description "Thực ra tôi đúng" is `correct`, "Thực ra tôi sai" is `incorrect` (US-09 AC1).
@@ -828,6 +962,48 @@ export interface components {
             id: string;
             /** Prompt */
             prompt: string;
+        };
+        /** RangeIn */
+        RangeIn: {
+            /**
+             * Depth
+             * @enum {string}
+             */
+            depth: "deep" | "skim" | "unclear";
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** End Label */
+            end_label?: string | null;
+            /** End Page */
+            end_page: number;
+            /** Start Label */
+            start_label?: string | null;
+            /** Start Page */
+            start_page: number;
+        };
+        /** RangeOut */
+        RangeOut: {
+            /**
+             * Depth
+             * @enum {string}
+             */
+            depth: "deep" | "skim" | "unclear";
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** End Label */
+            end_label: string | null;
+            /** End Page */
+            end_page: number;
+            /** Start Label */
+            start_label: string | null;
+            /** Start Page */
+            start_page: number;
         };
         /**
          * ReasonOut
@@ -884,6 +1060,45 @@ export interface components {
             understanding: number | null;
             /** Units */
             units: components["schemas"]["UnitResult"][];
+        };
+        /** SessionCard */
+        SessionCard: {
+            /**
+             * Candidate Document Ids
+             * @default []
+             */
+            candidate_document_ids: string[];
+            /**
+             * Card
+             * @enum {string}
+             */
+            card: "proposed" | "note_only" | "clarify" | "manual";
+            /** Documents */
+            documents: components["schemas"]["DocumentChoice"][];
+            /** Manual Reason */
+            manual_reason?: ("failed" | "disabled" | "quota") | null;
+            /** Question */
+            question?: string | null;
+            /**
+             * Ranges
+             * @default []
+             */
+            ranges: components["schemas"]["CardRange"][];
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /**
+             * Status
+             * @default draft
+             * @constant
+             */
+            status: "draft";
+            /** Studied On */
+            studied_on?: string | null;
         };
         /** SkipIn */
         SkipIn: {
@@ -1103,6 +1318,44 @@ export interface components {
             id: string;
             /** Total */
             total: number;
+        };
+        /** SessionOut */
+        core_api__api__session_confirm__SessionOut: {
+            /**
+             * Confirmed At
+             * Format: date-time
+             */
+            confirmed_at: string;
+            /**
+             * Learning Day
+             * Format: date
+             */
+            learning_day: string;
+            /** Notes */
+            notes: components["schemas"]["NoteOut"][];
+            /** Ranges */
+            ranges: components["schemas"]["RangeOut"][];
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /**
+             * Status
+             * @default confirmed
+             * @constant
+             */
+            status: "confirmed";
+            /**
+             * Studied On
+             * Format: date
+             */
+            studied_on: string;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
         };
         /** SessionOut */
         core_api__api__today__SessionOut: {
@@ -1846,6 +2099,53 @@ export interface operations {
             };
         };
     };
+    confirm_session_v1_sessions__session_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["core_api__api__session_confirm__SessionOut"];
+                };
+            };
+            /** @description session_not_found, subject_not_found or document_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description upload_incomplete (a note not stored yet) or not_indexed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description bad_range, bad_date, bad_note, size_mismatch or content_mismatch */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_subjects_v1_subjects_get: {
         parameters: {
             query?: never;
@@ -2025,6 +2325,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_session_v1_subjects__subject_id__sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCard"];
                 };
             };
             /** @description Validation Error */
