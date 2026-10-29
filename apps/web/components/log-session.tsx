@@ -21,6 +21,7 @@ import {
 import { logMessage } from "@/lib/log-session-copy";
 import { go } from "@/lib/navigate";
 import { NoteDrop, NoteList, useNotes } from "@/components/note-drop";
+import { SessionProgress } from "@/components/session-progress";
 
 // T4.13a (US-02 AC1, AC4, AC5, AC11; DESIGN.md §6.10; screens-html log-session.html): three steps
 // on one page. Tell it in a sentence, read the card, press Lưu. A sentence that could not be read
@@ -32,7 +33,7 @@ type Phase =
   | { kind: "card"; card: Card }
   | { kind: "ask"; card: Card }
   | { kind: "form"; card: Card; rows: RangeDraft[] }
-  | { kind: "saved" };
+  | { kind: "saved"; sessionId: string };
 
 // What a failed save says besides "chưa lưu được": the limit hit, or the file that is wrong.
 const SAVE_CODES = new Set([
@@ -177,9 +178,20 @@ function Ask({ card, onPick }: { card: Card; onPick: (documentId: string) => voi
   );
 }
 
-export function LogSession({ subjectId, subjectName }: { subjectId: string; subjectName: string }) {
+export function LogSession({
+  subjectId,
+  subjectName,
+  savedSessionId,
+}: {
+  subjectId: string;
+  subjectName: string;
+  /** A session saved earlier (`?session=`): the page opens on what became of it. */
+  savedSessionId?: string;
+}) {
   const [text, setText] = useState("");
-  const [phase, setPhase] = useState<Phase>({ kind: "tell" });
+  const [phase, setPhase] = useState<Phase>(
+    savedSessionId ? { kind: "saved", sessionId: savedSessionId } : { kind: "tell" },
+  );
   const [problem, setProblem] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -210,7 +222,11 @@ export function LogSession({ subjectId, subjectName }: { subjectId: string; subj
     setProblem(null);
     const result = await confirmSession(card.session_id, ranges, card.studied_on, notes.notes);
     setSaving(false);
-    if (result.ok) return setPhase({ kind: "saved" });
+    if (result.ok) {
+      // The id in the address: coming back to this page shows the server's state, not a blank form.
+      window.history.replaceState(null, "", `?session=${card.session_id}`);
+      return setPhase({ kind: "saved", sessionId: card.session_id });
+    }
     if (result.code === "signed_out") return go("/login");
     setProblem(SAVE_CODES.has(result.code) ? result.code : "save_failed");
   }
@@ -333,6 +349,7 @@ export function LogSession({ subjectId, subjectName }: { subjectId: string; subj
               <p className="m-0 text-read" data-copy="tam">
                 Đã lưu buổi học. Câu hỏi sẽ được soạn từ những trang này.
               </p>
+              <SessionProgress sessionId={phase.sessionId} onSignedOut={() => go("/login")} />
               <div className="mt-6">
                 <Button render={<a href="/today" />} nativeButton={false}>
                   Hôm nay

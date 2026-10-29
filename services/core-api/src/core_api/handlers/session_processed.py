@@ -39,6 +39,7 @@ from core_api.domain.session_result import (
     clean,
     parse_result,
 )
+from core_api.handlers.session_progress import mark_failed, mark_processed
 from core_api.messaging.envelope import Event, SessionProcessedEvent
 from core_api.repositories.document import DocumentRepository
 from core_api.repositories.question import (
@@ -81,15 +82,18 @@ class OnSessionProcessed:
             return
         if not _is_result_key(payload.result_key, study):
             _log.error("session result refused", extra=extra | {"reason": "key"})
+            mark_failed(session, user_id, study.id, "internal_error")
             return
         raw = self.storage.read(payload.result_key, max_bytes=MAX_RESULT_BYTES)  # raises: retried
         if raw is None:
             _log.warning("session result missing", extra=extra)
+            mark_failed(session, user_id, study.id, "internal_error")
             return
         try:
             parsed = parse_result(raw)
         except ValidationError:  # its errors echo the input: never logged
             _log.error("session result refused", extra=extra | {"reason": "schema"})
+            mark_failed(session, user_id, study.id, "internal_error")
             return
         documents = {
             d.id for d in DocumentRepository(session, user_id).of_subject(study.subject_id)
@@ -98,8 +102,10 @@ class OnSessionProcessed:
             cleaned = clean(parsed, study_session_id=study.id, documents=documents)
         except ResultRefused as refused:
             _log.error("session result refused", extra=extra | {"reason": str(refused)})
+            mark_failed(session, user_id, study.id, "internal_error")
             return
         written = _write(session, study, payload.run_id, cleaned)
+        mark_processed(session, user_id, study.id)
         _log.info("session result written", extra=extra | written)
 
 

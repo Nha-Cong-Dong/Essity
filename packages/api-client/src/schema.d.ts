@@ -519,6 +519,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sessions/{session_id}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Session Progress
+         * @description Where processing of a confirmed session stands, read from the server (T4.18, US-02 AC11).
+         *
+         *     Errors: 403 for an unverified account; 404 `session_not_found` for another user's session and
+         *     for a draft (nothing is processed before the confirm).
+         */
+        get: operations["session_progress_v1_sessions__session_id__progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects": {
         parameters: {
             query?: never;
@@ -995,6 +1018,25 @@ export interface components {
              * @enum {string}
              */
             core_api: "ok" | "unavailable";
+        };
+        /** ProgressOut */
+        ProgressOut: {
+            /** Percent */
+            percent: number | null;
+            /** Reason */
+            reason: ("unreadable" | "llm_unavailable" | "internal_error") | null;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "waiting" | "processing" | "done" | "failed";
+            /** Step */
+            step: ("reading_notes" | "splitting_units" | "anchoring" | "writing_questions") | null;
         };
         /** QuestionOut */
         QuestionOut: {
@@ -2235,6 +2277,44 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["NoteUploadUrl"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_progress_v1_sessions__session_id__progress_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressOut"];
+                };
+            };
+            /** @description session_not_found (another user's, or still a draft) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

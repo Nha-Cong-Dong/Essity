@@ -49,6 +49,7 @@ from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
 from sqlalchemy.orm import Session
 
 from core_api.handlers.document_indexed import on_document_failed, on_document_indexed
+from core_api.handlers.session_progress import on_session_failed, on_session_progress
 from core_api.logging import user_id_var
 from core_api.messaging.dead_letter import (
     DEAD_STREAM,
@@ -83,6 +84,8 @@ Handler = Callable[[Session, Event], None]
 HANDLERS: dict[str, Handler] = {
     "document.indexed.v1": on_document_indexed,
     "document.failed.v1": on_document_failed,
+    "session.progress.v1": on_session_progress,
+    "session.failed.v1": on_session_failed,
 }
 
 
