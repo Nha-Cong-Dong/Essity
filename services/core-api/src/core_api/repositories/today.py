@@ -10,7 +10,7 @@ from sqlalchemy import ColumnElement, and_, exists, func, select
 from core_api.db.models import KnowledgeUnit, MemoryState, Question, QuestionUnit, Subject
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
 from core_api.domain.scheduling.fsrs_adapter import Phase
-from core_api.domain.today import DueUnit, NewQuestion
+from core_api.domain.today import RECALL_LEVEL, DueUnit, NewQuestion
 from core_api.repositories.base import UserScopedRepository
 
 
@@ -78,7 +78,7 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             .where(
                 QuestionUnit.user_id == self.user_id,
                 Question.status == "active",
-                Question.level == 1,
+                Question.level == RECALL_LEVEL,
                 *self._not_skipped(),
             )
             .order_by(QuestionUnit.unit_id, Question.created_at, Question.id)
@@ -198,7 +198,7 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             select(Question.id, Question.subject_id, Question.created_at).where(
                 Question.user_id == self.user_id,
                 Question.status == "active",
-                Question.level == 1,
+                Question.level == RECALL_LEVEL,
                 Question.id.in_(select(candidates.c.question_id)),
                 *self._not_skipped(),
                 self._visible_subject(Question.subject_id),  # type: ignore[arg-type]
@@ -222,7 +222,7 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                     exists().where(
                         Question.user_id == self.user_id,
                         Question.status == "active",
-                        Question.level == 1,
+                        Question.level == RECALL_LEVEL,
                         self._visible_subject(Question.subject_id),  # type: ignore[arg-type]
                     )
                 )

@@ -32,6 +32,7 @@ from core_api.domain.scheduling.exam_constraint import EXAM_WINDOW_DAYS
 from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler, MemoryState
 
 MAX_QUESTIONS = 20
+RECALL_LEVEL = 1  # only level-1 (recognise) questions are in today and FSRS (T5.R)
 MAX_MINUTES = 30
 MINUTES_PER_QUESTION = 1.5
 NEAR_EXAM_WEIGHT = 0.5

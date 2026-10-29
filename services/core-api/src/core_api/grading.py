@@ -42,9 +42,9 @@ from core_api.domain.grading import (
     build_request,
     check_response,
 )
-from core_api.domain.scheduling.multi_unit import current_rule, unit_ratings
-from core_api.domain.scheduling.rating import Verdict
+from core_api.domain.scheduling.rating import Verdict, rating_for
 from core_api.domain.scheduling.replay import schedule_review
+from core_api.domain.today import RECALL_LEVEL
 from core_api.messaging.envelope import GradeRequested
 from core_api.messaging.outbox import enqueue_event
 from core_api.repositories.grade_job import GradeJobRepository
@@ -233,18 +233,16 @@ def record_grade(session: Session, user: User, attempt: Attempt, checked: Checke
         missing=checked.missing,
         anchors_used=[str(anchor) for anchor in checked.anchors_used],
     )
+    if question.level != RECALL_LEVEL:
+        session.flush()  # practice (T5.R): the grade is kept, the schedule is not moved
+        return grade
     logs = ReviewLogRepository(session, user.id)
     states = MemoryStateRepository(session, user.id)
     tz = ZoneInfo(user.timezone)
     reviewed_at = attempt.submitted_at
     late: list[uuid.UUID] = []
-    ratings = unit_ratings(
-        current_rule(),
-        {unit_id: Verdict(checked.units[unit_id]) for unit_id in unit_ids},
-        level=question.level,
-    )
     for unit_id in unit_ids:
-        rating = ratings[unit_id]
+        rating = rating_for(Verdict(checked.units[unit_id]))
         logs.append(unit_id, rating=rating, reviewed_at=reviewed_at, grade_id=grade.id)
         state = states.state(unit_id)
         if state is not None and reviewed_at < state.last_review:
