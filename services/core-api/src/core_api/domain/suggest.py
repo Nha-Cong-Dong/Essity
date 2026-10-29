@@ -3,7 +3,7 @@
 Rules (Q-A):
 
 - Next item of a subject = first leaf of the syllabus not yet fully covered (excluded leaves never
-  count), unless a "prerequisite" edge points to an earlier uncovered leaf: that one comes first.
+  count), unless a "prerequisite" edge points to an uncovered leaf: that one comes first.
   Holes left by studying ahead are therefore suggested on their own. A partly covered leaf is
   suggested for its remaining pages.
 - Tightness = remaining weight / max(days left, 1). The top `MAX_SUGGESTIONS` subjects go on
@@ -12,8 +12,8 @@ Rules (Q-A):
 - Filters are applied before ranking.
 - The pace line holds numbers only, never "phải/cần/kịp/trễ" (no pressure wording).
 
-Small choices the design leaves open: a prerequisite that is *later* in the syllabus is ignored
-(Q-A says "earlier"); the remaining weight of a mixed-unit syllabus is summed as is and shown in
+Small choices the design leaves open: an open prerequisite is followed at any syllabus position
+(orchestrator, 30/10); the remaining weight of a mixed-unit syllabus is summed as is and shown in
 the unit of the first remaining leaf; `suggest_for_subject` answers even after the exam date.
 """
 
@@ -101,21 +101,24 @@ def _days_left(exam: date | None, today: date) -> int | None:
 
 
 def next_leaf(leaves: Sequence[Leaf]) -> Leaf | None:
-    """First open leaf, moved back to an earlier open prerequisite when there is one."""
-    open_ids = {leaf.id for leaf in leaves if leaf.open}
+    """First open leaf, replaced by its earliest open prerequisite (followed transitively).
+
+    A prerequisite cycle falls back to plain syllabus order.
+    """
     position = {leaf.id: i for i, leaf in enumerate(leaves)}
-    by_id = {leaf.id: leaf for leaf in leaves}
-    current = next((leaf for leaf in leaves if leaf.open), None)
+    open_ids = {leaf.id for leaf in leaves if leaf.open}
+    first = next((leaf for leaf in leaves if leaf.open), None)
+    current = first
     seen: set[uuid.UUID] = set()
-    while current is not None and current.id not in seen:
+    while current is not None:
+        if current.id in seen:
+            return first
         seen.add(current.id)
-        earlier = [
-            p for p in current.prerequisites if p in open_ids and position[p] < position[current.id]
-        ]
-        if not earlier:
-            break
-        current = by_id[min(earlier, key=position.__getitem__)]
-    return current
+        pending = [p for p in current.prerequisites if p in open_ids]
+        if not pending:
+            return current
+        current = leaves[position[min(pending, key=position.__getitem__)]]
+    return None
 
 
 def _pace(subject: SubjectInput, today: date) -> Pace:
@@ -131,10 +134,10 @@ def _pace(subject: SubjectInput, today: date) -> Pace:
 def suggest_for_subject(subject: SubjectInput, today: date) -> Suggestion:
     """The "Gợi ý cho hôm nay" button: same rules, no ranking, no exam check."""
     pace = _pace(subject, today)
-    if all(leaf.excluded for leaf in subject.leaves):
+    if not subject.leaves:
         return Suggestion(subject.id, "free_session", None, None, None, False, None, pace)
     leaf = next_leaf(subject.leaves)
-    if leaf is None:
+    if leaf is None:  # fully studied, or every leaf excluded
         return Suggestion(subject.id, "review_practice", None, None, None, False, None, pace)
     return Suggestion(
         subject.id,
@@ -157,19 +160,35 @@ def _rank_key(subject: SubjectInput, today: date) -> tuple[int, float, date, str
     return (0, -tightness, last, str(subject.id))
 
 
-def suggest_today(
-    subjects: Sequence[SubjectInput],
-    today: date,
-    filters: SuggestFilter | None = None,
-) -> list[Suggestion]:
-    """At most `MAX_SUGGESTIONS` subjects, tightest first."""
+def _eligible(
+    subjects: Sequence[SubjectInput], today: date, filters: SuggestFilter | None
+) -> list[SubjectInput]:
     flt = filters or SuggestFilter()
-    eligible = [
+    return [
         s
         for s in subjects
         if (flt.only_subjects is None or s.id in flt.only_subjects)
         and not (s.id in flt.hidden_until and today < flt.hidden_until[s.id])
         and not (s.exam_date is not None and s.exam_date < today)
     ]
-    ranked = sorted(eligible, key=lambda s: _rank_key(s, today))
+
+
+def suggest_today(
+    subjects: Sequence[SubjectInput],
+    today: date,
+    filters: SuggestFilter | None = None,
+) -> list[Suggestion]:
+    """At most `MAX_SUGGESTIONS` subjects with something left to study, tightest first."""
+    studying = [s for s in _eligible(subjects, today, filters) if _pace(s, today).remaining_leaves]
+    ranked = sorted(studying, key=lambda s: _rank_key(s, today))
     return [suggest_for_subject(s, today) for s in ranked[:MAX_SUGGESTIONS]]
+
+
+def suggest_finished(
+    subjects: Sequence[SubjectInput],
+    today: date,
+    filters: SuggestFilter | None = None,
+) -> list[Suggestion]:
+    """Eligible subjects with nothing left to study (review_practice / free_session)."""
+    done = [s for s in _eligible(subjects, today, filters) if not _pace(s, today).remaining_leaves]
+    return [suggest_for_subject(s, today) for s in sorted(done, key=lambda s: _rank_key(s, today))]

@@ -12,6 +12,7 @@ from core_api.domain.suggest import (
     SubjectInput,
     SuggestFilter,
     next_leaf,
+    suggest_finished,
     suggest_for_subject,
     suggest_today,
 )
@@ -63,25 +64,21 @@ def test_partial_leaf_suggests_remaining_pages():
     assert s.partial and s.remaining_weight == 6 and s.leaf_id == a.id
 
 
-def test_prerequisite_to_earlier_open_leaf_reorders():
-    # leaf 1 is covered, 2 is open, 3 is open and needs... the earlier open 2 comes first anyway;
-    # make the reorder visible: 1 (open) needs nothing, 2 needs 1 -> 1; then cover 1 -> 2.
-    p = leaf("p", covered_weight=0)
-    q = leaf("q")
-    q_dep = Leaf(id=q.id, title="q", weight=10, unit="trang", prerequisites=(p.id,))
-    assert next_leaf([p, q_dep]) is p
-
-
-def test_prerequisite_skips_ahead_of_first_open_leaf_is_impossible_but_chain_is_followed():
-    # first open leaf `b` has an earlier open prerequisite only if that one is open too, i.e. it
-    # would itself be first open; the chain still lands on the earliest open prerequisite.
-    a = leaf("a")
-    b = Leaf(id=uuid.uuid4(), title="b", weight=10, unit="trang", prerequisites=(a.id,))
-    assert next_leaf([a, b]) is a
-
-
-def test_prerequisite_later_in_syllabus_is_ignored():
+def test_open_prerequisite_later_in_syllabus_comes_first():
     c = leaf("c")
+    a = Leaf(id=uuid.uuid4(), title="a", weight=10, unit="trang", prerequisites=(c.id,))
+    assert next_leaf([a, leaf("b"), c]) is c
+
+
+def test_prerequisite_chain_is_followed():
+    d, c = leaf("d"), None
+    c = Leaf(id=uuid.uuid4(), title="c", weight=10, unit="trang", prerequisites=(d.id,))
+    a = Leaf(id=uuid.uuid4(), title="a", weight=10, unit="trang", prerequisites=(c.id,))
+    assert next_leaf([a, c, d]) is d
+
+
+def test_excluded_prerequisite_is_ignored():
+    c = leaf("c", excluded=True)
     a = Leaf(id=uuid.uuid4(), title="a", weight=10, unit="trang", prerequisites=(c.id,))
     assert next_leaf([a, c]) is a
 
@@ -92,11 +89,11 @@ def test_prerequisite_already_covered_does_not_reorder():
     assert next_leaf([done, b]) is b
 
 
-def test_prerequisite_cycle_terminates():
+def test_prerequisite_cycle_falls_back_to_syllabus_order():
     x, y = uuid.uuid4(), uuid.uuid4()
     lx = Leaf(id=x, title="x", weight=1, unit="trang", prerequisites=(y,))
     ly = Leaf(id=y, title="y", weight=1, unit="trang", prerequisites=(x,))
-    assert next_leaf([lx, ly]) in (lx, ly)
+    assert next_leaf([lx, ly]) is lx
 
 
 def test_fully_studied_is_review_practice():
@@ -105,9 +102,30 @@ def test_fully_studied_is_review_practice():
     assert s.kind == "review_practice" and s.leaf_id is None
 
 
+def test_all_excluded_is_review_practice_not_free_session():
+    s = suggest_for_subject(subject([leaf("1", excluded=True)]), TODAY)
+    assert s.kind == "review_practice"
+
+
+def test_finished_subjects_never_take_a_study_slot():
+    done = subject([leaf("d", covered_weight=10)], exam=TODAY + timedelta(days=1))
+    a = subject([leaf("a")], exam=TODAY + timedelta(days=30))
+    b = subject([leaf("b")], exam=TODAY + timedelta(days=40))
+    out = suggest_today([done, a, b], TODAY)
+    assert [s.subject_id for s in out] == [a.id, b.id]
+    assert [s.subject_id for s in suggest_finished([done, a, b], TODAY)] == [done.id]
+    assert suggest_finished([subject([])], TODAY)[0].kind == "free_session"
+
+
+def test_tightness_uses_weight_not_leaf_count():
+    many_small = subject([leaf(str(i), 1) for i in range(10)], exam=TODAY + timedelta(days=10))
+    one_big = subject([leaf("big", 500)], exam=TODAY + timedelta(days=10))
+    out = suggest_today([many_small, one_big], TODAY)
+    assert out[0].subject_id == one_big.id
+
+
 def test_no_textbook_is_free_session():
     assert suggest_for_subject(subject([]), TODAY).kind == "free_session"
-    assert suggest_for_subject(subject([leaf("1", excluded=True)]), TODAY).kind == "free_session"
 
 
 def test_tightest_first_and_top_two():
@@ -193,6 +211,7 @@ subject_st: st.SearchStrategy[SubjectInput] = st.builds(
 def test_property_deterministic_max_two_no_banned_words(subjects: list[SubjectInput]):
     out = suggest_today(subjects, TODAY)
     assert out == suggest_today(list(subjects), TODAY)
+    assert out == suggest_today(list(reversed(subjects)), TODAY)
     assert len(out) <= 2
     assert len({s.subject_id for s in out}) == len(out)
     for s in out:
