@@ -573,4 +573,4 @@ def test_t416b_cached_results_are_deleted_after_a_successful_write(
     index(storage)
     event = confirmed()
     run(handler(storage, redis_client, stream, sessions), event)
-    assert redis_client.keys(f"ai:session:*:{event.event_id}") == []
+    assert cast(Any, redis_client).keys(f"ai:session:*:{event.event_id}") == []
