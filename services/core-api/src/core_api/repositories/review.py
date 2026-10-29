@@ -32,8 +32,8 @@ from core_api.db.models import (
 )
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
 from core_api.domain.scheduling.fsrs_adapter import Phase
+from core_api.domain.scheduling.multi_unit import MultiUnitRule, current_rule, replay_under_rule
 from core_api.domain.scheduling.rating import ReviewRating, Verdict
-from core_api.domain.scheduling.replay import replay
 from core_api.domain.today import MAX_QUESTIONS
 from core_api.repositories.base import AppendOnlyRepository, UserScopedRepository
 from core_api.repositories.question import (
@@ -556,12 +556,18 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         return deleted.rowcount  # type: ignore[attr-defined]
 
     def rebuild(
-        self, subject_id: uuid.UUID | None = None, unit_ids: Sequence[uuid.UUID] | None = None
+        self,
+        subject_id: uuid.UUID | None = None,
+        unit_ids: Sequence[uuid.UUID] | None = None,
+        rule: MultiUnitRule | None = None,
     ) -> int:
         """Rebuild the cache from review_log (T2.6), for one subject or all of them: drop it,
         then replay each (unit, facet) through `schedule_review` with its subject's exam date
         as it is now. A moved exam reaches the schedule this way (US-01 AC3). Returns the number
-        of states written."""
+        of states written. Ratings come from each unit's verdict under `rule` (default: the
+        current one, T5.3), never from the rating stored in review_log, so every rebuild path
+        agrees after a rule change; review_log.rating only records what was applied then."""
+        rule = rule or current_rule()
         user = self.session.get(User, self.user_id)
         assert user is not None
         tz = ZoneInfo(user.timezone)
@@ -578,10 +584,11 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         rows: list[dict[str, object]] = []
         for (unit_id, facet, exam_day), reviews in groupby(
             self._current_reviews(subject_id, unit_ids),
-            key=lambda row: (row[0], row[1], row[4]),
+            key=lambda row: (row[0], row[1], row[5]),
         ):
-            state = replay(
-                ((ReviewRating(row[2]), row[3]) for row in reviews),
+            state = replay_under_rule(
+                ((Verdict(row[2]), row[3], row[4]) for row in reviews),
+                rule,
                 exam_day=exam_day,
                 tz=tz,
                 day_start_hour=user.day_start_hour,
@@ -620,9 +627,9 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
 
     def _current_reviews(
         self, subject_id: uuid.UUID | None, unit_ids: Sequence[uuid.UUID] | None = None
-    ) -> Sequence[tuple[uuid.UUID, str, int, datetime, date]]:
-        """(unit, facet, rating, reviewed_at, exam date) of every review that counts: the rows of
-        each attempt's latest grade (plan D7), in the order they happened."""
+    ) -> Sequence[tuple[uuid.UUID, str, str, int, datetime, date]]:
+        """(unit, facet, verdict, question level, reviewed_at, exam date) of every review that
+        counts: the rows of each attempt's latest grade (plan D7), in the order they happened."""
         # Each attempt's latest grade, computed once as a set, then joined: a per-row MAX(seq)
         # subquery ran once per grade per unit and grew with the square of the history.
         latest = (
@@ -636,11 +643,24 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
             select(
                 ReviewLog.unit_id,
                 ReviewLog.facet,
-                ReviewLog.rating,
+                GradeUnit.verdict,
+                Question.level,
                 ReviewLog.reviewed_at,
                 Exam.exam_date,
             )
             .join(latest, latest.c.id == ReviewLog.grade_id)
+            .join(
+                GradeUnit,
+                (GradeUnit.grade_id == ReviewLog.grade_id)
+                & (GradeUnit.unit_id == ReviewLog.unit_id)
+                & (GradeUnit.user_id == self.user_id),
+            )
+            .join(Grade, (Grade.id == ReviewLog.grade_id) & (Grade.user_id == self.user_id))
+            .join(Attempt, (Attempt.id == Grade.attempt_id) & (Attempt.user_id == self.user_id))
+            .join(
+                Question,
+                (Question.id == Attempt.question_id) & (Question.user_id == self.user_id),
+            )
             .join(
                 KnowledgeUnit,
                 (KnowledgeUnit.id == ReviewLog.unit_id) & (KnowledgeUnit.user_id == self.user_id),

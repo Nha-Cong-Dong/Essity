@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from core_api.db.models import Grade, User
 from core_api.domain.override import Choice, override_of
-from core_api.domain.scheduling.rating import rating_for
+from core_api.domain.scheduling.multi_unit import current_rule, unit_ratings
 from core_api.repositories.question import QuestionRepository
 from core_api.repositories.review import (
     AttemptRepository,
@@ -75,10 +75,11 @@ def override_grade(session: Session, user: User, grade_id: uuid.UUID, choice: Ch
         anchors_used=[str(anchor) for anchor in current.anchors_used],
     )
     logs = ReviewLogRepository(session, user.id)
+    ratings = unit_ratings(current_rule(), made.units, level=question.level)
     for unit_id in unit_ids:
         logs.append(
             unit_id,
-            rating=rating_for(made.units[unit_id]),
+            rating=ratings[unit_id],
             reviewed_at=attempt.submitted_at,
             grade_id=new.id,
         )
