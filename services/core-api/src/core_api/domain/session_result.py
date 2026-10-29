@@ -19,8 +19,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # `knowledge_unit.title` is String(200).
 TITLE_MAX = 200
-# Level 1 and 2 ask about one unit; level 3 joins two or more (us-04b AC1).
-LEVEL_SINGLE = (1, 2)
+# Level 1 asks about one unit, level 2 about one or two (ai-service accepts both, T5.1), level 3
+# joins two or more (us-04b AC1).
+LEVEL_ONE = 1
+LEVEL_APPLY = 2
+LEVEL_APPLY_MAX = 2
 LEVEL_JOIN = 3
 # `anchor.page_no`, `char_start` and `char_end` are int32 columns.
 INT32_MAX = 2_147_483_647
@@ -220,7 +223,9 @@ def _question(question: FileQuestion, kept: set[uuid.UUID]) -> CleanQuestion | N
     units = tuple(dict.fromkeys(question.unit_ids))
     if not (prompt and answer and rubric) or not kept.issuperset(units):
         return None
-    if question.level in LEVEL_SINGLE and len(units) != 1:
+    if question.level == LEVEL_ONE and len(units) != 1:
+        return None
+    if question.level == LEVEL_APPLY and len(units) > LEVEL_APPLY_MAX:
         return None
     if question.level == LEVEL_JOIN and len(units) < 2:
         return None

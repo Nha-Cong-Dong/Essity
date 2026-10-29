@@ -90,18 +90,24 @@ def test_duplicate_unit_id_refuses_the_result() -> None:
 
 def test_level_rules_rechecked() -> None:
     out = cleaned(
-        units=[unit(U1, DOC), unit(U2, DOC)],
+        units=[unit(U1, DOC), unit(U2, DOC), unit(U3, DOC)],
         questions=[
             question([U1, U2], 1, prompt="l1 two units"),
             question([U1], 3, prompt="l3 one unit"),
-            question([U1, U2], 2, prompt="l2 two units"),
+            question([U1, U2, U3], 2, prompt="l2 three units"),
+            question([U1, U2], 2, prompt="good l2 two units"),
             question([U1, uuid.uuid4()], 3, prompt="l3 unit outside the file"),
             question([U1], 1, prompt="good l1"),
             question([U1], 2, prompt="good l2"),
             question([U1, U2], 3, prompt="good l3"),
         ],
     )
-    assert [q.prompt for q in out.questions] == ["good l1", "good l2", "good l3"]
+    assert [q.prompt for q in out.questions] == [
+        "good l2 two units",
+        "good l1",
+        "good l2",
+        "good l3",
+    ]
     assert out.dropped_questions == 4
 
 
