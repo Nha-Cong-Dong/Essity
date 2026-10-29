@@ -89,17 +89,41 @@ describe("/today screen (T2.14)", () => {
     expect(primaries(markup)).toBe(1);
   });
 
-  // PLAN T2.14 / DESIGN §6.3: before T4.13 a neutral sentence, no button, no "Sau buổi học".
-  it("no questions yet: a neutral sentence and no button", () => {
-    const markup = draw({ state: "no_questions" });
-    expect(primaries(markup)).toBe(0);
-    expect(markup).not.toContain("Ghi buổi học");
+  // T4.13a (PLAN T4.13): the T2.14 neutral sentence is gone; the first session is one press away.
+  it("no questions yet: Ghi buổi học đầu tiên, one primary, linking to the subject's page", () => {
+    const markup = draw({ state: "no_questions", subjects: [SUBJECTS[0]] });
+    expect(markup).toContain("Ghi buổi học đầu tiên để app soạn câu hỏi cho bạn.");
+    expect(markup).not.toContain("chưa có câu hỏi nào để ôn");
+    expect(markup).toContain(`href="/subjects/${MMT}/sessions/new"`);
+    expect(primaries(markup)).toBe(1);
     expect(markup).toContain("Môn đang ôn");
+  });
+
+  // Red when: the tile is missing from a state that has questions, or links to the wrong subject.
+  it("ready: the tile Sau buổi học with Ghi buổi học as a secondary button", () => {
+    const markup = draw({
+      subjects: [SUBJECTS[0]],
+      session: { question_count: 3, minutes: 5, subjects: [{ id: MMT, name: "Mạng máy tính" }] },
+    });
+    expect(markup).toContain("Sau buổi học");
+    expect(markup).toContain("Hôm nay bạn học gì?");
+    expect(markup).toContain(`href="/subjects/${MMT}/sessions/new"`);
+    expect(markup).toMatch(/data-variant="secondary"[^>]*>Ghi buổi học</);
+    expect(primaries(markup)).toBe(1);
+  });
+
+  // Several subjects: one link each, named, so the learner picks where the session goes.
+  it("several subjects: a Ghi buổi học link per subject", () => {
+    const markup = draw({ state: "rested", next_day: "2026-10-22" });
+    expect(markup).toContain(`href="/subjects/${MMT}/sessions/new"`);
+    expect(markup).toContain(`href="/subjects/${HDH}/sessions/new"`);
+    expect(markup).toContain("Ghi buổi học · Hệ điều hành");
   });
 
   it("every exam is over: a neutral sentence and no button", () => {
     const markup = draw({ state: "all_exams_over" });
     expect(primaries(markup)).toBe(0);
+    expect(markup).not.toContain("Sau buổi học");
     expect(markup).toContain('data-copy="tam"');
   });
 

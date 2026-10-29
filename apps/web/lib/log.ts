@@ -16,6 +16,7 @@ export type LogRoute =
   | "resend"
   | "review-sessions"
   | "session-check"
+  | "sessions"
   | "subject"
   | "subjects"
   | "today"

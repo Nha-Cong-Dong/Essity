@@ -29,4 +29,8 @@ export const TODAY_COPY = {
   failed: "Không tải được phiên hôm nay.",
   failedHint: "Kiểm tra kết nối rồi thử lại.",
   retry: "Thử lại",
+  afterSession: "Sau buổi học",
+  whatDidYouLearn: "Hôm nay bạn học gì?",
+  logSession: "Ghi buổi học",
+  firstSession: "Ghi buổi học đầu tiên để app soạn câu hỏi cho bạn.",
 } as const;

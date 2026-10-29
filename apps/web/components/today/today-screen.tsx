@@ -8,7 +8,9 @@ import type { Today } from "@/lib/today";
 import { dayLabel, extraSessions, TODAY_COPY } from "@/lib/today-copy";
 
 // T2.14 (US-03, DESIGN.md §6.3, screens-html today.html): the day's session as a bento. Exactly
-// one primary button per state. "Sau buổi học" and "Ghi buổi học" wait for T4.13 (PLAN T2.14).
+// one primary button per state. T4.13a: "Ghi buổi học" goes to /subjects/{id}/sessions/new.
+
+const newSession = (subjectId: string) => `/subjects/${subjectId}/sessions/new`;
 
 function Heading({ day }: { day: string }) {
   return (
@@ -35,6 +37,37 @@ function SubjectsTile({ subjects }: { subjects: Today["subjects"] }) {
           </li>
         ))}
       </ul>
+    </Sheet>
+  );
+}
+
+/** "Sau buổi học" (today.html): one Ghi buổi học per subject, named only when there are several. */
+function AfterSessionTile({ subjects }: { subjects: Today["subjects"] }) {
+  const several = subjects.length > 1;
+  return (
+    <Sheet
+      variant="tile"
+      tone="rose"
+      className="min-w-0 min-[901px]:col-span-4"
+      aria-labelledby="today-after"
+    >
+      <h2 id="today-after" className="m-0 font-display text-lead">
+        {TODAY_COPY.afterSession}
+      </h2>
+      <p className="m-0 mt-2.5 text-ink-soft">{TODAY_COPY.whatDidYouLearn}</p>
+      <div className="mt-4 flex flex-col items-start gap-2">
+        {subjects.map((subject) => (
+          <Button
+            key={subject.id}
+            render={<a href={newSession(subject.id)} />}
+            nativeButton={false}
+            variant={several ? "quiet" : "secondary"}
+            className="wrap-anywhere whitespace-normal"
+          >
+            {several ? `${TODAY_COPY.logSession} · ${subject.name}` : TODAY_COPY.logSession}
+          </Button>
+        ))}
+      </div>
     </Sheet>
   );
 }
@@ -116,17 +149,29 @@ function Session({ today }: { today: Today }) {
       </QuietTile>
     );
   }
+  if (today.state === "no_questions") {
+    return (
+      <HongTile>
+        <p className="m-0 text-read">{TODAY_COPY.lead}</p>
+        <h2 className="m-0 mt-auto max-w-[18ch] font-display text-title">{TODAY_COPY.firstSession}</h2>
+        <div className="mt-4">
+          <Button
+            render={<a href={newSession(today.subjects[0].id)} />}
+            nativeButton={false}
+            variant="primary-inverse"
+            size="lg"
+          >
+            {TODAY_COPY.logSession}
+          </Button>
+        </div>
+      </HongTile>
+    );
+  }
   return (
     <QuietTile>
-      {today.state === "all_exams_over" ? (
-        <p data-copy="tam" className="m-0 text-read">
-          Các môn của bạn đều đã thi xong.
-        </p>
-      ) : (
-        <p data-copy="tam" className="m-0 text-read">
-          Môn của bạn chưa có câu hỏi nào để ôn.
-        </p>
-      )}
+      <p data-copy="tam" className="m-0 text-read">
+        Các môn của bạn đều đã thi xong.
+      </p>
     </QuietTile>
   );
 }
@@ -154,6 +199,9 @@ export function TodayScreen({ today }: { today: Today }) {
       <div className="grid gap-6 min-[901px]:grid-cols-12">
         <Session today={today} />
         <SubjectsTile subjects={today.subjects} />
+        {today.state !== "all_exams_over" && today.state !== "no_questions" && (
+          <AfterSessionTile subjects={today.subjects} />
+        )}
         {today.backlog && (
           <Sheet
             variant="tile"
