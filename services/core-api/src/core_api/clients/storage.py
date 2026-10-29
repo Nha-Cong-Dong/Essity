@@ -17,18 +17,22 @@ makes no network call.
 A presigned URL is a credential until it expires: never log it.
 """
 
+from __future__ import annotations
+
 import base64
 import binascii
 from contextlib import closing
 from dataclasses import dataclass
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 import boto3
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
-from mypy_boto3_s3 import S3Client
 
 from core_api.config import Settings
+
+if TYPE_CHECKING:  # boto3-stubs is a dev-only group: never import it at runtime
+    from mypy_boto3_s3 import S3Client
 
 
 class StorageUnavailableError(Exception):
@@ -132,14 +136,14 @@ class S3Storage:
         secret_key: str,
         region: str,
         timeout_seconds: float,
-    ) -> "S3Storage":
+    ) -> S3Storage:
         def client(url: str) -> S3Client:
             return _client(url, access_key, secret_key, region, timeout_seconds)
 
         return cls(client(endpoint), client(public_endpoint), bucket)
 
     @classmethod
-    def from_settings(cls, settings: Settings) -> "S3Storage":
+    def from_settings(cls, settings: Settings) -> S3Storage:
         return cls.connect(
             endpoint=settings.s3_endpoint,
             public_endpoint=settings.s3_public_endpoint or settings.s3_endpoint,
