@@ -226,9 +226,11 @@ def test_t212_sources_only_via_render_sources() -> None:
                     if isinstance(inner, ast.Attribute) and inner.attr == "quote_text":
                         readers.append(f"{path.name}:{node.name}")
     # The contract may measure the sources (G6 total length); only render_sources sends them.
+    # process_session hands quotes to QuestionRequest, whose prompt wraps them (T4.16b).
     assert sorted(set(readers)) == [
         "grade.py:render_sources",
         "grade_models.py:_ids_unique_and_sources_bounded",
+        "process_session.py:_question_unit",
     ]
 
 

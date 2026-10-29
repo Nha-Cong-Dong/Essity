@@ -59,10 +59,14 @@ def sessions(engine: Engine) -> sessionmaker[Session]:
 
 
 @pytest.fixture(autouse=True)
-def clean_audit(sessions: sessionmaker[Session]) -> None:
-    with sessions.begin() as s:
-        s.execute(delete(LlmCall).where(LlmCall.user_id == USER))
-        s.execute(delete(PipelineRun).where(PipelineRun.user_id == USER))
+def clean_audit(sessions: sessionmaker[Session]) -> Iterator[None]:
+    # Before and after: rows with the new tasks would stop the migration down-and-up test.
+    for _ in range(2):
+        with sessions.begin() as s:
+            s.execute(delete(LlmCall).where(LlmCall.user_id == USER))
+            s.execute(delete(PipelineRun).where(PipelineRun.user_id == USER))
+        if _ == 0:
+            yield
 
 
 @pytest.fixture
