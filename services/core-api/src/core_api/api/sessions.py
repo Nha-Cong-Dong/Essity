@@ -341,3 +341,41 @@ def create_session(
         return manual("failed", "failed")
     draft.extraction = built[0]
     return built[1]
+
+
+class ProgressOut(BaseModel):
+    session_id: uuid.UUID
+    # waiting: confirmed, ai-service has not reported yet; processing; done; failed.
+    state: Literal["waiting", "processing", "done", "failed"]
+    step: Literal["reading_notes", "splitting_units", "anchoring", "writing_questions"] | None
+    percent: int | None
+    reason: Literal["unreadable", "llm_unavailable", "internal_error"] | None
+
+
+_STATES = {"processing": "processing", "processed": "done", "failed": "failed"}
+
+
+@router.get(
+    "/sessions/{session_id}/progress",
+    response_model=ProgressOut,
+    responses={404: {"description": "session_not_found (another user's, or still a draft)"}},
+)
+def session_progress(
+    session_id: uuid.UUID, user: VerifiedUser, session: DbSession, response: Response
+) -> ProgressOut:
+    """Where processing of a confirmed session stands, read from the server (T4.18, US-02 AC11).
+
+    Errors: 403 for an unverified account; 404 `session_not_found` for another user's session and
+    for a draft (nothing is processed before the confirm).
+    """
+    response.headers["Cache-Control"] = "no-store"
+    study = StudySessionRepository(session, user.id).get(session_id)
+    if study is None or study.status != "confirmed":
+        raise _error(404, "session_not_found")
+    return ProgressOut(
+        session_id=study.id,
+        state=_STATES.get(study.processing_state or "", "waiting"),  # type: ignore[arg-type]
+        step=study.processing_step,  # type: ignore[arg-type]
+        percent=study.processing_percent,
+        reason=study.processing_reason,  # type: ignore[arg-type]
+    )

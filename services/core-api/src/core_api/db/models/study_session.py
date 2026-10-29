@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -22,6 +23,10 @@ SESSION_STATUSES = frozenset({"draft", "confirmed"})
 EXTRACTIONS = frozenset(
     {"proposed", "note_only", "clarify", "failed", "disabled", "quota", "no_documents"}
 )
+# How processing a confirmed session stands (T4.18): no state yet means waiting for ai-service.
+PROCESSING_STATES = frozenset({"processing", "processed", "failed"})
+PROCESSING_STEPS = frozenset({"reading_notes", "splitting_units", "anchoring", "writing_questions"})
+PROCESSING_REASONS = frozenset({"unreadable", "llm_unavailable", "internal_error"})
 DEPTHS = frozenset({"deep", "skim", "unclear"})
 NOTE_MIMES = frozenset(
     {"image/jpeg", "image/png", "application/pdf", "text/plain", "text/markdown"}
@@ -60,6 +65,25 @@ class StudySession(UserOwned, Base):
         CheckConstraint(
             "studied_on IS NULL OR studied_on <= learning_day", name="studied_not_after_logged"
         ),
+        CheckConstraint(
+            "processing_state IS NULL OR status = 'confirmed'", name="processing_needs_confirmed"
+        ),
+        CheckConstraint(
+            one_of("processing_state", PROCESSING_STATES),
+            name="processing_state_known",
+        ),
+        CheckConstraint(
+            one_of("processing_step", PROCESSING_STEPS),
+            name="processing_step_known",
+        ),
+        CheckConstraint(
+            one_of("processing_reason", PROCESSING_REASONS),
+            name="processing_reason_known",
+        ),
+        CheckConstraint(
+            "processing_percent IS NULL OR processing_percent BETWEEN 0 AND 100",
+            name="processing_percent_range",
+        ),
     )
 
     subject_id: Mapped[uuid.UUID]
@@ -69,6 +93,11 @@ class StudySession(UserOwned, Base):
     studied_on: Mapped[date | None] = mapped_column(Date)
     learning_day: Mapped[date | None] = mapped_column(Date)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # T4.18: from session.progress / processed / failed. processed and failed are terminal.
+    processing_state: Mapped[str | None] = mapped_column(String(10))
+    processing_step: Mapped[str | None] = mapped_column(String(17))
+    processing_percent: Mapped[int | None] = mapped_column(SmallInteger)
+    processing_reason: Mapped[str | None] = mapped_column(String(16))
 
 
 class SessionRange(UserOwned, Base):
