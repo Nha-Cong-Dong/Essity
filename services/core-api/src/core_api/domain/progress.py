@@ -19,6 +19,7 @@ from datetime import date, datetime, timedelta
 
 SOLID_RECALL = 0.9
 READY_SHARE = 0.85
+_FORMULA_STARTS = ("=", "+", "-", "@", chr(9), chr(13))
 CSV_HEADER = ("section", "subject", "period", "key", "value")
 
 
@@ -113,14 +114,17 @@ class CsvRow:
     value: str
 
 
-def _safe(cell: str) -> str:
-    """A text cell that a spreadsheet could read as a formula gets a leading quote; numbers
-    ("-5") are left alone."""
-    if cell[:1] in ("=", "+", "-", "@", "\t", "\r"):
-        try:
-            float(cell)
-        except ValueError:
-            return "'" + cell
+def _safe(cell: str, number_ok: bool = False) -> str:
+    """A cell a spreadsheet could read as a formula gets a leading quote. Only `value` may be a
+    plain number ("-5"), which is left alone."""
+    if cell[:1] in _FORMULA_STARTS:
+        if number_ok:
+            try:
+                float(cell)
+                return cell
+            except ValueError:
+                pass
+        return "'" + cell
     return cell
 
 
