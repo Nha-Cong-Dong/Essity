@@ -85,7 +85,9 @@ class TodayRepository(UserScopedRepository[MemoryState]):
 
     def correct_counts(self) -> dict[tuple[uuid.UUID, int], int]:
         """Correct answers so far by (unit, question level): the newest grade of each attempt, its
-        verdict on the unit "correct" (T5.2, US-03 AC3)."""
+        verdict on the unit "correct" (T5.2, US-03 AC3). Fake grades count too: fake providers are
+        refused outside local and test (ai_service/config.py, domain/grading.py), so a fake grade
+        never reaches production history ("never real evidence", db/models/review.py)."""
         newest = (
             select(Grade.attempt_id, func.max(Grade.seq).label("seq"))
             .where(Grade.user_id == self.user_id)
