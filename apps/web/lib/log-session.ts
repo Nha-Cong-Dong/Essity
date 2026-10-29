@@ -1,6 +1,7 @@
 import type { components } from "@/lib/core-client"; // types only: erased from the browser bundle
 
 import { postJson } from "@/lib/auth-errors";
+import type { NoteRef } from "@/lib/note-upload";
 
 // T4.13a (US-02): what the "Ghi buổi học" page does with core-api's card. Pure helpers plus the two
 // calls the browser makes to web's routes (/api/subjects/{id}/sessions, /api/sessions/{id}/confirm).
@@ -91,9 +92,11 @@ export function confirmSession(
   sessionId: string,
   ranges: ConfirmRange[],
   studiedOn?: string | null,
+  notes: NoteRef[] = [],
 ): Promise<CallResult<{ session_id: string }>> {
   return call(`/api/sessions/${sessionId}/confirm`, {
     ranges,
+    notes,
     ...(studiedOn ? { studied_on: studiedOn } : {}),
   });
 }

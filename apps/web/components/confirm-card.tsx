@@ -29,12 +29,14 @@ function RangeBlock({ range }: { range: Card["ranges"][number] }) {
 export type ConfirmCardProps = {
   card: Card;
   saving: boolean;
+  /** Notes are still on their way to storage: Lưu waits for them. */
+  waiting?: boolean;
   onSave: () => void;
   onSentence: () => void;
   onRanges: () => void;
 };
 
-export function ConfirmCard({ card, saving, onSave, onSentence, onRanges }: ConfirmCardProps) {
+export function ConfirmCard({ card, saving, waiting = false, onSave, onSentence, onRanges }: ConfirmCardProps) {
   const noteOnly = card.card === "note_only";
   return (
     <section aria-labelledby="confirm-lead" className="mt-6">
@@ -59,7 +61,7 @@ export function ConfirmCard({ card, saving, onSave, onSentence, onRanges }: Conf
         </div>
       </div>
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Button type="button" pending={saving} onClick={onSave}>
+        <Button type="button" pending={saving} disabled={waiting} onClick={onSave}>
           Lưu
         </Button>
         <Button type="button" variant="quiet" disabled={saving} onClick={onSentence}>

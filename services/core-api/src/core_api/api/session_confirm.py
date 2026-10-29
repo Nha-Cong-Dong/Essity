@@ -12,6 +12,7 @@ Nothing of the description or the notes is logged (ADR-0013).
 
 import datetime
 import uuid
+from datetime import timedelta
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
@@ -21,12 +22,15 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StrictInt, St
 from core_api.api.deps import Now, Storage, VerifiedUser, verified_user
 from core_api.api.text import storable_text
 from core_api.clients.storage import StorageUnavailableError
+from core_api.config import get_settings
 from core_api.db.models import Document, NoteFile, SessionRange, StudySession
 from core_api.db.session import DbSession
 from core_api.domain.learning_day import learning_day
 from core_api.domain.study_session import (
+    NOTE_MAGIC_MAX,
     cut_summary,
     ensure_ranges_ordered,
+    looks_like_note,
     note_key,
     page_range_ok,
     studied_on_ok,
@@ -36,9 +40,11 @@ from core_api.messaging.envelope import NoteFile as EventNote
 from core_api.messaging.envelope import SessionRange as EventRange
 from core_api.messaging.outbox import enqueue_event
 from core_api.repositories.document import DocumentRepository
+from core_api.repositories.note_upload import NoteUploadRepository
 from core_api.repositories.study_session import StudySessionRepository
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
 from core_api.repositories.unit import KnowledgeUnitRepository
+from core_api.security.rate_limit import RateLimit, RateLimiter, get_rate_limiter
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
@@ -192,6 +198,7 @@ def confirm_session(
     user: VerifiedUser,
     session: DbSession,
     storage: Storage,
+    limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
     now: Now,
     response: Response,
 ) -> SessionOut:
@@ -201,13 +208,17 @@ def confirm_session(
 
     Errors: 404 `session_not_found` (another user's too), `subject_not_found` (deleted since),
     `document_not_found` (another subject's or user's too); 409 `not_indexed`, `upload_incomplete`;
-    422 `bad_range`, `bad_date`, `bad_note`, `size_mismatch`, `content_mismatch`; 503
-    `storage_unavailable`.
+    422 `bad_range`, `bad_date`, `bad_note`, `size_mismatch`, `content_mismatch`; 429 with
+    Retry-After (each confirm calls the store once per note, R60a); 503 `storage_unavailable`.
 
     Locks the subject FOR SHARE, then the session FOR UPDATE (the order `create_draft` and a
     subject's delete agree on).
     """
     response.headers["Cache-Control"] = "no-store"
+    limiter.enforce(
+        RateLimit("session_confirm", get_settings().session_confirms_per_hour, timedelta(hours=1)),
+        str(user.id),
+    )
     drafts = StudySessionRepository(session, user.id)
     found = drafts.get(session_id)
     if found is None:
@@ -231,6 +242,9 @@ def confirm_session(
     _check_ranges(body, documents)
     notes = _distinct_notes(body)
     keys = {n.sha256: note_key(user.id, draft.id, n.sha256, n.mime) for n in notes}
+    # Held until commit: cleanup skips these rows while this confirm decides about their files.
+    pending = NoteUploadRepository(session, user.id)
+    held = pending.lock_of_session(draft.id, [n.sha256 for n in notes])
     try:
         for note in notes:
             stored = storage.head(keys[note.sha256])
@@ -239,6 +253,9 @@ def confirm_session(
             if stored.size != note.size_bytes:
                 raise _error(422, "size_mismatch")
             if stored.sha256 is not None and stored.sha256 != note.sha256:
+                raise _error(422, "content_mismatch")
+            start = storage.read_start(keys[note.sha256], NOTE_MAGIC_MAX)
+            if not looks_like_note(note.mime, start):
                 raise _error(422, "content_mismatch")
     except StorageUnavailableError:
         raise _error(503, "storage_unavailable") from None
@@ -268,6 +285,8 @@ def confirm_session(
                 size_bytes=note.size_bytes,
             )
         )
+    for row in held:  # accounted by their note_file from now on
+        session.delete(row)
     draft.status = "confirmed"
     draft.studied_on = studied_on
     draft.learning_day = today

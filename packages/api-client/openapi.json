@@ -707,6 +707,72 @@
         "title": "NoteOut",
         "type": "object"
       },
+      "NoteUploadRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "mime": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "application/pdf",
+              "text/plain",
+              "text/markdown"
+            ],
+            "title": "Mime",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "exclusiveMinimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sha256",
+          "mime",
+          "size_bytes"
+        ],
+        "title": "NoteUploadRequest",
+        "type": "object"
+      },
+      "NoteUploadUrl": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "method": {
+            "const": "PUT",
+            "default": "PUT",
+            "title": "Method",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "headers",
+          "expires_at"
+        ],
+        "title": "NoteUploadUrl",
+        "type": "object"
+      },
       "OverrideIn": {
         "additionalProperties": false,
         "description": "\"Thực ra tôi đúng\" is `correct`, \"Thực ra tôi sai\" is `incorrect` (US-09 AC1).",
@@ -2744,7 +2810,7 @@
     },
     "/v1/sessions/{session_id}/confirm": {
       "post": {
-        "description": "Confirm the card: write the session's ranges, notes and dates and announce it to\nai-service (`session.confirmed.v1`), all in one transaction. Confirming again returns the\nsession as it was saved and announces nothing more.\n\nErrors: 404 `session_not_found` (another user's too), `subject_not_found` (deleted since),\n`document_not_found` (another subject's or user's too); 409 `not_indexed`, `upload_incomplete`;\n422 `bad_range`, `bad_date`, `bad_note`, `size_mismatch`, `content_mismatch`; 503\n`storage_unavailable`.\n\nLocks the subject FOR SHARE, then the session FOR UPDATE (the order `create_draft` and a\nsubject's delete agree on).",
+        "description": "Confirm the card: write the session's ranges, notes and dates and announce it to\nai-service (`session.confirmed.v1`), all in one transaction. Confirming again returns the\nsession as it was saved and announces nothing more.\n\nErrors: 404 `session_not_found` (another user's too), `subject_not_found` (deleted since),\n`document_not_found` (another subject's or user's too); 409 `not_indexed`, `upload_incomplete`;\n422 `bad_range`, `bad_date`, `bad_note`, `size_mismatch`, `content_mismatch`; 429 with\nRetry-After (each confirm calls the store once per note, R60a); 503 `storage_unavailable`.\n\nLocks the subject FOR SHARE, then the session FOR UPDATE (the order `create_draft` and a\nsubject's delete agree on).",
         "operationId": "confirm_session_v1_sessions__session_id__confirm_post",
         "parameters": [
           {
@@ -2790,6 +2856,67 @@
           }
         },
         "summary": "Confirm Session"
+      }
+    },
+    "/v1/sessions/{session_id}/notes/upload-url": {
+      "post": {
+        "description": "A URL to upload one note file of a draft session (201), or a fresh one for a file asked\nbefore (200).\n\nErrors: 404 `session_not_found` (another user's too); 409 `session_confirmed`,\n`too_many_notes`, `storage_quota_exceeded`; 422 `file_too_large`, `bad_note` (the same file\nasked with another type or size); 429 with Retry-After; 503 when a dependency is down.",
+        "operationId": "request_note_upload_v1_sessions__session_id__notes_upload_url_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteUploadUrl"
+                }
+              }
+            },
+            "description": "A fresh URL for a file asked before"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteUploadUrl"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Note Upload"
       }
     },
     "/v1/subjects": {

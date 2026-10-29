@@ -54,7 +54,7 @@ export const putFile: PutFile = (signed, file, onProgress) =>
     request.send(file);
   });
 
-async function post<T>(path: string, body: object): Promise<{ ok: true; data: T } | { ok: false; code: string }> {
+export async function post<T>(path: string, body: object): Promise<{ ok: true; data: T } | { ok: false; code: string }> {
   let response: Response;
   try {
     response = await fetch(path, {

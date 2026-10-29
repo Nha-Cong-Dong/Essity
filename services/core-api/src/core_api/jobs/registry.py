@@ -8,6 +8,7 @@ refuses kinds missing here, and the worker would fail jobs whose kind it does no
 from core_api.jobs import (
     document_cleanup,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     job_health,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    note_cleanup,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     outbox_cleanup,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     purge_unverified,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     send_email,  # noqa: F401  # pyright: ignore[reportUnusedImport]

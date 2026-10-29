@@ -15,7 +15,7 @@ export const POST = withOrigin(async (request, { params }: Params) => {
     (core, session_id) =>
       core.POST("/v1/sessions/{session_id}/confirm", {
         params: { path: { session_id } },
-        body: { ...body, notes: [] }, // notes wait for T4.13b
+        body,
       }),
     { notFound: "session_not_found" },
   );

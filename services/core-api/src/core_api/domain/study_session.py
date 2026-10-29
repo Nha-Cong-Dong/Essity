@@ -42,6 +42,21 @@ NOTE_EXTENSIONS = {
 }
 
 
+# The first bytes each binary note type starts with; the text types have no header to check.
+NOTE_MAGIC = {
+    "image/jpeg": b"\xff\xd8\xff",
+    "image/png": b"\x89PNG\r\n\x1a\n",
+    "application/pdf": b"%PDF-",
+}
+NOTE_MAGIC_MAX = max(len(magic) for magic in NOTE_MAGIC.values())
+
+
+def looks_like_note(mime: str, start: bytes) -> bool:
+    """Whether the file's first bytes fit the type declared. Text types always do."""
+    magic = NOTE_MAGIC.get(mime)
+    return magic is None or start.startswith(magic)
+
+
 def cut_summary(summary: str) -> str:
     """At most `SUMMARY_MAX_CHARS` characters (not bytes): the contract's limit."""
     return summary[:SUMMARY_MAX_CHARS]

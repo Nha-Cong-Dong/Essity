@@ -16,11 +16,20 @@ export const CARD_TIMEOUT_MS = 6000;
 // core-api's refusals the screen tells apart; anything else is "unavailable".
 const CODES = new Set([
   "bad_date",
+  "bad_note",
   "bad_range",
+  "content_mismatch",
   "document_not_found",
+  "file_too_large",
   "not_indexed",
+  "session_confirmed",
   "session_not_found",
+  "size_mismatch",
+  "storage_quota_exceeded",
+  "storage_unavailable",
   "subject_not_found",
+  "too_many_notes",
+  "upload_incomplete",
 ]);
 
 type CoreResult = { data?: unknown; error?: unknown; response: Response };
@@ -61,7 +70,11 @@ type Range = {
   start_label?: string;
   end_label?: string;
 };
-export type ConfirmBody = { ranges: Range[]; studied_on?: string };
+const NOTE_MIMES = ["image/jpeg", "image/png", "application/pdf", "text/plain", "text/markdown"] as const;
+type NoteMime = (typeof NOTE_MIMES)[number];
+type Note = { sha256: string; mime: NoteMime; size_bytes: number };
+const MAX_NOTES = 20;
+export type ConfirmBody = { ranges: Range[]; notes: Note[]; studied_on?: string };
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -86,13 +99,25 @@ function readRange(value: unknown): Range | null {
   return range;
 }
 
+/** One note as core-api takes it (a hash, a type from the list, a size), rebuilt; else null. */
+export function readNote(value: unknown): Note | null {
+  if (!isObject(value)) return null;
+  if (!Object.keys(value).every((key) => key === "sha256" || key === "mime" || key === "size_bytes")) return null;
+  const { sha256, mime, size_bytes } = value;
+  if (typeof sha256 !== "string" || !/^[0-9a-f]{64}$/.test(sha256)) return null;
+  if (typeof mime !== "string" || !(NOTE_MIMES as readonly string[]).includes(mime)) return null;
+  if (!Number.isSafeInteger(size_bytes) || (size_bytes as number) <= 0) return null;
+  return { sha256, mime: mime as NoteMime, size_bytes: size_bytes as number };
+}
+
 /**
- * The confirm body, rebuilt field by field (review plan R1). Notes wait for T4.13b: a body that
- * carries any is refused, so nothing unchecked reaches core-api.
+ * The confirm body, rebuilt field by field (review plan R1): ranges, notes and the day, nothing
+ * else. A note reaches core-api only as a hash, a type and a size, which it checks against what
+ * is stored.
  */
 export function readConfirm(body: unknown): ConfirmBody | null {
   if (!isObject(body)) return null;
-  if (!Object.keys(body).every((key) => key === "ranges" || key === "studied_on")) return null;
+  if (!Object.keys(body).every((key) => key === "ranges" || key === "notes" || key === "studied_on")) return null;
   if (!Array.isArray(body.ranges) || body.ranges.length > 6) return null;
   const ranges: Range[] = [];
   for (const item of body.ranges) {
@@ -100,7 +125,16 @@ export function readConfirm(body: unknown): ConfirmBody | null {
     if (range === null) return null;
     ranges.push(range);
   }
-  if (body.studied_on === undefined) return { ranges };
+  const notes: Note[] = [];
+  if (body.notes !== undefined) {
+    if (!Array.isArray(body.notes) || body.notes.length > MAX_NOTES) return null;
+    for (const item of body.notes) {
+      const note = readNote(item);
+      if (note === null) return null;
+      notes.push(note);
+    }
+  }
+  if (body.studied_on === undefined) return { ranges, notes };
   if (typeof body.studied_on !== "string") return null;
-  return { ranges, studied_on: body.studied_on };
+  return { ranges, notes, studied_on: body.studied_on };
 }
