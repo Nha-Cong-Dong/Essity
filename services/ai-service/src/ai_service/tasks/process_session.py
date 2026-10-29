@@ -492,7 +492,7 @@ class ProcessSession:
                 }
                 for unit_id, anchors in work.merges.items()
             ],
-            "questions": [json.loads(q.model_dump_json()) for q in work.questions],
+            "questions": [_question_body(q) for q in work.questions],
             "dropped": {
                 "anchors": work.dropped_anchors,
                 "units": work.dropped_units,
@@ -606,6 +606,14 @@ class ProcessSession:
         self.redis.xadd(
             self.stream, {"envelope": dump_event(out)}, maxlen=STREAM_MAXLEN, approximate=True
         )
+
+
+def _question_body(question: GeneratedQuestion) -> dict[str, Any]:
+    """Contract shape: the units a question covers are a list (level 1 has one, level 3 two or
+    more; that rule lives in the code that makes the question, not in the schema)."""
+    body = json.loads(question.model_dump_json())
+    body["unit_ids"] = [body.pop("unit_id")]
+    return body
 
 
 def _code(error: BaseException) -> str:

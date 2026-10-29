@@ -194,7 +194,7 @@ def test_t416b_chain_writes_units_questions_and_announces(
     # one unit per source: two pages and the notes
     assert len(body["units"]) == 3
     assert {a["page_no"] for u in body["units"] for a in u["anchors"]} == {1, 2, None}
-    assert {q["unit_id"] for q in body["questions"]} == {u["unit_id"] for u in body["units"]}
+    assert {q["unit_ids"][0] for q in body["questions"]} == {u["unit_id"] for u in body["units"]}
     out = sent(redis_client, stream)
     progress = [e.payload for e in out if isinstance(e, SessionProgressEvent)]
     assert progress[0].step == "reading_notes"

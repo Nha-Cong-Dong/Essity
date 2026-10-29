@@ -25,7 +25,7 @@
   "merges": [],
   "questions": [
     {
-      "unit_id": "0d3c6b52-4e0a-4d0b-8a8e-3f1d7c1c9a55",
+      "unit_ids": ["0d3c6b52-4e0a-4d0b-8a8e-3f1d7c1c9a55"],
       "level": 1,
       "prompt": "Ty the lam gi?",
       "reference_answer": "Hop ho hap te bao.",
