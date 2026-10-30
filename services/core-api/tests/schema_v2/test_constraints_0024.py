@@ -63,15 +63,16 @@ def test_file_keys_check_rejects_foreign_or_odd_keys(world: World, bad: Any) -> 
 # --- doc_section page positions ---------------------------------------------------------------
 
 
-def section(world: World, **kw: Any) -> Any:
-    document = make_document(world.session, world.alice, world.subject)
+def section(world: World, document: Any = None, **kw: Any) -> Any:
+    document = document or make_document(world.session, world.alice, world.subject)
     return make_section(world.session, world.alice, document, **kw)
 
 
 def test_section_pages_set_together_are_accepted(world: World) -> None:
-    section(world)
-    section(world, first_page=3, last_page=3)
-    section(world, first_page=3, last_page=9)
+    document = make_document(world.session, world.alice, world.subject)
+    section(world, document)
+    section(world, document, first_page=3, last_page=3)
+    section(world, document, first_page=3, last_page=9)
 
 
 @pytest.mark.parametrize(

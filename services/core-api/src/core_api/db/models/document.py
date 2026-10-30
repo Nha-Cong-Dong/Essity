@@ -157,6 +157,9 @@ class DocSection(UserOwned, Base):
         CheckConstraint(not_blank("title"), name="title_not_blank"),
         CheckConstraint(one_of("unit", SECTION_UNITS), name="unit_known"),
         CheckConstraint(one_of("source", SECTION_SOURCES), name="source_known"),
+        # Positions in the file, 1-based; both or neither (T7.6, set by T7.3/T7.5).
+        CheckConstraint("(first_page IS NULL) = (last_page IS NULL)", name="pages_both_or_neither"),
+        CheckConstraint("first_page >= 1 AND last_page >= first_page", name="pages_ordered"),
     )
 
     subject_id: Mapped[uuid.UUID]
@@ -168,3 +171,5 @@ class DocSection(UserOwned, Base):
     unit: Mapped[str] = mapped_column(String(8))
     source: Mapped[str] = mapped_column(String(8))
     excluded: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    first_page: Mapped[int | None] = mapped_column(Integer)
+    last_page: Mapped[int | None] = mapped_column(Integer)

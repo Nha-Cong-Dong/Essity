@@ -33,7 +33,14 @@ DEPTHS = frozenset({"deep", "skim", "unclear"})
 NOTE_MIMES = frozenset(
     {"image/jpeg", "image/png", "application/pdf", "text/plain", "text/markdown"}
 )
+# What a v2 submission may also hold (T7.6): the rows keep this wider set; v1 confirm still takes
+# only NOTE_MIMES.
+SUBMISSION_MIMES = NOTE_MIMES | {
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
 DESCRIPTION_MAX = 2000
+FILE_KEYS_MAX = 20
 
 
 class StudySession(UserOwned, Base):
@@ -148,7 +155,7 @@ class NoteFile(UserOwned, Base):
             name="object_key_is_notes_key",
         ),
         CheckConstraint("sha256 ~ '^[0-9a-f]{64}$'", name="sha256_hex"),
-        CheckConstraint(one_of("mime", NOTE_MIMES), name="mime_known"),
+        CheckConstraint(one_of("mime", SUBMISSION_MIMES), name="mime_known"),
         CheckConstraint("size_bytes > 0", name="size_positive"),
         # The same file twice in a session is one note (US-02 AC13).
         UniqueConstraint("session_id", "sha256"),
@@ -157,7 +164,7 @@ class NoteFile(UserOwned, Base):
     session_id: Mapped[uuid.UUID]
     object_key: Mapped[str] = mapped_column(String(1024))
     sha256: Mapped[str] = mapped_column(String(64))
-    mime: Mapped[str] = mapped_column(String(20))
+    mime: Mapped[str] = mapped_column(String(100))
     size_bytes: Mapped[int] = mapped_column(Integer)
 
 
@@ -182,7 +189,7 @@ class NoteUpload(UserOwned, Base):
             name="object_key_is_notes_key",
         ),
         CheckConstraint("sha256 ~ '^[0-9a-f]{64}$'", name="sha256_hex"),
-        CheckConstraint(one_of("mime", NOTE_MIMES), name="mime_known"),
+        CheckConstraint(one_of("mime", SUBMISSION_MIMES), name="mime_known"),
         CheckConstraint("size_bytes > 0", name="size_positive"),
         UniqueConstraint("session_id", "sha256"),
         Index(None, "presigned_at"),
@@ -191,7 +198,7 @@ class NoteUpload(UserOwned, Base):
     session_id: Mapped[uuid.UUID]
     object_key: Mapped[str] = mapped_column(String(1024))
     sha256: Mapped[str] = mapped_column(String(64))
-    mime: Mapped[str] = mapped_column(String(20))
+    mime: Mapped[str] = mapped_column(String(100))
     size_bytes: Mapped[int] = mapped_column(Integer)
     # When the last URL was signed: cleanup waits until it is long dead.
     presigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -202,12 +209,24 @@ class NoteUpload(UserOwned, Base):
 SUBMISSION_STATUSES = frozenset({"queued", "processing", "pending_ai", "failed", "done"})
 
 
+# Every key is `users/<user>/sessions/<session>/notes/<sha256>.<ext>` of this very row, and at most
+# FILE_KEYS_MAX of them, none NULL. A CHECK cannot hold a subquery, so the keys are joined with
+# commas and matched whole by one anchored regex (a key has no comma, so none can hide in another).
+_KEY_RE = (
+    "'users/' || user_id || '/sessions/' || session_id"
+    r" || '/notes/[0-9a-f]{64}\.(jpg|png|pdf|txt|md|docx|pptx)'"
+)
+FILE_KEYS_SQL = (
+    f"cardinality(file_keys) <= {FILE_KEYS_MAX} AND array_position(file_keys, NULL) IS NULL"
+    f" AND array_to_string(file_keys, ',') ~ ('^(' || {_KEY_RE} || '(,' || {_KEY_RE} || ')*)?$')"
+)
+
+
 class Submission(UserOwned, Base):
     """What the learner handed in for a study session (T7.1, spec v2 §16.2): the files are stored
     before they are processed, so a failure or a spent quota never loses them.
 
-    `file_keys` has no prefix CHECK yet: the task that first writes it (T7.3) adds one like
-    `note_file.object_key_is_notes_key` before anything does.
+    `file_keys` holds only this session's own note keys (CHECK, migration 0024).
     """
 
     __tablename__ = "submission"
@@ -230,6 +249,7 @@ class Submission(UserOwned, Base):
             "(status IN ('done', 'failed')) = (finished_at IS NOT NULL)",
             name="finished_iff_ended",
         ),
+        CheckConstraint(FILE_KEYS_SQL, name="file_keys_are_own_notes"),
     )
 
     session_id: Mapped[uuid.UUID]
