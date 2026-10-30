@@ -559,3 +559,19 @@ def test_ac1_a_cut_that_drops_bank_numbers_is_flagged_for_review() -> None:
     text = "Câu 1. TCP?\n1. a\n2. b\nCâu 2. UDP?\nĐáp án\n1. A\n2. B\nCâu 7. lạc"
     result = split_bank(_pages(text), FakeAsk())
     assert "appendix_cut" in _codes(result)
+
+
+def test_ac1_a_clean_key_in_another_style_is_cut_without_a_flag() -> None:
+    """US-14 AC1: nothing of the bank's style is dropped, so no appendix_cut reason."""
+    body = [f"Câu {k}:\nNội dung {k}\n1. một\n2. hai" for k in range(1, 5)]
+    key = "\n".join(f"{i}. A" for i in range(1, 6))
+    result = split_bank(_pages("\n".join(body) + "\nĐáp án\n" + key), FakeAsk())
+    assert [q.ord for q in result.questions] == [1, 2, 3, 4]
+    assert "appendix_cut" not in _codes(result)
+
+
+def test_ac1_counting_up_steps_then_a_far_question_is_cut_and_flagged() -> None:
+    """US-14 AC1: the accepted limit stays visible: the cut drops "Câu 9", so it is flagged."""
+    text = "Câu 1. A?\n1. x\n2. y\nCâu 2. B?\nLời giải:\n1. bước\n2. bước\n3. bước\nCâu 9. C?"
+    result = split_bank(_pages(text), FakeAsk())
+    assert "appendix_cut" in _codes(result)
