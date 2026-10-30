@@ -36,8 +36,7 @@ BANNED = (
 
 def _has_banned(text: str) -> bool:
     return any(
-        re.search(rf"(?<![^\W\d_]){re.escape(w)}(?![^\W\d_])", text, re.IGNORECASE)
-        for w in BANNED
+        re.search(rf"(?<![^\W\d_]){re.escape(w)}(?![^\W\d_])", text, re.IGNORECASE) for w in BANNED
     )
 
 
@@ -67,7 +66,12 @@ def card(
 
 def inputs(subjects: list[SubjectInput], **kw: object) -> TodayInputs:
     names = {s.id: f"Môn {i}" for i, s in enumerate(subjects)}
-    base = {"now": NOW, "tz": TZ, "day_start_hour": START_HOUR, "cards": []}
+    base: dict[str, object] = {
+        "now": NOW,
+        "tz": TZ,
+        "day_start_hour": START_HOUR,
+        "cards": [],
+    }
     return TodayInputs(subjects=subjects, subject_names=names, **{**base, **kw})  # type: ignore[arg-type]
 
 
@@ -133,7 +137,10 @@ def test_empty_no_subjects_and_filtered():  # US-15 AC11
 
 
 def test_empty_priority_exam_over_beats_others():  # US-15 AC11
-    subs = [subject([], exam=TODAY - timedelta(days=2)), subject([leaf("a", covered=10)], exam=None)]
+    subs = [
+        subject([], exam=TODAY - timedelta(days=2)),
+        subject([leaf("a", covered=10)], exam=None),
+    ]
     assert compose(inputs(subs)).next_study.empty_reason == REASON_ALL_STUDIED
     subs = [subject([], exam=TODAY - timedelta(days=2)), subject([], exam=None)]
     assert compose(inputs(subs)).next_study.empty_reason == REASON_NO_SYLLABUS
@@ -182,7 +189,9 @@ def test_review_empty_shows_next_due_day():  # US-03 AC7
 
 def test_review_has_no_next_day_when_something_due():  # US-03 AC7
     s = subject([leaf("a")])
-    review = compose(inputs([s], cards=[card(s.id), card(s.id, due=NOW + timedelta(days=4))])).review
+    review = compose(
+        inputs([s], cards=[card(s.id), card(s.id, due=NOW + timedelta(days=4))])
+    ).review
     assert len(review.items) == 1 and review.next_due_day is None
 
 

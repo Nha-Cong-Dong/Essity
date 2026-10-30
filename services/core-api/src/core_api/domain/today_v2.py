@@ -28,8 +28,8 @@ from zoneinfo import ZoneInfo
 from core_api.domain.learning_day import learning_day
 from core_api.domain.suggest import (
     SubjectInput,
-    Suggestion,
     SuggestFilter,
+    Suggestion,
     suggest_today,
 )
 from core_api.domain.today import (
