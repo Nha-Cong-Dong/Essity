@@ -37,9 +37,15 @@ def undo_latest(state: Snapshot, log: Sequence[LoggedCommand], session_id: uuid.
         raise CommandRejected("nothing_to_undo")
     if entry.session_id != session_id:
         raise CommandRejected("other_session")
+    later = log[log.index(entry) + 1 :]  # all undone: entry is the newest open one
     for revert in entry.inverse:
         current = state.get(revert.kind, revert.id)
-        if (None if current is None else current.rev) != revert.expected_rev:
+        expected = revert.expected_rev
+        for e in later:
+            expected = next(
+                (r for k, i, r in e.undo_revs if (k, i) == (revert.kind, revert.id)), expected
+            )
+        if (None if current is None else current.rev) != expected:
             raise CommandRejected("changed_after", f"{revert.kind} {revert.id}")
     out = state
     for revert in entry.inverse:
@@ -50,4 +56,7 @@ def undo_latest(state: Snapshot, log: Sequence[LoggedCommand], session_id: uuid.
             out = out.put(current.changed(status=CardStatus.DISCARDED))
         elif current is not None:
             out = out.drop((revert.kind, revert.id))  # a filter the command created
-    return UndoResult(out, replace(entry, undone=True), diff(state, out))
+    left = tuple(
+        (r.kind, r.id, (o.rev if (o := out.get(r.kind, r.id)) else None)) for r in entry.inverse
+    )
+    return UndoResult(out, replace(entry, undone=True, undo_revs=left), diff(state, out))

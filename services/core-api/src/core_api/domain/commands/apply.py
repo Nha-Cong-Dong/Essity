@@ -21,6 +21,7 @@ class LoggedCommand:
     changes: tuple[Change, ...]
     inverse: tuple[Revert, ...]
     undone: bool = False
+    undo_revs: tuple[tuple[str, uuid.UUID, int | None], ...] = ()  # rev each undo left behind
 
     @property
     def affected(self) -> int:

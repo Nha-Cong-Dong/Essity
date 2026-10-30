@@ -185,7 +185,8 @@ def split_text(text: str, parts: int) -> list[str]:
     if parts < 2 or len(lines) < parts:
         raise CommandRejected("too_short_to_split", f"{len(lines)} lines for {parts} parts")
     size, extra = divmod(len(lines), parts)
-    out, start = [], 0
+    out: list[str] = []
+    start = 0
     for i in range(parts):
         end = start + size + (1 if i < extra else 0)
         out.append("\n".join(lines[start:end]))

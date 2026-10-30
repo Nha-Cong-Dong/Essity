@@ -234,7 +234,9 @@ def test_split_rule_is_deterministic_and_carries_only_part_count():
     ids = counter()
     s = Snapshot.of(USER, [Card(D1, USER, text="a\nb\nc", status=CardStatus.DRAFT, section_id=S1)])
     r = run(s, CardSplit(D1, 3), ids=ids)
-    cards = sorted((c for c in r.state.records.values() if isinstance(c, Card)), key=lambda c: c.text)
+    cards = sorted(
+        (c for c in r.state.records.values() if isinstance(c, Card)), key=lambda c: c.text
+    )
     assert [c.text for c in cards] == ["a", "b", "c"]
     assert {c.section_id for c in cards} == {S1}
     assert r.affected == 3
