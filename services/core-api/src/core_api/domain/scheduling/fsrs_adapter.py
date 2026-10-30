@@ -19,6 +19,7 @@ from enum import StrEnum
 from fsrs import Card, Rating, Scheduler, State
 from fsrs.scheduler import DEFAULT_PARAMETERS
 
+from core_api.domain.mastery import PracticeRating
 from core_api.domain.scheduling.rating import ReviewRating
 
 DEFAULT_DESIRED_RETENTION = 0.9
@@ -61,9 +62,15 @@ class FsrsScheduler:
         )
 
     def review(
-        self, state: MemoryState | None, rating: ReviewRating, reviewed_at: datetime
+        self,
+        state: MemoryState | None,
+        rating: ReviewRating | PracticeRating,
+        reviewed_at: datetime,
     ) -> MemoryState:
-        """Apply one review. `state` is None for a unit that has never been reviewed."""
+        """Apply one review. `state` is None for a unit that has never been reviewed.
+
+        Cards pass `ReviewRating` (no Easy, ADR-0009); practice questions may pass `Easy`.
+        """
         card, _ = self._scheduler.review_card(_to_card(state), Rating(rating), _utc(reviewed_at))
         assert card.stability is not None
         assert card.difficulty is not None
