@@ -452,3 +452,26 @@ def test_provider_error_message_is_not_logged(caplog: pytest.LogCaptureFixture) 
     assert [r.outcome for r in caplog.records] == ["RuntimeError"]  # type: ignore[attr-defined]
     everything = caplog.text + " ".join(str(v) for r in caplog.records for v in vars(r).values())
     assert "leaked-question-text" not in everything and "DNS" not in everything
+
+
+def test_ac1_per_question_answer_headings_do_not_cut_the_bank() -> None:
+    """US-14 AC1: "Lời giải:" or "Đáp án:" alone on a line is one answer, not an appendix."""
+    text = (
+        "Câu 1. TCP là gì?\nĐáp án: giao vận\n"
+        "Câu 2. Giải bài toán RTT.\nLời giải:\nRTT = 2 * d\n"
+        "Câu 3. UDP là gì?\nĐáp án: không tin cậy\n"
+        "Câu 4. DNS là gì?"
+    )
+    result = split_bank(_pages(text), FakeAsk())
+    assert [q.ord for q in result.questions] == [1, 2, 3, 4]
+    assert result.questions[1].answer_text == "RTT = 2 * d"
+    assert result.questions[2].answer_text == "không tin cậy"
+    assert result.status == "done"
+
+
+def test_ac1_a_true_appendix_is_still_cut_after_per_question_headings() -> None:
+    """US-14 AC1: the cut finds the appendix even when an earlier heading was only an answer."""
+    text = "Câu 1. TCP là gì?\nLời giải:\ngiao vận\nCâu 2. UDP là gì?\nĐáp án\n1. B\n2. C\n3. D"
+    result = split_bank(_pages(text), FakeAsk())
+    assert [q.prompt for q in result.questions] == ["TCP là gì?", "UDP là gì?"]
+    assert result.questions[0].answer_text == "giao vận"

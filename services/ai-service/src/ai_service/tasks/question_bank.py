@@ -315,17 +315,21 @@ def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason
     lines: list[_Line] = [
         (p, line) for p, page in enumerate(pages) for line in page.text.splitlines()
     ]
+    full = [_markers(lines, style) for style in _STYLES]
+    best = max(full, key=len)
     # An answer key or appendix heading ends the questions: its own numbering ("1. B 2. C")
-    # must not count as questions or swallow the last one. Tried first, so a title that happens
-    # to read "Đáp án" before any question changes nothing.
-    cut = next((n for n, (_, line) in enumerate(lines) if _SECTION_BREAK.match(line)), None)
-    best: list[_Marker] = []
-    for candidate in ([lines[:cut]] if cut else []) + [lines]:
-        best = max((_markers(candidate, style) for style in _STYLES), key=len)
-        if len(best) >= 2:
-            lines = candidate
+    # must not count as questions or swallow the last one. A heading is a cut only when the
+    # numbering of the questions does not go on after it ("Lời giải:" alone on a line is one
+    # question's answer); the first such heading wins.
+    for n, (_, line) in enumerate(lines):
+        if not _SECTION_BREAK.match(line):
+            continue
+        before = [[m for m in found if m[0] < n] for found in full]
+        top = max(range(len(full)), key=lambda i: len(before[i]))
+        if len(before[top]) >= 2 and len(before[top]) == len(full[top]):
+            lines, best = lines[:n], before[top]
             break
-    else:
+    if len(best) < 2:
         return [], [], len(pages)
     questions: list[Question] = []
     reasons: list[Reason] = []
