@@ -122,7 +122,9 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "parent_id IS NULL OR parent_id <> id", name=op.f("ck_doc_section_not_its_own_parent")
         ),
-        sa.CheckConstraint("weight >= 0 AND weight < 'Infinity'", name=op.f("ck_doc_section_weight_not_negative")),
+        sa.CheckConstraint(
+            "weight >= 0 AND weight < 'Infinity'", name=op.f("ck_doc_section_weight_not_negative")
+        ),
         sa.ForeignKeyConstraint(
             ["document_id", "subject_id", "user_id"],
             ["document.id", "document.subject_id", "document.user_id"],
