@@ -1,4 +1,4 @@
-"""T9.1 AC2, AC6, AC7: the fixed union and the request that carries ids and titles only."""
+"""T9.1, US-18 AC2, AC6, AC7: the fixed union and the request that carries ids and titles only."""
 
 import uuid
 from typing import Any

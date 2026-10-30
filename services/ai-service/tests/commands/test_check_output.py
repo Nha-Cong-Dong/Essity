@@ -1,4 +1,4 @@
-"""T9.1: the model's output is checked by code, labels become the request's ids."""
+"""T9.1 (US-18 AC2, AC3, AC6; ADR-0030): the output is checked by code, labels become ids."""
 
 import datetime
 import uuid
@@ -26,6 +26,7 @@ def rule_of(text: str) -> str:
 
 
 def test_labels_become_the_requests_ids() -> None:
+    # US-18 AC2, AC4 (core re-checks every id against the user).
     command = check(output(kind="card_merge", cards=["C2", "C5"]))
     assert command.cards == [REQUEST.cards[1].id, REQUEST.cards[4].id]
 
@@ -45,6 +46,7 @@ def test_two_references_of_two_lists() -> None:
 
 
 def test_unclear_is_an_answer() -> None:
+    # US-18 AC3.
     assert check(output(kind="unclear", reason="unsupported")).reason == "unsupported"
 
 
@@ -78,6 +80,7 @@ def test_unclear_is_an_answer() -> None:
     ],
 )
 def test_broken_outputs_are_refused_with_a_rule(text: str, rule: str) -> None:
+    # US-18 AC3, AC6: nothing outside the fixed list, no invented target, no guess.
     assert rule_of(text) == rule
 
 
