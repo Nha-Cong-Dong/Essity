@@ -21,7 +21,7 @@ const draft = (id: string, extra: Partial<Draft> = {}): Draft => ({
   ...extra,
 });
 
-describe("activeMention", () => {
+describe("activeMention (US-02 AC2)", () => {
   // Red when: typing @ in the middle of a word (an email) opens the menu, or the query is wrong.
   it("opens on @ at the start or after a space, not inside a word", () => {
     expect(activeMention("học @Giáo", 9, [])).toEqual({ at: 4, query: "Giáo" });
@@ -42,7 +42,7 @@ describe("activeMention", () => {
   });
 });
 
-describe("filterDocs", () => {
+describe("filterDocs (US-02 AC2)", () => {
   // Red when: the filter is case- or accent-sensitive, or the menu grows past six rows.
   it("matches without case or accents and shows at most 6", () => {
     expect(filterDocs(DOCS, "giao").map((doc) => doc.name)).toContain("Giáo trình");
@@ -52,7 +52,7 @@ describe("filterDocs", () => {
   });
 });
 
-describe("applyMention and reconcileMentions (US-02 AC2: a reference is exact, never guessed)", () => {
+describe("applyMention and reconcileMentions (US-02 AC2, AC3: a reference is exact, never guessed)", () => {
   const doc = { id: "d1", name: "Giáo trình", role: "Giáo trình" };
 
   it("replaces @query by @name and records the range by document id", () => {
@@ -143,7 +143,7 @@ describe("draftsReducer (US-02 AC6, AC8, ADR-0028)", () => {
   });
 });
 
-describe("roundReducer (DESIGN.md §6.7 vùng 1-5; review C5: focus only follows the user's own action)", () => {
+describe("roundReducer (US-02 AC4 scope refused, AC9-AC11 processing, AC14 Học tiếp; DESIGN.md §6.7 vùng 1-5; review C5: focus only follows the user's own action)", () => {
   // Red when: processing finishing in the background asks for focus (it would steal the caret
   // from a card being edited).
   it("a background change never asks for focus; the user's Gửi, Lưu and Học tiếp do", () => {
