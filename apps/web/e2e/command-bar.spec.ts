@@ -2,6 +2,8 @@
 // virtual keyboard (360x640). Geometry and a keyboard-only flow; the logic is in vitest.
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
+import { settled } from "./ready";
+
 const WIDTHS = [320, 390, 768, 1440];
 const STATES = [
   "idle", "understanding", "done", "many", "unclear", "not-allowed", "too-long", "pending-ai",
@@ -21,7 +23,7 @@ const inside = (inner: Box, outer: Box) => inner.x >= outer.x - 0.5 && inner.x +
 async function open(page: Page, width: number, state: string, height = 900) {
   await page.setViewportSize({ width, height });
   expect((await page.goto(`/design-preview/command-bar?state=${state}`))?.status()).toBe(200);
-  await page.evaluate(() => document.fonts.ready);
+  await settled(page);
 }
 
 const noSideScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);

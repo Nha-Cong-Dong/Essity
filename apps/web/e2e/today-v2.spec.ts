@@ -2,6 +2,8 @@
 // four widths. Geometry only. The busiest state has one unbroken long subject name.
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
+import { settled } from "./ready";
+
 const WIDTHS = [320, 390, 768, 1440];
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -21,7 +23,7 @@ const inside = (inner: Box, outer: Box) =>
 async function open(page: Page, width: number, path: string) {
   await page.setViewportSize({ width, height: 900 });
   expect((await page.goto(path))?.status()).toBe(200);
-  await page.evaluate(() => document.fonts.ready);
+  await settled(page);
 }
 
 const noSideScroll = (page: Page) =>

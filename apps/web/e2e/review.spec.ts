@@ -3,6 +3,8 @@
 // nothing spills, the two columns sit side by side from 901px and stack below.
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
+import { settled } from "./ready";
+
 const PAGE = "/design-preview/review";
 const WIDTHS = [320, 390, 768, 1440];
 
@@ -19,7 +21,7 @@ const sideways = (page: Page) => page.evaluate(() => document.documentElement.sc
 async function open(page: Page, width: number) {
   await page.setViewportSize({ width, height: 900 });
   expect((await page.goto(PAGE))?.status()).toBe(200);
-  await page.evaluate(() => document.fonts.ready);
+  await settled(page);
   await expect(page.getByLabel("Câu trả lời của bạn")).toBeVisible();
 }
 
