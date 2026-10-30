@@ -1,0 +1,27 @@
+{
+  "event_id": "6e5d4c3b-2a19-4807-a6b5-c4d3e2f1b001",
+  "event_type": "submission.created.v1",
+  "schema_version": 1,
+  "occurred_at": "2026-10-30T08:30:00.123456Z",
+  "user_id": "3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11",
+  "trace_context": {
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+  },
+  "payload": {
+    "submission_id": "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
+    "study_session_id": "5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f",
+    "subject_id": "7a1c2e3f-4b5d-4c6e-8f70-91a2b3c4d5e6",
+    "file_keys": [
+      {
+        "object_key": "users/3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11/sessions/5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f/notes/abababababababababababababababababababababababababababababababab.pdf",
+        "mime": "application/pdf"
+      },
+      {
+        "object_key": "users/3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11/sessions/5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f/notes/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd.docx",
+        "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      }
+    ],
+    "context_key": "users/3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11/sessions/5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f/context/9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d.json",
+    "description": "Hôm nay mình học @Mạng"
+  }
+}

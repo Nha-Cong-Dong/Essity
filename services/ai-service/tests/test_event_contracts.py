@@ -61,6 +61,9 @@ EVENTS_IN_ARCH = [
     "grade.requested.v1",
     "grade.completed.v1",
     "user.deleted.v1",
+    "submission.created.v1",
+    "submission.processed.v1",
+    "submission.failed.v1",
 ]
 
 

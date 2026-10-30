@@ -1,8 +1,9 @@
 """submission_contract
 
 T7.6 (ADR-0008, additions only): the page positions of a section (`first_page`, `last_page`),
-the submission's own file keys (CHECK), and the DOCX and PPTX types a note file may hold. Old rows
-keep their shape; the downgrade refuses rather than delete a DOCX or PPTX note.
+the submission's own file keys (CHECK), `submission.created.v1` in the outbox, and the DOCX and
+PPTX types a note file may hold. Old rows keep their shape; the downgrade refuses rather than
+delete a DOCX or PPTX note or a queued event.
 
 Revision ID: 0024
 Revises: 0023
@@ -39,6 +40,13 @@ FILE_KEYS_SQL = (
     "cardinality(file_keys) <= 20 AND array_position(file_keys, NULL) IS NULL"
     f" AND array_to_string(file_keys, ',') ~ ('^(' || {_KEY} || '(,' || {_KEY} || ')*)?$')"
 )
+OLD_EVENTS = (
+    "'document.uploaded.v1', 'grade.requested.v1', 'session.confirmed.v1', 'user.deleted.v1'"
+)
+NEW_EVENTS = (
+    "'document.uploaded.v1', 'grade.requested.v1', 'session.confirmed.v1',"
+    " 'submission.created.v1', 'user.deleted.v1'"
+)
 
 
 def upgrade() -> None:
@@ -64,6 +72,10 @@ def upgrade() -> None:
     op.create_check_constraint(
         op.f("ck_submission_file_keys_are_own_notes"), "submission", FILE_KEYS_SQL
     )
+    op.drop_constraint(op.f("ck_outbox_event_type"), "outbox", type_="check")
+    op.create_check_constraint(
+        op.f("ck_outbox_event_type"), "outbox", f"event_type IN ({NEW_EVENTS})"
+    )
 
 
 def downgrade() -> None:
@@ -75,6 +87,15 @@ def downgrade() -> None:
         ).scalar_one()
         if held:
             raise RuntimeError(f"0024 downgrade: {held} {table} row(s) hold a DOCX or PPTX file")
+    queued = connection.execute(
+        sa.text("SELECT count(*) FROM outbox WHERE event_type = 'submission.created.v1'")
+    ).scalar_one()
+    if queued:
+        raise RuntimeError(f"0024 downgrade: {queued} submission.created.v1 event(s) in outbox")
+    op.drop_constraint(op.f("ck_outbox_event_type"), "outbox", type_="check")
+    op.create_check_constraint(
+        op.f("ck_outbox_event_type"), "outbox", f"event_type IN ({OLD_EVENTS})"
+    )
     op.drop_constraint(op.f("ck_submission_file_keys_are_own_notes"), "submission", type_="check")
     for table in NOTE_TABLES:
         op.drop_constraint(op.f(f"ck_{table}_mime_known"), table, type_="check")

@@ -30,6 +30,9 @@ EVENTS_IN_ARCH = [
     "grade.requested.v1",
     "grade.completed.v1",
     "user.deleted.v1",
+    "submission.created.v1",
+    "submission.processed.v1",
+    "submission.failed.v1",
 ]
 
 # ADR-0013 and ADR-0006: an event carries identifiers and object keys, never what a person wrote,

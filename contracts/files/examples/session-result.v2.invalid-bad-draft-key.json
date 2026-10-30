@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "study_session_id": "5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f",
+  "drafts": [
+    {
+      "draft_key": "xyz",
+      "quote_hash": "f42729f5b7888515a209a5b5cfbe61bc5017a128825275c5cd9087bdc43c89e3",
+      "title": "Ty the",
+      "content": "Ty the la noi hop ho hap te bao.",
+      "kind": "concept",
+      "section_id": null,
+      "suggested_section_id": null,
+      "anchors": [
+        {
+          "source": "document",
+          "document_id": "11111111-1111-1111-1111-111111111111",
+          "page_no": 3,
+          "start": 0,
+          "end": 25,
+          "quote_text": "Mitochondria are the site"
+        }
+      ]
+    }
+  ],
+  "dropped": {
+    "anchors": 0,
+    "drafts": 0
+  },
+  "skipped": [
+    {
+      "kind": "note",
+      "ref": 1,
+      "reason": "needs_ocr"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ the submission's own file keys and the document types a submission may hold. The
 not the code, says no."""
 
 import uuid
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -20,13 +21,16 @@ def key(world: World, session_id: uuid.UUID, ext: str = "pdf", sha: str = SHA) -
     return f"users/{world.alice.id}/sessions/{session_id}/notes/{sha}.{ext}"
 
 
-def submit(world: World, keys: Any) -> Submission:
+Keys = Callable[[World, uuid.UUID], list[Any]]
+
+
+def submit(world: World, keys: Keys) -> Submission:
     study = make_study_session(world.session, world.alice, world.subject)
     row = Submission(
         user_id=world.alice.id,
         session_id=study.id,
         status="queued",
-        file_keys=keys(study.id) if callable(keys) else keys,
+        file_keys=keys(world, study.id),
     )
     world.session.add(row)
     world.session.flush()
@@ -37,27 +41,27 @@ def submit(world: World, keys: Any) -> Submission:
 
 
 def test_file_keys_of_the_session_are_accepted(world: World) -> None:
-    submit(world, lambda sid: [key(world, sid), key(world, sid, "docx", "cd" * 32)])
-    submit(world, [])
+    submit(world, lambda w, sid: [key(w, sid), key(w, sid, "docx", "cd" * 32)])
+    submit(world, lambda w, sid: [])
 
 
-@pytest.mark.parametrize(
-    "bad",
-    [
-        lambda w, sid: [f"users/{w.bob.id}/sessions/{sid}/notes/{SHA}.pdf"],
-        lambda w, sid: [f"users/{w.alice.id}/sessions/{uuid.uuid4()}/notes/{SHA}.pdf"],
-        lambda w, sid: [key(w, sid), f"users/{w.bob.id}/sessions/{sid}/notes/{SHA}.pdf"],
-        lambda w, sid: [f"users/{w.alice.id}/sessions/{sid}/notes/{SHA}.exe"],
-        lambda w, sid: [f"users/{w.alice.id}/sessions/{sid}/notes/short.pdf"],
-        lambda w, sid: [key(w, sid, sha=f"{i:064x}") for i in range(21)],
-        lambda w, sid: [key(w, sid), None],
-    ],
-    ids=["other_user", "other_session", "foreign_in_middle", "bad_ext", "bad_sha", "21", "null"],
-)
-def test_file_keys_check_rejects_foreign_or_odd_keys(world: World, bad: Any) -> None:
+BAD_KEYS: list[Keys] = [
+    lambda w, sid: [f"users/{w.bob.id}/sessions/{sid}/notes/{SHA}.pdf"],
+    lambda w, sid: [f"users/{w.alice.id}/sessions/{uuid.uuid4()}/notes/{SHA}.pdf"],
+    lambda w, sid: [key(w, sid), f"users/{w.bob.id}/sessions/{sid}/notes/{SHA}.pdf"],
+    lambda w, sid: [f"users/{w.alice.id}/sessions/{sid}/notes/{SHA}.exe"],
+    lambda w, sid: [f"users/{w.alice.id}/sessions/{sid}/notes/short.pdf"],
+    lambda w, sid: [key(w, sid, sha=f"{i:064x}") for i in range(21)],
+    lambda w, sid: [key(w, sid), None],
+]
+BAD_IDS = ["other_user", "other_session", "foreign_in_middle", "bad_ext", "bad_sha", "21", "null"]
+
+
+@pytest.mark.parametrize("bad", BAD_KEYS, ids=BAD_IDS)
+def test_file_keys_check_rejects_foreign_or_odd_keys(world: World, bad: Keys) -> None:
     # Red when: the file_keys CHECK is missing, or checks only the first element.
     with pytest.raises(IntegrityError):
-        submit(world, lambda sid: bad(world, sid))
+        submit(world, bad)
 
 
 # --- doc_section page positions ---------------------------------------------------------------

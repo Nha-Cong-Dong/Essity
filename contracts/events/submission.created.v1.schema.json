@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/submission.created.v1.schema.json",
+  "title": "submission.created.v1",
+  "description": "core → ai: a submission (the files the learner handed in for a study session) is stored and queued. The learner's words (description, resolved @mentions, existing units of the scope) are claim-checked in `context_key`, never in the event (ADR-0013).",
+  "$ref": "envelope.schema.json",
+  "unevaluatedProperties": false,
+  "properties": {
+    "event_type": {
+      "const": "submission.created.v1"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submission_id",
+        "study_session_id",
+        "subject_id",
+        "file_keys",
+        "context_key"
+      ],
+      "properties": {
+        "submission_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "study_session_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "subject_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "file_keys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "object_key",
+              "mime"
+            ],
+            "properties": {
+              "object_key": {
+                "$ref": "envelope.schema.json#/$defs/object_key"
+              },
+              "mime": {
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "application/pdf",
+                  "text/plain",
+                  "text/markdown",
+                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                  "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                ]
+              }
+            }
+          }
+        },
+        "context_key": {
+          "$ref": "envelope.schema.json#/$defs/object_key"
+        }
+      }
+    }
+  }
+}

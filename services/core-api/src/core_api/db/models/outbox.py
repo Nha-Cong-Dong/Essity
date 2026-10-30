@@ -27,7 +27,13 @@ from core_api.db.base import Base, one_of
 
 # Events core-api sends (core → ai, ARCHITECTURE §7.3). The others arrive on `events.ai`.
 OUTBOX_EVENT_TYPES = frozenset(
-    {"document.uploaded.v1", "session.confirmed.v1", "grade.requested.v1", "user.deleted.v1"}
+    {
+        "document.uploaded.v1",
+        "session.confirmed.v1",
+        "submission.created.v1",
+        "grade.requested.v1",
+        "user.deleted.v1",
+    }
 )
 
 

@@ -28,6 +28,7 @@ NOW = datetime(2026, 10, 28, 8, 30, tzinfo=UTC)
 CORE_TO_AI = {
     "document.uploaded.v1",
     "session.confirmed.v1",
+    "submission.created.v1",
     "grade.requested.v1",
     "user.deleted.v1",
 }
