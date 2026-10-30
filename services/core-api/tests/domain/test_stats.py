@@ -1,4 +1,5 @@
-"""T9.4a (US-10): per-subject statistics, pure. AC1 numbers, AC4 grid, AC5 work, AC6 no streak."""
+"""T9.4a (US-10): per-subject statistics, pure. US-10 AC1 numbers, AC4 grid, AC5 work, AC6.
+No streak (principle 4). Tests cite their AC code; the rest cite their rule source."""
 
 import dataclasses
 import uuid
@@ -36,7 +37,7 @@ def span(created: date, exam: date | None = None, subject: uuid.UUID = SUBJECT) 
     return SubjectSpan(subject, at(created), exam)
 
 
-def test_days_left_cases():  # AC1
+def test_days_left_cases():  # US-10 AC1
     today = date(2026, 11, 1)
     assert days_left(date(2026, 11, 11), today) == 10
     assert days_left(today, today) == 0
@@ -44,7 +45,7 @@ def test_days_left_cases():  # AC1
     assert days_left(None, today) is None
 
 
-def test_syllabus_percent_weight_and_unit():  # AC1
+def test_syllabus_percent_weight_and_unit():  # US-10 AC1
     p = syllabus_progress(
         [Leaf(10, "trang", True), Leaf(30, "trang", False), Leaf(20, "trang", True, excluded=True)]
     )
@@ -52,13 +53,13 @@ def test_syllabus_percent_weight_and_unit():  # AC1
     assert (p.studied_weight, p.total_weight, p.unit) == (10, 40, "trang")
 
 
-def test_syllabus_empty_and_all_excluded():
+def test_syllabus_empty_and_all_excluded():  # US-10 AC1 (empty and all-excluded edge)
     for leaves in ([], [Leaf(5, "trang", True, excluded=True)]):
         p = syllabus_progress(leaves)
         assert (p.leaves, p.percent, p.total_weight, p.unit) == (0, None, 0, None)
 
 
-def test_question_bank_counts_per_type():  # AC1
+def test_question_bank_counts_per_type():  # US-10 AC1
     bank = question_bank(
         [
             BankQuestion("mcq", True, True, 0.95, "correct"),
@@ -72,16 +73,16 @@ def test_question_bank_counts_per_type():  # AC1
     assert question_bank([]) == {}
 
 
-def test_retention_share():
+def test_retention_share():  # US-10 AC1 (retention, recall >= 0.9)
     assert retention([]) is None
     assert retention([0.95, 0.9, 0.89, 0.2]) == 0.5
 
 
-def test_bucket_thresholds():  # AC4
+def test_bucket_thresholds():  # US-10 AC4
     assert [level_for(n) for n in (0, 1, 3, 4, 9, 10, 19, 20, 500)] == [0, 1, 1, 2, 2, 3, 3, 4, 4]
 
 
-def test_grid_layout_across_month_and_year_boundary():
+def test_grid_layout_across_month_and_year_boundary():  # US-10 AC4 (week/weekday layout)
     start = date(2026, 12, 28)  # Monday
     cells = activity_grid([span(start, date(2027, 1, 5))], [], date(2026, 12, 30), UTC_TZ, 4)
     assert len(cells) == 9
@@ -92,13 +93,13 @@ def test_grid_layout_across_month_and_year_boundary():
     assert (nxt.day, nxt.column, nxt.row) == (date(2027, 1, 4), 1, 0)
 
 
-def test_grid_starts_mid_week_in_first_column():
+def test_grid_starts_mid_week_in_first_column():  # US-10 AC4 (columns = weeks, rows = weekdays)
     cells = activity_grid([span(date(2026, 10, 29))], [], date(2026, 11, 3), UTC_TZ, 4)
     assert (cells[0].column, cells[0].row) == (0, 3)  # Thursday
     assert (cells[4].day, cells[4].column, cells[4].row) == (date(2026, 11, 2), 1, 0)
 
 
-def test_grid_future_empty_and_exam_marker():  # AC6
+def test_grid_future_empty_and_exam_marker():  # US-10 AC6
     today = date(2026, 11, 2)
     events = [ActivityEvent(at(today), SUBJECT, cards_saved=30)]
     cells = activity_grid([span(date(2026, 11, 1), date(2026, 11, 5))], events, today, UTC_TZ, 4)
@@ -107,19 +108,19 @@ def test_grid_future_empty_and_exam_marker():  # AC6
     assert [c.exam_day for c in cells] == [False] * 4 + [True]
 
 
-def test_grid_without_exam_runs_to_today_no_marker():
+def test_grid_without_exam_runs_to_today_no_marker():  # US-10 AC4 + DESIGN 6.13 (no exam date)
     cells = activity_grid([span(date(2026, 11, 1))], [], date(2026, 11, 3), UTC_TZ, 4)
     assert len(cells) == 3 and not any(c.exam_day or c.future for c in cells)
 
 
-def test_grid_exam_passed_still_reaches_exam_day():
+def test_grid_exam_passed_still_reaches_exam_day():  # US-10 AC4 (exam passed)
     cells = activity_grid(
         [span(date(2026, 11, 1), date(2026, 11, 3))], [], date(2026, 11, 20), UTC_TZ, 4
     )
     assert cells[-1].day == date(2026, 11, 20)  # today is later than the exam
 
 
-def test_work_is_cards_plus_answers_with_detail():  # AC5
+def test_work_is_cards_plus_answers_with_detail():  # US-10 AC5
     day = date(2026, 11, 2)
     sec_a, sec_b = uuid.uuid4(), uuid.uuid4()
     events = [
@@ -133,7 +134,7 @@ def test_work_is_cards_plus_answers_with_detail():  # AC5
     assert set(cell.sections) == {sec_a, sec_b}
 
 
-def test_day_start_hour_boundary():
+def test_day_start_hour_boundary():  # ADR-0009 learning day (US-10 AC5 days)
     day = date(2026, 11, 2)
     events = [
         ActivityEvent(datetime(2026, 11, 3, 3, 59, tzinfo=UTC), SUBJECT, questions_answered=1),
@@ -143,7 +144,7 @@ def test_day_start_hour_boundary():
     assert [c.questions_answered for c in cells] == [1, 5]
 
 
-def test_filter_by_subject_and_all():
+def test_filter_by_subject_and_all():  # US-10 AC4 (filter by subject or all)
     day = date(2026, 11, 2)
     events = [
         ActivityEvent(at(day), SUBJECT, cards_saved=1),
@@ -157,20 +158,20 @@ def test_filter_by_subject_and_all():
     assert activity_grid(spans, events, day, UTC_TZ, 4, subject_id=uuid.uuid4()) == []
 
 
-def test_activity_before_creation_extends_start():
+def test_activity_before_creation_extends_start():  # US-10 AC4 (first activity before creation)
     day = date(2026, 11, 2)
     events = [ActivityEvent(at(day - timedelta(days=2)), SUBJECT, cards_saved=1)]
     cells = activity_grid([span(day)], events, day, UTC_TZ, 4)
     assert cells[0].day == day - timedelta(days=2)
 
 
-def test_empty_subject():
+def test_empty_subject():  # US-10 AC4/AC6 (empty day is a blank cell)
     day = date(2026, 11, 2)
     (cell,) = activity_grid([span(day)], [], day, UTC_TZ, 4)
     assert cell.level == 0 and cell.subjects == () and cell.work == 0
 
 
-def test_no_streak_anywhere():  # AC6, principle 4
+def test_no_streak_anywhere():  # US-10 AC6, principle 4 (no streak)
     names = [n.lower() for n in dir(stats)]
     for cls in (stats.GridCell, stats.SyllabusProgress, stats.TypeCounts, stats.ActivityEvent):
         names += [f.name.lower() for f in dataclasses.fields(cls)]
@@ -182,7 +183,9 @@ def test_no_streak_anywhere():  # AC6, principle 4
     length=st.integers(0, 400),
     counts=st.lists(st.integers(0, 50), max_size=10),
 )
-def test_grid_size_and_intensity_property(created: date, length: int, counts: list[int]):
+def test_grid_size_and_intensity_property(
+    created: date, length: int, counts: list[int]
+):  # US-10 AC4/AC5 (property)
     exam = created + timedelta(days=length)
     events = [
         ActivityEvent(at(created + timedelta(days=i % (length + 1))), SUBJECT, cards_saved=n)
