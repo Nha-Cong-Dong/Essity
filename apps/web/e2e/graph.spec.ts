@@ -2,6 +2,8 @@
 // Geometry and the main flow only: Cytoscape draws a real canvas here.
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
+import { settled } from "./ready";
+
 const WIDTHS = [320, 359, 360, 390, 768, 1440];
 const STATES = ["empty", "few", "many", "filtered", "selected", "long", "loading", "error"];
 
@@ -18,7 +20,7 @@ const inside = (inner: Box, outer: Box) =>
 async function open(page: Page, width: number, path: string) {
   await page.setViewportSize({ width, height: 900 });
   expect((await page.goto(path))?.status()).toBe(200);
-  await page.evaluate(() => document.fonts.ready);
+  await settled(page);
 }
 const noSideScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
