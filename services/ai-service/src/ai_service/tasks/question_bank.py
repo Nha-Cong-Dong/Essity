@@ -32,7 +32,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError
 
-from ai_service.domain.anchor_check import normalize_with_map, unescape_quote
+from ai_service.domain.anchor_check import Span, normalize_with_map, unescape_quote
 from ai_service.llm.quota import QuotaExceededError
 from ai_service.pdf import PageText
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
@@ -76,6 +76,12 @@ _STYLES: tuple[re.Pattern[str], ...] = (
 # answer key after question 10 is not a question.
 _MAX_SKIP = 3
 _ANSWER = re.compile(r"^\s*(?:đáp\s*án|answer|trả\s*lời|lời\s*giải)\s*[:.)\-]\s*(.*)$", re.I)
+
+
+# A heading alone on its line that starts the answers or an appendix.
+_SECTION_BREAK = re.compile(
+    r"^\s*(?:đáp\s*án|answer\s*key|answers|lời\s*giải|phụ\s*lục|appendix)\s*:?\s*$", re.I
+)
 
 
 @dataclass(frozen=True)
@@ -258,18 +264,29 @@ def _single_line(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _find(text: str, quote: str) -> str | None:
-    """The span of `text` that equals `quote` after NFC and whitespace folding, as written in
-    the source; None when absent. The model copies what it was shown, so `& < >` come back
-    escaped and are undone first."""
+def _span(
+    text: str, quote: str, *, start: int = 0, min_chars: int = _MIN_MATCH_CHARS
+) -> Span | None:
+    """The span of `text` (offsets into the original, at or after `start`) that equals `quote`
+    after NFC and whitespace folding; None when absent. The model copies what it was shown, so
+    `& < >` come back escaped and are undone first. A match shorter than `_MIN_MATCH_CHARS`
+    must stand alone as a word."""
     needle = normalize_with_map(unescape_quote(quote))[0].strip()
-    if len(needle) < _MIN_MATCH_CHARS or "\x00" in needle:
+    if len(needle) < min_chars or "\x00" in needle:
         return None
     haystack, spans = normalize_with_map(text)
-    at = haystack.find(needle)
-    if at < 0:
-        return None
-    return text[spans[at][0] : spans[at + len(needle) - 1][1]]
+    at = haystack.find(
+        needle, next((k for k, (a, _) in enumerate(spans) if a >= start), len(haystack))
+    )
+    while at >= 0:
+        end = at + len(needle)
+        alone = (at == 0 or not haystack[at - 1].isalnum()) and (
+            end == len(haystack) or not haystack[end].isalnum()
+        )
+        if len(needle) >= _MIN_MATCH_CHARS or alone:
+            return spans[at][0], spans[end - 1][1]
+        at = haystack.find(needle, at + 1)
+    return None
 
 
 # ---- split_bank ------------------------------------------------------------------------------
@@ -298,14 +315,24 @@ def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason
     lines: list[_Line] = [
         (p, line) for p, page in enumerate(pages) for line in page.text.splitlines()
     ]
-    best = max((_markers(lines, style) for style in _STYLES), key=len)
-    if len(best) < 2:
+    # An answer key or appendix heading ends the questions: its own numbering ("1. B 2. C")
+    # must not count as questions or swallow the last one. Tried first, so a title that happens
+    # to read "Đáp án" before any question changes nothing.
+    cut = next((n for n, (_, line) in enumerate(lines) if _SECTION_BREAK.match(line)), None)
+    best: list[_Marker] = []
+    for candidate in ([lines[:cut]] if cut else []) + [lines]:
+        best = max((_markers(candidate, style) for style in _STYLES), key=len)
+        if len(best) >= 2:
+            lines = candidate
+            break
+    else:
         return [], [], len(pages)
     questions: list[Question] = []
     reasons: list[Reason] = []
     for k, (start, number, rest) in enumerate(best):
         end = best[k + 1][0] if k + 1 < len(best) else len(lines)
         body = [rest, *(line for _, line in lines[start + 1 : end])]
+        last = k + 1 == len(best)
         prompt_lines: list[str] = []
         answer_lines: list[str] | None = None
         for line in body:
@@ -319,6 +346,9 @@ def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason
         prompt = "\n".join(s for line in prompt_lines if (s := line.strip()))
         answer = "\n".join(s for line in answer_lines or [] if (s := line.strip())) or None
         page = lines[start][0]
+        if last and (len(prompt) > MAX_TEXT_CHARS or len(answer or "") > MAX_TEXT_CHARS):
+            prompt, answer = prompt[:MAX_TEXT_CHARS], (answer or "")[:MAX_TEXT_CHARS] or None
+            reasons.append(Reason("tail_capped", f"page_{page + 1}"))
         if not prompt:
             reasons.append(Reason("empty_prompt", f"page_{page + 1}"))
         elif len(prompt) > MAX_TEXT_CHARS or len(answer or "") > MAX_TEXT_CHARS:
@@ -347,18 +377,25 @@ def _llm_split(
         for item in parsed.questions:
             index = batch.get(item.page)
             if index is None:
-                reasons.append(Reason("unknown_page", item.page))
+                reasons.append(Reason("unknown_page"))
                 continue
             source = pages[index].text[:MAX_PAGE_CHARS]
-            prompt_text = _find(source, item.prompt)
-            if prompt_text is None:
+            where = _span(source, item.prompt)
+            if where is None:
                 reasons.append(Reason("prompt_not_in_source", f"page_{index + 1}"))
                 continue
             answer_text = None
-            if item.answer is not None:
-                answer_text = _find(source, item.answer)
+            if item.answer is not None and item.answer.strip():
+                # After the question, on its page or the pages that follow in this batch, so a
+                # one-word answer ("Sai", "B") is still the bank's.
+                later = [pages[i].text[:MAX_PAGE_CHARS] for i in batch.values() if i > index]
+                for text, start in [(source, where[1]), *((t, 0) for t in later)]:
+                    if (hit := _span(text, item.answer, start=start, min_chars=1)) is not None:
+                        answer_text = text[hit[0] : hit[1]]
+                        break
                 if answer_text is None:
                     reasons.append(Reason("answer_not_in_source", f"page_{index + 1}"))
+            prompt_text = source[where[0] : where[1]]
             found.append(
                 Question(0, prompt_text, answer_text, index + 1, prompt_text[:MAX_QUOTE_CHARS])
             )
@@ -423,14 +460,14 @@ def suggest_types(questions: Sequence[Question], existing: Sequence[str], ask: A
         for item in parsed.types:
             name = known.get(_single_line(item.name).casefold()) or _single_line(item.name)
             if name not in types and len(types) >= MAX_TYPES:
-                reasons.append(Reason("type_cap", name))
+                reasons.append(Reason("type_cap", f"{len(item.questions)}"))
                 continue
             for label in item.questions:
                 question = by_label.get(label)
                 if question is None:
-                    reasons.append(Reason("unknown_label", label))
+                    reasons.append(Reason("unknown_label"))
                 elif question.ord in assignment:
-                    reasons.append(Reason("duplicate_assignment", label))
+                    reasons.append(Reason("duplicate_assignment"))
                 else:
                     assignment[question.ord] = name
                     if name not in types:
@@ -476,16 +513,16 @@ def map_sections(
         for item in parsed.mappings:
             question = by_label.get(item.question)
             if question is None:
-                reasons.append(Reason("unknown_label", item.question))
+                reasons.append(Reason("unknown_label"))
                 continue
             if question.ord in mapping:
-                reasons.append(Reason("duplicate_assignment", item.question))
+                reasons.append(Reason("duplicate_assignment"))
                 continue
             picked: list[str] = []
             for label in item.sections:
                 section_id = ids.get(label)
                 if section_id is None:
-                    reasons.append(Reason("invented_label", label))
+                    reasons.append(Reason("invented_label"))
                 elif section_id not in picked:
                     picked.append(section_id)
             if picked:
