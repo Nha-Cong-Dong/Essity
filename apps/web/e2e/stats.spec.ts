@@ -13,6 +13,9 @@ const FORBIDDEN =
 type Box = { x: number; y: number; width: number; height: number };
 
 async function box(locator: Locator): Promise<Box> {
+  // The grid and the day panel mount after hydration; on a slow CI runner the first paint has none
+  // of them yet, so wait for the element instead of reading its box at once.
+  await locator.waitFor({ state: "visible" });
   const found = await locator.boundingBox();
   if (found === null) throw new Error("no box");
   return found;
