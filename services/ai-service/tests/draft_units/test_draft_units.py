@@ -200,3 +200,10 @@ def test_core_does_not_import_the_llm_client() -> None:
     import ai_service.tasks.draft_units as module
 
     assert not hasattr(module, "LlmClient")
+
+
+def test_same_document_twice_in_scope_is_refused() -> None:
+    req = request()
+    dup = req.model_copy(update={"scope": [req.scope[0], req.scope[0]]})
+    with pytest.raises(ChunkInputError):
+        draft_units(dup, FakeAsk(output()))

@@ -31,7 +31,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from ai_service.domain.anchor_check import normalize_with_map
 from ai_service.llm.quota import QuotaExceededError, QuotaUnavailableError
@@ -42,7 +42,12 @@ from ai_service.tasks.chunk_models import (
     NewUnit,
     PageInput,
 )
-from ai_service.tasks.chunk_units import ChunkInvalidError, ChunkPrompt, chunk_units
+from ai_service.tasks.chunk_units import (
+    ChunkInputError,
+    ChunkInvalidError,
+    ChunkPrompt,
+    chunk_units,
+)
 from ai_service.tasks.grade import wrap_untrusted
 
 TASK = "draft_units"
@@ -63,7 +68,7 @@ class _Strict(BaseModel):
 
 
 class ScopedPage(_Strict):
-    page_no: int
+    page_no: Annotated[int, Field(ge=1)]
     text: Annotated[str, AfterValidator(_no_nul)]
     section_id: uuid.UUID | None = None
 
@@ -170,7 +175,10 @@ def _to_draft(
 
 
 def draft_units(request: DraftRequest, ask: Callable[[ChunkPrompt], str]) -> DraftOutcome:
-    """Drafts for the declared scope. Raises only `ChunkInputError` (over-size, duplicate page)."""
+    """Drafts for the declared scope. Raises only `ChunkInputError` (size, duplicate page or doc)."""
+    ids = [doc.document_id for doc in request.scope]
+    if len(set(ids)) != len(ids):
+        raise ChunkInputError("duplicate_document")
     if not _has_text(request):
         return DraftOutcome("ok", [], [], "empty_input")
     description = (request.description or "").strip()[:MAX_DESCRIPTION_CHARS]
