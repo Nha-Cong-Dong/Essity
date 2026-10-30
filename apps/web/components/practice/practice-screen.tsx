@@ -103,7 +103,9 @@ function CandidateReview({
   const firstOpen = items.find((c) => !decided[c.id])?.id;
   return (
     <Sheet variant="sunken" className="mt-4" data-candidates>
-      <h3 className="m-0 text-read font-semibold wrap-anywhere">{title}</h3>
+      <h3 className="m-0 text-read font-semibold wrap-anywhere">
+        Câu sinh thêm cho: <span data-user>{title}</span>
+      </h3>
       {items.length === 0 ? (
         <p className="m-0 mt-3">Chưa có câu sinh thêm nào đủ tốt. Thử lại sau khi học thêm thẻ.</p>
       ) : (
@@ -112,12 +114,12 @@ function CandidateReview({
           <ul className="m-0 mt-4 flex list-none flex-col gap-4 p-0">
             {items.map((c) => (
               <li key={c.id} className="flex flex-col gap-2 rounded-control bg-sheet p-4">
-                <p id={`cand-${c.id}`} className="m-0 wrap-anywhere">
+                <p id={`cand-${c.id}`} data-user className="m-0 wrap-anywhere">
                   {c.text}
                 </p>
                 <p className="m-0 text-meta text-ink-soft wrap-anywhere">
-                  {c.kind} ·{" "}
-                  <a href="#" className="underline">
+                  <span data-user>{c.kind}</span> ·{" "}
+                  <a href="#" data-user className="underline">
                     {c.cardLabel}
                   </a>
                 </p>
@@ -178,7 +180,7 @@ function QuestionRow({
         )}
         {q.status === "unlinked" && <span className="text-meta text-ink-soft">Chưa gắn mục · Câu {q.number}</span>}
       </div>
-      <p id={`sum-${q.id}`} className="m-0 wrap-anywhere">
+      <p id={`sum-${q.id}`} data-user className="m-0 wrap-anywhere">
         {q.summary}
       </p>
       {q.answerSource === "ai" && <Pen>đáp án do AI soạn</Pen>}
@@ -223,7 +225,7 @@ function RemovedRow({ q, onUndo }: { q: PracticeQuestion; onUndo: () => void }) 
       <Button variant="quiet" data-focus={`undo-${q.id}`} aria-describedby={`sum-${q.id}`} onClick={onUndo}>
         {COPY.undo}
       </Button>
-      <span id={`sum-${q.id}`} className="sr-only">
+      <span id={`sum-${q.id}`} data-user className="sr-only">
         {q.summary}
       </span>
     </li>
@@ -303,7 +305,10 @@ export function PracticeScreen({
     if (state === "error") alertRef.current?.focus();
   }, [state]);
   useEffect(() => {
-    if (focus) root.current?.querySelector<HTMLElement>(`[data-focus="${focus}"]`)?.focus();
+    if (!focus) return;
+    const find = (key: string) => root.current?.querySelector<HTMLElement>(`[data-focus="${key}"]`);
+    // A waiting or unlinked row has no "Làm câu này": focus falls back to its "Gỡ khỏi luyện tập".
+    (find(focus) ?? find(focus.replace(/^do-/, "rm-")))?.focus();
   }, [focus, removed]);
   useEffect(() => {
     if (!pendingSection) return;
@@ -461,7 +466,7 @@ export function PracticeScreen({
                   key={s.id}
                   className="flex flex-col gap-2 border-t border-line pt-3 first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <span id={`sec-${s.id}`} className="wrap-anywhere">
+                  <span id={`sec-${s.id}`} data-user className="wrap-anywhere">
                     {s.label}
                   </span>
                   <Button
@@ -483,7 +488,7 @@ export function PracticeScreen({
           )}
           {sectionGen && (
             <CandidateReview
-              title={`Câu sinh thêm cho: ${sections.find((s) => s.id === sectionGen)?.label ?? ""}`}
+              title={sections.find((s) => s.id === sectionGen)?.label ?? ""}
               items={CANDIDATES}
               decided={decided}
               primaryOn
@@ -525,7 +530,7 @@ export function PracticeScreen({
                 data-focus={`group-${g.id}`}
                 className="m-0 text-read font-semibold wrap-anywhere"
               >
-                {g.name} {g.suggested && <Pen>gợi ý</Pen>}
+                <span data-user>{g.name}</span> {g.suggested && <Pen>gợi ý</Pen>}
               </h2>
               <p className="m-0 mt-1 text-meta text-ink-soft">{masteryText(g.mastery)}</p>
               {showTiming && <p className="m-0 text-meta text-ink-soft">{timingLine(g.timing)}</p>}
@@ -547,7 +552,7 @@ export function PracticeScreen({
               </ul>
               {genFor === g.id && (
                 <CandidateReview
-                  title={`Câu sinh thêm cho: ${g.name}`}
+                  title={g.name}
                   items={items}
                   decided={decided}
                   primaryOn

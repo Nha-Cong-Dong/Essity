@@ -11,15 +11,26 @@ afterEach(cleanup);
 const PRIMARY = "[data-variant='primary']";
 // DESIGN §4. Only the words the app itself writes are scanned: a type name or a question is the
 // user's own text (a type may be called "tính toán độ trễ").
-const FORBIDDEN = /streak|chuỗi|xếp hạng|ranking|\btrễ\b|kém|lười|bỏ lỡ|thất bại/i;
+// JS \b is ASCII-only ("ễ" is not a word character), so the edges are Unicode lookarounds.
+const FORBIDDEN = /(?<!\p{L})(streak|chuỗi|xếp hạng|ranking|trễ|kém|lười|bỏ lỡ|thất bại)(?!\p{L})/iu;
 
 function appCopy(container: HTMLElement): string {
   const clone = container.cloneNode(true) as HTMLElement;
-  clone.querySelectorAll("h2, [data-candidates] h3, [data-question] > p, [data-candidates] li > p, [data-removed] .sr-only").forEach((el) => el.remove());
+  clone.querySelectorAll("[data-user]").forEach((el) => el.remove());
   return clone.textContent ?? "";
 }
 
 const group = (container: HTMLElement, id: string) => container.querySelector(`[data-question=${id}]`) as HTMLElement;
+
+describe("banned words", () => {
+  // Red when: the pattern stops matching Vietnamese words (it once did: \b never matched "trễ").
+  it.each(["đã trễ", "Chuỗi ngày", "xếp hạng", "bạn kém", "thất bại"])("%s is caught", (text) => {
+    expect(text).toMatch(FORBIDDEN);
+  });
+  it("does not fire inside a longer word", () => {
+    expect("trễnải").not.toMatch(FORBIDDEN);
+  });
+});
 
 describe("every state", () => {
   // US-16 (DESIGN §6.12). Red when: a state has two primaries, or a busy state has none.
@@ -85,6 +96,14 @@ describe("remove and undo", () => {
     fireEvent.click(undo);
     expect(group(container, "q12")).toBeTruthy();
     expect((document.activeElement as HTMLElement).textContent).toBe("Làm câu này");
+  });
+
+  // Red when: undo on a waiting row drops focus to the page.
+  it("AC3: undo on a waiting row puts focus on its Gỡ khỏi luyện tập", () => {
+    const { container } = render(<PracticeScreen state="home" />);
+    fireEvent.click(within(group(container, "q9")).getByText("Gỡ khỏi luyện tập"));
+    fireEvent.click(screen.getByRole("button", { name: "Hoàn tác" }));
+    expect(document.activeElement).toBe(within(group(container, "q9")).getByText("Gỡ khỏi luyện tập"));
   });
 
   it("AC3: removing another row closes the earlier 'Đã gỡ' line", () => {

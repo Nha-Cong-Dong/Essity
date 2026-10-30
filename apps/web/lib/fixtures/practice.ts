@@ -124,7 +124,7 @@ export const RESULT: Result = {
     { unit_id: "0b8f1d2e-0000-4000-8000-0000000000c2", title: "Kiểm soát luồng", verdict: "partial" },
     { unit_id: "0b8f1d2e-0000-4000-8000-0000000000c3", title: "Ảnh hưởng tới video trực tiếp", verdict: "incorrect" },
   ],
-  reference_answer: "TCP đảm bảo thứ tự và độ tin cậy nhưng thêm độ trễ; UDP nhanh hơn, hợp với video trực tiếp.",
+  reference_answer: "TCP đảm bảo thứ tự và độ tin cậy nhưng thêm thời gian chờ; UDP nhanh hơn, hợp với video trực tiếp.",
   sources: [],
   practice: true,
 };
