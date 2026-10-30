@@ -69,6 +69,8 @@ export function DraftCard(props: DraftCardProps) {
   function finishEdit() {
     setEditing(false);
     setSaved(true);
+    // The field is about to go: keep the keyboard user on the card.
+    requestAnimationFrame(() => document.getElementById(`${id}-edit`)?.focus());
   }
 
   function openSplit() {
@@ -142,6 +144,7 @@ export function DraftCard(props: DraftCardProps) {
       ) : (
         <button
           type="button"
+          id={`${id}-edit`}
           onClick={() => {
             setEditing(true);
             setSaved(false);
@@ -235,6 +238,7 @@ export function DraftCard(props: DraftCardProps) {
                     { id: newId(), title: `${draft.title} (tiếp)`, summary: parts[1] },
                   ],
                 });
+                setMode("idle");
                 say("Đã tách thành hai thẻ");
               }}
             >

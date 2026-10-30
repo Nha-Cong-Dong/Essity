@@ -130,7 +130,7 @@ export function MentionBox({ value, mentions, docs, onChange, say, rejectedDoc, 
           placeholder={PLACEHOLDER}
           role="combobox"
           aria-expanded={open}
-          aria-controls={listId}
+          aria-controls={open ? listId : undefined}
           aria-autocomplete="list"
           aria-haspopup="listbox"
           aria-activedescendant={open && options.length > 0 ? `${id}-opt-${index}` : undefined}
