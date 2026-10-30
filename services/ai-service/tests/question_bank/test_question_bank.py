@@ -475,3 +475,38 @@ def test_ac1_a_true_appendix_is_still_cut_after_per_question_headings() -> None:
     result = split_bank(_pages(text), FakeAsk())
     assert [q.prompt for q in result.questions] == ["TCP là gì?", "UDP là gì?"]
     assert result.questions[0].answer_text == "giao vận"
+
+
+def test_ac1_numbered_options_before_an_answer_heading_are_not_questions() -> None:
+    """US-14 AC1: the numbering style is the document's, not what precedes one heading."""
+    text = (
+        "Câu 1. Chọn ý đúng về TCP:\n1. Tin cậy\n2. Không kết nối\n3. Nhanh\nLời giải:\nTin cậy\n"
+        "Câu 2. UDP là gì?\nCâu 3. DNS là gì?\nCâu 4. ARP là gì?"
+    )
+    result = split_bank(_pages(text), FakeAsk())
+    assert [q.ord for q in result.questions] == [1, 2, 3, 4]
+    assert result.questions[0].answer_text == "Tin cậy"
+
+
+_BASE = [
+    "Câu 1. TCP là gì?",
+    "Đáp án: giao vận",
+    "Câu 2. Chọn ý đúng:",
+    "1. Tin cậy",
+    "2. Nhanh",
+    "Câu 3. UDP là gì?",
+    "Câu 4. DNS là gì?",
+]
+
+
+@pytest.mark.parametrize("heading", ["Đáp án", "Lời giải:", "Answer key", "Phụ lục"])
+@pytest.mark.parametrize("at", range(len(_BASE) + 1))
+def test_ac1_a_standalone_heading_never_drops_questions_before_it(heading: str, at: int) -> None:
+    """US-14 AC1 (property): inserting an answer heading anywhere keeps every question before it,
+    and none after it unless the heading was the end of the bank."""
+    lines = [*_BASE[:at], heading, *_BASE[at:]]
+    before = sum(1 for line in _BASE[:at] if line.startswith("Câu"))
+    result = split_bank(_pages("\n".join(lines)), FakeAsk())
+    assert len(result.questions) >= before
+    assert [q.ord for q in result.questions][:before] == list(range(1, before + 1))
+    assert len(result.questions) == 4 or len(result.questions) == before

@@ -318,17 +318,24 @@ def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason
     full = [_markers(lines, style) for style in _STYLES]
     best = max(full, key=len)
     # An answer key or appendix heading ends the questions: its own numbering ("1. B 2. C")
-    # must not count as questions or swallow the last one. A heading is a cut only when the
-    # numbering of the questions does not go on after it ("Lời giải:" alone on a line is one
-    # question's answer); the first such heading wins.
+    # must not count as questions or swallow the last one. The style is the document's (`best`)
+    # and a heading is a cut only when that numbering does not go on after it ("Lời giải:"
+    # alone on a line is one question's answer). The exception: all of `best` lies after the
+    # heading (an answer key longer than the bank), then the style that fills the part before
+    # it and stops there is the bank's. The first such heading wins.
     for n, (_, line) in enumerate(lines):
         if not _SECTION_BREAK.match(line):
             continue
-        before = [[m for m in found if m[0] < n] for found in full]
-        top = max(range(len(full)), key=lambda i: len(before[i]))
-        if len(before[top]) >= 2 and len(before[top]) == len(full[top]):
-            lines, best = lines[:n], before[top]
+        before = [m for m in best if m[0] < n]
+        if len(before) >= 2 and len(before) == len(best):
+            lines, best = lines[:n], before
             break
+        if not before:
+            ends = [[m for m in found if m[0] < n] for found in full]
+            own = [e for e, found in zip(ends, full, strict=True) if len(e) >= 2 and e == found]
+            if own:
+                lines, best = lines[:n], max(own, key=len)
+                break
     if len(best) < 2:
         return [], [], len(pages)
     questions: list[Question] = []
