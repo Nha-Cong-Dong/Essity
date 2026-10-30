@@ -44,6 +44,12 @@ const SCREENS = [
   { path: "/design-preview/practice" },
   { path: "/design-preview/stats" },
   { path: "/design-preview/syllabus" },
+  { path: "/design-preview/graph" },
+  ...["empty", "many", "filtered", "selected", "long", "loading", "error"].map((state) => ({
+    path: `/design-preview/graph?state=${state}`,
+    expectUrl: "/design-preview/graph",
+  })),
+  { path: "/design-preview/graph?state=few&view=list", expectUrl: "/design-preview/graph" },
   { path: "/design-preview/command-bar" },
   // One screen per state (T9.3a): the page differs per ?state=.
   { path: "/design-preview/command-bar?state=understanding", expectUrl: "/design-preview/command-bar" },
