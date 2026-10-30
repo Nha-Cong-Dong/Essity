@@ -123,7 +123,7 @@ export function statsFixture(state: StatsState): StatsData {
       return {
         today: TODAY,
         subjects,
-        events: subjects.flatMap((s, i) => eventsFor(s, s.createdOn, TODAY, 5, i)),
+        events: subjects.slice(0, 5).flatMap((s, i) => eventsFor(s, s.createdOn, TODAY, 5, i)),
       };
     }
     case "full-year": {

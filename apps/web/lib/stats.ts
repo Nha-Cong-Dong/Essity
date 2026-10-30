@@ -104,3 +104,32 @@ export function monthLabels(cells: GridCell[]): { column: number; label: string 
   }
   return labels;
 }
+
+const WEEKDAYS = ["Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy", "Chủ nhật"];
+
+/** "Thứ tư, 28/10". */
+export function dayLabel(day: string): string {
+  const [, month, date] = day.split("-").map(Number);
+  return `${WEEKDAYS[weekday(toMs(day))]}, ${date}/${month}`;
+}
+
+/** What a screen reader hears on a cell. An empty day is a plain fact, never a lack. */
+export function cellLabel(cell: GridCell, today: string): string {
+  const lead = cell.day === today ? `Hôm nay, ${dayLabel(cell.day)}` : dayLabel(cell.day);
+  if (cell.future) return `${lead}: ${cell.examDay ? "ngày thi, " : ""}chưa tới ngày này`;
+  if (cell.cardsSaved + cell.questionsAnswered === 0) {
+    return `${lead}: ${cell.examDay ? "ngày thi" : "không có ghi nhận"}`;
+  }
+  return `${lead}: ${cell.cardsSaved} thẻ đã lưu, ${cell.questionsAnswered} câu đã làm`;
+}
+
+/** The thresholds behind the four tints, read from LEVEL_FLOORS so the legend cannot drift. */
+export function levelLegend(): string {
+  return `${LEVEL_FLOORS.join(" · ")} việc mỗi ngày trở lên`;
+}
+
+/** Up to five section names, then a count of the rest. */
+export function sectionsText(sections: string[]): string {
+  if (sections.length <= 5) return sections.join(", ");
+  return `${sections.slice(0, 5).join(", ")} và ${sections.length - 5} mục khác`;
+}

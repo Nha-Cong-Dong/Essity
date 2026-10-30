@@ -220,6 +220,10 @@
   --rose-200: #f4ccdc;
   --rose-300: #eaafc7;
   --rose-700: #8e1e50;
+  --grid-1: color-mix(in srgb, var(--hong) 60%, transparent); /* activity grid levels 1-4 (T9.5a): level 1 reaches 3:1 on --sheet */
+  --grid-2: color-mix(in srgb, var(--hong) 75%, transparent);
+  --grid-3: color-mix(in srgb, var(--hong) 88%, transparent);
+  --grid-4: color-mix(in srgb, var(--hong) 100%, transparent);
   --hong-glow: radial-gradient(120% 110% at 0% 0%, #b3265f 0%, #a8255f 45%, #8e1e50 100%);
   --on-surface-hong: var(--on-hong); /* text on the pink tile */
   --focus-on-hong: var(--on-hong);
@@ -271,6 +275,10 @@
     --rose-200: #3a2432;
     --rose-300: #5a3a4a;
     --rose-700: #e77faf;
+    --grid-1: color-mix(in srgb, var(--hong) 55%, transparent); /* activity grid levels 1-4, dark */
+    --grid-2: color-mix(in srgb, var(--hong) 72%, transparent);
+    --grid-3: color-mix(in srgb, var(--hong) 86%, transparent);
+    --grid-4: color-mix(in srgb, var(--hong) 100%, transparent);
     --hong-glow: radial-gradient(120% 110% at 0% 0%, #4a2a3c 0%, #3a2432 50%, #2c1d27 100%);
     --on-surface-hong: var(--ink);
     --focus-on-hong: var(--hong);
@@ -324,6 +332,10 @@
   --rose-200: #3a2432;
   --rose-300: #5a3a4a;
   --rose-700: #e77faf;
+  --grid-1: color-mix(in srgb, var(--hong) 55%, transparent); /* activity grid levels 1-4, dark */
+  --grid-2: color-mix(in srgb, var(--hong) 72%, transparent);
+  --grid-3: color-mix(in srgb, var(--hong) 86%, transparent);
+  --grid-4: color-mix(in srgb, var(--hong) 100%, transparent);
   --hong-glow: radial-gradient(120% 110% at 0% 0%, #4a2a3c 0%, #3a2432 50%, #2c1d27 100%);
   --on-surface-hong: var(--ink);
   --focus-on-hong: var(--hong);

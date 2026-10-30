@@ -116,3 +116,34 @@ describe("copy helpers", () => {
     ]);
   });
 });
+
+import { cellLabel, dayLabel, levelLegend, sectionsText } from "@/lib/stats";
+
+describe("day copy", () => {
+  const cells = buildGrid([span("a", "2026-10-26", "2026-11-04")], [ev("2026-10-28", "a", 12, 8, ["Mục 1.1"])], "2026-10-30");
+  const at = (day: string) => cells.find((c) => c.day === day)!;
+
+  it("dayLabel names the weekday and the day/month", () => {
+    expect(dayLabel("2026-10-28")).toBe("Thứ tư, 28/10");
+    expect(dayLabel("2026-11-01")).toBe("Chủ nhật, 1/11");
+  });
+
+  // US-10 AC4, AC6. Red when: an empty day reads as a failure, or the numbers drop out of the label.
+  it("AC4: cell labels carry the numbers; empty and future days are neutral", () => {
+    expect(cellLabel(at("2026-10-28"), "2026-10-30")).toBe("Thứ tư, 28/10: 12 thẻ đã lưu, 8 câu đã làm");
+    expect(cellLabel(at("2026-10-27"), "2026-10-30")).toBe("Thứ ba, 27/10: không có ghi nhận");
+    expect(cellLabel(at("2026-10-30"), "2026-10-30")).toMatch(/^Hôm nay, /);
+    expect(cellLabel(at("2026-11-02"), "2026-10-30")).toBe("Thứ hai, 2/11: chưa tới ngày này");
+    expect(cellLabel(at("2026-11-04"), "2026-10-30")).toBe("Thứ tư, 4/11: ngày thi, chưa tới ngày này");
+  });
+
+  // US-10 AC5 §6.13. Red when: the legend invents thresholds instead of reading LEVEL_FLOORS.
+  it("the legend prints the thresholds from LEVEL_FLOORS", () => {
+    expect(levelLegend()).toBe("1 · 4 · 10 · 20 việc mỗi ngày trở lên");
+  });
+
+  it("sectionsText lists at most five and counts the rest", () => {
+    expect(sectionsText(["a", "b"])).toBe("a, b");
+    expect(sectionsText(["a", "b", "c", "d", "e", "f", "g"])).toBe("a, b, c, d, e và 2 mục khác");
+  });
+});
