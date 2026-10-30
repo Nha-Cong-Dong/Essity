@@ -125,6 +125,23 @@ def test_downgrade_removes_the_new_tables_and_upgrade_brings_them_back(
     assert set(NEW_TABLES) <= tables(engine)
 
 
+def test_downgrade_makes_run_id_required_again(engine: Engine, alembic_cfg: Config) -> None:
+    # Red when (tester): the downgrade leaves question.run_id nullable, so 0022 code reading
+    # `run_id` as always set meets NULLs written after a later re-upgrade.
+    try:
+        command.downgrade(alembic_cfg, "0022")
+        with engine.connect() as connection:
+            nullable = connection.execute(
+                text(
+                    "SELECT is_nullable FROM information_schema.columns"
+                    " WHERE table_name = 'question' AND column_name = 'run_id'"
+                )
+            ).scalar_one()
+        assert nullable == "NO"
+    finally:
+        command.upgrade(alembic_cfg, "head")
+
+
 def test_downgrade_restores_the_old_status_check(engine: Engine, alembic_cfg: Config) -> None:
     try:
         command.downgrade(alembic_cfg, "0022")
@@ -140,16 +157,18 @@ def test_downgrade_restores_the_old_status_check(engine: Engine, alembic_cfg: Co
         command.upgrade(alembic_cfg, "head")
 
 
-@pytest.mark.parametrize("kind", ["draft unit", "question without run"])
+@pytest.mark.parametrize("kind", ["draft unit", "canonical unit", "question without run"])
 def test_downgrade_refuses_when_it_would_lose_data(
     engine: Engine, alembic_cfg: Config, kind: str
 ) -> None:
     # Red when: the downgrade deletes rows or turns drafts into 'active' to get its way (F5).
     user = seed_old_rows(engine)
     with engine.begin() as connection:
-        if kind == "draft unit":
+        if kind.endswith("unit"):
+            # Red when (canonical, tester): the guard checks only one of the two new statuses.
             connection.execute(
-                text("UPDATE knowledge_unit SET status = 'draft' WHERE user_id = :u"), {"u": user}
+                text("UPDATE knowledge_unit SET status = :st WHERE user_id = :u"),
+                {"u": user, "st": kind.split()[0]},
             )
         else:
             connection.execute(
