@@ -2,8 +2,8 @@
 
 Choices for what the spec leaves open (us-03 §9 #2–#5, plan `t2.6-t2.7-replay-today.md`):
 
-- Every question takes `MINUTES_PER_QUESTION`; at MVP every question is "nhận biết" (T5.2 adds
-  the ladder), so the 20-question cap and the 30-minute cap meet.
+- Every question takes `MINUTES_PER_QUESTION`; at MVP every question is "nhận biết" (levels 2 and 3
+  are practice outside today, T5.R), so the 20-question cap and the 30-minute cap meet.
 - Risk = probability of recall now, times a weight that falls from 1 to `NEAR_EXAM_WEIGHT` over
   the `EXAM_WINDOW_DAYS` before the exam: a close exam makes its units count as riskier.
 - Nobody starves (Q5): each subject with a due unit gets its riskiest one in first; the rest of
@@ -32,6 +32,7 @@ from core_api.domain.scheduling.exam_constraint import EXAM_WINDOW_DAYS
 from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler, MemoryState
 
 MAX_QUESTIONS = 20
+RECALL_LEVEL = 1  # only level-1 (recognise) questions are in today and FSRS (T5.R)
 MAX_MINUTES = 30
 MINUTES_PER_QUESTION = 1.5
 NEAR_EXAM_WEIGHT = 0.5
