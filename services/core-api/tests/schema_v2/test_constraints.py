@@ -74,6 +74,17 @@ def test_one_textbook_per_subject(world: World) -> None:
         second_doc(world, role="textbook")
 
 
+@pytest.mark.parametrize("status", ["rejected", "failed"])
+def test_dead_textbook_does_not_block_a_new_one(world: World, status: str) -> None:
+    # Red when: a refused or failed file keeps the textbook place of its subject (review F7).
+    extra: dict[str, Any] = (
+        {"failure_reason": "unreadable", "uploaded_at": NOW} if status == "failed" else {}
+    )
+    dead = doc(world, role="textbook", status=status, **extra)
+    assert dead.role == "textbook"
+    second_doc(world, role="textbook")
+
+
 def test_other_subject_may_have_a_textbook(world: World) -> None:
     doc(world, role="textbook")
     make_document(world.session, world.alice, world.other_subject, role="textbook")

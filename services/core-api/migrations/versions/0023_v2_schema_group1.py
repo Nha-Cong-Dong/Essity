@@ -327,7 +327,7 @@ def upgrade() -> None:
         "document",
         ["subject_id"],
         unique=True,
-        postgresql_where=sa.text("role = 'textbook'"),
+        postgresql_where=sa.text("role = 'textbook' AND status NOT IN ('rejected', 'failed')"),
     )
     op.add_column(
         "knowledge_unit", sa.Column("version", sa.Integer(), server_default="1", nullable=False)
@@ -370,6 +370,8 @@ def downgrade() -> None:
     Refuses, and changes nothing, while a row only the v2 schema can hold is left: a draft or
     canonical unit (the old check has neither) or a question without a run. Nothing is deleted or
     turned into something else to make the downgrade go through.
+    Other v2 data (doc_section, unit_revision,
+    submission, document.role, question.answer_text and the rest) is dropped silently: dev only.
     """
     bind = op.get_bind()
     if bind.execute(
@@ -422,7 +424,7 @@ def downgrade() -> None:
     op.drop_index(
         "uq_document_textbook_per_subject",
         table_name="document",
-        postgresql_where=sa.text("role = 'textbook'"),
+        postgresql_where=sa.text("role = 'textbook' AND status NOT IN ('rejected', 'failed')"),
     )
     op.drop_constraint(op.f("uq_document_id_subject_id_user_id"), "document", type_="unique")
     op.drop_column("document", "format")

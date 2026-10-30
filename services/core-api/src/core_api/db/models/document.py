@@ -58,7 +58,7 @@ class Document(UserOwned, Base):
             "uq_document_textbook_per_subject",
             "subject_id",
             unique=True,
-            postgresql_where=text("role = 'textbook'"),
+            postgresql_where=text("role = 'textbook' AND status NOT IN ('rejected', 'failed')"),
         ),
         # What the cleanup job reads: uploads never confirmed, or refused, by age.
         Index(

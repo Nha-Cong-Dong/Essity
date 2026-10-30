@@ -1,4 +1,5 @@
-"""T7.1: the new tables of user data are isolated by user (T1.3 helper) and go with their user."""
+"""T7.1 (ADR-0008 user isolation, T1.3 helper; spec v2 §16.2; no AC): the new tables of user
+data are isolated by user and go with their user."""
 
 from typing import Any
 
@@ -22,6 +23,7 @@ from v2_rows import (
     make_question,
     make_section,
     make_study_session,
+    make_type,
     make_unit,
 )
 
@@ -77,3 +79,22 @@ def test_deleting_the_user_removes_the_rows(world: World, model: type[Any]) -> N
         {"id": world.alice.id},
     ).scalar_one()
     assert count == 0
+
+
+@pytest.mark.parametrize("parent", ["user", "subject"])
+def test_deleting_user_or_subject_cascades_through_typed_questions(
+    world: World, parent: str
+) -> None:
+    # Red when: question.type_id is switched to RESTRICT: the type and its questions then block
+    # the delete of their own subject or user.
+    kind = make_type(world.session, world.alice, world.subject)
+    make_question(world.session, world.alice, world.subject, type_id=kind.id)
+    table, key = (
+        ("subject", world.subject.id) if parent == "subject" else ('"user"', world.alice.id)
+    )
+    world.session.execute(text(f"DELETE FROM {table} WHERE id = :id"), {"id": key})
+    for name in ("question", "question_type"):
+        left = world.session.execute(
+            text(f"SELECT count(*) FROM {name} WHERE subject_id = :s"), {"s": world.subject.id}
+        ).scalar_one()
+        assert left == 0

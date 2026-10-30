@@ -1,5 +1,6 @@
-"""T7.1, migration 0023: old rows read as the spec says after the upgrade, and the downgrade puts
-the old shape back (or refuses, never deleting data)."""
+"""T7.1, migration 0023 (ADR-0008, additions only; spec v2 §16.2; no user story, so no AC):
+old rows read as the spec says after the upgrade, and the downgrade puts the old shape back
+(or refuses, never deleting data)."""
 
 import uuid
 
@@ -7,7 +8,6 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, text
-from sqlalchemy.exc import DBAPIError
 
 RUN = uuid.uuid4()
 NEW_TABLES = (
@@ -157,7 +157,7 @@ def test_downgrade_refuses_when_it_would_lose_data(
                 {"u": user},
             )
     try:
-        with pytest.raises((DBAPIError, RuntimeError)):
+        with pytest.raises(RuntimeError, match="0023 downgrade"):
             command.downgrade(alembic_cfg, "0022")
         with engine.connect() as connection:
             assert (
