@@ -20,6 +20,8 @@ dependencies = [
     "pillow>=12.3.0",
     "redis>=8.1",
     "boto3>=1.43.120",
+    "python-docx>=1.2.0",
+    "python-pptx>=1.0.2",
 ]
 
 [dependency-groups]
