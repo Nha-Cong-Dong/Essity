@@ -42,6 +42,7 @@ const SCREENS = [
   { path: "/design-preview/review" },
   { path: "/design-preview/session" },
   { path: "/design-preview/practice" },
+  { path: "/design-preview/stats" },
 ];
 
 // Pages behind a session: without core-api they redirect to /login, so a screen check says nothing.
