@@ -44,6 +44,22 @@ const SCREENS = [
   { path: "/design-preview/practice" },
   { path: "/design-preview/stats" },
   { path: "/design-preview/syllabus" },
+  { path: "/design-preview/command-bar" },
+  // One screen per state (T9.3a): the page differs per ?state=.
+  { path: "/design-preview/command-bar?state=understanding", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=done", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=many", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=unclear", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=not-allowed", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=too-long", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=pending-ai", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=pending-ai-practice", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=error", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=error-unsure", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=undone", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=undone-previous", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=undo-failed", expectUrl: "/design-preview/command-bar" },
+  { path: "/design-preview/command-bar?state=long", expectUrl: "/design-preview/command-bar" },
 ];
 
 // Pages behind a session: without core-api they redirect to /login, so a screen check says nothing.
@@ -198,7 +214,7 @@ async function main() {
           scrollWidth: document.documentElement.scrollWidth,
           clientWidth: document.documentElement.clientWidth,
         }));
-        const name = screen.path === "/" ? "root" : screen.path.slice(1).replaceAll("/", "_");
+        const name = screen.path === "/" ? "root" : screen.path.slice(1).replaceAll(/[^\w.-]/g, "_");
         const shot = `${name}-${width}.png`;
         await page.screenshot({ path: path.join(OUT, shot), fullPage: true });
         const verdict = checkResult({
