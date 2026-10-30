@@ -92,8 +92,8 @@ for (const width of WIDTHS) {
 // Red when: cells touch each other (WCAG 2.5.8 spacing) with a mouse, or are not square.
 test("US-10 AC4: mouse cells are 16 px with 6 px between them", async ({ page }) => {
   await open(page, 1440, "/design-preview/stats?state=full-year");
-  const a = await box(page.locator("[data-day=2026-10-26]"));
-  const b = await box(page.locator("[data-day=2026-10-27]"));
+  const a = await box(page.locator('[data-day="2026-10-26"]'));
+  const b = await box(page.locator('[data-day="2026-10-27"]'));
   expect(a.width).toBeCloseTo(16, 0);
   expect(a.height).toBeCloseTo(16, 0);
   expect(b.y - (a.y + a.height)).toBeCloseTo(6, 0);
@@ -101,7 +101,7 @@ test("US-10 AC4: mouse cells are 16 px with 6 px between them", async ({ page })
 
 test("US-10 AC4: tapping a day pins it and the panel names it", async ({ page }) => {
   await open(page, 390, "/design-preview/stats?state=full-year");
-  await page.locator("[data-day=2026-10-27]").click();
+  await page.locator('[data-day="2026-10-27"]').click();
   await expect(page.locator("[data-day-detail]")).toContainText("Thứ ba, 27/10");
   await page.getByRole("button", { name: "Ngày sau" }).click();
   await expect(page.locator("[data-day-detail]")).toContainText("Thứ tư, 28/10");

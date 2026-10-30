@@ -5,10 +5,13 @@
  * 20px with a 4px gap, and the day buttons in the detail panel are the 44px way in.
  */
 
-.scroll {
+.root {
   --cell: 16px;
   --gap: 6px;
   --label-w: 32px;
+}
+
+.scroll {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   min-width: 0;
@@ -18,7 +21,7 @@
 }
 
 @media (pointer: coarse) {
-  .scroll {
+  .root {
     --cell: 20px;
     --gap: 4px;
   }

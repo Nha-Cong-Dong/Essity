@@ -63,7 +63,8 @@ export function ActivityGrid({
     for (const m of monthLabels(cells)) {
       if (kept.length > 0 && m.column - kept[kept.length - 1].column < MIN_LABEL_GAP) continue;
       const first = cells.find((c) => c.column === m.column);
-      const year = m.label === "Th1" && first ? ` ${first.day.slice(0, 4)}` : "";
+      // A year only where January starts a later year; the first label would run under the weekday column.
+      const year = m.label === "Th1" && first && kept.length > 0 ? ` ${first.day.slice(0, 4)}` : "";
       kept.push({ column: m.column, text: m.label + year });
     }
     return new Map(kept.map((k) => [k.column, k.text]));
@@ -126,7 +127,7 @@ export function ActivityGrid({
   const range = `${dayLabel(cells[0].day)} tới ${dayLabel(cells[cells.length - 1].day)}`;
 
   return (
-    <div data-activity-grid>
+    <div data-activity-grid className={styles.root}>
       <div ref={scroller} className={styles.scroll}>
         <div className={styles.grid} role="grid" aria-label={`Hoạt động theo ngày, ${range}`}>
           <div className={styles.row} aria-hidden="true">
