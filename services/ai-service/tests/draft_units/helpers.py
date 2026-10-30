@@ -37,14 +37,14 @@ def request(
                 document_id=DOC1,
                 name="Sinh hoc",
                 pages=[
-                    ScopedPage(page_no=i, text=t, section_id=SEC1)
+                    ScopedPage(page_no=i, text=t, section_ids=[SEC1])
                     for i, t in enumerate(texts, start=3)
                 ],
             ),
             ScopedDoc(
                 document_id=DOC2,
                 name="Bai giang",
-                pages=[ScopedPage(page_no=7, text=B1, section_id=SEC2)],
+                pages=[ScopedPage(page_no=7, text=B1, section_ids=[SEC2])],
             ),
         ],
         submission_text=notes,

@@ -70,7 +70,8 @@ class _Strict(BaseModel):
 class ScopedPage(_Strict):
     page_no: Annotated[int, Field(ge=1)]
     text: Annotated[str, AfterValidator(_no_nul)]
-    section_id: uuid.UUID | None = None
+    # A section can start mid-page, so a page may belong to several.
+    section_ids: list[uuid.UUID] = []
 
 
 class ScopedDoc(_Strict):
@@ -157,14 +158,13 @@ def _has_text(request: DraftRequest) -> bool:
 
 
 def _to_draft(
-    session_id: uuid.UUID, unit: NewUnit, sections: dict[tuple[uuid.UUID, int], uuid.UUID]
+    session_id: uuid.UUID, unit: NewUnit, sections: dict[tuple[uuid.UUID, int], list[uuid.UUID]]
 ) -> Draft:
     anchors = [DraftAnchor(a.document_id, a.page_no, a.quote_text) for a in unit.anchors]
     section_ids: list[uuid.UUID] = []
     for a in unit.anchors:
-        section = sections.get((a.document_id, a.page_no)) if a.document_id and a.page_no else None
-        if section is not None and section not in section_ids:
-            section_ids.append(section)
+        found = sections.get((a.document_id, a.page_no), []) if a.document_id and a.page_no else []
+        section_ids.extend(s for s in found if s not in section_ids)
     return Draft(
         draft_key=_draft_key(session_id, anchors),
         title=unit.title,
@@ -202,10 +202,7 @@ def draft_units(request: DraftRequest, ask: Callable[[ChunkPrompt], str]) -> Dra
         return DraftOutcome("ok", [], [], "malformed_output")
 
     sections = {
-        (doc.document_id, p.page_no): p.section_id
-        for doc in request.scope
-        for p in doc.pages
-        if p.section_id is not None
+        (doc.document_id, p.page_no): p.section_ids for doc in request.scope for p in doc.pages
     }
     drafts: dict[str, Draft] = {}
     for unit in result.new_units:

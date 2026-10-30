@@ -52,14 +52,14 @@ def _two_docs_same_text() -> DraftRequest:
                 document_id=DOC1,
                 name="A",
                 pages=[
-                    ScopedPage(page_no=3, text=SAME, section_id=SEC1),
-                    ScopedPage(page_no=4, text=SAME, section_id=SEC1),
+                    ScopedPage(page_no=3, text=SAME, section_ids=[SEC1]),
+                    ScopedPage(page_no=4, text=SAME, section_ids=[SEC1]),
                 ],
             ),
             ScopedDoc(
                 document_id=DOC2,
                 name="B",
-                pages=[ScopedPage(page_no=3, text=SAME, section_id=SEC2)],
+                pages=[ScopedPage(page_no=3, text=SAME, section_ids=[SEC2])],
             ),
         ],
     )
