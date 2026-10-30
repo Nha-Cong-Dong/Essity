@@ -1,8 +1,8 @@
-// T2.14 (ADR-0025): /today's busiest state at four widths, on /design-preview/today. Geometry
+// T2.14 (ADR-0025): /today's busiest state at four widths, on /design-preview/today-v1 (the screen /today draws now). Geometry
 // only, as in layout.spec.ts: nothing spills, nothing overlaps, the page never scrolls sideways.
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
-const PAGE = "/design-preview/today";
+const PAGE = "/design-preview/today-v1";
 const WIDTHS = [320, 390, 768, 1440];
 
 type Box = { x: number; y: number; width: number; height: number };
