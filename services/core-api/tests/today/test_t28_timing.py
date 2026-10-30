@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import event, insert
+from sqlalchemy import event, insert, text
 from sqlalchemy.orm import Session
 
 from accounts import signed_in
@@ -35,6 +35,16 @@ from core_api.repositories.review import MemoryStateRepository
 pytestmark = pytest.mark.timing
 
 RUN = uuid.uuid4()
+
+
+def analyze(session: Session) -> None:
+    """Fresh bulk rows have no statistics; without this the planner picks a per-row NOT IN scan."""
+    session.execute(
+        text(
+            "ANALYZE memory_state, knowledge_unit, question, question_unit,"
+            " review_log, attempt, grade, grade_unit"
+        )
+    )
 
 
 def bulk_subject(
@@ -123,6 +133,7 @@ def bulk_subject(
             ],
         )
     session.flush()
+    analyze(session)
     return subject_id, unit_ids, question_ids
 
 
@@ -216,6 +227,7 @@ def test_t26_rebuild_one_subject_real_size_under_5s(db_session: Session) -> None
     ]:
         db_session.execute(insert(model), rows)
     db_session.flush()
+    analyze(db_session)
     states = MemoryStateRepository(db_session, user.id)
     others_before = {u: states.state(u) for u in other_units}
 
