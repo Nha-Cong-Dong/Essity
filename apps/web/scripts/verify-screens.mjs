@@ -37,6 +37,8 @@ const SCREENS = [
   { path: "/design-preview" },
   { path: "/design-preview/subjects" },
   { path: "/design-preview/today" },
+  { path: "/design-preview/today-v1" },
+  { path: "/design-preview/subject" },
   { path: "/design-preview/review" },
 ];
 
