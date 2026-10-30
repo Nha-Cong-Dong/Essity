@@ -2,6 +2,8 @@
 // The busiest states carry one unbroken long subject name and 53 weeks of columns.
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
+import { settled } from "./ready";
+
 const WIDTHS = [320, 359, 360, 390, 768, 1440];
 const STATES = ["empty", "few-days", "full-year", "many-subjects", "no-exam", "no-bank", "loading", "error"];
 // Unicode-safe: \b never matches "trễ" (the T8.7a lesson).
@@ -22,7 +24,7 @@ const inside = (inner: Box, outer: Box) =>
 async function open(page: Page, width: number, path: string) {
   await page.setViewportSize({ width, height: 900 });
   expect((await page.goto(path))?.status()).toBe(200);
-  await page.evaluate(() => document.fonts.ready);
+  await settled(page);
 }
 
 const noSideScroll = (page: Page) =>

@@ -2,6 +2,8 @@
 // widths. Geometry and colour only. `long-titles` has an unbroken word, `deep` six levels.
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
+import { settled } from "./ready";
+
 const WIDTHS = [320, 390, 768, 1440];
 const STATES = [
   "ready", "provisional", "provisional-scan", "extracting", "empty-no-main", "flat-pptx", "editing", "range-error",
@@ -22,7 +24,7 @@ const inside = (inner: Box, outer: Box) => inner.x >= outer.x - 0.5 && inner.x +
 async function open(page: Page, width: number, path: string) {
   await page.setViewportSize({ width, height: 900 });
   expect((await page.goto(path))?.status()).toBe(200);
-  await page.evaluate(() => document.fonts.ready);
+  await settled(page);
 }
 
 const noSideScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);

@@ -2,6 +2,8 @@
 // only, as in layout.spec.ts: nothing spills, nothing overlaps, the page never scrolls sideways.
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
+import { settled } from "./ready";
+
 const PAGE = "/design-preview/today-v1";
 const WIDTHS = [320, 390, 768, 1440];
 
@@ -25,7 +27,7 @@ const overlap = (a: Box, b: Box) =>
 async function open(page: Page, width: number) {
   await page.setViewportSize({ width, height: 900 });
   expect((await page.goto(PAGE))?.status()).toBe(200);
-  await page.evaluate(() => document.fonts.ready);
+  await settled(page);
 }
 
 for (const width of WIDTHS) {

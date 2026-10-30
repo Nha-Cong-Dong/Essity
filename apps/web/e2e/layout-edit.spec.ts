@@ -2,13 +2,15 @@
 // and the delete confirmation open, at the narrow widths. Geometry only, as in layout.spec.ts.
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
+import { settled } from "./ready";
+
 const PAGE = "/design-preview/subjects";
 const WIDTHS = [320, 390];
 
 async function open(page: Page, width: number) {
   await page.setViewportSize({ width, height: 900 });
   expect((await page.goto(PAGE))?.status()).toBe(200);
-  await page.evaluate(() => document.fonts.ready);
+  await settled(page);
 }
 
 const noPageScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);

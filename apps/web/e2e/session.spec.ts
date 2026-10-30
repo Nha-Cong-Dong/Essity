@@ -3,6 +3,8 @@
 // in today.spec.ts: nothing spills, nothing overlaps, the page never scrolls sideways.
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
+import { settled } from "./ready";
+
 const PAGE = "/design-preview/session";
 const WIDTHS = [320, 390, 768, 1440];
 const STATES = [
@@ -38,7 +40,7 @@ const inside = (inner: Box, outer: Box) =>
 async function open(page: Page, width: number, state?: string, longName = true) {
   await page.setViewportSize({ width, height: 900 });
   expect((await page.goto(PAGE))?.status()).toBe(200);
-  await page.evaluate(() => document.fonts.ready);
+  await settled(page);
   if (longName) await page.getByLabel("Tên môn dài").check();
   if (state) await page.getByRole("button", { name: state, exact: true }).click();
 }
