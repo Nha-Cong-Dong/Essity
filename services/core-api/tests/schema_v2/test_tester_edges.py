@@ -203,13 +203,14 @@ def test_unicode_blank_titles_refused(world: World, table: str, blank: str) -> N
             make_type(s, a, world.subject, name=blank)
 
 
-def test_section_weight_nan_refused(world: World) -> None:
+@pytest.mark.parametrize("bad", [float("nan"), float("inf")])
+def test_section_weight_must_be_finite(world: World, bad: float) -> None:
     # Red when: weight is checked only with `weight >= 0`: Postgres orders NaN above every
     # number, so NaN passes and poisons every progress sum over the outline (spec v2 §16.2,
     # weight in `unit`s, >= 0).
     s, a = world.session, world.alice
     with pytest.raises(IntegrityError):
-        make_section(s, a, make_document(s, a, world.subject), weight=float("nan"))
+        make_section(s, a, make_document(s, a, world.subject), weight=bad)
 
 
 # --- one textbook per subject, and only the textbook is one per subject -----------------------

@@ -153,7 +153,7 @@ class DocSection(UserOwned, Base):
         Index(None, "document_id", "parent_id", "ord"),
         CheckConstraint("parent_id IS NULL OR parent_id <> id", name="not_its_own_parent"),
         CheckConstraint("ord >= 0", name="ord_not_negative"),
-        CheckConstraint("weight >= 0", name="weight_not_negative"),
+        CheckConstraint("weight >= 0 AND weight < 'Infinity'", name="weight_not_negative"),
         CheckConstraint(not_blank("title"), name="title_not_blank"),
         CheckConstraint(one_of("unit", SECTION_UNITS), name="unit_known"),
         CheckConstraint(one_of("source", SECTION_SOURCES), name="source_known"),
