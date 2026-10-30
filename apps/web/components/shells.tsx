@@ -50,11 +50,14 @@ export function FocusShell({
   position,
   total,
   exit,
+  title,
   children,
 }: {
   position: number;
   total: number;
   exit: ReactNode;
+  /** Left of the exit when there is no progress to show: the study session names its subject. */
+  title?: ReactNode;
   children: ReactNode;
 }) {
   const percent = total > 0 ? Math.round((position / total) * 100) : 0;
@@ -79,6 +82,7 @@ export function FocusShell({
               </div>
             </>
           )}
+          {title ? <div className="min-w-0 truncate text-meta text-ink-soft">{title}</div> : null}
           <div className="ml-auto text-meta whitespace-nowrap text-ink-soft">{exit}</div>
         </div>
       </header>
