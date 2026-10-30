@@ -4,10 +4,10 @@ import { describe, expect, it } from "vitest";
 import { BANNED_WORDS, hasBannedWord, nextDueLabel, paceLine, primaryAction, type TodayV2 } from "@/lib/today-v2";
 
 describe("paceLine", () => {
-  it("full line", () => {
+  it("US-15 AC5: full line", () => {
     expect(paceLine({ sections_left: 12, pages_left: 86, days_left: 20 })).toBe("còn 12 mục (86 trang), 20 ngày");
   });
-  it("one day, exam today, no date, no pages", () => {
+  it("US-15 AC5: one day, exam today, no date, no pages", () => {
     expect(paceLine({ sections_left: 3, pages_left: 20, days_left: 1 })).toBe("còn 3 mục (20 trang), 1 ngày");
     expect(paceLine({ sections_left: 3, pages_left: 20, days_left: 0 })).toBe("còn 3 mục (20 trang), thi hôm nay");
     expect(paceLine({ sections_left: 3, pages_left: 20, days_left: null })).toBe("còn 3 mục (20 trang)");
@@ -22,7 +22,7 @@ describe("paceLine", () => {
 });
 
 describe("hasBannedWord", () => {
-  it("catches whole words only", () => {
+  it("US-15 AC5: catches whole words only", () => {
     for (const word of BANNED_WORDS) expect(hasBannedWord(`Bạn ${word} học`)).toBe(true);
     expect(hasBannedWord("Cần thơ")).toBe(true);
     expect(hasBannedWord("Hôm nay nên học")).toBe(false);
@@ -32,7 +32,7 @@ describe("hasBannedWord", () => {
 });
 
 describe("nextDueLabel", () => {
-  it("builds the sentence from the real date", () => {
+  it("US-03 AC1: builds the sentence from the real date", () => {
     expect(nextDueLabel("2026-10-22")).toBe("Lần tới đến hạn: thứ Năm, 22/10");
   });
 });
@@ -63,7 +63,7 @@ describe("primaryAction", () => {
   } as const;
   const rows = [{ subject_id: "x", name: "A", ready: 5, kinds: 2 }];
 
-  it("follows the priority of DESIGN §6.2", () => {
+  it("US-03 AC1, US-15 AC1: follows the priority of DESIGN §6.2", () => {
     const resume = { kind: "review", session_id: "s", position: 7, total: 14 } as const;
     expect(primaryAction({ ...EMPTY, unfinished: [resume], review: due })).toBe("unfinished");
     expect(primaryAction({ ...EMPTY, review: due })).toBe("review");
@@ -72,7 +72,7 @@ describe("primaryAction", () => {
     expect(primaryAction(EMPTY)).toBeNull();
     expect(primaryAction({ ...EMPTY, subject_count: 0 })).toBe("create");
   });
-  it("a review already in progress is not a second entry", () => {
+  it("US-03 AC1: a review already in progress is not a second entry", () => {
     expect(primaryAction({ ...EMPTY, review: { ...due, in_progress: true } })).toBeNull();
   });
 });

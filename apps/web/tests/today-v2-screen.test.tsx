@@ -24,32 +24,32 @@ describe("Hôm nay v2 states", () => {
     "no-subjects": 1,
   };
   for (const [name, count] of Object.entries(expected)) {
-    it(`${name}: ${count} primary button`, () => {
+    it(`US-03 AC1, US-15 AC1: ${name}: ${count} primary button`, () => {
       expect(primaries(draw(TODAY_STATES[name]))).toBe(count);
     });
   }
 
   // US-15 AC5. Red when: any drawn sentence uses phải, cần, kịp or trễ.
-  it("no state uses a banned word", () => {
+  it("US-15 AC5: no state uses a banned word", () => {
     for (const [name, today] of Object.entries(TODAY_STATES)) {
       expect(hasBannedWord(text(draw(today))), name).toBe(false);
     }
   });
 
-  it("busy: the review session is only in Việc dở, with its own Tiếp tục", () => {
+  it("US-03 AC1: busy: the review session is only in Việc dở, with its own Tiếp tục", () => {
     const markup = draw(TODAY_STATES.busy);
     expect(markup).toContain("Phiên ôn đang dở · câu 7/14");
     expect(markup.match(/\/review\//g)).toHaveLength(1);
     expect(markup).not.toContain(">Bắt đầu<");
   });
 
-  it("repeated buttons name their subject", () => {
+  it("US-15 AC1: repeated buttons name their subject", () => {
     const markup = draw(TODAY_STATES.busy);
     expect(markup).toContain('aria-label="Vào buổi học · Mạng máy tính"');
     expect(markup).toContain('aria-label="Mở luyện tập · Mạng máy tính"');
   });
 
-  it("a subject without a textbook keeps its own block while another is suggested", () => {
+  it("US-15 AC7: a subject without a textbook keeps its own block while another is suggested", () => {
     const markup = draw(TODAY_STATES.learn);
     expect(markup).toContain("chưa có giáo trình chính");
     expect(markup).toContain("Tải giáo trình");
@@ -57,7 +57,7 @@ describe("Hôm nay v2 states", () => {
     expect(markup).toContain("Lần tới đến hạn: thứ Hai, 02/11");
   });
 
-  it("empty reasons keep a way on (AC11)", () => {
+  it("US-15 AC11: empty reasons keep a way on", () => {
     for (const reason of ["Các môn đã thi xong.", "Chưa có giáo trình để gợi ý."]) {
       const markup = draw(reason.startsWith("Các") ? TODAY_STATES["none-exams"] : TODAY_STATES["none-textbook"]);
       expect(markup).toContain(reason);
@@ -65,7 +65,7 @@ describe("Hôm nay v2 states", () => {
     }
   });
 
-  it("Luyện tập is hidden without a question bank", () => {
+  it("US-03 AC1: Luyện tập is hidden without a question bank", () => {
     expect(draw(TODAY_STATES["none-exams"])).not.toContain("Luyện tập");
     expect(draw(TODAY_STATES.learn)).toContain("Chưa có câu sẵn sàng.");
   });
@@ -83,14 +83,14 @@ describe("subject suggestion block", () => {
     reading: 0,
   };
   for (const [name, count] of Object.entries(primaryCount)) {
-    it(`${name}: ${count} primary, no banned word`, () => {
+    it(`US-15 AC5, AC6: ${name}: ${count} primary, no banned word`, () => {
       const markup = draw1(name);
       expect(primaries(markup)).toBe(count);
       expect(hasBannedWord(text(markup))).toBe(false);
     });
   }
 
-  it("suggested: nên học, pace line, Ôn riêng môn này secondary, Học tự do quiet", () => {
+  it("US-15 AC6, US-03 AC7: suggested: nên học, pace line, Ôn riêng môn này secondary, Học tự do quiet", () => {
     const markup = draw1("suggested");
     expect(markup).toContain("Hôm nay nên học: mục 3.2");
     expect(markup).toContain("còn 12 mục (86 trang), 20 ngày");
@@ -98,19 +98,19 @@ describe("subject suggestion block", () => {
     expect(markup).toMatch(/data-variant="quiet"[^>]*>Học tự do/);
   });
 
-  it("not suggested: only the secondary Gợi ý cho hôm nay, no excuse text", () => {
+  it("US-15 AC6: not suggested: only the secondary Gợi ý cho hôm nay, no excuse text", () => {
     const markup = draw1("not-suggested");
     expect(markup).toMatch(/data-variant="secondary"[^>]*>Gợi ý cho hôm nay/);
     expect(markup).not.toContain("không phải ngày");
   });
 
-  it("no textbook: Học tự do is the primary and not repeated in the footer", () => {
+  it("US-15 AC7: no textbook: Học tự do is the primary and not repeated in the footer", () => {
     const markup = draw1("no-textbook");
     expect(markup.match(/Học tự do/g)).toHaveLength(1);
     expect(markup).toContain("Tải giáo trình");
   });
 
-  it("exam over: no suggestion, links to Ôn riêng and Luyện tập", () => {
+  it("US-15 AC3, AC7: exam over: no suggestion, links to Ôn riêng and Luyện tập", () => {
     const markup = draw1("exam-over");
     expect(markup).not.toContain("Hôm nay nên học");
     expect(markup).toContain("Ôn riêng môn này");
