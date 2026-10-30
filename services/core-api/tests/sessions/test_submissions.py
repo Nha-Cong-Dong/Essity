@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from accounts import signed_in
 from clock import FROZEN_NOW
+from core_api.clients.storage import StorageUnavailableError
 from core_api.config import get_settings
 from core_api.db.models import (
     DocSection,
@@ -458,9 +459,19 @@ def test_pages_use_labels_whatever_the_spacing(
 
 
 @pytest.mark.usefixtures("enabled")
-def test_labels_unreadable_is_503_not_a_guess(client: TestClient, world: World) -> None:
+def test_labels_unreadable_is_503_not_a_guess(
+    client: TestClient, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Only the labels file fails to read: the files are all there (review R1-T).
     files = [world.pdf()]
-    world.storage.down = True
+    real = world.storage.read_start
+
+    def read_start(key: str, length: int) -> bytes:
+        if key.endswith("page_labels.json"):
+            raise StorageUnavailableError("down (test)")
+        return real(key, length)
+
+    monkeypatch.setattr(world.storage, "read_start", read_start)
     response = submit(client, world, description="@Mạng máy tính tr. 5", files=files)
     assert response.status_code == 503
     nothing_written(world)
