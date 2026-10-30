@@ -175,7 +175,7 @@ def _to_draft(
 
 
 def draft_units(request: DraftRequest, ask: Callable[[ChunkPrompt], str]) -> DraftOutcome:
-    """Drafts for the declared scope. Raises only `ChunkInputError` (size, duplicate page or doc)."""
+    """Drafts for the declared scope. Raises only `ChunkInputError` (size, duplicate page, doc)."""
     ids = [doc.document_id for doc in request.scope]
     if len(set(ids)) != len(ids):
         raise ChunkInputError("duplicate_document")
