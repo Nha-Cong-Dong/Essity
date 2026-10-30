@@ -306,7 +306,7 @@ export function UploadScreen({ state }: { state: UploadState }) {
       )}
       {uploading > 0 && (
         <p id="uploading-note" className="m-0 mt-3 text-small text-ink-soft">
-          Còn {uploading} file đang tải, vẫn tải tiếp ở nền.
+          Còn {uploading} file đang tải. File đang tải sẽ dừng nếu bạn rời trang.
         </p>
       )}
       {files.length === 0 && (

@@ -217,16 +217,18 @@ function Panel({
               {name}
             </Button>
             {leaf ? (
-              <Button
-                variant="quiet"
-                className={WRAP}
-                onClick={() =>
-                  act(applyMark(nodes, node.id, !markedDone), markedDone ? "Đã đánh dấu chưa học." : "Đã đánh dấu đã học.")
-                }
-              >
-                {markedDone ? "Đánh dấu chưa học" : "Đánh dấu đã học"}
-                {name}
-              </Button>
+              !node.excluded && (
+                <Button
+                  variant="quiet"
+                  className={WRAP}
+                  onClick={() =>
+                    act(applyMark(nodes, node.id, !markedDone), markedDone ? "Đã đánh dấu chưa học." : "Đã đánh dấu đã học.")
+                  }
+                >
+                  {markedDone ? "Đánh dấu chưa học" : "Đánh dấu đã học"}
+                  {name}
+                </Button>
+              )
             ) : (
               <>
                 {counts.toStudied > 0 && (
@@ -478,6 +480,13 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
             if (e.target === e.currentTarget) setActive(node.id);
           }}
           onKeyDown={(e) => onKeyDown(e, row)}
+          // A screen reader's double tap sends the click to the focused treeitem itself, not to the
+          // row inside it. Clicks from the row, the panel or its buttons have another target.
+          onClick={(e) => {
+            if (e.target !== e.currentTarget) return;
+            if (branch) fold(node.id, !isOpen);
+            else openPanel(node.id);
+          }}
           data-node={node.id}
           data-status={status}
           className="list-none outline-none"

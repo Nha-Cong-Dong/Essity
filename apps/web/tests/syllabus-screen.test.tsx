@@ -240,6 +240,31 @@ describe("tree keyboard", () => {
   });
 });
 
+describe("screen reader click on the treeitem (US-13 AC4)", () => {
+  // Red when: the click handler sits only on the inner row: TalkBack/VoiceOver double tap clicks the li.
+  it("a click on a branch li folds it; on a leaf li opens its panel; a click inside the panel does not re-fire", () => {
+    const { container } = render(<SyllabusScreen state="ready" />);
+    const four = item(container, "4");
+    fireEvent.click(four);
+    expect(four.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(four);
+    expect(four.getAttribute("aria-expanded")).toBe("false");
+    const leaf = item(container, "2.3");
+    fireEvent.click(leaf);
+    expect(container.querySelector("[data-panel='2.3']")).not.toBeNull();
+    fireEvent.click(container.querySelector("[data-panel='2.3']")!);
+    expect(container.querySelector("[data-panel='2.3']")).not.toBeNull();
+  });
+  // Red when: a leaf dropped from the exam still offers to be marked studied.
+  it("an excluded leaf has no mark button", () => {
+    const { container } = render(<SyllabusScreen state="ready" />);
+    fireEvent.click(item(container, "2.5"));
+    const names = within(container.querySelector("[data-panel='2.5']") as HTMLElement).getAllByRole("button").map((b) => b.textContent);
+    expect(names.some((n) => n?.startsWith("Đánh dấu"))).toBe(false);
+    expect(names.some((n) => n?.startsWith("Đưa lại"))).toBe(true);
+  });
+});
+
 describe("panel actions (US-13 AC4, AC5, AC6)", () => {
   const panelOf = (container: HTMLElement, id: string) => within(container.querySelector(`[data-panel='${id}']`) as HTMLElement);
 
@@ -467,7 +492,7 @@ describe("role picker (US-01 AC4)", () => {
     const { container } = render(<UploadScreen state="upload-uploading" />);
     const link = screen.getByRole("link", { name: "Vào môn học" });
     expect(link.getAttribute("aria-disabled")).not.toBe("true");
-    expect(container.textContent).toContain("Còn 2 file đang tải, vẫn tải tiếp ở nền.");
+    expect(container.textContent).toContain("Còn 2 file đang tải. File đang tải sẽ dừng nếu bạn rời trang.");
     expect(link.getAttribute("aria-describedby")).toBe("uploading-note");
   });
 });
