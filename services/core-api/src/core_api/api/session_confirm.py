@@ -43,6 +43,7 @@ from core_api.repositories.document import DocumentRepository
 from core_api.repositories.note_upload import NoteUploadRepository
 from core_api.repositories.study_session import StudySessionRepository
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
+from core_api.repositories.submission import SubmissionRepository
 from core_api.repositories.unit import KnowledgeUnitRepository
 from core_api.security.rate_limit import RateLimit, RateLimiter, get_rate_limiter
 
@@ -188,7 +189,10 @@ def _distinct_notes(body: ConfirmRequest) -> list[NoteIn]:
     response_model=SessionOut,
     responses={
         404: {"description": "session_not_found, subject_not_found or document_not_found"},
-        409: {"description": "upload_incomplete (a note not stored yet) or not_indexed"},
+        409: {
+            "description": "upload_incomplete (a note not stored yet), not_indexed or "
+            "submission_exists"
+        },
         422: {"description": "bad_range, bad_date, bad_note, size_mismatch or content_mismatch"},
     },
 )
@@ -232,6 +236,9 @@ def confirm_session(
         raise _error(404, "session_not_found")
     if draft.status == "confirmed":
         return _out(drafts, draft)
+    # A session handed in as a v2 submission is not confirmed by the v1 card (T7.6, P2).
+    if SubmissionRepository(session, user.id).of_session(draft.id) is not None:
+        raise _error(409, "submission_exists")
 
     # Everything that can refuse comes before the first write.
     today = learning_day(now, ZoneInfo(user.timezone), user.day_start_hour)

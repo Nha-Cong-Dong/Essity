@@ -139,6 +139,10 @@ class Settings(DatabaseSettings):
     note_uploads_per_hour: int = Field(default=60, ge=1)
     # Each confirm calls the store once per note while it holds its rows (R60a).
     session_confirms_per_hour: int = Field(default=120, ge=1)
+    # T7.6: the v2 submission route and its event. Off until ai-service can handle
+    # `submission.created.v1` (T7.7/T7.8): with it off the route is 404 and nothing is published.
+    submissions_enabled: bool = False
+    submissions_per_hour: int = Field(default=60, ge=1)
     # A note never confirmed is deleted this long after its URL was signed: a draft may wait for
     # its confirm longer than a PDF does.
     note_cleanup_after_seconds: int = Field(default=24 * 3600, gt=0)

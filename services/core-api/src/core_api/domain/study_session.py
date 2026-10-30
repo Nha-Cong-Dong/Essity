@@ -41,12 +41,19 @@ NOTE_EXTENSIONS = {
     "text/markdown": "md",
 }
 
+# What a v2 submission may also hold (T7.6): Office files, which are zip containers.
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+SUBMISSION_EXTENSIONS = {**NOTE_EXTENSIONS, DOCX_MIME: "docx", PPTX_MIME: "pptx"}
+
 
 # The first bytes each binary note type starts with; the text types have no header to check.
 NOTE_MAGIC = {
     "image/jpeg": b"\xff\xd8\xff",
     "image/png": b"\x89PNG\r\n\x1a\n",
     "application/pdf": b"%PDF-",
+    DOCX_MIME: b"PK\x03\x04",
+    PPTX_MIME: b"PK\x03\x04",
 }
 NOTE_MAGIC_MAX = max(len(magic) for magic in NOTE_MAGIC.values())
 
@@ -65,7 +72,7 @@ def cut_summary(summary: str) -> str:
 def note_key(user_id: uuid.UUID, session_id: uuid.UUID, sha256: str, mime: str) -> str:
     """Where a note file lives: built by the server from the content hash, never from a name
     the client chose (ADR-0012). The database checks the same shape."""
-    return f"users/{user_id}/sessions/{session_id}/notes/{sha256}.{NOTE_EXTENSIONS[mime]}"
+    return f"users/{user_id}/sessions/{session_id}/notes/{sha256}.{SUBMISSION_EXTENSIONS[mime]}"
 
 
 def ensure_ranges_ordered(ranges: Iterable[tuple[int, int]]) -> None:

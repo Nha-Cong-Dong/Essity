@@ -146,3 +146,12 @@ def test_response_carries_the_audit_ids(client: TestClient) -> None:
     assert data["provider"] == "fake"
     assert data["prompt_version"] == "v1"
     assert data["run_id"] and data["llm_call_id"]
+
+
+def test_a_document_is_never_guessed(client: TestClient) -> None:
+    # T7.6 (US-02 AC3): v1 extraction stays as it is beside the v2 flow. With one document in, no
+    # range names another id, and a sentence that names none gives no range at all.
+    data = ask(client, "học giáo trình tr. 43-58", documents=[document("giáo trình")])
+    assert {r["document_id"] for r in data["ranges"]} <= set(data["_doc_ids"])
+    unnamed = ask(client, "học bài thầy gửi qua Zalo", documents=[document("giáo trình")])
+    assert "ranges" not in unnamed

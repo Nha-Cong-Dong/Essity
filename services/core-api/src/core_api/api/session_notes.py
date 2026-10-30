@@ -31,7 +31,16 @@ from core_api.security.rate_limit import RateLimit, RateLimiter, get_rate_limite
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
-Mime = Literal["image/jpeg", "image/png", "application/pdf", "text/plain", "text/markdown"]
+Mime = Literal[
+    "image/jpeg",
+    "image/png",
+    "application/pdf",
+    "text/plain",
+    "text/markdown",
+    # v2 submissions only (T7.6): the v1 confirm still refuses them.
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+]
 Sha256 = Annotated[StrictStr, Field(pattern=r"^[0-9a-f]{64}$"), AfterValidator(storable_text)]
 
 
