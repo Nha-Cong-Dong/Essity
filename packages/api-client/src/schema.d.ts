@@ -639,6 +639,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/submission-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Submission Draft
+         * @description An empty draft session to upload this submission's files to. Calls no AI.
+         */
+        post: operations["create_submission_draft_v1_subjects__subject_id__submission_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit
+         * @description Store the submission and queue it for ai-service. Submitting a session again returns the
+         *     first submission and announces nothing more.
+         *
+         *     Errors: 404 `session_not_found`, `document_not_found`; 409 `session_confirmed`,
+         *     `upload_incomplete`, `storage_quota_exceeded`; 422 a mention error (`detail` is an object
+         *     with `code`, `mention`, `part`, `candidates`), `nothing_submitted`, `text_too_long`,
+         *     `bad_note`, `size_mismatch`, `content_mismatch`; 429; 503 `storage_unavailable`.
+         */
+        post: operations["submit_v1_submissions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/today": {
         parameters: {
             query?: never;
@@ -859,10 +905,30 @@ export interface components {
              */
             ungraded: string[];
         };
+        /** DraftOut */
+        DraftOut: {
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+        };
         /** EmailBody */
         EmailBody: {
             /** Email */
             email: string;
+        };
+        /** FileIn */
+        FileIn: {
+            /**
+             * Mime
+             * @enum {string}
+             */
+            mime: "image/jpeg" | "image/png" | "application/pdf" | "text/plain" | "text/markdown" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            /** Sha256 */
+            sha256: string;
+            /** Size Bytes */
+            size_bytes: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -942,6 +1008,35 @@ export interface components {
             /** Timezone */
             timezone: string;
         };
+        /**
+         * MentionIn
+         * @description A mention the client already pointed at a document: `start` is the index of its `@`.
+         */
+        MentionIn: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** End */
+            end: number;
+            /** Start */
+            start: number;
+        };
+        /** MentionOut */
+        MentionOut: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** First Page */
+            first_page: number | null;
+            /** Last Page */
+            last_page: number | null;
+            /** Section Id */
+            section_id: string | null;
+        };
         /** NoteIn */
         NoteIn: {
             /**
@@ -969,7 +1064,7 @@ export interface components {
              * Mime
              * @enum {string}
              */
-            mime: "image/jpeg" | "image/png" | "application/pdf" | "text/plain" | "text/markdown";
+            mime: "image/jpeg" | "image/png" | "application/pdf" | "text/plain" | "text/markdown" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/vnd.openxmlformats-officedocument.presentationml.presentation";
             /** Sha256 */
             sha256: string;
             /** Size Bytes */
@@ -1289,6 +1384,45 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** SubmissionOut */
+        SubmissionOut: {
+            /** Mentions */
+            mentions: components["schemas"]["MentionOut"][];
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Status */
+            status: string;
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
+        };
+        /** SubmitRequest */
+        SubmitRequest: {
+            /** Description */
+            description?: string | null;
+            /**
+             * Files
+             * @default []
+             */
+            files: components["schemas"]["FileIn"][];
+            /**
+             * Mentions
+             * @default []
+             */
+            mentions: components["schemas"]["MentionIn"][];
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Text */
+            text?: string | null;
         };
         /** TocOut */
         TocOut: {
@@ -2229,7 +2363,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description upload_incomplete (a note not stored yet) or not_indexed */
+            /** @description upload_incomplete (a note not stored yet), not_indexed or submission_exists */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2551,6 +2685,98 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    create_submission_draft_v1_subjects__subject_id__submission_drafts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftOut"];
+                };
+            };
+            /** @description subject_not_found, or the feature is off */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_v1_submissions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitRequest"];
+            };
+        };
+        responses: {
+            /** @description The session was already submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionOut"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionOut"];
+                };
+            };
+            /** @description session_not_found or document_not_found (another user's too) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description session_confirmed, upload_incomplete or storage_quota_exceeded */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A mention that does not resolve (`detail` names the part), nothing handed in, text_too_long, bad_note, size_mismatch or content_mismatch */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -23,11 +23,11 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StrictInt, St
 from sqlalchemy import func, select
 
 from core_api.api.deps import Now, Storage, VerifiedUser, verified_user
-from core_api.api.sessions import _labels, _read_json  # pyright: ignore[reportPrivateUsage]
-from core_api.api.text import is_unicode, storable_text
+from core_api.api.sessions import FILE_MAX_BYTES, _labels  # pyright: ignore[reportPrivateUsage]
+from core_api.api.text import storable_answer, storable_text
 from core_api.clients.storage import StorageUnavailableError
 from core_api.config import get_settings
-from core_api.db.models import Document, NoteFile, NoteUpload, Submission
+from core_api.db.models import DocSection, Document, NoteFile, NoteUpload, Submission
 from core_api.db.models.study_session import DESCRIPTION_MAX, FILE_KEYS_MAX, SUBMISSION_MIMES
 from core_api.db.session import DbSession
 from core_api.domain.mention import (
@@ -55,19 +55,11 @@ router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 PLACEHOLDER_DESCRIPTION = "(bài nộp)"
 MAX_UNITS_IN_CONTEXT = 200
 MAX_MENTION_DOCUMENTS = 12
-PAGE_KEYWORDS = ("tr", "trang", "p", "pp", "page")
 
 Sha256 = Annotated[StrictStr, Field(pattern=r"^[0-9a-f]{64}$"), AfterValidator(storable_text)]
 
 
-def _layout_text(value: str) -> str:
-    """Text that keeps its lines and tabs but never NUL or a lone surrogate."""
-    if not is_unicode(value) or "\x00" in value:
-        raise ValueError("must be valid text")
-    return value
-
-
-Typed = Annotated[StrictStr, AfterValidator(_layout_text)]
+Typed = Annotated[StrictStr, AfterValidator(storable_answer)]
 
 
 class FileIn(BaseModel):
@@ -152,10 +144,18 @@ def _mention_error(error: MentionError) -> HTTPException:
     responses={404: {"description": "subject_not_found, or the feature is off"}},
 )
 def create_submission_draft(
-    subject_id: uuid.UUID, user: VerifiedUser, session: DbSession, response: Response
+    subject_id: uuid.UUID,
+    user: VerifiedUser,
+    session: DbSession,
+    limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
+    response: Response,
 ) -> DraftOut:
     """An empty draft session to upload this submission's files to. Calls no AI."""
     response.headers["Cache-Control"] = "no-store"
+    limiter.enforce(
+        RateLimit("submission_draft", get_settings().session_creates_per_hour, timedelta(hours=1)),
+        str(user.id),
+    )
     try:
         draft = StudySessionRepository(session, user.id).create_draft(
             subject_id, PLACEHOLDER_DESCRIPTION
@@ -165,19 +165,29 @@ def create_submission_draft(
     return DraftOut(session_id=draft.id)
 
 
-def _documents(storage: Storage, documents: list[Document], description: str) -> list[DocInfo]:
-    """The indexed documents as the resolver reads them. Page labels are fetched only when the
-    text says something about pages."""
-    words = {w.strip(".,:;").lower() for w in description.split()}
-    wants_labels = any(word.rstrip(".") in PAGE_KEYWORDS for word in words)
-    infos: list[DocInfo] = []
-    for document in documents[:MAX_MENTION_DOCUMENTS]:
-        count = document.page_count or 0
-        labels = None
-        if wants_labels:
-            labels = _labels(_read_json(storage, document.page_labels_key), count)
-        infos.append(DocInfo(document.id, document.short_name, document.format, count, labels))
-    return infos
+def _page_labels(storage: Storage, document: Document) -> list[str] | None:
+    """The document's printed page labels. A store that fails is 503, never "no labels": a
+    printed number must not be taken for a file position by mistake."""
+    if document.page_labels_key is None:
+        return None
+    try:
+        raw = storage.read_start(document.page_labels_key, FILE_MAX_BYTES + 1)
+    except StorageUnavailableError:
+        raise _error(503, "storage_unavailable") from None
+    if len(raw) > FILE_MAX_BYTES:
+        return None
+    try:
+        return _labels(json.loads(raw), document.page_count or 0)
+    except ValueError:
+        return None
+
+
+def _documents(storage: Storage, documents: list[Document]) -> list[DocInfo]:
+    """The indexed documents as the resolver reads them, labels always loaded."""
+    return [
+        DocInfo(d.id, d.short_name, d.format, d.page_count or 0, _page_labels(storage, d))
+        for d in documents[:MAX_MENTION_DOCUMENTS]
+    ]
 
 
 def _resolve(
@@ -185,9 +195,9 @@ def _resolve(
     documents: list[Document],
     repo: SubmissionRepository,
     storage: Storage,
-) -> tuple[list[ResolvedMention], list[SectionInfo]]:
+) -> tuple[list[ResolvedMention], list[DocSection]]:
     description = body.description or ""
-    infos = _documents(storage, documents, description)
+    infos = _documents(storage, documents)
     sections = repo.sections_of([d.id for d in infos])
     by_document: dict[uuid.UUID, list[SectionInfo]] = {}
     for s in sections:
@@ -202,7 +212,7 @@ def _resolve(
         resolved = resolve_mentions(description, infos, by_document, explicit)
     except MentionError as error:
         raise _mention_error(error) from None
-    return resolved, [section for rows in by_document.values() for section in rows]
+    return resolved, sections
 
 
 def _units_for_context(
@@ -210,7 +220,7 @@ def _units_for_context(
     units: KnowledgeUnitRepository,
     subject_id: uuid.UUID,
     resolved: list[ResolvedMention],
-    sections: list[SectionInfo],
+    sections: list[DocSection],
 ) -> list[dict[str, str]]:
     """The existing units the AI merges with: those of the mentioned scope, or of the subject
     when nothing was mentioned."""
@@ -218,10 +228,8 @@ def _units_for_context(
         found = units.for_event(subject_id, MAX_UNITS_IN_CONTEXT)
     else:
         children: dict[uuid.UUID | None, list[uuid.UUID]] = {}
-        parents: dict[uuid.UUID, uuid.UUID | None] = {}
         for s in sections:
             children.setdefault(s.parent_id, []).append(s.id)
-            parents[s.id] = s.parent_id
         ids: set[uuid.UUID] = set()
 
         def add_tree(section_id: uuid.UUID) -> None:
@@ -232,8 +240,8 @@ def _units_for_context(
         for mention in resolved:
             if mention.section_id is not None:
                 add_tree(mention.section_id)
-            else:
-                ids.update(parents)  # a whole document or a page range: every section
+            else:  # a whole document or a page range: every section of that document
+                ids.update(s.id for s in sections if s.document_id == mention.document_id)
         found = repo.units_of_sections(subject_id, sorted(ids, key=str), MAX_UNITS_IN_CONTEXT)
     return [{"unit_id": str(u.id), "title": u.title, "summary": u.summary[:2000]} for u in found]
 
@@ -342,11 +350,11 @@ def submit(  # noqa: PLR0913, PLR0915
     ):
         raise _error(409, "storage_quota_exceeded")
 
-    written: str | None = None
+    written: list[str] = []
     try:
         if typed is not None and typed_sha is not None:
             storage.write(keys[typed_sha], typed, content_type="text/plain")
-            written = keys[typed_sha]
+            written.append(keys[typed_sha])
         submission_id = uuid.uuid4()
         context_key = f"users/{user.id}/sessions/{draft.id}/context/{submission_id}.json"
         context = {
@@ -369,6 +377,7 @@ def submit(  # noqa: PLR0913, PLR0915
                 sections,
             ),
         }
+        written.append(context_key)
         storage.write(
             context_key,
             json.dumps(context, ensure_ascii=False).encode("utf-8"),
@@ -414,10 +423,12 @@ def submit(  # noqa: PLR0913, PLR0915
             now=now,
         )
     except StorageUnavailableError:
+        for key in written:
+            _forget(storage, key)
         raise _error(503, "storage_unavailable") from None
     except BaseException:
-        if written is not None:
-            _forget(storage, written)
+        for key in written:
+            _forget(storage, key)
         raise
     return _out(row, resolved)
 

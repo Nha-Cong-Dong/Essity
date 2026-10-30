@@ -473,6 +473,20 @@
         "title": "DoneOut",
         "type": "object"
       },
+      "DraftOut": {
+        "properties": {
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "DraftOut",
+        "type": "object"
+      },
       "EmailBody": {
         "additionalProperties": false,
         "properties": {
@@ -487,6 +501,41 @@
           "email"
         ],
         "title": "EmailBody",
+        "type": "object"
+      },
+      "FileIn": {
+        "additionalProperties": false,
+        "properties": {
+          "mime": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "application/pdf",
+              "text/plain",
+              "text/markdown",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            ],
+            "title": "Mime",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "exclusiveMinimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sha256",
+          "mime",
+          "size_bytes"
+        ],
+        "title": "FileIn",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -651,6 +700,87 @@
         "title": "Me",
         "type": "object"
       },
+      "MentionIn": {
+        "additionalProperties": false,
+        "description": "A mention the client already pointed at a document: `start` is the index of its `@`.",
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "end": {
+            "maximum": 2000.0,
+            "minimum": 1.0,
+            "title": "End",
+            "type": "integer"
+          },
+          "start": {
+            "maximum": 2000.0,
+            "minimum": 0.0,
+            "title": "Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "start",
+          "end"
+        ],
+        "title": "MentionIn",
+        "type": "object"
+      },
+      "MentionOut": {
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "first_page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Page"
+          },
+          "last_page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Page"
+          },
+          "section_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Id"
+          }
+        },
+        "required": [
+          "document_id",
+          "section_id",
+          "first_page",
+          "last_page"
+        ],
+        "title": "MentionOut",
+        "type": "object"
+      },
       "NoteIn": {
         "additionalProperties": false,
         "properties": {
@@ -716,7 +846,9 @@
               "image/png",
               "application/pdf",
               "text/plain",
-              "text/markdown"
+              "text/markdown",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation"
             ],
             "title": "Mime",
             "type": "string"
@@ -1580,6 +1712,95 @@
           "name"
         ],
         "title": "SubjectRef",
+        "type": "object"
+      },
+      "SubmissionOut": {
+        "properties": {
+          "mentions": {
+            "items": {
+              "$ref": "#/components/schemas/MentionOut"
+            },
+            "title": "Mentions",
+            "type": "array"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submission_id": {
+            "format": "uuid",
+            "title": "Submission Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "submission_id",
+          "session_id",
+          "status",
+          "mentions"
+        ],
+        "title": "SubmissionOut",
+        "type": "object"
+      },
+      "SubmitRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "files": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FileIn"
+            },
+            "maxItems": 20,
+            "title": "Files",
+            "type": "array"
+          },
+          "mentions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/MentionIn"
+            },
+            "maxItems": 20,
+            "title": "Mentions",
+            "type": "array"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "SubmitRequest",
         "type": "object"
       },
       "TocOut": {
@@ -2921,7 +3142,7 @@
             "description": "session_not_found, subject_not_found or document_not_found"
           },
           "409": {
-            "description": "upload_incomplete (a note not stored yet) or not_indexed"
+            "description": "upload_incomplete (a note not stored yet), not_indexed or submission_exists"
           },
           "422": {
             "description": "bad_range, bad_date, bad_note, size_mismatch or content_mismatch"
@@ -3328,6 +3549,98 @@
           }
         },
         "summary": "Create Session"
+      }
+    },
+    "/v1/subjects/{subject_id}/submission-drafts": {
+      "post": {
+        "description": "An empty draft session to upload this submission's files to. Calls no AI.",
+        "operationId": "create_submission_draft_v1_subjects__subject_id__submission_drafts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "subject_not_found, or the feature is off"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Submission Draft"
+      }
+    },
+    "/v1/submissions": {
+      "post": {
+        "description": "Store the submission and queue it for ai-service. Submitting a session again returns the\nfirst submission and announces nothing more.\n\nErrors: 404 `session_not_found`, `document_not_found`; 409 `session_confirmed`,\n`upload_incomplete`, `storage_quota_exceeded`; 422 a mention error (`detail` is an object\nwith `code`, `mention`, `part`, `candidates`), `nothing_submitted`, `text_too_long`,\n`bad_note`, `size_mismatch`, `content_mismatch`; 429; 503 `storage_unavailable`.",
+        "operationId": "submit_v1_submissions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionOut"
+                }
+              }
+            },
+            "description": "The session was already submitted"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "session_not_found or document_not_found (another user's too)"
+          },
+          "409": {
+            "description": "session_confirmed, upload_incomplete or storage_quota_exceeded"
+          },
+          "422": {
+            "description": "A mention that does not resolve (`detail` names the part), nothing handed in, text_too_long, bad_note, size_mismatch or content_mismatch"
+          }
+        },
+        "summary": "Submit"
       }
     },
     "/v1/today": {

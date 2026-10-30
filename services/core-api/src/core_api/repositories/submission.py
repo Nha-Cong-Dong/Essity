@@ -48,6 +48,7 @@ class SubmissionRepository(UserScopedRepository[Submission]):
                     UnitSection.user_id == self.user_id,
                     KnowledgeUnit.subject_id == subject_id,
                     KnowledgeUnit.status == "active",
+                    KnowledgeUnit.skipped_at.is_(None),
                     UnitSection.section_id.in_(section_ids),
                 )
                 .distinct()

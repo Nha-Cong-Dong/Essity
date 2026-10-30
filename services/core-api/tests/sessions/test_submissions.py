@@ -443,3 +443,70 @@ def test_draft_route_makes_a_draft_session_of_the_subject(client: TestClient, wo
     assert row is not None and row.status == "draft" and row.subject_id == world.subject.id
     other = client.post(f"/v1/subjects/{uuid.uuid4()}/submission-drafts", headers=world.headers)
     assert other.status_code == 404
+
+
+@pytest.mark.usefixtures("enabled")
+@pytest.mark.parametrize("scope", ["tr.5-7", "p.5-7", "trang5-7", "tr. 5-7"])
+def test_pages_use_labels_whatever_the_spacing(
+    client: TestClient, world: World, scope: str
+) -> None:
+    # Red when: labels are loaded only for some spellings, so a printed number is silently
+    # taken as a file position (review R1). The helper's labels are one behind the file.
+    response = submit(client, world, description=f"@Mạng máy tính {scope}", files=[world.pdf()])
+    assert response.status_code == 201, response.text
+    assert response.json()["mentions"][0]["first_page"] == 6
+
+
+@pytest.mark.usefixtures("enabled")
+def test_labels_unreadable_is_503_not_a_guess(client: TestClient, world: World) -> None:
+    files = [world.pdf()]
+    world.storage.down = True
+    response = submit(client, world, description="@Mạng máy tính tr. 5", files=files)
+    assert response.status_code == 503
+    nothing_written(world)
+
+
+@pytest.mark.usefixtures("enabled")
+def test_rollback_leaves_no_context_file(
+    client: TestClient, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    world.db.commit()
+
+    def boom(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("outbox down")
+
+    monkeypatch.setattr("core_api.api.submissions.enqueue_event", boom)
+    files = [world.pdf()]
+    with pytest.raises(RuntimeError):
+        submit(client, world, files=files)
+    assert not [k for k in world.storage.objects if "/context/" in k]
+
+
+@pytest.mark.usefixtures("enabled")
+def test_mention_document_of_another_subject_of_the_same_user_404(
+    client: TestClient, world: World
+) -> None:
+    other_subject = subject_of(world.db, world.user)
+    foreign = indexed_document(
+        world.db, world.storage, world.user, other_subject, name="Khác", sha="ef" * 32
+    )
+    mention = {"document_id": str(foreign.id), "start": 0, "end": 5}
+    response = submit(client, world, description="@Khác", mentions=[mention], files=[world.pdf()])
+    assert response.status_code == 404 and response.json()["detail"] == "document_not_found"
+
+
+@pytest.mark.usefixtures("enabled")
+def test_draft_route_other_users_subject_404(client: TestClient, world: World) -> None:
+    other, _ = signed_in(world.db)
+    foreign = subject_of(world.db, other)
+    response = client.post(f"/v1/subjects/{foreign.id}/submission-drafts", headers=world.headers)
+    assert response.status_code == 404
+
+
+def test_upload_url_refuses_docx_while_the_flag_is_off(client: TestClient, world: World) -> None:
+    response = client.post(
+        f"/v1/sessions/{world.draft.id}/notes/upload-url",
+        json={"sha256": "ab" * 32, "mime": DOCX, "size_bytes": 10},
+        headers=world.headers,
+    )
+    assert response.status_code == 422
