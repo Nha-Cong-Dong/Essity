@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from ai_service.api import extract_session, grade, health, ping
+from ai_service.api import extract_session, grade, health, parse_command, ping
 from ai_service.config import get_settings
 from ai_service.db.session import get_session_factory
 from ai_service.llm.client import LlmClient, build_adapter
@@ -12,6 +12,7 @@ from ai_service.llm.quota import DbQuotaGuard, QuotaLimits
 from ai_service.logging import configure_logging, log_requests
 from ai_service.security import require_service_token
 from ai_service.tasks import extract_session as extract_task
+from ai_service.tasks import parse_command as parse_task
 from ai_service.tasks.grade import fake_grade, load_prompt
 from ai_service.telemetry import configure_tracing
 
@@ -24,8 +25,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # A missing prompt file stops the startup instead of failing the first grade.
     load_prompt()
     extract_task.load_prompt()
+    parse_task.load_prompt()
     adapter = build_adapter(
-        settings, {"grade": fake_grade, "extract_session": extract_task.fake_extract}
+        settings,
+        {
+            "grade": fake_grade,
+            "extract_session": extract_task.fake_extract,
+            "parse_command": parse_task.fake_parse,
+        },
     )
     sessions = get_session_factory()
     limits = QuotaLimits(
@@ -62,6 +69,8 @@ def create_app() -> FastAPI:
     grade.add_error_handlers(app)
     app.include_router(extract_session.router)
     extract_session.add_error_handlers(app)
+    app.include_router(parse_command.router)
+    parse_command.add_error_handlers(app)
     # Outermost middleware: continues the trace started by core-api (W3C traceparent).
     FastAPIInstrumentor.instrument_app(
         app, excluded_urls="healthz", exclude_spans=["receive", "send"]
