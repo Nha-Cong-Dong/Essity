@@ -309,33 +309,33 @@ def _markers(lines: Sequence[_Line], style: re.Pattern[str]) -> list[_Marker]:
     return found
 
 
-def _is_appendix(lines: Sequence[_Line], n: int) -> bool:
-    """Whether the heading on line `n` starts an answer key: a bank before it, a numbering
-    restarting at 1 after it, and no numbering of the bank going on after it."""
+def _appendix_cut(lines: Sequence[_Line], n: int) -> int | None:
+    """None when the heading on line `n` is not the start of an answer key: it needs a bank
+    before it, a numbering restarting at 1 after it, and no numbering of the bank going on
+    after it. Otherwise how many markers of the bank's style, numbered past the bank's last
+    number, the cut drops (0 for a clean key)."""
     before = [_markers(lines[:n], style) for style in _STYLES]
     after = [_markers(lines[n + 1 :], style) for style in _STYLES]
     if not any(len(m) >= 2 for m in before):
-        return False
+        return None
     if not any(len(m) >= 2 and m[0][1] == 1 for m in after):
-        return False
+        return None
     for b, a in zip(before, after, strict=True):
         if b and a and b[-1][1] < a[0][1] <= b[-1][1] + _MAX_SKIP:
-            return False
-    # The bank's own style (most markers before): after the restart its numbering drops back
-    # and then passes the bank's last number again. That was steps inside one answer ("1. bước",
-    # "2. bước") and the next question; a plain key counts up once and stays an appendix.
+            return None
+    # The bank's own style is the one with most markers before the heading.
     at = max(range(len(_STYLES)), key=lambda i: len(before[i]))
-    last, prev, dropped = before[at][-1][1], 0, False
-    for _, line in lines[n + 1 :]:
-        match = _STYLES[at].match(line)
-        if not match:
-            continue
-        number = int(match.group(1))
-        dropped = dropped or number <= prev
-        if dropped and number > last:
-            return False
-        prev = number
-    return True
+    last = before[at][-1][1]
+    numbers = [int(m.group(1)) for _, line in lines[n + 1 :] if (m := _STYLES[at].match(line))]
+    beyond = [k for k in numbers if k > last]
+    only_style = not any(m for i, m in enumerate(before) if i != at)
+    # Numbering that restarts and then goes past the bank's last number is steps inside one
+    # answer when it drops back first, and the questions' own numbering when no other style
+    # appears before the heading; a key that only counts up in a different style stays a cut.
+    dropped = any(k <= prev for prev, k in zip(numbers, numbers[1:], strict=False))
+    if beyond and (only_style or dropped):
+        return None
+    return len(beyond)
 
 
 def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason], int]:
@@ -346,6 +346,7 @@ def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason
     ]
     full = [_markers(lines, style) for style in _STYLES]
     best = max(full, key=len)
+    cut_reasons: list[Reason] = []
     # An answer key or appendix heading ends the questions: its own numbering ("1. B 2. C")
     # must not count as questions or swallow the last one. A heading is a cut only when what
     # follows it restarts numbering at 1 in some style (two markers or more) and no style of the
@@ -353,14 +354,17 @@ def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason
     # answer, and the next "Câu k" continues). Unclear: no cut, everything is kept. The style is
     # then chosen from the part before the cut. The first cut heading wins.
     for n, (_, line) in enumerate(lines):
-        if _SECTION_BREAK.match(line) and _is_appendix(lines, n):
+        dropped_markers = _appendix_cut(lines, n) if _SECTION_BREAK.match(line) else None
+        if dropped_markers is not None:
+            if dropped_markers:
+                cut_reasons.append(Reason("appendix_cut", f"page_{lines[n][0] + 1}"))
             lines = lines[:n]
             best = max((_markers(lines, style) for style in _STYLES), key=len)
             break
     if len(best) < 2:
         return [], [], len(pages)
     questions: list[Question] = []
-    reasons: list[Reason] = []
+    reasons: list[Reason] = [*cut_reasons]
     for k, (start, number, rest) in enumerate(best):
         end = best[k + 1][0] if k + 1 < len(best) else len(lines)
         body = [rest, *(line for _, line in lines[start + 1 : end])]

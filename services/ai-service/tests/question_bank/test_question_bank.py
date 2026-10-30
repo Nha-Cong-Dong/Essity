@@ -521,7 +521,7 @@ def test_ac1_options_then_a_numbered_key_one_per_line_keeps_four_questions() -> 
 
 
 def test_ac1_an_appendix_in_the_questions_own_style_restarting_at_one_is_cut() -> None:
-    text = "Câu 1. TCP là gì?\nCâu 2. UDP là gì?\nĐáp án\nCâu 1. B\nCâu 2. C\nCâu 3. D"
+    text = "Câu 1. TCP là gì?\nCâu 2. UDP là gì?\nĐáp án\nCâu 1. B\nCâu 2. C"
     result = split_bank(_pages(text), FakeAsk())
     assert [q.prompt for q in result.questions] == ["TCP là gì?", "UDP là gì?"]
 
@@ -545,3 +545,17 @@ def test_ac1_an_appendix_not_starting_at_one_is_not_cut() -> None:
     text = "Câu 1. TCP là gì?\nCâu 2. UDP là gì?\nĐáp án\n3. B\n4. C"
     result = split_bank(_pages(text), FakeAsk())
     assert [q.ord for q in result.questions][:2] == [1, 2]
+
+
+def test_ac1_steps_counting_up_in_the_questions_own_style_keep_later_questions() -> None:
+    """US-14 AC1: the review-5 repro, one style only, steps then the next questions."""
+    text = "1. Câu một?\n2. Câu hai?\nLời giải:\n1. bước một\n2. bước hai\n3. Câu ba?\n4. Câu bốn?"
+    result = split_bank(_pages(text), FakeAsk())
+    assert 3 in [q.ord for q in result.questions] and 4 in [q.ord for q in result.questions]
+
+
+def test_ac1_a_cut_that_drops_bank_numbers_is_flagged_for_review() -> None:
+    """US-14 AC1: no silent loss. Bank "Câu 1-2", a "1." key, then "Câu 7" after the key."""
+    text = "Câu 1. TCP?\n1. a\n2. b\nCâu 2. UDP?\nĐáp án\n1. A\n2. B\nCâu 7. lạc"
+    result = split_bank(_pages(text), FakeAsk())
+    assert "appendix_cut" in _codes(result)
