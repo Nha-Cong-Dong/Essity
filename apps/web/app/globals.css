@@ -177,6 +177,7 @@
   --page-gutter: clamp(16px, 5.5vw, 80px);
   --col-read: 68ch;
   --col-focus: 1040px; /* the answer and result screen, two columns (final §5, plan D-13) */
+  --col-session: 720px; /* the study session: one column (T7.12a C6) */
   --header-h: 64px;
   --header-focus-h: 56px;
   --space-group: 24px;
