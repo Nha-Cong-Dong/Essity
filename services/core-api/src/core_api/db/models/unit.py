@@ -20,7 +20,12 @@ from core_api.db.base import Base, UserOwned, not_blank, one_of
 
 # PRD US-02b: the five kinds of knowledge unit (plan D4).
 UNIT_KINDS = frozenset({"concept", "mechanism", "comparison", "formula", "example"})
-UNIT_STATUSES = frozenset({"active", "split", "merged", "retired"})
+# v2 (T7.1): draft and canonical join the old values. `active` stays the default and what the code
+# filters on until a later task turns the old rows and the default to canonical (after T5.R);
+# `split` goes with it then.
+UNIT_STATUSES = frozenset({"draft", "canonical", "active", "split", "merged", "retired"})
+# Who wrote a revision: the AI (rev 0) or the learner (rev 1 on; the AI never overwrites these).
+REVISION_ORIGINS = frozenset({"ai", "user"})
 # Where an anchor's quote comes from: a document page, or the user's own notes (us-02b AC5).
 ANCHOR_SOURCES = frozenset({"document", "notes"})
 
@@ -40,6 +45,7 @@ class KnowledgeUnit(UserOwned, Base):
         CheckConstraint(not_blank("title"), name="title_not_blank"),
         CheckConstraint(one_of("kind", UNIT_KINDS), name="kind_known"),
         CheckConstraint(one_of("status", UNIT_STATUSES), name="status_known"),
+        CheckConstraint("version >= 1", name="version_from_one"),
         # Targets of the composite foreign keys below and in question_unit (plan D9).
         UniqueConstraint("id", "user_id"),
         UniqueConstraint("id", "subject_id", "user_id"),
@@ -51,6 +57,8 @@ class KnowledgeUnit(UserOwned, Base):
     summary: Mapped[str] = mapped_column(Text)
     kind: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(10), default="active")
+    # Optimistic lock of a draft edited in place (If-Match); a conflict is a 409 (spec v2 §16.2).
+    version: Mapped[int] = mapped_column(Integer, server_default="1")
     # "Không cần ôn phần này" (T2.23): never asked while set; schedule and history stay as they are.
     skipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The section of the document it sits in (us-02b AC1). A plain UUID for now: there is no
@@ -136,3 +144,52 @@ class UnitLineage(UserOwned, Base):
     new_unit_id: Mapped[uuid.UUID]
     confidence: Mapped[float | None] = mapped_column(REAL)
     run_id: Mapped[uuid.UUID]
+
+
+class UnitRevision(UserOwned, Base):
+    """One saved version of a unit's content (T7.1, spec v2 §16.2): rev 0 is the AI's, rev 1 the
+    learner's, and each later edit of a canonical unit adds one. Revisions are never rewritten."""
+
+    __tablename__ = "unit_revision"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["unit_id", "user_id"],
+            ["knowledge_unit.id", "knowledge_unit.user_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("id", "user_id"),
+        UniqueConstraint("unit_id", "rev"),
+        CheckConstraint("rev >= 0", name="rev_not_negative"),
+        CheckConstraint(one_of("origin", REVISION_ORIGINS), name="origin_known"),
+        CheckConstraint("jsonb_typeof(content) = 'object'", name="content_is_object"),
+    )
+
+    unit_id: Mapped[uuid.UUID]
+    rev: Mapped[int] = mapped_column(Integer)
+    origin: Mapped[str] = mapped_column(String(4))
+    content: Mapped[Any] = mapped_column(JSONB)
+
+
+class UnitSection(UserOwned, Base):
+    """Which outline sections a unit covers. `subject_id` is carried so the database refuses a
+    unit and a section of different subjects, as it does for question_unit."""
+
+    __tablename__ = "unit_section"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["unit_id", "subject_id", "user_id"],
+            ["knowledge_unit.id", "knowledge_unit.subject_id", "knowledge_unit.user_id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["section_id", "subject_id", "user_id"],
+            ["doc_section.id", "doc_section.subject_id", "doc_section.user_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("unit_id", "section_id"),
+        Index(None, "section_id"),
+    )
+
+    subject_id: Mapped[uuid.UUID]
+    unit_id: Mapped[uuid.UUID]
+    section_id: Mapped[uuid.UUID]
