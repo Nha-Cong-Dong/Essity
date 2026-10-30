@@ -1,0 +1,9 @@
+task: T9.2a
+lane: L6
+status: in_progress
+head_sha: e8f988e
+step: code and tests written (domain/commands/*, tests/domain/test_commands.py), not yet run
+tests: {cmd: "pytest tests/domain/test_commands.py", passed: 0, failed: 0}
+blockers: []
+decisions: ["merge -> fold into first card, blank-line join, others discarded (Coder)", "split -> contiguous line groups, first stays (Coder)", "undo limited to same session_id (Coder)"]
+next: "run tests (venv synced), ruff check/format, pyright, fix, full core suite, write .work/T9.2a/decisions.md, final report"
