@@ -31,13 +31,17 @@ class Leaf:
 
 
 @dataclass(frozen=True)
+class UnitWeight:
+    studied: float
+    total: float
+
+
+@dataclass(frozen=True)
 class SyllabusProgress:
     leaves: int
     studied_leaves: int
     percent: int | None  # none when no leaf counts
-    studied_weight: float
-    total_weight: float
-    unit: str | None
+    by_unit: dict[str, UnitWeight]  # weights are never summed across units
 
 
 def syllabus_progress(leaves: Iterable[Leaf]) -> SyllabusProgress:
@@ -45,13 +49,18 @@ def syllabus_progress(leaves: Iterable[Leaf]) -> SyllabusProgress:
     counted = [leaf for leaf in leaves if not leaf.excluded]
     studied = [leaf for leaf in counted if leaf.studied]
     percent = round(100 * len(studied) / len(counted)) if counted else None
+    by_unit: dict[str, UnitWeight] = {}
+    for unit in sorted({leaf.unit for leaf in counted}):
+        in_unit = [leaf for leaf in counted if leaf.unit == unit]
+        by_unit[unit] = UnitWeight(
+            studied=sum(leaf.weight for leaf in in_unit if leaf.studied),
+            total=sum(leaf.weight for leaf in in_unit),
+        )
     return SyllabusProgress(
         leaves=len(counted),
         studied_leaves=len(studied),
         percent=percent,
-        studied_weight=sum(leaf.weight for leaf in studied),
-        total_weight=sum(leaf.weight for leaf in counted),
-        unit=counted[0].unit if counted else None,
+        by_unit=by_unit,
     )
 
 
@@ -150,7 +159,7 @@ def activity_grid(
     if daily:
         start = min(start, min(daily))
     exams = [s.exam_date for s in chosen if s.exam_date is not None]
-    exam_day = max(exams) if exams else None
+    exam_days = set(exams)
     end = max([today, *exams]) if exams else today
     end = max(end, start, max(daily, default=start))
     first_monday = start - timedelta(days=start.weekday())
@@ -158,17 +167,19 @@ def activity_grid(
     for offset in range((end - start).days + 1):
         day = start + timedelta(days=offset)
         rows = daily.get(day, [])
+        future = day > today
+        if future:  # clock skew: a future day stays empty
+            rows = []
         cards = sum(e.cards_saved for e in rows)
         answered = sum(e.questions_answered for e in rows)
-        future = day > today
         cells.append(
             GridCell(
                 day=day,
                 column=(day - first_monday).days // 7,
                 row=day.weekday(),
-                level=0 if future else level_for(cards + answered),
+                level=level_for(cards + answered),
                 future=future,
-                exam_day=day == exam_day,
+                exam_day=day in exam_days,
                 subjects=tuple(sorted({e.subject_id for e in rows}, key=str)),
                 sections=tuple(
                     sorted({e.section_id for e in rows if e.section_id is not None}, key=str)
@@ -188,6 +199,7 @@ __all__ = [
     "SubjectSpan",
     "SyllabusProgress",
     "TypeCounts",
+    "UnitWeight",
     "activity_grid",
     "days_left",
     "level_for",

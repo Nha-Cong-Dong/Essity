@@ -16,6 +16,7 @@ from core_api.domain.stats import (
     Leaf,
     SubjectSpan,
     TypeCounts,
+    UnitWeight,
     activity_grid,
     days_left,
     level_for,
@@ -50,13 +51,13 @@ def test_syllabus_percent_weight_and_unit():  # US-10 AC1
         [Leaf(10, "trang", True), Leaf(30, "trang", False), Leaf(20, "trang", True, excluded=True)]
     )
     assert (p.leaves, p.studied_leaves, p.percent) == (2, 1, 50)
-    assert (p.studied_weight, p.total_weight, p.unit) == (10, 40, "trang")
+    assert p.by_unit == {"trang": UnitWeight(10, 40)}
 
 
 def test_syllabus_empty_and_all_excluded():  # US-10 AC1 (empty and all-excluded edge)
     for leaves in ([], [Leaf(5, "trang", True, excluded=True)]):
         p = syllabus_progress(leaves)
-        assert (p.leaves, p.percent, p.total_weight, p.unit) == (0, None, 0, None)
+        assert (p.leaves, p.percent, p.by_unit) == (0, None, {})
 
 
 def test_question_bank_counts_per_type():  # US-10 AC1
@@ -113,11 +114,37 @@ def test_grid_without_exam_runs_to_today_no_marker():  # US-10 AC4 + DESIGN 6.13
     assert len(cells) == 3 and not any(c.exam_day or c.future for c in cells)
 
 
-def test_grid_exam_passed_still_reaches_exam_day():  # US-10 AC4 (exam passed)
+def test_grid_extends_to_today_once_exam_passed():  # US-10 AC4 (exam passed)
     cells = activity_grid(
         [span(date(2026, 11, 1), date(2026, 11, 3))], [], date(2026, 11, 20), UTC_TZ, 4
     )
     assert cells[-1].day == date(2026, 11, 20)  # today is later than the exam
+
+
+def test_mixed_units_are_reported_apart():  # US-10 AC1 (decision 30/10: per unit)
+    p = syllabus_progress(
+        [Leaf(10, "trang", True), Leaf(5, "slide", False), Leaf(2, "slide", True)]
+    )
+    assert p.by_unit == {"slide": UnitWeight(2, 7), "trang": UnitWeight(10, 10)}
+    assert p.percent == 67
+
+
+def test_future_day_stays_empty_even_with_an_event():  # US-10 AC6 (clock skew)
+    today = date(2026, 11, 1)
+    events = [ActivityEvent(at(date(2026, 11, 2)), SUBJECT, uuid.uuid4(), 5, 5)]
+    cells = activity_grid([span(today, date(2026, 11, 3))], events, today, UTC_TZ, 4)
+    future = cells[1]
+    assert future.future and future.level == 0
+    assert (future.work, future.subjects, future.sections) == (0, (), ())
+
+
+def test_every_exam_date_is_marked_in_all_subjects_view():  # US-10 AC4
+    spans = [
+        span(date(2026, 11, 1), date(2026, 11, 3)),
+        span(date(2026, 11, 1), date(2026, 11, 5), OTHER),
+    ]
+    cells = activity_grid(spans, [], date(2026, 11, 1), UTC_TZ, 4)
+    assert [c.day.day for c in cells if c.exam_day] == [3, 5]
 
 
 def test_work_is_cards_plus_answers_with_detail():  # US-10 AC5
@@ -173,7 +200,9 @@ def test_empty_subject():  # US-10 AC4/AC6 (empty day is a blank cell)
 
 def test_no_streak_anywhere():  # US-10 AC6, principle 4 (no streak)
     names = [n.lower() for n in dir(stats)]
-    for cls in (stats.GridCell, stats.SyllabusProgress, stats.TypeCounts, stats.ActivityEvent):
+    classes = [c for c in vars(stats).values() if dataclasses.is_dataclass(c)]
+    assert len(classes) >= 8
+    for cls in classes:
         names += [f.name.lower() for f in dataclasses.fields(cls)]
     assert not [n for n in names if "streak" in n or "chuoi" in n]
 
