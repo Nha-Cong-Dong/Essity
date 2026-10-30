@@ -309,6 +309,21 @@ def _markers(lines: Sequence[_Line], style: re.Pattern[str]) -> list[_Marker]:
     return found
 
 
+def _is_appendix(lines: Sequence[_Line], n: int) -> bool:
+    """Whether the heading on line `n` starts an answer key: a bank before it, a numbering
+    restarting at 1 after it, and no numbering of the bank going on after it."""
+    before = [_markers(lines[:n], style) for style in _STYLES]
+    after = [_markers(lines[n + 1 :], style) for style in _STYLES]
+    if not any(len(m) >= 2 for m in before):
+        return False
+    if not any(len(m) >= 2 and m[0][1] == 1 for m in after):
+        return False
+    for b, a in zip(before, after, strict=True):
+        if b and a and b[-1][1] < a[0][1] <= b[-1][1] + _MAX_SKIP:
+            return False
+    return True
+
+
 def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason], int]:
     """Questions from the numbering, and the 0-based index of the first page those cover (pages
     before it were not split). `len(pages)` when no style gives two markers."""
@@ -318,24 +333,16 @@ def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason
     full = [_markers(lines, style) for style in _STYLES]
     best = max(full, key=len)
     # An answer key or appendix heading ends the questions: its own numbering ("1. B 2. C")
-    # must not count as questions or swallow the last one. The style is the document's (`best`)
-    # and a heading is a cut only when that numbering does not go on after it ("Lời giải:"
-    # alone on a line is one question's answer). The exception: all of `best` lies after the
-    # heading (an answer key longer than the bank), then the style that fills the part before
-    # it and stops there is the bank's. The first such heading wins.
+    # must not count as questions or swallow the last one. A heading is a cut only when what
+    # follows it restarts numbering at 1 in some style (two markers or more) and no style of the
+    # part before it carries on past the heading ("Lời giải:" alone on a line is one question's
+    # answer, and the next "Câu k" continues). Unclear: no cut, everything is kept. The style is
+    # then chosen from the part before the cut. The first cut heading wins.
     for n, (_, line) in enumerate(lines):
-        if not _SECTION_BREAK.match(line):
-            continue
-        before = [m for m in best if m[0] < n]
-        if len(before) >= 2 and len(before) == len(best):
-            lines, best = lines[:n], before
+        if _SECTION_BREAK.match(line) and _is_appendix(lines, n):
+            lines = lines[:n]
+            best = max((_markers(lines, style) for style in _STYLES), key=len)
             break
-        if not before:
-            ends = [[m for m in found if m[0] < n] for found in full]
-            own = [e for e, found in zip(ends, full, strict=True) if len(e) >= 2 and e == found]
-            if own:
-                lines, best = lines[:n], max(own, key=len)
-                break
     if len(best) < 2:
         return [], [], len(pages)
     questions: list[Question] = []

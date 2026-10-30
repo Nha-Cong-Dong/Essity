@@ -510,3 +510,24 @@ def test_ac1_a_standalone_heading_never_drops_questions_before_it(heading: str, 
     assert len(result.questions) >= before
     assert [q.ord for q in result.questions][:before] == list(range(1, before + 1))
     assert len(result.questions) == 4 or len(result.questions) == before
+
+
+def test_ac1_options_then_a_numbered_key_one_per_line_keeps_four_questions() -> None:
+    """US-14 AC1: "Đáp án" alone, then "1. A" ... "5. A" (restarts at 1, more than the bank)."""
+    body = [f"Câu {k}:\nNội dung câu {k}\n1. phương án một\n2. phương án hai" for k in range(1, 5)]
+    key = "\n".join(f"{i}. {'AB'[i % 2]}" for i in range(1, 6))
+    result = split_bank(_pages("\n".join(body) + "\nĐáp án\n" + key), FakeAsk())
+    assert [q.ord for q in result.questions] == [1, 2, 3, 4]
+
+
+def test_ac1_an_appendix_in_the_questions_own_style_restarting_at_one_is_cut() -> None:
+    text = "Câu 1. TCP là gì?\nCâu 2. UDP là gì?\nĐáp án\nCâu 1. B\nCâu 2. C\nCâu 3. D"
+    result = split_bank(_pages(text), FakeAsk())
+    assert [q.prompt for q in result.questions] == ["TCP là gì?", "UDP là gì?"]
+
+
+def test_ac1_an_ambiguous_heading_keeps_everything() -> None:
+    """No restart at 1 after the heading: never cut, never drop."""
+    text = "Câu 1. TCP là gì?\nCâu 2. UDP là gì?\nĐáp án\n7. lạc\n8. lạc"
+    result = split_bank(_pages(text), FakeAsk())
+    assert [q.ord for q in result.questions][:2] == [1, 2]
