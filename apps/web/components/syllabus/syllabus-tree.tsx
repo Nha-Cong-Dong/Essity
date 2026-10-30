@@ -58,6 +58,8 @@ type Props = {
 const INDENT =
   "pl-[calc(min(var(--lvl),var(--cap))*var(--step))] [--lvl:0] [--cap:3] [--step:16px] sm:[--cap:4] sm:[--step:28px]";
 // The visible mark is 28 px; its touch area is 44 px (after:) without widening the indent step.
+// Panel buttons wrap their label (a long one such as "Đánh dấu 12 mục chưa học là đã học" must fit 320 px).
+const WRAP = "h-auto min-h-11 max-w-full shrink whitespace-normal py-2 text-left";
 const HIT = "relative after:absolute after:-inset-2 after:content-['']";
 
 function Tick() {
@@ -210,13 +212,14 @@ function Panel({
       <div className="ml-[calc(28px+8px+20px+8px)] flex flex-col gap-1 max-sm:ml-7">
         {state.mode === "actions" ? (
           <div className="flex flex-wrap items-center gap-x-1">
-            <Button ref={editRef} variant="quiet" onClick={edit}>
+            <Button ref={editRef} variant="quiet" className={WRAP} onClick={edit}>
               Sửa khoảng {word}
               {name}
             </Button>
             {leaf ? (
               <Button
                 variant="quiet"
+                className={WRAP}
                 onClick={() =>
                   act(applyMark(nodes, node.id, !markedDone), markedDone ? "Đã đánh dấu chưa học." : "Đã đánh dấu đã học.")
                 }
@@ -229,6 +232,7 @@ function Panel({
                 {counts.toStudied > 0 && (
                   <Button
                     variant="quiet"
+                    className={WRAP}
                     onClick={() => act(applyMark(nodes, node.id, true), `Đã đánh dấu ${counts.toStudied} mục đã học.`)}
                   >
                     Đánh dấu {counts.toStudied} mục chưa học là đã học
@@ -238,6 +242,7 @@ function Panel({
                 {counts.toUnstudied > 0 && (
                   <Button
                     variant="quiet"
+                    className={WRAP}
                     onClick={() => act(applyMark(nodes, node.id, false), `Đã đánh dấu ${counts.toUnstudied} mục là chưa học.`)}
                   >
                     Đánh dấu {counts.toUnstudied} mục là chưa học
@@ -248,6 +253,7 @@ function Panel({
             )}
             <Button
               variant="quiet"
+              className={WRAP}
               onClick={() => {
                 const next = excludeToggle(nodes, node.id);
                 const now = findNode(next, node.id)!;
@@ -480,7 +486,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
             data-row
             style={{ ["--lvl" as string]: level - 1 }}
             onClick={() => (branch ? fold(node.id, !isOpen) : openPanel(node.id))}
-            className={`${INDENT} flex min-h-11 cursor-pointer items-start gap-2 rounded-control py-2 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus`}
+            className={`${INDENT} flex min-h-11 cursor-pointer items-start gap-2 max-sm:gap-1 rounded-control py-2 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus`}
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center">
               {branch && (
@@ -499,7 +505,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
                 </button>
               )}
             </span>
-            <span className="flex h-7 w-5 shrink-0 items-center justify-center" aria-hidden="true">
+            <span className="flex h-7 w-5 shrink-0 items-center justify-center max-sm:w-4" aria-hidden="true">
               {status === "done" && !node.excluded ? <Tick /> : status === "partial" && leaf && !node.excluded ? <Half /> : null}
             </span>
             <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
