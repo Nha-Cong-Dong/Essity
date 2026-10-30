@@ -531,3 +531,17 @@ def test_ac1_an_ambiguous_heading_keeps_everything() -> None:
     text = "Câu 1. TCP là gì?\nCâu 2. UDP là gì?\nĐáp án\n7. lạc\n8. lạc"
     result = split_bank(_pages(text), FakeAsk())
     assert [q.ord for q in result.questions][:2] == [1, 2]
+
+
+def test_ac1_numbered_steps_after_an_answer_heading_do_not_cut_later_questions() -> None:
+    """US-14 AC1: "1." is both the question and the step style; the next question follows."""
+    steps = "\n".join(f"{i}. bước {i}" for i in (1, 2, 3))
+    text = f"1. TCP là gì?\n2. UDP là gì?\nLời giải:\n{steps}\n3. DNS là gì?\n4. ARP là gì?"
+    result = split_bank(_pages(text), FakeAsk())
+    assert [q.ord for q in result.questions][-2:] == [3, 4]
+
+
+def test_ac1_an_appendix_not_starting_at_one_is_not_cut() -> None:
+    text = "Câu 1. TCP là gì?\nCâu 2. UDP là gì?\nĐáp án\n3. B\n4. C"
+    result = split_bank(_pages(text), FakeAsk())
+    assert [q.ord for q in result.questions][:2] == [1, 2]

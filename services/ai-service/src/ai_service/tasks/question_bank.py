@@ -321,6 +321,20 @@ def _is_appendix(lines: Sequence[_Line], n: int) -> bool:
     for b, a in zip(before, after, strict=True):
         if b and a and b[-1][1] < a[0][1] <= b[-1][1] + _MAX_SKIP:
             return False
+    # The bank's own style (most markers before): after the restart its numbering drops back
+    # and then passes the bank's last number again. That was steps inside one answer ("1. bước",
+    # "2. bước") and the next question; a plain key counts up once and stays an appendix.
+    at = max(range(len(_STYLES)), key=lambda i: len(before[i]))
+    last, prev, dropped = before[at][-1][1], 0, False
+    for _, line in lines[n + 1 :]:
+        match = _STYLES[at].match(line)
+        if not match:
+            continue
+        number = int(match.group(1))
+        dropped = dropped or number <= prev
+        if dropped and number > last:
+            return False
+        prev = number
     return True
 
 
