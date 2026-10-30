@@ -6,7 +6,12 @@ import uuid
 
 import pytest
 
-from core_api.domain.commands.apply import LARGE_COMMAND_ITEMS, apply_command
+from core_api.domain.commands.apply import (
+    LARGE_COMMAND_ITEMS,
+    ApplyResult,
+    LoggedCommand,
+    apply_command,
+)
 from core_api.domain.commands.labels import label_map
 from core_api.domain.commands.registry import (
     CardAdd,
@@ -16,6 +21,8 @@ from core_api.domain.commands.registry import (
     CardMerge,
     CardSplit,
     CommandRejected,
+    IdSource,
+    Op,
     QuestionRelink,
     QuestionRemoveFromPractice,
     QuestionSetAnswer,
@@ -50,7 +57,7 @@ def uid() -> uuid.UUID:
     return uuid.uuid4()
 
 
-def counter():
+def counter() -> IdSource:
     n = itertools.count(1)
     return lambda: uuid.UUID(int=next(n))
 
@@ -80,11 +87,17 @@ def world() -> Snapshot:
     )
 
 
-def run(state, *ops, ids=None, cmd=None, session=SESSION):
+def run(
+    state: Snapshot,
+    *ops: Op,
+    ids: IdSource | None = None,
+    cmd: uuid.UUID | None = None,
+    session: uuid.UUID = SESSION,
+) -> ApplyResult:
     return apply_command(state, ops, ids or counter(), command_id=cmd or uid(), session_id=session)
 
 
-def card(state, id_) -> Card:
+def card(state: Snapshot, id_: uuid.UUID) -> Card:
     c = state.get("card", id_)
     assert isinstance(c, Card)
     return c
@@ -163,7 +176,7 @@ def test_ac2_relink_needs_exactly_one_target():
         QuestionSetType(Q1, uid()),
     ],
 )
-def test_ac4_ids_must_belong_to_the_user(op):
+def test_ac4_ids_must_belong_to_the_user(op: Op):
     with pytest.raises(CommandRejected) as e:
         run(world(), op)
     assert e.value.code == "not_owned"
@@ -216,7 +229,7 @@ def test_ac5_merge_is_deterministic_concat_of_drafts():
 
 
 @pytest.mark.parametrize("op", [CardMerge([D1, K1]), CardSplit(K1, 2), CardDiscardDraft(K1)])
-def test_ac2_merge_split_discard_refuse_canonical(op):
+def test_ac2_merge_split_discard_refuse_canonical(op: Op):
     with pytest.raises(CommandRejected) as e:
         run(world(), op)
     assert e.value.code == "canonical_card"
@@ -265,7 +278,7 @@ def test_split_refuses_when_too_few_lines():
         "unclear",
     ],
 )
-def test_ac6_forbidden_kinds_are_not_registered(kind):
+def test_ac6_forbidden_kinds_are_not_registered(kind: str):
     with pytest.raises(CommandRejected) as e:
         op_from_json({"kind": kind})
     assert e.value.code == "unsupported"
@@ -344,7 +357,7 @@ def test_ac5_newest_first_one_by_one():
     assert e.value.code == "nothing_to_undo"
 
 
-def replace_undone(entry):
+def replace_undone(entry: LoggedCommand) -> LoggedCommand:
     from dataclasses import replace
 
     return replace(entry, undone=True)
@@ -402,3 +415,8 @@ def test_labels_follow_request_display_order_and_reordering_changes_targets():
     first = run(world(), CardEdit(label_map("C", order)["C1"], "x"))
     second = run(world(), CardEdit(label_map("C", swapped)["C1"], "x"))
     assert card(first.state, D1).text == "x" and card(second.state, D2).text == "x"
+
+
+def test_split_new_ids_must_not_collide_with_existing_ids():
+    with pytest.raises(CommandRejected):
+        run(world(), CardSplit(D1, 2), ids=lambda: K1)

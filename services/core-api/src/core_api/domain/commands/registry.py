@@ -214,8 +214,11 @@ def _card_split(s: Snapshot, op: CardSplit, ids: IdSource) -> Snapshot:
     texts = split_text(card.text, op.parts)
     out = s.put(card.changed(text=texts[0]))
     for text in texts[1:]:
+        new_id = ids()
+        if out.get("card", new_id) is not None:
+            raise CommandRejected("id_collision", str(new_id))
         out = out.put(
-            Card(ids(), s.user_id, text=text, status=CardStatus.DRAFT, section_id=card.section_id)
+            Card(new_id, s.user_id, text=text, status=CardStatus.DRAFT, section_id=card.section_id)
         )
     return out
 
