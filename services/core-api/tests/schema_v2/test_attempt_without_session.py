@@ -203,3 +203,59 @@ def test_review_path_does_not_touch_a_practice_attempt(world: World) -> None:
     repo = AttemptRepository(world.session, world.alice.id)
     with pytest.raises(AttemptNotFoundError):
         repo.save_draft(attempt, answer_text="x", dont_remember=False)
+
+
+# --- tester (T7.M4) ----------------------------------------------------------------------------
+
+
+def test_tester_practice_attempt_submits_with_its_timing(world: World) -> None:
+    # Red when: a practice attempt (no session) cannot carry the 0026 timing in its submit UPDATE,
+    # the path T8.4 writes.
+    question = make_question(world.session, world.alice, world.subject)
+    attempt = insert(world, question.id, None)
+    world.session.execute(
+        text("UPDATE attempt SET served_at = now() - interval '1 minute' WHERE id = :a"),
+        {"a": attempt},
+    )
+    world.session.execute(
+        text(
+            "UPDATE attempt SET status = 'submitted', submitted_at = now(), hidden_ms = 0,"
+            " active_ms = 60000, timing_ok = true WHERE id = :a"
+        ),
+        {"a": attempt},
+    )
+    update_refused(world, "UPDATE attempt SET active_ms = 1 WHERE id = :a", a=attempt)
+
+
+def test_tester_downgraded_guard_still_refuses_delete_and_key_changes(
+    engine: Engine, alembic_cfg: Config
+) -> None:
+    # Red when: the guard put back by 0027's downgrade lost a rule of 0008. With `<>` a DELETE is
+    # only caught by its TG_OP branch (NEW is NULL), so a missing branch skips the row silently.
+    # Rows are written inside one transaction and rolled back: nothing is left behind.
+    ids = {k: uuid.uuid4() for k in ("u", "s", "q", "r", "a")}
+    try:
+        command.downgrade(alembic_cfg, "0026")
+        with engine.connect() as c:
+            outer = c.begin()
+            for sql in (
+                "INSERT INTO \"user\" (id, email) VALUES (:u, :u || '@example.com')",
+                "INSERT INTO subject (id, user_id, name) VALUES (:s, :u, 'M')",
+                "INSERT INTO question (id, user_id, subject_id, level, prompt, reference_answer,"
+                " status, content_hash, run_id) VALUES (:q, :u, :s, 1, 'p', 'a', 'active',"
+                " repeat('0', 64), :q)",
+                "INSERT INTO review_session (id, user_id, learning_day, started_at)"
+                " VALUES (:r, :u, '2026-11-01', now())",
+                "INSERT INTO attempt (id, user_id, review_session_id, question_id, status)"
+                " VALUES (:a, :u, :r, :q, 'draft')",
+            ):
+                c.execute(text(sql), ids)
+            for sql in (
+                "DELETE FROM attempt WHERE id = :a",
+                "UPDATE attempt SET question_id = gen_random_uuid() WHERE id = :a",
+            ):
+                with pytest.raises(DBAPIError, match="is refused"), c.begin_nested():
+                    c.execute(text(sql), ids)
+            outer.rollback()
+    finally:
+        command.upgrade(alembic_cfg, "head")
