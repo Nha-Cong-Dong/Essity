@@ -26,10 +26,10 @@ from typing import Annotated, Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, StringConstraints, ValidationError
 
-from ai_service.llm.types import ImagePart
+from ai_service.llm.types import ImagePart, Task
 from ai_service.llm.vision import ImageRejected, shrink
 
-TASK = "read_notes"
+TASK: Task = "read_notes"
 PROMPT_VERSION = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
 MAX_IMAGES = 20

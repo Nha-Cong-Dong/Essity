@@ -25,6 +25,7 @@ redelivery does not ask again.
 """
 
 import dataclasses
+import hashlib
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -35,6 +36,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from ai_service.llm.quota import QuotaExceededError, QuotaUnavailableError
+from ai_service.llm.types import Task
 from ai_service.messaging.session_result_v2 import draft_key as contract_draft_key
 from ai_service.messaging.session_result_v2 import quote_hash as contract_quote_hash
 from ai_service.tasks.chunk_models import ChunkRequest as _ChunkRequest
@@ -49,11 +51,12 @@ from ai_service.tasks.chunk_units import (
     ChunkInputError,
     ChunkInvalidError,
     ChunkPrompt,
+    Prompt,
     chunk_units,
 )
 from ai_service.tasks.grade import wrap_untrusted
 
-TASK = "draft_units"
+TASK: Task = "draft_units"
 PROMPT_VERSION = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
 _NONCE_PLACEHOLDER = "{{NONCE}}"
@@ -129,12 +132,22 @@ class DraftOutcome:
     reason: str | None = None
 
 
+def _sha(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def prompt() -> Prompt:
+    """The prompt as run: its version and hash, for the audit row."""
+    text = _system_template()
+    return Prompt(version=PROMPT_VERSION, text=text, sha256=_sha(text))
+
+
 @lru_cache
 def _system_template() -> str:
     return (_PROMPTS / TASK / f"{PROMPT_VERSION}.md").read_text("utf-8")
 
 
-def _anchor_order(anchor: DraftAnchor) -> tuple[int, str, int, int]:
+def anchor_order(anchor: DraftAnchor) -> tuple[int, str, int, int]:
     return (
         1 if anchor.document_id is None else 0,
         str(anchor.document_id or ""),
@@ -143,7 +156,7 @@ def _anchor_order(anchor: DraftAnchor) -> tuple[int, str, int, int]:
     )
 
 
-def _chunk_request(request: DraftRequest) -> _ChunkRequest:
+def to_chunk_request(request: DraftRequest) -> _ChunkRequest:
     return _ChunkRequest(
         documents=[
             DocInput(
@@ -168,7 +181,7 @@ def _to_draft(
 ) -> Draft:
     anchors = sorted(
         (DraftAnchor(a.document_id, a.page_no, a.quote_text, a.start, a.end) for a in unit.anchors),
-        key=_anchor_order,
+        key=anchor_order,
     )
     first_hash = contract_quote_hash(anchors[0].quote)
     section_ids: list[uuid.UUID] = []
@@ -205,7 +218,7 @@ def draft_units(request: DraftRequest, ask: Callable[[ChunkPrompt], str]) -> Dra
         return ask(dataclasses.replace(prompt, system=system, user=user))
 
     try:
-        result = chunk_units(_chunk_request(request), ask_with_draft_prompt)
+        result = chunk_units(to_chunk_request(request), ask_with_draft_prompt)
     except QuotaExceededError:
         return DraftOutcome("pending_ai", [], [], "ai_cap")
     except QuotaUnavailableError:
@@ -230,7 +243,7 @@ def draft_units(request: DraftRequest, ask: Callable[[ChunkPrompt], str]) -> Dra
             ]
             drafts[draft.draft_key] = dataclasses.replace(
                 kept,
-                anchors=sorted(kept.anchors + extra, key=_anchor_order),
+                anchors=sorted(kept.anchors + extra, key=anchor_order),
                 section_ids=kept.section_ids
                 + [s for s in draft.section_ids if s not in kept.section_ids],
             )

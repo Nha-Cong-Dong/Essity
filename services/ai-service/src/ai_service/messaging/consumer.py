@@ -515,10 +515,17 @@ def build_llm(settings: "Settings", sessions: "SessionFactory") -> "LlmClient | 
     from ai_service.llm.quota import DbQuotaGuard, QuotaLimits
     from ai_service.tasks.grade import fake_grade
     from ai_service.tasks.process_session import fake_chunk, fake_questions
+    from ai_service.tasks.process_submission import fake_read_notes
 
     adapter = build_adapter(
         settings,
-        {"grade": fake_grade, "chunk_units": fake_chunk, "generate_questions": fake_questions},
+        {
+            "grade": fake_grade,
+            "chunk_units": fake_chunk,
+            "generate_questions": fake_questions,
+            "draft_units": fake_chunk,
+            "read_notes": fake_read_notes,
+        },
     )
     if adapter is None:
         return None
