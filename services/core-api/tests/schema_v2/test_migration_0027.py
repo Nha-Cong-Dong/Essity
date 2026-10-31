@@ -11,7 +11,7 @@ from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from core_api.db.models import KnowledgeUnit, Outbox, StudyLedger, Submission
 from v2_rows import (
@@ -296,3 +296,125 @@ def test_downgrade_refuses_while_a_saved_event_is_in_the_outbox(
             c.execute(text("DELETE FROM outbox WHERE user_id = :u"), {"u": user_id})
             c.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": user_id})
         command.upgrade(alembic_cfg, "head")
+
+
+# --- tester (T7.M3): gaps of the tests above ---------------------------------------------------
+
+
+def test_tester_ledger_subject_must_be_the_users(world: World) -> None:
+    # Red when: the ledger's key to subject is on id alone (Alice's ledger row on Bob's subject).
+    study = make_study_session(world.session, world.alice, world.subject)
+    bobs_subject = make_subject(world.session, world.bob, "Của Bob")
+    refused(world, ledger(world, study.id, subject_id=bobs_subject.id))
+
+
+def test_tester_deleting_a_session_deletes_its_ledger_rows(world: World) -> None:
+    # Red when: the ledger key to study_session stops cascading (decisions.md: ON DELETE CASCADE).
+    study = make_study_session(world.session, world.alice, world.subject)
+    row = add(world, ledger(world, study.id))
+    world.session.execute(text("DELETE FROM study_session WHERE id = :i"), {"i": study.id})
+    left = world.session.execute(
+        text("SELECT count(*) FROM study_ledger WHERE id = :i"), {"i": row.id}
+    ).scalar_one()
+    assert left == 0
+
+
+def test_tester_draft_key_longer_than_64_is_refused(world: World) -> None:
+    # Red when: draft_key widens past String(64) in both model and migration.
+    with pytest.raises(DBAPIError), world.session.begin_nested():
+        make_unit(world.session, world.alice, world.subject, draft_key="k" * 65)
+
+
+UNIT_HELD = {
+    "session_id": "session_id = :st",
+    "draft_key": "draft_key = 'k'",
+    "retired_at": "status = 'retired', retired_at = now()",
+    "saved_at": "saved_at = now(), saved_learning_day = '2026-11-01'",
+}
+
+
+@pytest.mark.parametrize("held", ["study_ledger", *UNIT_HELD])
+def test_tester_downgrade_refuses_while_new_learner_data_exists(
+    engine: Engine, alembic_cfg: Config, held: str
+) -> None:
+    # Red when: the study_ledger or knowledge_unit branch of the 0027 refusal is missing or
+    # checks the wrong column (the downgrade would drop learner data). Committed on purpose
+    # (Alembic runs on its own connection); the user and everything under it go in `finally`.
+    user, subject, study, unit = (uuid.uuid4() for _ in range(4))
+    ids = {"u": user, "s": subject, "st": study, "k": unit}
+    with engine.begin() as c:
+        c.execute(
+            text('INSERT INTO "user" (id, email) VALUES (:u, :e)'),
+            {"u": user, "e": f"{user}@example.com"},
+        )
+        c.execute(text("INSERT INTO subject (id, user_id, name) VALUES (:s, :u, 'Mạng')"), ids)
+        c.execute(
+            text(
+                "INSERT INTO study_session (id, user_id, subject_id, description_raw, extraction,"
+                " status) VALUES (:st, :u, :s, 'x', 'proposed', 'draft')"
+            ),
+            ids,
+        )
+        c.execute(
+            text(
+                "INSERT INTO knowledge_unit (id, user_id, subject_id, title, summary, kind,"
+                " status, run_id) VALUES (:k, :u, :s, 't', 's', 'concept', 'active', :k)"
+            ),
+            ids,
+        )
+        if held == "study_ledger":
+            c.execute(
+                text(
+                    "INSERT INTO study_ledger (id, user_id, subject_id, session_id, learning_day,"
+                    " units_saved) VALUES (gen_random_uuid(), :u, :s, :st, '2026-11-01', 1)"
+                ),
+                ids,
+            )
+        else:
+            c.execute(text(f"UPDATE knowledge_unit SET {UNIT_HELD[held]} WHERE id = :k"), ids)  # noqa: S608
+    try:
+        with pytest.raises(RuntimeError, match="0027 downgrade"):
+            command.downgrade(alembic_cfg, "0026")
+        kept = (
+            "SELECT count(*) FROM study_ledger WHERE user_id = :u"
+            if held == "study_ledger"
+            else f"SELECT count(*) FROM knowledge_unit WHERE id = :k AND {held} IS NOT NULL"
+        )
+        with engine.connect() as c:
+            assert c.execute(text(kept), ids).scalar_one() == 1
+    finally:
+        command.upgrade(alembic_cfg, "head")
+        with engine.begin() as c:
+            c.execute(text('DELETE FROM "user" WHERE id = :u'), ids)
+
+
+def test_tester_downgrade_puts_back_the_0026_outbox_events(
+    engine: Engine, alembic_cfg: Config
+) -> None:
+    # Red when: 0027's downgrade leaves unit.saved.v1 allowed in the outbox, or drops an older
+    # event type (the round trip only looks at columns).
+    old = [
+        "document.uploaded.v1",
+        "grade.requested.v1",
+        "session.confirmed.v1",
+        "submission.created.v1",
+        "user.deleted.v1",
+    ]
+
+    def allowed() -> str:
+        with engine.connect() as c:
+            return c.execute(
+                text(
+                    "SELECT pg_get_constraintdef(oid) FROM pg_constraint"
+                    " WHERE conrelid = 'outbox'::regclass AND conname = 'ck_outbox_event_type'"
+                )
+            ).scalar_one()
+
+    try:
+        command.downgrade(alembic_cfg, "0026")
+        definition = allowed()
+        assert "'unit.saved.v1'" not in definition
+        assert [e for e in old if f"'{e}'" not in definition] == []
+    finally:
+        command.upgrade(alembic_cfg, "head")
+    assert "'unit.saved.v1'" in allowed()
