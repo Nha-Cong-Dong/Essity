@@ -278,5 +278,8 @@ def test_the_storage_not_answering_raises_for_a_retry(
 def test_the_consumer_uses_the_outline_handler(monkeypatch: pytest.MonkeyPatch) -> None:
     from core_api.messaging import consumer
 
-    monkeypatch.setattr("core_api.clients.storage.S3Storage.from_settings", lambda s: FakeStorage())
+    def from_settings(settings: object) -> FakeStorage:
+        return FakeStorage()
+
+    monkeypatch.setattr("core_api.clients.storage.S3Storage.from_settings", from_settings)
     assert isinstance(consumer.build_handlers()["document.indexed.v1"], OnDocumentIndexed)

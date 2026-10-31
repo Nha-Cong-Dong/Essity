@@ -50,7 +50,7 @@ def patch(client: TestClient, headers: dict[str, str], section: DocSection, **bo
 def test_us13_ac1_the_tree_has_weight_unit_source_and_state(
     client: TestClient, db_session: Session
 ) -> None:
-    user, headers, subject, document, _ = world(db_session)
+    _, headers, subject, document, _ = world(db_session)
 
     body = get(client, headers, subject.id)
 
@@ -143,8 +143,8 @@ def test_isolation_a_subject_never_shows_another_subjects_textbook(
 def test_an_unverified_user_reads_and_edits_nothing(
     client: TestClient, db_session: Session
 ) -> None:
-    user, headers, subject, _, sections = world(db_session)
-    other, unverified = signed_in(db_session, verified=False)
+    _, _, subject, _, sections = world(db_session)
+    _, unverified = signed_in(db_session, verified=False)
     assert client.get(f"/v1/subjects/{subject.id}/outline", headers=unverified).status_code == 403
     assert patch(client, unverified, sections["1.1"], excluded=True).status_code == 403
     assert (
@@ -160,7 +160,7 @@ def test_an_unverified_user_reads_and_edits_nothing(
 def test_a_deleted_subject_has_no_outline(client: TestClient, db_session: Session) -> None:
     from datetime import UTC, datetime
 
-    user, headers, subject, _, sections = world(db_session)
+    _, headers, subject, _, sections = world(db_session)
     subject.deleted_at = datetime.now(UTC)
     db_session.flush()
     assert client.get(f"/v1/subjects/{subject.id}/outline", headers=headers).status_code == 404
@@ -171,7 +171,7 @@ def test_a_deleted_subject_has_no_outline(client: TestClient, db_session: Sessio
 
 
 def test_us13_ac4_a_range_is_saved_as_the_learners(client: TestClient, db_session: Session) -> None:
-    user, headers, subject, _, sections = world(db_session)
+    _, headers, subject, _, sections = world(db_session)
 
     response = patch(client, headers, sections["1.1"], page_start=2, page_end=6)
 
@@ -202,7 +202,7 @@ def test_us13_ac4_a_range_is_saved_as_the_learners(client: TestClient, db_sessio
 def test_us13_ac4_a_range_that_breaks_a_rule_is_refused(
     client: TestClient, db_session: Session, body: dict[str, Any], code: str
 ) -> None:
-    user, headers, subject, _, sections = world(db_session)
+    _, headers, subject, _, sections = world(db_session)
     response = client.patch(f"/v1/sections/{sections['1.1'].id}", json=body, headers=headers)
     assert (response.status_code, response.json()["detail"]) == (422, code)
     assert get(client, headers, subject.id)["sections"][0]["children"][0]["page_start"] == 1
@@ -211,7 +211,7 @@ def test_us13_ac4_a_range_that_breaks_a_rule_is_refused(
 def test_us13_ac4_a_parent_cannot_shrink_off_its_children(
     client: TestClient, db_session: Session
 ) -> None:
-    user, headers, _, _, sections = world(db_session)
+    _, headers, _, _, sections = world(db_session)
     response = patch(client, headers, sections["Chương 1"], page_start=3, page_end=20)
     assert (response.status_code, response.json()["detail"]) == (422, "children_outside")
     assert (
@@ -222,7 +222,7 @@ def test_us13_ac4_a_parent_cannot_shrink_off_its_children(
 def test_us13_ac4_a_root_may_move_to_the_ends_of_the_document(
     client: TestClient, db_session: Session
 ) -> None:
-    user, headers, _, _, sections = world(db_session)
+    _, headers, _, _, sections = world(db_session)
     assert (
         patch(client, headers, sections["Chương 2"], page_start=21, page_end=PAGES).status_code
         == 200
@@ -246,7 +246,7 @@ def test_us13_ac4_a_root_may_move_to_the_ends_of_the_document(
 def test_a_patch_with_other_fields_or_types_is_refused(
     client: TestClient, db_session: Session, body: dict[str, Any]
 ) -> None:
-    user, headers, _, _, sections = world(db_session)
+    _, headers, _, _, sections = world(db_session)
     response = client.patch(f"/v1/sections/{sections['1.1'].id}", json=body, headers=headers)
     assert response.status_code == 422
 
@@ -257,7 +257,7 @@ def test_a_patch_with_other_fields_or_types_is_refused(
 def test_us13_ac5_an_excluded_section_leaves_the_progress(
     client: TestClient, db_session: Session
 ) -> None:
-    user, headers, subject, _, sections = world(db_session)
+    _, headers, subject, _, sections = world(db_session)
     patch(client, headers, sections["Chương 2"], studied=True)
     assert get(client, headers, subject.id)["progress"] == pytest.approx(0.5)
 
@@ -276,7 +276,7 @@ def test_us13_ac5_an_excluded_section_leaves_the_progress(
 def test_us13_ac5_studied_on_a_parent_marks_every_leaf_under_it(
     client: TestClient, db_session: Session
 ) -> None:
-    user, headers, subject, _, sections = world(db_session)
+    _, headers, _, _, sections = world(db_session)
 
     body = patch(client, headers, sections["Chương 1"], studied=True).json()
 
@@ -300,7 +300,7 @@ def test_us13_ac5_studied_on_a_parent_marks_every_leaf_under_it(
 def test_us13_ac6_a_partly_covered_section_counts_by_the_part(
     client: TestClient, db_session: Session
 ) -> None:
-    user, headers, subject, _, sections = world(db_session)
+    _, headers, subject, _, sections = world(db_session)
     sections["1.2"].studied_weight = 6  # six of its twelve pages
     db_session.flush()
 
@@ -316,7 +316,7 @@ def test_us13_ac6_the_same_range_gives_the_same_state_whatever_the_cards(
     client: TestClient, db_session: Session
 ) -> None:
     # Studied is read from the covered weight alone: no card or question count enters it.
-    user, headers, subject, _, sections = world(db_session)
+    _, headers, subject, _, sections = world(db_session)
     sections["1.1"].studied_weight = 8
     db_session.flush()
     assert flat(get(client, headers, subject.id)["sections"])["1.1"]["studied"] is True
@@ -325,7 +325,7 @@ def test_us13_ac6_the_same_range_gives_the_same_state_whatever_the_cards(
 def test_us13_ac6_editing_the_range_of_a_studied_section_keeps_it_studied(
     client: TestClient, db_session: Session
 ) -> None:
-    user, headers, subject, _, sections = world(db_session)
+    _, headers, _, _, sections = world(db_session)
     patch(client, headers, sections["1.1"], studied=True)
 
     items = flat(
@@ -346,7 +346,7 @@ def test_us13_ac6_editing_the_range_of_a_studied_section_keeps_it_studied(
 def test_us13_ac4_a_section_of_another_user_is_not_found(
     client: TestClient, db_session: Session
 ) -> None:
-    user, headers, _, _, sections = world(db_session)
+    _, _, _, _, sections = world(db_session)
     _, other = signed_in(db_session)
     for body in ({"excluded": True}, {"page_start": 1, "page_end": 2}, {"studied": True}):
         response = client.patch(f"/v1/sections/{sections['1.1'].id}", json=body, headers=other)
