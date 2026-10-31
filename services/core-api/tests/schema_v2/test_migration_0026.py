@@ -199,3 +199,45 @@ def test_timing_is_written_with_the_submit_then_frozen(db_session: Session, seed
     for change in ("active_ms = 1", "served_at = now()"):
         with pytest.raises(DBAPIError), db_session.begin_nested():
             db_session.execute(text(f"UPDATE attempt SET {change} WHERE id = :a"), {"a": attempt})  # noqa: S608
+
+
+# Tester (T7.M3): boundaries the tests above leave open.
+def test_tester_zero_active_ms_is_accepted(db_session: Session, seeded: Seeded) -> None:
+    # Red when: the CHECK becomes active_ms > 0 (a tab hidden the whole time still has a record).
+    insert_attempt(
+        db_session,
+        seeded,
+        "submitted",
+        served_at=SERVED,
+        hidden_ms=0,
+        active_ms=0,
+        timing_ok=False,
+    )
+
+
+def test_tester_submitted_review_attempt_needs_no_timing(
+    db_session: Session, seeded: Seeded
+) -> None:
+    # Red when: a CHECK demands timing on every submitted attempt (review attempts have none).
+    insert_attempt(db_session, seeded, "submitted")
+
+
+@pytest.mark.parametrize("column", ["hidden_ms", "timing_ok"])
+def test_tester_other_timing_columns_are_frozen_after_submit(
+    db_session: Session,
+    seeded: Seeded,
+    column: str,
+) -> None:
+    # Red when: attempt_guard lets hidden_ms or timing_ok change once the attempt is submitted.
+    attempt = insert_attempt(
+        db_session,
+        seeded,
+        "submitted",
+        served_at=SERVED,
+        hidden_ms=0,
+        active_ms=10,
+        timing_ok=True,
+    )
+    change = {"hidden_ms": "hidden_ms = 5", "timing_ok": "timing_ok = false"}[column]
+    with pytest.raises(DBAPIError), db_session.begin_nested():
+        db_session.execute(text(f"UPDATE attempt SET {change} WHERE id = :a"), {"a": attempt})  # noqa: S608
