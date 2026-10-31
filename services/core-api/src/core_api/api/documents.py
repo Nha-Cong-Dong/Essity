@@ -317,7 +317,9 @@ def read_document(
 class DocumentPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    short_name: StrictStr | None = Field(default=None, min_length=1, max_length=FILENAME_MAX)
+    short_name: Annotated[StrictStr, AfterValidator(storable_text)] | None = Field(
+        default=None, min_length=1, max_length=FILENAME_MAX
+    )
     role: Literal["textbook", "question_bank", "auxiliary"] | None = None
 
 
