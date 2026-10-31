@@ -28,6 +28,10 @@ def test_t210_migrations_go_down_to_base_and_back_up(engine: Engine, alembic_cfg
     with engine.begin() as connection:  # 0007's downgrade refuses while a row has the new task
         connection.execute(text("DELETE FROM llm_call WHERE task = 'syllabus_toc'"))
         connection.execute(text("DELETE FROM pipeline_run WHERE task = 'syllabus_toc'"))
+        connection.execute(text("DELETE FROM llm_call WHERE task IN ('draft_units','read_notes')"))
+        connection.execute(
+            text("DELETE FROM pipeline_run WHERE task IN ('draft_units','read_notes')")
+        )
     command.downgrade(alembic_cfg, "base")
     assert not TABLES & table_names(engine)
     command.upgrade(alembic_cfg, "head")
@@ -175,4 +179,16 @@ def test_t74_syllabus_toc_task_is_accepted_and_unknown_refused(engine: Engine) -
         session.add(new_run(task="syllabus_unknown"))
         with pytest.raises(IntegrityError):
             session.flush()
+        session.rollback()
+
+
+@pytest.mark.parametrize("task", ["draft_units", "read_notes"])
+def test_t77_draft_units_and_read_notes_tasks_are_accepted(engine: Engine, task: str) -> None:
+    # Red when: migration 0008 or the model leaves the task out of the task CHECKs.
+    with Session(engine) as session:
+        run = new_run(task=task)
+        session.add(run)
+        session.flush()
+        session.add(new_call(run, task=task))
+        session.flush()
         session.rollback()
