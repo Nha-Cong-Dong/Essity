@@ -73,3 +73,20 @@ def test_ac12_saved_learning_day_boundary(hh: int, mm: int, day: int) -> None:
     assert d.day == day
     assert not ur.in_review(d, d)
     assert ur.in_review(d, d + timedelta(days=1))
+
+
+def _key(user: uuid.UUID, session: uuid.UUID, h: str = "a" * 64, ext: str = "jpg") -> str:
+    return f"users/{user}/sessions/{session}/notes/{h}.{ext}"
+
+
+def test_security_file_keys_must_be_this_users_and_sessions_notes() -> None:
+    # US-02b security (review T7.1 F6/T4). Red when: startswith is used or a stranger's key passes.
+    u, s = uuid.UUID(int=1), uuid.UUID(int=2)
+    assert ur.file_keys_are_own([_key(u, s), _key(u, s, "b" * 64, "pdf")], u, s)
+    assert ur.file_keys_are_own([], u, s)
+    assert not ur.file_keys_are_own([_key(uuid.UUID(int=3), s)], u, s)
+    assert not ur.file_keys_are_own([_key(u, uuid.UUID(int=9))], u, s)
+    assert not ur.file_keys_are_own([_key(u, s) + "/../x"], u, s)
+    assert not ur.file_keys_are_own([_key(u, s, "a" * 63)], u, s)
+    assert not ur.file_keys_are_own([_key(u, s, ext="exe")], u, s)
+    assert not ur.file_keys_are_own([_key(u, s) + ",x"], u, s)

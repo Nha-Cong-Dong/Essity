@@ -4,6 +4,7 @@ Shared by the review API and the command bar (T9.2). Merging and splitting are d
 never call an LLM (AC6). Only draft cards can be merged, split or edited.
 """
 
+import re
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -124,3 +125,15 @@ def _union(groups: Iterable[tuple[uuid.UUID, ...]]) -> tuple[uuid.UUID, ...]:
         for item in group:
             seen.setdefault(item)
     return tuple(seen)
+
+
+_NOTE_EXT = "jpg|png|pdf|txt|md|docx|pptx"
+
+
+def file_keys_are_own(keys: Iterable[str], user_id: uuid.UUID, session_id: uuid.UUID) -> bool:
+    """True when every key is `users/<user>/sessions/<session>/notes/<sha256>.<ext>` of this very
+    user and session, matched whole (same shape as the submission CHECK, migration 0024)."""
+    pattern = re.compile(
+        rf"users/{user_id}/sessions/{session_id}/notes/[0-9a-f]{{64}}\.(?:{_NOTE_EXT})"
+    )
+    return all(pattern.fullmatch(k) for k in keys)
