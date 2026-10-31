@@ -20,7 +20,7 @@ import shutil
 import statistics
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -417,29 +417,31 @@ def real_tokens(task: str, projects: Path) -> tuple[int, str] | None:
     return total, f"{sum(agent_usage.estimate_cost(r.usage) for r in rows):.2f}"
 
 
-def started_at(task: str, pr: int, branch: str, base: str, repo: Path, projects_dir: Path) -> str:
-    """When work on the task began: the branch's first commit (the PR's, once the branch is gone),
-    or the task's first subagent when that is earlier. A branch squashed to one commit before the
-    PR otherwise looks a few minutes long (T9.7a, #100: 0.1 h)."""
-    stamps: list[str] = []
+def started_at(
+    task: str, pr: int, branch: str, base: str, repo: Path, projects_dir: Path,
+    card: Path | None = None,
+) -> str:  # fmt: skip
+    """When work on the task began: the first commit on the branch that its base lacks (author
+    date). Once the branch is gone: the PR's earliest commit, then the card's mtime. Subagent
+    transcripts are not used: planners and reviewers start before the branch is cut, and slices
+    (T7.5a) share a prefix (T7.5 and T8.3 read hours too long)."""
     verify = ["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"]
     if branch and _run(verify, repo).strip():
-        first = _run(["git", "log", "--reverse", "--format=%cI", f"{base}..{branch}"], repo)
-        stamps += first.split()[:1]
-    else:
-        view = _run(["gh", "pr", "view", str(pr), "--json", "commits"], repo)
-        commits = json.loads(view or "{}").get("commits") or []
-        stamps += [str(c["committedDate"]) for c in commits if c.get("committedDate")]
-    stamps += [
-        r.usage.first for r in agent_usage.task_subagents(task, projects_dir) if r.usage.first
-    ]
+        first = _run(["git", "log", "--reverse", "--format=%aI", f"{base}..{branch}"], repo)
+        return first.split()[0] if first.split() else ""
+    view = _run(["gh", "pr", "view", str(pr), "--json", "commits"], repo)
+    commits = json.loads(view or "{}").get("commits") or []
     valid = []
-    for stamp in stamps:
+    for c in commits:
         try:
-            valid.append((_when(stamp), stamp))
-        except ValueError:
+            valid.append((_when(str(c["committedDate"])), str(c["committedDate"])))
+        except (KeyError, ValueError):
             continue
-    return min(valid)[1] if valid else ""
+    if valid:
+        return min(valid)[1]
+    if card is not None and card.exists():
+        return datetime.fromtimestamp(card.stat().st_mtime, timezone.utc).isoformat()
+    return ""
 
 
 def build_row(
@@ -454,7 +456,7 @@ def build_row(
     card = found["card"] or {}
     branch = str(card.get("branch") or "")
     base = str(card.get("base") or "origin/main")
-    started = started_at(task, pr, branch, base, repo, projects_dir)
+    started = started_at(task, pr, branch, base, repo, projects_dir, work / task / "card.yaml")
     view = _run(["gh", "pr", "view", str(pr), "--json", "mergedAt"], repo)
     merged = str(json.loads(view or "{}").get("mergedAt") or "")
     runs = _run(

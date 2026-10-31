@@ -304,14 +304,33 @@ class Hours(Fixture):
         self.assertEqual(row["started_at"], "2026-10-31T01:00:00Z")
         self.assertEqual(row["hours"], "2.0")
 
-    def test_a_subagent_before_a_squashed_commit_moves_the_start_back(self) -> None:
-        # T9.7a (#100): one squashed commit 4 minutes before the merge, lane lead 20 minutes earlier
+    def test_commits_already_on_the_base_do_not_count(self) -> None:
+        # T7.5 / T8.3 (01/11): the branch was cut from main long after earlier slice work
+        git(self.repo, "checkout", "-q", "-b", "t9-x")
+        (self.repo / "b").write_text("b")
+        git(self.repo, "add", "b")
+        git(self.repo, "commit", "-q", "-m", "mine", date="2026-10-31T05:00:00+00:00")
+        row = self.row({"mergedAt": "2026-10-31T06:00:00Z"})
+        self.assertEqual(flow._when(row["started_at"]), flow._when("2026-10-31T05:00:00Z"))
+        self.assertEqual(row["hours"], "1.0")
+
+    def test_a_deleted_branch_without_pr_commits_uses_the_card_mtime(self) -> None:
+        import os
+
+        stamp = flow._when("2026-10-31T04:00:00Z").timestamp()
+        os.utime(self.dir / "card.yaml", (stamp, stamp))
+        row = self.row({"mergedAt": "2026-10-31T05:00:00Z"})
+        self.assertEqual(flow._when(row["started_at"]), flow._when("2026-10-31T04:00:00Z"))
+        self.assertEqual(row["hours"], "1.0")
+
+    def test_an_earlier_subagent_of_a_sliced_task_does_not_move_the_start(self) -> None:
+        # T7.5 vs T7.5a: a transcript naming a different or earlier task must not count
         from test_agent_usage import sub_transcript
 
         git(self.repo, "checkout", "-q", "-b", "t9-x")
         (self.repo / "b").write_text("b")
         git(self.repo, "add", "b")
-        git(self.repo, "commit", "-q", "-m", "squashed", date="2026-10-31T01:47:00+00:00")
+        git(self.repo, "commit", "-q", "-m", "mine", date="2026-10-31T01:47:00+00:00")
         sub_transcript(self.tmp / "p", "lead", "Luồng L4, task T9 (card).")
         path = self.tmp / "p" / "D--Essity" / "sess" / "subagents" / "agent-lead.jsonl"
         path.write_text(
@@ -320,8 +339,8 @@ class Hours(Fixture):
             ),
             encoding="utf-8",
         )
-        row = self.row({"mergedAt": "2026-10-31T02:00:00Z"})
-        self.assertEqual(row["started_at"], "2026-10-31T01:00:00Z")
+        row = self.row({"mergedAt": "2026-10-31T02:47:00Z"})
+        self.assertEqual(flow._when(row["started_at"]), flow._when("2026-10-31T01:47:00Z"))
         self.assertEqual(row["hours"], "1.0")
 
 
