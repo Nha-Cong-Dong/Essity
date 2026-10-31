@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
 from core_api.messaging.session_result_v2 import SessionResultV2, draft_key, quote_hash
@@ -80,7 +81,7 @@ def test_more_than_200_drafts_is_refused() -> None:
     result = body()
     template = result["drafts"][0]
     session = uuid.UUID(result["study_session_id"])
-    drafts = []
+    drafts: list[Any] = []
     for i in range(201):
         draft = json.loads(json.dumps(template))
         draft["anchors"][0]["quote_text"] = f"quote {i}"
@@ -101,3 +102,57 @@ def test_a_number_written_as_text_is_refused() -> None:
     result["drafts"][0]["anchors"][0]["start"] = str(result["drafts"][0]["anchors"][0]["start"])
     with pytest.raises(ValidationError):
         SessionResultV2.model_validate_json(json.dumps(result))
+
+
+# --- Round 2 (tester): the model refuses what the schema refuses, field by field (AC10) -------
+
+SCHEMA = EXAMPLE.parents[1] / "session-result.v2.schema.json"
+
+
+def _set(path: str, value: Any) -> dict[str, Any]:
+    result = body()
+    node: Any = result
+    *steps, last = path.split(".")
+    for step in steps:
+        node = node[int(step)] if step.isdigit() else node[step]
+    node[int(last) if last.isdigit() else last] = value
+    return result
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        ("drafts.0.title", ""),
+        ("drafts.0.title", "t" * 201),
+        ("drafts.0.kind", "opinion"),
+        ("drafts.0.anchors.0.page_no", 0),
+        ("drafts.0.anchors.0.start", -1),
+        ("drafts.0.anchors.0.source", "web"),
+        ("dropped.drafts", -1),
+        ("skipped.0.reason", "blurry"),
+        ("skipped.0.kind", "slide"),
+        ("version", 3),
+    ],
+)
+def test_a_field_out_of_its_schema_is_refused_by_the_model_too(path: str, value: Any) -> None:
+    # Red when: one field constraint of the model drifts from the schema (a length, a minimum or
+    # an enum), so an LLM-written result the contract refuses still reaches the learner.
+    result = _set(path, value)
+    validator: Any = Draft202012Validator(json.loads(SCHEMA.read_text(encoding="utf-8")))
+    assert not validator.is_valid(result)
+    with pytest.raises(ValidationError):
+        SessionResultV2.model_validate_json(json.dumps(result))
+
+
+def test_quote_hash_is_of_the_first_anchor_not_another() -> None:
+    # Red when: the quote_hash rule reads any anchor but the first (the key would then move when
+    # the writer reorders anchors).
+    result = body()
+    draft = result["drafts"][0]
+    second = json.loads(json.dumps(draft["anchors"][0]))
+    second["quote_text"] = "another quote"
+    draft["anchors"].insert(0, second)
+    with pytest.raises(ValidationError, match="quote_hash"):
+        SessionResultV2.model_validate_json(json.dumps(result))
+    draft["anchors"].reverse()
+    assert len(SessionResultV2.model_validate_json(json.dumps(result)).drafts[0].anchors) == 2

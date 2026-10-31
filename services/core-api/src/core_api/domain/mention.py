@@ -223,10 +223,8 @@ def _page_position(document: DocInfo, number: int) -> int | None:
     """File position of a page number: the printed label when the document has labels."""
     if document.page_labels is None:
         return number if 1 <= number <= document.page_count else None
-    for position, label in enumerate(document.page_labels, start=1):
-        if label == str(number):
-            return position
-    return None
+    positions = [p for p, label in enumerate(document.page_labels, start=1) if label == str(number)]
+    return positions[0] if len(positions) == 1 else None  # a repeated label is never guessed
 
 
 def _page_range(mention: int, document: DocInfo, item: str, text: str) -> tuple[int, int]:

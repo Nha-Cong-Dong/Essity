@@ -92,3 +92,69 @@ def test_out_of_order_sections_resolve_by_ord_not_by_input_order() -> None:
     # Red when: position counting follows the order rows arrive, not (ord, id).
     sections = {BOOK.id: [sec(30, "Hai", ord_=1), sec(31, "Một", ord_=0)]}
     assert resolve_mentions("@Sách chương 1", [BOOK], sections)[0].section_id == uid(31)
+
+
+# --- Round 2 (tester): page bounds and labels (AC3 "tr. 40-55", AC4 no silent guess) ----------
+
+
+def test_page_bounds_are_one_to_page_count_inclusive() -> None:
+    # Red when: the page range check is off by one at either end (page 0 or page_count + 1
+    # resolves, or the last page is refused).
+    assert resolve_mentions("@Sách tr. 1-100", [BOOK], {}) == [
+        ResolvedMention(0, BOOK.id, None, 1, 100)
+    ]
+    assert code_of("@Sách tr. 0-3", [BOOK], {}) == "scope_out_of_range"
+    assert code_of("@Sách tr. 99-101", [BOOK], {}) == "scope_out_of_range"
+    assert code_of("@Sách tr. 7-5", [BOOK], {}) == "scope_out_of_range"
+
+
+def test_slide_bounds_follow_the_deck_size() -> None:
+    # Red when: slides are not checked against the deck's page_count.
+    assert resolve_mentions("@CSDL slide 60", [SLIDES], {})[0].last_page == 60
+    assert code_of("@CSDL slide 61", [SLIDES], {}) == "scope_out_of_range"
+
+
+def test_printed_range_whose_file_positions_run_backwards_is_out_of_range() -> None:
+    # Red when: labels map "tr. 5-7" onto file pages 3..1 and the reversed range is returned
+    # (or silently swapped) instead of an error naming the part.
+    doc = DocInfo(uid(7), "Giáo trình", "pdf", 3, page_labels=["7", "6", "5"])
+    with pytest.raises(MentionError) as caught:
+        resolve_mentions("@Giáo trình tr. 5-7", [doc], {})
+    error = caught.value
+    assert error.code == "scope_out_of_range" and error.part == "tr. 5-7"
+
+
+def test_a_printed_page_that_repeats_in_the_labels_is_not_guessed() -> None:
+    # Red when: a label that occurs twice (front matter and body both numbered from 1) resolves
+    # to its first occurrence. AC4: a page that does not resolve to one place is an error, never
+    # a silent pick. Expected: an error (ambiguous or out of range), not file page 1.
+    doc = DocInfo(uid(8), "Giáo trình", "pdf", 4, page_labels=["1", "2", "1", "2"])
+    with pytest.raises(MentionError) as caught:
+        resolve_mentions("@Giáo trình tr. 1-2", [doc], {})
+    assert caught.value.code in {"scope_ambiguous", "scope_out_of_range"}
+
+
+def test_explicit_mention_must_cover_at_least_its_at_sign() -> None:
+    # Red when: an explicit mention with end == start (empty) is accepted as pointing.
+    with pytest.raises(MentionError) as caught:
+        resolve_mentions("@CSDL slide 2", [SLIDES], {}, [ExplicitMention(SLIDES.id, 0, 0)])
+    assert caught.value.code == "mention_not_found"
+    got = resolve_mentions("@CSDL slide 2", [SLIDES], {}, [ExplicitMention(SLIDES.id, 0, 5)])
+    assert got == [ResolvedMention(0, SLIDES.id, None, 2, 2)]
+
+
+def test_a_range_written_backwards_is_refused_even_when_labels_run_backwards() -> None:
+    # Red when: "tr. 7-5" is accepted because the labels happen to put printed 7 before
+    # printed 5 in the file (only the file positions are compared, not the printed bounds).
+    doc = DocInfo(uid(9), "Giáo trình", "pdf", 3, page_labels=["7", "6", "5"])
+    with pytest.raises(MentionError) as caught:
+        resolve_mentions("@Giáo trình tr. 7-5", [doc], {})
+    assert caught.value.code == "scope_out_of_range"
+
+
+def test_the_mention_ceiling_is_twenty() -> None:
+    # Red when: the ceiling constant moves away from the 20 the request model allows
+    # (`SubmitRequest.mentions` max 20), so the two limits disagree.
+    twenty = "; ".join(f"@CSDL slide {i}" for i in range(1, 21))
+    assert len(resolve_mentions(twenty, [SLIDES], {})) == 20
+    assert code_of(twenty + "; @CSDL slide 21", [SLIDES], {}) == "too_many_mentions"

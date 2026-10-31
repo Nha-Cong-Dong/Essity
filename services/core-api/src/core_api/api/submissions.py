@@ -347,7 +347,7 @@ def submit(  # noqa: PLR0913, PLR0915
     resolved, sections = _resolve(body, documents, submissions, storage)
     keys = {sha: note_key(user.id, draft.id, sha, f.mime) for sha, f in files.items()}
     pending = NoteUploadRepository(session, user.id)
-    held = pending.lock_of_session(draft.id, [sha for sha in files if sha != typed_sha])
+    held = pending.lock_of_session(draft.id, list(files))
     _check_stored(storage, files, keys, typed_sha)
     if _used_bytes(session, user.id) + (len(typed) if typed is not None else 0) > (
         settings.note_quota_bytes
