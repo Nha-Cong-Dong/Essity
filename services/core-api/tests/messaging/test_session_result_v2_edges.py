@@ -156,3 +156,25 @@ def test_quote_hash_is_of_the_first_anchor_not_another() -> None:
         SessionResultV2.model_validate_json(json.dumps(result))
     draft["anchors"].reverse()
     assert len(SessionResultV2.model_validate_json(json.dumps(result)).drafts[0].anchors) == 2
+
+
+def test_t78_section_ids_repeating_a_section_is_refused() -> None:
+    # US-02b AC1 (T7.7 r2 Y4). Red when: [S1, S1] passes and would write a duplicate unit_section.
+    result = body()
+    draft = result["drafts"][0]
+    first = draft["section_id"] or str(uuid.UUID(int=1))
+    draft["section_id"] = first
+    draft["section_ids"] = [first, first]
+    with pytest.raises(ValidationError, match="section_ids"):
+        SessionResultV2.model_validate_json(json.dumps(result))
+
+
+def test_t78_section_ids_with_a_null_is_refused() -> None:
+    # Red when: a null entry in section_ids is let through to the consumer.
+    result = body()
+    draft = result["drafts"][0]
+    first = draft["section_id"] or str(uuid.UUID(int=1))
+    draft["section_id"] = first
+    draft["section_ids"] = [first, None]
+    with pytest.raises(ValidationError):
+        SessionResultV2.model_validate_json(json.dumps(result))

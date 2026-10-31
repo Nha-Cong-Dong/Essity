@@ -82,8 +82,11 @@ class SessionResultV2(_Closed):
                 raise ValueError("quote_hash is not the hash of the first anchor's quote")
             if draft.draft_key != draft_key(self.study_session_id, draft.quote_hash):
                 raise ValueError("draft_key is not the hash of session and quote")
-            if draft.section_ids is not None and draft.section_id != draft.section_ids[0]:
-                raise ValueError("section_id is not the first of section_ids")
+            if draft.section_ids is not None:
+                if draft.section_id != draft.section_ids[0]:
+                    raise ValueError("section_id is not the first of section_ids")
+                if len(set(draft.section_ids)) != len(draft.section_ids):
+                    raise ValueError("section_ids repeats a section")
             if draft.draft_key in keys:
                 raise ValueError("draft_key repeats")
             keys.add(draft.draft_key)
