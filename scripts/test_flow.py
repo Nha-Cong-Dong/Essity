@@ -1,6 +1,7 @@
 """Tests for flow.py. Run: python -m unittest discover -s scripts -p "test_*.py"."""
 
 import csv
+import io
 import json
 import subprocess
 import tempfile
@@ -242,6 +243,151 @@ class Check(Fixture):
         self.assertEqual(flow.ci_state(wait), ("missing", "CI đang chạy"))
 
 
+def git(cwd: Path, *args: str, date: str = "") -> str:
+    env = None
+    if date:
+        import os
+
+        env = {**os.environ, "GIT_COMMITTER_DATE": date, "GIT_AUTHOR_DATE": date}
+    return subprocess.run(
+        ["git", "-C", str(cwd), *args], capture_output=True, text=True, check=True, env=env
+    ).stdout.strip()
+
+
+class Hours(Fixture):
+    """W2: hours run from the branch's first commit (or the task's first subagent) to the merge."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.repo = self.tmp / "repo"
+        self.repo.mkdir()
+        git(self.repo, "init", "-q", "-b", "main")
+        git(self.repo, "config", "user.email", "t@example.com")
+        git(self.repo, "config", "user.name", "t")
+        (self.repo / "a").write_text("a")
+        git(self.repo, "add", "a")
+        git(self.repo, "commit", "-q", "-m", "base", date="2026-10-31T00:00:00+00:00")
+        (self.dir / "card.yaml").write_text("task: T9\nrisk: yellow\nbranch: t9-x\nbase: main\n")
+
+    def row(self, gh: dict[str, Any]) -> dict[str, Any]:
+        real = flow._run
+
+        def fake_run(args: list[str], cwd: Path | None = None) -> str:
+            if args[0] == "git":
+                return real(args, cwd)
+            if args[:3] == ["gh", "pr", "view"]:
+                return json.dumps(gh)
+            return "[]"
+
+        with mock.patch.object(flow, "_run", fake_run):
+            return flow.build_row(self.work, "T9", 29, self.repo, projects_dir=self.tmp / "p")
+
+    def test_two_commits_an_hour_apart_count_from_the_first(self) -> None:
+        git(self.repo, "checkout", "-q", "-b", "t9-x")
+        for stamp in ("2026-10-31T01:00:00+00:00", "2026-10-31T02:00:00+00:00"):
+            (self.repo / "b").write_text(stamp)
+            git(self.repo, "add", "b")
+            git(self.repo, "commit", "-q", "-m", stamp, date=stamp)
+        row = self.row({"mergedAt": "2026-10-31T02:30:00Z"})
+        self.assertEqual(flow._when(row["started_at"]), flow._when("2026-10-31T01:00:00Z"))
+        self.assertEqual(row["hours"], "1.5")
+
+    def test_a_deleted_branch_falls_back_to_the_pr_commits(self) -> None:
+        gh = {
+            "mergedAt": "2026-10-31T03:00:00Z",
+            "commits": [
+                {"committedDate": "2026-10-31T02:00:00Z"},
+                {"committedDate": "2026-10-31T01:00:00Z"},
+            ],
+        }
+        row = self.row(gh)
+        self.assertEqual(row["started_at"], "2026-10-31T01:00:00Z")
+        self.assertEqual(row["hours"], "2.0")
+
+    def test_a_subagent_before_a_squashed_commit_moves_the_start_back(self) -> None:
+        # T9.7a (#100): one squashed commit 4 minutes before the merge, lane lead 20 minutes earlier
+        from test_agent_usage import sub_transcript
+
+        git(self.repo, "checkout", "-q", "-b", "t9-x")
+        (self.repo / "b").write_text("b")
+        git(self.repo, "add", "b")
+        git(self.repo, "commit", "-q", "-m", "squashed", date="2026-10-31T01:47:00+00:00")
+        sub_transcript(self.tmp / "p", "lead", "Luồng L4, task T9 (card).")
+        path = self.tmp / "p" / "D--Essity" / "sess" / "subagents" / "agent-lead.jsonl"
+        path.write_text(
+            path.read_text(encoding="utf-8").replace(
+                '"timestamp": "t"', '"timestamp": "2026-10-31T01:00:00Z"'
+            ),
+            encoding="utf-8",
+        )
+        row = self.row({"mergedAt": "2026-10-31T02:00:00Z"})
+        self.assertEqual(row["started_at"], "2026-10-31T01:00:00Z")
+        self.assertEqual(row["hours"], "1.0")
+
+
+METRICS = "task,merged_at\n" + "".join(
+    f"T{i},2026-10-3{i // 10}T0{i % 10}:00:00Z\n" for i in range(1, 8)
+)  # T1..T7 merged 30/10 01:00 .. 30/10 07:00 (T7 is 30/10 07:00)
+
+
+class RetroDue(unittest.TestCase):
+    """W3: merges since the last retro, from retro-state.json or the changelog's last date."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp())
+        self.metrics = self.tmp / "metrics.csv"
+        self.metrics.write_text(METRICS, encoding="utf-8")
+        self.state = self.tmp / "retro-state.json"
+        self.changelog = self.tmp / "process-changelog.md"
+        self.changelog.write_text(
+            "| Ngày | Thay đổi | Ai |\n|---|---|---|\n| 28/10 | a | x |\n| 30/10 (tối) | b | x |\n",
+            encoding="utf-8",
+        )
+
+    def due(self) -> int:
+        return flow.unretroed(self.metrics, self.state, self.changelog)
+
+    def test_without_state_the_mark_is_the_last_changelog_day(self) -> None:
+        self.assertEqual(flow.retro_mark(self.state, self.changelog), "2026-10-30T00:00:00+07:00")
+        self.assertEqual(self.due(), 7)
+        self.assertEqual(flow.retro_due_line(7), "RETRO DUE: 7 merge chưa retro")
+
+    def test_below_five_says_nothing(self) -> None:
+        self.state.write_text(json.dumps({"at": "2026-10-30T03:30:00Z"}), encoding="utf-8")
+        self.assertEqual(self.due(), 4)
+        self.assertIsNone(flow.retro_due_line(4))
+
+    def test_retro_writes_the_mark_and_record_prints_the_line(self) -> None:
+        with mock.patch.object(flow, "_now", lambda: "2026-10-30T05:30:00+00:00"):
+            flow.mark_retro(self.state)
+        self.assertEqual(
+            json.loads(self.state.read_text(encoding="utf-8"))["at"], "2026-10-30T05:30:00+00:00"
+        )
+        self.assertEqual(self.due(), 2)
+
+    def test_cli_record_prints_retro_due_and_retro_clears_it(self) -> None:
+        ops = self.tmp / "docs" / "ops"
+        ops.mkdir(parents=True)
+        for f in (self.metrics, self.changelog):
+            (ops / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+        row = {k: "" for k in flow.CSV_FIELDS} | {"task": "T8", "merged_at": "2026-10-30T09:00:00Z"}
+        with (
+            mock.patch.object(flow, "main_repo", lambda: self.tmp),
+            mock.patch.object(flow, "build_row", lambda *a, **k: row),
+            mock.patch("sys.stdout", new_callable=io.StringIO) as out,
+        ):
+            flow.main(["record", "T8", "--pr", "1"])
+            self.assertIn("RETRO DUE: 8 merge chưa retro", out.getvalue())
+            flow.main(["retro"])
+        self.assertTrue((ops / "retro-state.json").exists())
+        self.assertEqual(
+            flow.unretroed(
+                ops / "metrics.csv", ops / "retro-state.json", ops / "process-changelog.md"
+            ),
+            0,
+        )
+
+
 class Metrics(Fixture):
     def test_build_row_and_upsert_without_duplicates(self) -> None:
         self.all_red()
@@ -257,7 +403,7 @@ class Metrics(Fixture):
             return json.dumps([{"conclusion": "failure"}, {"conclusion": "success"}])
 
         with mock.patch.object(flow, "_run", fake_run):
-            row = flow.build_row(self.work, "T9", 29, self.repo)
+            row = flow.build_row(self.work, "T9", 29, self.repo, projects_dir=self.tmp / "none")
         self.assertEqual(row["hours"], "3.5")
         self.assertEqual(row["tester_rounds"], 2)
         self.assertEqual(row["ci_failed_runs"], 1)
@@ -357,3 +503,45 @@ class Retro(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WorktreeEvidence(Fixture):
+    """W8b: evidence lives in <worktree>/.work/<task>/ first, then <main>/.work/<task>/."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.wt = self.tmp / "L2"
+        self.wt_dir = self.wt / ".work" / "T9"
+        self.wt_dir.mkdir(parents=True)
+        (self.dir / "card.yaml").write_text(
+            f"task: T9\nlane: L2\nbranch: t9-x\nrisk: red\nworktree: {self.wt}\n"
+        )
+
+    def test_gather_prefers_the_worktree_and_falls_back_per_kind(self) -> None:
+        (self.wt_dir / "review.yaml").write_text(evidence("final", "merge"))
+        (self.dir / "review.yaml").write_text(evidence("final", "block"))
+        (self.dir / "pm.yaml").write_text(evidence("pm", "pass"))
+        (self.wt_dir / "lane-report.yaml").write_text("status: done\n")
+        found = flow.gather(self.work, "T9")
+        self.assertEqual(found["review"][0][1]["verdict"], "merge")
+        self.assertEqual(found["pm"][0][1]["verdict"], "pass")
+        self.assertEqual(found["lane-report"]["status"], "done")
+
+    def test_gate_passes_with_evidence_only_in_the_worktree(self) -> None:
+        for name, step, verdict in [
+            ("plan-review.yaml", "plan", "pass"), ("review-task-1.yaml", "task", "pass"),
+            ("tester.yaml", "tester", "pass"), ("review.yaml", "final", "merge"),
+            ("pm.yaml", "pm", "pass"),
+        ]:  # fmt: skip
+            (self.wt_dir / name).write_text(evidence(step, verdict))
+        (self.wt_dir / "lane-report.yaml").write_text("status: done\n")
+        self.assertEqual(flow.gate(self.work, "T9", FULL, self.repo), [])
+
+    def test_record_copies_the_worktree_evidence_home(self) -> None:
+        (self.wt_dir / "tester.yaml").write_text(evidence("tester", "pass"))
+        (self.wt_dir / "notes.md").write_text("x")
+        (self.wt_dir / "card.yaml").write_text("task: stale copy\n")
+        copied = flow.bring_home(self.work, "T9")
+        self.assertEqual(sorted(p.name for p in copied), ["notes.md", "tester.yaml"])
+        self.assertTrue((self.dir / "tester.yaml").exists())
+        self.assertIn("worktree", (self.dir / "card.yaml").read_text())  # card not overwritten

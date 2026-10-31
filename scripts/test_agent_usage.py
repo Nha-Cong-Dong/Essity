@@ -199,5 +199,134 @@ class Collect(unittest.TestCase):
         self.assertAlmostEqual(sum(g["share"] for g in summary["groups"]), 1.0)
 
 
+class Session(unittest.TestCase):
+    """W1: one row per main session in docs/ops/sessions.csv."""
+
+    def make(self, root: Path) -> Path:
+        proj = root / "D--Essity"
+        peer = {
+            "type": "user",
+            "timestamp": "2026-10-31T01:00:00Z",
+            "message": {"content": "Another Claude session sent a message:\n<teammate-message>"},
+        }
+        handback = {
+            "type": "user",
+            "timestamp": "2026-10-31T01:10:00Z",
+            "origin": {"kind": "peer", "handback": True},
+            "message": {"content": [{"type": "text", "text": "report"}]},
+        }
+        notification = {
+            "type": "queue-operation",
+            "operation": "enqueue",
+            "timestamp": "2026-10-31T01:20:00Z",
+            "content": "<task-notification>\n<status>completed</status>",
+        }
+        human = {
+            "type": "user",
+            "timestamp": "2026-10-31T00:00:00Z",
+            "origin": {"kind": "human"},
+            "message": {"content": "tiếp tục"},
+        }
+        tool = {
+            "type": "user",
+            "message": {"content": [{"type": "tool_result", "content": "Another Claude session"}]},
+        }
+        write_jsonl(
+            proj / "s1.jsonl",
+            [
+                human,
+                turn("m1", "claude-opus-5-5", "2026-10-31T00:00:05Z", 1, 2, 3, 4),
+                peer,
+                tool,
+                handback,
+                notification,
+                turn("m2", "claude-opus-5-5", "2026-10-31T02:00:00Z", 10, 0, 0, 0),
+            ],
+        )
+        sub = proj / "s1" / "subagents" / "agent-a.jsonl"
+        write_jsonl(sub, [turn("m3", "claude-sonnet-5-5", "2026-10-31T00:30:00Z", 0, 0, 90, 10)])
+        sub.with_suffix(".meta.json").write_text("{}", encoding="utf-8")
+        write_jsonl(
+            proj / "s0.jsonl", [turn("m0", "claude-opus-5-5", "2026-10-30T10:00:00Z", 0, 0, 9, 1)]
+        )
+        metrics = root / "metrics.csv"
+        metrics.write_text(
+            "task,merged_at\nA,2026-10-30T23:59:00Z\nB,2026-10-31T01:30:00Z\nC,2026-10-31T03:00:00Z\n",
+            encoding="utf-8",
+        )
+        return metrics
+
+    def test_stats_split_main_and_subagent_tokens_and_count_merges_and_relays(self) -> None:
+        from agent_usage import session_stats
+
+        with tempfile.TemporaryDirectory() as tmp:
+            metrics = self.make(Path(tmp))
+            got = session_stats(Path(tmp), "D--Essity*", "s1", metrics)
+        self.assertEqual(got["date"], "2026-10-31")
+        self.assertEqual(got["session"], "s1")
+        self.assertEqual(got["main_tokens"], 20)
+        self.assertEqual(got["sub_tokens_sonnet"], 100)
+        self.assertEqual(got["sub_tokens_opus"], 0)
+        self.assertEqual(got["total_tokens"], 120)
+        self.assertEqual(got["merges"], 1)  # only B is inside 00:00..02:00
+        self.assertEqual(got["tokens_per_merge"], 120)
+        self.assertEqual(got["relay_turns"], 3)  # peer text, handback, task-notification
+        self.assertRegex(got["usd"], r"^\d+\.\d\d$")
+
+    def test_until_cuts_the_session_at_a_time(self) -> None:
+        from agent_usage import session_stats
+
+        with tempfile.TemporaryDirectory() as tmp:
+            metrics = self.make(Path(tmp))
+            got = session_stats(
+                Path(tmp), "D--Essity*", "s1", metrics, until="2026-10-31T01:15:00Z"
+            )
+        self.assertEqual(got["main_tokens"], 10)  # m2 at 02:00 is cut
+        self.assertEqual(got["sub_tokens_sonnet"], 100)
+        self.assertEqual(got["relay_turns"], 2)
+        self.assertEqual(got["merges"], 0)  # B merged at 01:30, after the cut
+
+    def test_a_short_session_id_prefix_and_latest_are_resolved(self) -> None:
+        import os
+
+        from agent_usage import resolve_session
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.make(Path(tmp))
+            proj = Path(tmp) / "D--Essity"
+            os.utime(proj / "s0.jsonl", (1, 1))
+            self.assertEqual(resolve_session(Path(tmp), "D--Essity*", "latest"), "s1")
+            self.assertEqual(resolve_session(Path(tmp), "D--Essity*", "s0"), "s0")
+            with self.assertRaises(ValueError):
+                resolve_session(Path(tmp), "D--Essity*", "zz")
+
+    def test_no_merge_leaves_tokens_per_merge_blank(self) -> None:
+        from agent_usage import session_stats
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.make(Path(tmp))
+            got = session_stats(Path(tmp), "D--Essity*", "s1", Path(tmp) / "missing.csv")
+        self.assertEqual((got["merges"], got["tokens_per_merge"]), (0, ""))
+
+    def test_append_writes_the_header_once_and_replaces_the_same_session(self) -> None:
+        import csv
+
+        from agent_usage import SESSION_FIELDS, append_session, session_stats
+
+        with tempfile.TemporaryDirectory() as tmp:
+            metrics = self.make(Path(tmp))
+            out = Path(tmp) / "ops" / "sessions.csv"
+            row = session_stats(Path(tmp), "D--Essity*", "s1", metrics)
+            append_session(out, row)
+            append_session(out, {**row, "relay_turns": 0})
+            append_session(out, {**row, "session": "s0"})
+            with out.open(encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle))
+        self.assertEqual(list(rows[0]), SESSION_FIELDS)
+        self.assertEqual(
+            [(r["session"], r["relay_turns"]) for r in rows], [("s1", "0"), ("s0", "3")]
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,8 @@
 
     python scripts/flow.py check T3.1                       # where is the task, what is next
     python scripts/flow.py gate T3.1 --head <sha>           # exit 1 when anything blocks the merge
-    python scripts/flow.py record T3.1 --pr 29              # after the merge: a row in metrics.csv
+    python scripts/flow.py record T3.1 --pr 29              # after the merge: a row in metrics.csv,
+                                                            # worktree evidence copied home
     python scripts/flow.py retro [--last 5]                 # medians: last N tasks vs the N before
 
 Each agent writes one YAML file of its own (keys: step, verdict, sha, by, at, round, open_orange,
@@ -15,6 +16,7 @@ import csv
 import io
 import json
 import re
+import shutil
 import statistics
 import subprocess
 import sys
@@ -182,14 +184,49 @@ def is_ancestor(repo: Path, sha: str, head: str) -> bool:
     return result.returncode == 0
 
 
+def folders(work: Path, task: str, card: dict[str, Any] | None = None) -> list[Path]:
+    """Where a task's evidence may be: <worktree>/.work/<task>/ first, then <main>/.work/<task>/.
+
+    Lane agents run in the background and cannot write the main checkout (bgIsolation), so they
+    write into their own worktree; card.yaml stays in the main .work (W8, 31/10).
+    """
+    card = card if card is not None else load(work / task / "card.yaml")
+    worktree = str((card or {}).get("worktree") or "")
+    found = [Path(worktree) / ".work" / task] if worktree else []
+    return [*found, work / task]
+
+
+def _first_glob(places: list[Path], pattern: str) -> list[Path]:
+    for place in places:
+        files = sorted(place.glob(pattern)) if place.exists() else []
+        if files:
+            return files
+    return []
+
+
 def gather(work: Path, task: str) -> dict[str, Any]:
-    folder = work / task
-    found: dict[str, Any] = {"card": load(folder / "card.yaml"), "lane-report": None}
-    found["lane-report"] = load(folder / "lane-report.yaml")
+    card = load(work / task / "card.yaml")
+    places = folders(work, task, card)
+    found: dict[str, Any] = {"card": card}
+    report = _first_glob(places, "lane-report.yaml")
+    found["lane-report"] = load(report[0]) if report else None
     for name, pattern, _who, _ok, _red in EVIDENCE:
-        files = sorted(folder.glob(pattern)) if folder.exists() else []
-        found[name] = [(file.name, load(file)) for file in files]
+        found[name] = [(file.name, load(file)) for file in _first_glob(places, pattern)]
     return found
+
+
+def bring_home(work: Path, task: str) -> list[Path]:
+    """Copy the worktree's evidence into <main>/.work/<task>/ so removing the worktree keeps it."""
+    places = folders(work, task)
+    home = work / task
+    copied = []
+    for place in places[:-1]:
+        for file in sorted(place.glob("*")) if place.exists() else []:
+            if file.is_file() and file.name != "card.yaml":
+                home.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(file, home / file.name)
+                copied.append(home / file.name)
+    return copied
 
 
 def judge(
@@ -380,6 +417,31 @@ def real_tokens(task: str, projects: Path) -> tuple[int, str] | None:
     return total, f"{sum(agent_usage.estimate_cost(r.usage) for r in rows):.2f}"
 
 
+def started_at(task: str, pr: int, branch: str, base: str, repo: Path, projects_dir: Path) -> str:
+    """When work on the task began: the branch's first commit (the PR's, once the branch is gone),
+    or the task's first subagent when that is earlier. A branch squashed to one commit before the
+    PR otherwise looks a few minutes long (T9.7a, #100: 0.1 h)."""
+    stamps: list[str] = []
+    verify = ["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"]
+    if branch and _run(verify, repo).strip():
+        first = _run(["git", "log", "--reverse", "--format=%cI", f"{base}..{branch}"], repo)
+        stamps += first.split()[:1]
+    else:
+        view = _run(["gh", "pr", "view", str(pr), "--json", "commits"], repo)
+        commits = json.loads(view or "{}").get("commits") or []
+        stamps += [str(c["committedDate"]) for c in commits if c.get("committedDate")]
+    stamps += [
+        r.usage.first for r in agent_usage.task_subagents(task, projects_dir) if r.usage.first
+    ]
+    valid = []
+    for stamp in stamps:
+        try:
+            valid.append((_when(stamp), stamp))
+        except ValueError:
+            continue
+    return min(valid)[1] if valid else ""
+
+
 def build_row(
     work: Path,
     task: str,
@@ -392,8 +454,7 @@ def build_row(
     card = found["card"] or {}
     branch = str(card.get("branch") or "")
     base = str(card.get("base") or "origin/main")
-    first = _run(["git", "log", f"{base}..{branch}", "--reverse", "--format=%aI"], repo)
-    started = first.splitlines()[0] if first.strip() else ""
+    started = started_at(task, pr, branch, base, repo, projects_dir)
     view = _run(["gh", "pr", "view", str(pr), "--json", "mergedAt"], repo)
     merged = str(json.loads(view or "{}").get("mergedAt") or "")
     runs = _run(
@@ -496,6 +557,59 @@ def _table(title: str, rows: list[dict[str, str]], last: int) -> tuple[list[str]
     return lines, mark
 
 
+RETRO_EVERY = 5
+LOCAL_TZ = "+07:00"
+
+
+def _now() -> str:
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def retro_mark(state: Path, changelog: Path) -> str:
+    """When the last retro ran: retro-state.json, else the start of the changelog's last day."""
+    try:
+        return str(json.loads(state.read_text(encoding="utf-8"))["at"])
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    try:
+        days = re.findall(r"^\| (\d{1,2})/(\d{1,2})\b", changelog.read_text(encoding="utf-8"), re.M)
+    except OSError:
+        days = []
+    if not days:
+        return ""
+    day, month = days[-1]
+    year = datetime.now().year  # the changelog writes dd/mm only
+    return f"{year}-{int(month):02d}-{int(day):02d}T00:00:00{LOCAL_TZ}"
+
+
+def unretroed(metrics: Path, state: Path, changelog: Path) -> int:
+    """Rows of metrics.csv merged after the last retro."""
+    mark = retro_mark(state, changelog)
+    if not metrics.exists():
+        return 0
+    with metrics.open(newline="", encoding="utf-8") as handle:
+        stamps = [row.get("merged_at") or "" for row in csv.DictReader(handle)]
+    if not mark:
+        return sum(1 for s in stamps if s)
+    since = _when(mark)
+    return sum(1 for s in stamps if s and _when(s) > since)
+
+
+def retro_due_line(n: int) -> str | None:
+    return f"RETRO DUE: {n} merge chưa retro" if n >= RETRO_EVERY else None
+
+
+def mark_retro(state: Path) -> None:
+    state.parent.mkdir(parents=True, exist_ok=True)
+    state.write_text(json.dumps({"at": _now()}) + "\n", encoding="utf-8")
+
+
+def ops_paths(repo: Path) -> tuple[Path, Path, Path]:
+    """(metrics.csv, retro-state.json, process-changelog.md) under <repo>/docs/ops."""
+    ops = repo / "docs" / "ops"
+    return ops / "metrics.csv", ops / "retro-state.json", ops / "process-changelog.md"
+
+
 def retro(csv_path: Path, last: int = 5) -> list[str]:
     rows: list[dict[str, str]] = []
     if csv_path.exists():
@@ -538,7 +652,7 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     repo = main_repo()
     work = args.work or repo / ".work"
-    metrics = repo / "docs" / "ops" / "metrics.csv"
+    metrics, state, changelog = ops_paths(repo)
     if args.action == "check":
         print("\n".join(check(work, args.task, repo)))
     elif args.action == "gate":
@@ -552,9 +666,16 @@ def main(argv: list[str]) -> int:
         row = build_row(work, args.task, args.pr, repo, args.notes, args.projects_dir)
         record(out, row)
         print(f"flow: {args.task} -> {out}")
+        for copied in bring_home(work, args.task):
+            print(f"flow: evidence -> {copied}")
         print(",".join(str(row[k]) for k in CSV_FIELDS))
+        due = retro_due_line(unretroed(out, state, changelog))
+        if due:
+            print(due)
     else:
         print("\n".join(retro(args.csv or metrics, args.last)))
+        mark_retro(state)
+        print(f"flow: retro mark -> {state}")
     return 0
 
 

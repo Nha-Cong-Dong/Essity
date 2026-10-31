@@ -4,6 +4,8 @@
     python scripts/agent_usage.py --since 2026-10-28    # only sessions started on or after that day
     python scripts/agent_usage.py --by session          # one line per main session
     python scripts/agent_usage.py --json                # the role summary as JSON
+    python scripts/agent_usage.py --session latest --append docs/ops/sessions.csv
+                                                        # one row per session (W1)
 
 Claude Code writes one JSONL per session under ~/.claude/projects/<project>/, and one per
 subagent under <session>/subagents/ with a .meta.json naming its type and model. Token counts are
@@ -12,11 +14,14 @@ them as a share of quota on a subscription.
 """
 
 import argparse
+import csv
 import json
 import re
+import subprocess
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 # USD per million tokens: (input, output). Cache reads cost 0.1x input, cache writes 1.25x.
@@ -28,6 +33,10 @@ PRICES = {
 }
 CACHE_READ, CACHE_WRITE = 0.1, 1.25
 PROJECTS = Path.home() / ".claude" / "projects"
+
+
+def _when(text: str) -> datetime:
+    return datetime.fromisoformat(text.strip().replace("Z", "+00:00"))
 
 
 def family(model: str) -> str:
@@ -84,9 +93,12 @@ def _context(usage: dict) -> int:
     )
 
 
-def scan(path: Path) -> Usage:
+def scan(path: Path, until: str = "") -> Usage:
+    """Totals of a transcript; `until` (ISO time) drops the turns after it."""
     u = Usage()
     for ts, model, usage in _assistant_turns(path):
+        if until and ts and _when(ts) > _when(until):
+            continue
         u.first = u.first or ts
         u.input += usage.get("input_tokens", 0)
         u.cache_write += usage.get("cache_creation_input_tokens", 0)
@@ -246,6 +258,129 @@ def summarize(rows: list[Row]) -> dict:
     }
 
 
+SESSION_FIELDS = [
+    "date", "session", "main_tokens", "sub_tokens_opus", "sub_tokens_sonnet", "sub_tokens_haiku",
+    "sub_tokens_other", "total_tokens", "usd", "merges", "tokens_per_merge", "relay_turns",
+]  # fmt: skip
+RELAY_TEXT = "Another Claude session sent a message"
+
+
+def tokens(u: Usage) -> int:
+    return u.input + u.cache_write + u.cache_read + u.output
+
+
+def resolve_session(projects: Path, pattern: str, wanted: str) -> str:
+    """Full id of the main session: `latest` is the transcript written last, else an id prefix."""
+    transcripts = [t for project in projects.glob(pattern) for t in project.glob("*.jsonl")]
+    if wanted == "latest":
+        if not transcripts:
+            raise ValueError(f"no session under {projects}/{pattern}")
+        return max(transcripts, key=lambda t: t.stat().st_mtime).stem
+    found = sorted({t.stem for t in transcripts if t.stem.startswith(wanted)})
+    if len(found) != 1:
+        raise ValueError(f"session {wanted!r} matches {len(found)} transcripts")
+    return found[0]
+
+
+def _is_relay(record: dict) -> bool:
+    """A main-session turn started by a subagent's hand-back, a teammate's idle note, or a
+    background task finishing, not by the user."""
+    if record.get("type") == "queue-operation":
+        return record.get("operation") == "enqueue" and "<task-notification>" in str(
+            record.get("content", "")
+        )
+    if record.get("type") != "user":
+        return False
+    origin = record.get("origin")
+    if isinstance(origin, dict) and origin.get("kind") == "peer":
+        return True
+    content = (record.get("message") or {}).get("content")
+    if isinstance(content, list):
+        if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
+            return False
+        content = " ".join(b.get("text", "") for b in content if isinstance(b, dict))
+    return isinstance(content, str) and content.startswith(RELAY_TEXT)
+
+
+def _span_and_relays(path: Path, until: str = "") -> tuple[str, str, int]:
+    """(first timestamp, last timestamp, relay turns) of a main transcript, up to `until`."""
+    first, last, relays = "", "", 0
+    with path.open(encoding="utf-8") as lines:
+        for line in lines:
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            stamp = record.get("timestamp") or ""
+            if until and stamp and _when(stamp) > _when(until):
+                continue
+            if stamp:
+                first = min(first, stamp) if first else stamp
+                last = max(last, stamp)
+            relays += _is_relay(record)
+    return first, last, relays
+
+
+def merges_between(metrics: Path, first: str, last: str) -> int:
+    """Rows of metrics.csv merged while the session ran."""
+    if not (metrics.exists() and first and last):
+        return 0
+    start, end = _when(first), _when(last)
+    with metrics.open(newline="", encoding="utf-8") as handle:
+        stamps = [row.get("merged_at") or "" for row in csv.DictReader(handle)]
+    return sum(1 for s in stamps if s and start <= _when(s) <= end)
+
+
+def session_stats(
+    projects: Path, pattern: str, session: str, metrics: Path, until: str = ""
+) -> dict:
+    transcript = next(
+        p / f"{session}.jsonl" for p in projects.glob(pattern) if (p / f"{session}.jsonl").exists()
+    )
+    main = scan(transcript, until)
+    first, last, relays = _span_and_relays(transcript, until)
+    by_model: dict[str, float] = {}
+    cost = estimate_cost(main)
+    for sub in sorted((transcript.parent / session / "subagents").glob("*.jsonl")):
+        u = scan(sub, until)
+        cost += estimate_cost(u)
+        total = sum(u.models.values()) or 1
+        for model, n in u.models.items():
+            by_model[model] = by_model.get(model, 0.0) + tokens(u) * n / total
+    sub_tokens = {m: round(by_model.get(m, 0.0)) for m in ("opus", "sonnet", "haiku")}
+    sub_tokens["other"] = round(sum(v for m, v in by_model.items() if m not in sub_tokens))
+    total_tokens = tokens(main) + sum(sub_tokens.values())
+    merges = merges_between(metrics, first, last)
+    return {
+        "date": first[:10], "session": session, "main_tokens": tokens(main),
+        **{f"sub_tokens_{m}": v for m, v in sub_tokens.items()},
+        "total_tokens": total_tokens, "usd": f"{cost:.2f}", "merges": merges,
+        "tokens_per_merge": total_tokens // merges if merges else "", "relay_turns": relays,
+    }  # fmt: skip
+
+
+def append_session(out: Path, row: dict) -> None:
+    """Add the session's row to sessions.csv, replacing an older row of the same session."""
+    rows: list[dict[str, str]] = []
+    if out.exists():
+        with out.open(newline="", encoding="utf-8") as handle:
+            rows = [r for r in csv.DictReader(handle) if r["session"] != row["session"]]
+    rows.append({key: str(value) for key, value in row.items()})
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=SESSION_FIELDS, restval="")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def main_repo() -> Path:
+    common = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        check=False, capture_output=True, text=True,
+    )  # fmt: skip
+    return Path(common.stdout.strip()).parent
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="agent_usage.py")
     parser.add_argument(
@@ -254,7 +389,26 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--project", default="D--Essity*", help="glob under ~/.claude/projects")
     parser.add_argument("--by", choices=["role", "session"], default="role")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--session", help="<id prefix|latest>: one line for that main session")
+    parser.add_argument(
+        "--append",
+        type=Path,
+        help="with --session: write the line to this CSV (relative: main repo)",
+    )
+    parser.add_argument("--metrics", type=Path, help="metrics.csv (default: docs/ops/metrics.csv)")
+    parser.add_argument("--until", default="", help="with --session: ISO time, ignore what follows")
     args = parser.parse_args(argv)
+    if args.session:
+        repo = main_repo()
+        session = resolve_session(PROJECTS, args.project, args.session)
+        metrics = args.metrics or repo / "docs" / "ops" / "metrics.csv"
+        row = session_stats(PROJECTS, args.project, session, metrics, args.until)
+        print(", ".join(f"{k}={row[k]}" for k in SESSION_FIELDS))
+        if args.append:
+            out = args.append if args.append.is_absolute() else repo / args.append
+            append_session(out, row)
+            print(f"agent_usage: {session[:8]} -> {out}")
+        return 0
     rows = collect(PROJECTS, args.project, args.since)
     if args.by == "session":
         for row in sorted((r for r in rows if r.kind == "main"), key=lambda r: r.usage.first):
