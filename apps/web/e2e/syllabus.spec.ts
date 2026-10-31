@@ -121,3 +121,34 @@ test("US-13 AC4: Tab reaches the tree once, the arrows move inside, Enter on a l
   await page.keyboard.press("Escape");
   await expect(page.locator("[data-node='2.3']")).toBeFocused();
 });
+
+// T7.5 main flow (US-01 AC4, US-13 AC4): the learner picks the role of the textbook, sees the tree,
+// edits one section's range and marks it studied. It runs on the T7.5a screens (fixture data, the
+// same components the live screen uses): the e2e server has no core-api (port 9 refuses), so the
+// API calls are covered by tests/syllabus-live.test.tsx and tests/routes/outline.test.ts.
+test("US-01 AC4, US-13 AC4: textbook role -> tree -> edit a range -> mark studied", async ({ page }) => {
+  await open(page, 390, "/design-preview/syllabus?state=upload-files");
+  await expect(page.locator("[role=radiogroup]").first()).toBeVisible();
+  await expect(page.locator("[role=radiogroup]").first().locator("input:checked")).toHaveCount(1);
+
+  await open(page, 390, "/design-preview/syllabus?state=ready");
+  await expect(page.locator("[role=tree]")).toBeVisible();
+  const leaf = page.locator("[data-node='2.3']");
+  await leaf.focus();
+  await page.keyboard.press("Enter");
+  await page.locator("[data-panel='2.3']").getByRole("button", { name: /Sửa khoảng/ }).click();
+  const [from, to] = await page.locator("[data-panel='2.3'] input").all();
+  const start = Number(await from!.inputValue());
+  await from!.fill(String(start));
+  await to!.fill(String(Number(await to!.inputValue())));
+  await page.locator("[data-panel='2.3']").getByRole("button", { name: "Lưu" }).click();
+  await expect(page.locator("[data-live]")).toContainText("Đã lưu");
+
+  await leaf.focus();
+  await page.keyboard.press("Enter");
+  const before = await page.locator("[data-totals]").innerText();
+  await page.locator("[data-panel='2.3']").getByRole("button", { name: /Đánh dấu đã học/ }).click();
+  await expect(page.locator("[data-totals]")).not.toHaveText(before);
+  await expect(page.locator("[data-live]")).toContainText("Đã đánh dấu đã học");
+  expect(await noSideScroll(page)).toBe(true);
+});

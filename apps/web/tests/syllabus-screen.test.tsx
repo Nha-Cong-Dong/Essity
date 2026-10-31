@@ -330,13 +330,13 @@ describe("panel actions (US-13 AC4, AC5, AC6)", () => {
 });
 
 describe("edit range (US-13 AC4)", () => {
-  // Red when: Lưu keeps an overlapping range, or the error is only colour / not tied to the field.
+  // Red when: Lưu keeps a range outside its parent, or the error is only colour / not tied to the field.
   it("range-error: the field is aria-invalid, tied to a sentence, and Lưu stays pressable", () => {
     const { container } = render(<SyllabusScreen state="range-error" />);
     const from = screen.getByLabelText("Từ trang");
     expect(from.getAttribute("aria-invalid")).toBe("true");
     const text = document.getElementById(from.getAttribute("aria-describedby")!)!.textContent;
-    expect(text).toMatch(/^Khoảng này chồng lên mục 2\.2 \(tr\. 55–68\)\.$/);
+    expect(text).toMatch(/^Khoảng này nằm ngoài mục cha \(tr\. 45–98\)\.$/);
     expect((screen.getByRole("button", { name: "Lưu" }) as HTMLButtonElement).disabled).toBe(false);
     expect(container.querySelector("[data-panel]")).not.toBeNull();
   });

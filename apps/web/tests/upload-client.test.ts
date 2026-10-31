@@ -75,7 +75,7 @@ describe("uploadPdf", () => {
     await done;
     expect(put).not.toHaveBeenCalled();
     expect(calls).toHaveLength(2);
-    expect(states.at(-1)).toEqual({ kind: "done" });
+    expect(states.at(-1)).toEqual({ kind: "done", documentId: DOC });
   });
 
   // Red when: a 412 (already there, If-None-Match) is shown as a failure.
@@ -85,7 +85,7 @@ describe("uploadPdf", () => {
       vi.fn(async () => 412),
     );
     await done;
-    expect(states.at(-1)).toEqual({ kind: "done" });
+    expect(states.at(-1)).toEqual({ kind: "done", documentId: DOC });
   });
 
   it.each([

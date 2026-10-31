@@ -20,18 +20,19 @@ import { SyllabusTree } from "./syllabus-tree";
 // edited (the tree owns it), "Tải giáo trình" with no main syllabus, "Thử lại" on error, none while
 // loading or reading the contents.
 
-const COPY = {
+export const COPY = {
   heading: "Đề cương",
   study: "Vào buổi học",
   upload: "Tải giáo trình",
   retry: "Thử lại",
   extracting: "Đang đọc mục lục…",
   empty: "Chưa có đề cương. Tải giáo trình chính để app dựng đề cương.",
+  noOutline: "Chưa dựng được đề cương từ giáo trình này. Tải một giáo trình khác hoặc thử lại sau.",
   error: "Không tải được đề cương.",
   stillError: "Vẫn chưa tải được. Thử lại sau một chút.",
 };
 
-const NOTICE = {
+export const NOTICE = {
   chunk10: { long: "Chưa đọc được mục lục. Bạn có thể sửa trực tiếp.", short: "Chưa đọc được mục lục. Bạn có thể sửa trực tiếp." },
   scan: {
     long: "File này là ảnh chụp nên chưa đọc được chữ. Đề cương tạm chia theo khối 10 trang. Bạn có thể sửa trực tiếp.",
@@ -40,7 +41,7 @@ const NOTICE = {
   flat: { long: "Mỗi slide là một mục. Chưa nhóm theo chương.", short: "Mỗi slide là một mục. Chưa nhóm theo chương." },
 } as const;
 
-function Skeleton() {
+export function Skeleton() {
   return (
     <div aria-hidden="true" className="mt-6 flex flex-col gap-3" data-skeleton>
       {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -50,7 +51,7 @@ function Skeleton() {
   );
 }
 
-function Totals({ nodes, unit }: { nodes: SyllabusNode[]; unit: SyllabusFixture["unit"] }) {
+export function Totals({ nodes, unit }: { nodes: SyllabusNode[]; unit: SyllabusFixture["unit"] }) {
   const p = progress(nodes);
   const word = unit === "slide" ? "slide" : unit === "est_page" ? "trang ước tính" : "trang";
   const pct = p.pagesTotal === 0 ? 0 : Math.round((p.pagesDone / p.pagesTotal) * 100);

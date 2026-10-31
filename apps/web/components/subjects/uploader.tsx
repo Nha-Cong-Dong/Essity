@@ -3,6 +3,10 @@
 import { FileUp } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { DocRole } from "@/components/syllabus/doc-role";
+import type { Role } from "@/lib/syllabus/roles";
+
 import { checkFile, uploadPdf, type UploadState } from "@/lib/upload-client";
 import { uploadMessage } from "@/lib/upload-copy";
 
@@ -11,7 +15,7 @@ import { uploadMessage } from "@/lib/upload-copy";
 // (stored, waiting for ai-service: T4.7), or the reason it was refused. Files go one after the
 // other, so a long list does not eat the 30-asks-an-hour limit all at once.
 
-type Row = { key: number; name: string; state: UploadState };
+type Row = { key: number; name: string; state: UploadState; role?: Role };
 
 const STATUS = "text-small font-semibold text-ink-soft";
 
@@ -38,14 +42,25 @@ function Status({ state }: { state: UploadState }) {
   );
 }
 
-export function Uploader({ subjectId }: { subjectId: string }) {
+// T7.5 (US-01 AC4): once a file is stored, its role is chosen right under it (DocRole). The first
+// file is the main textbook when the subject has none yet; the rest are supplementary.
+export function Uploader({ subjectId, hasMain = true }: { subjectId: string; hasMain?: boolean }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [over, setOver] = useState(false);
   const next = useRef(0);
   const busy = useRef(Promise.resolve());
+  const claimed = useRef(hasMain);
 
   function update(key: number, state: UploadState) {
-    setRows((all) => all.map((row) => (row.key === key ? { ...row, state } : row)));
+    setRows((all) =>
+      all.map((row) => {
+        if (row.key !== key) return row;
+        if (state.kind !== "done" || row.role !== undefined) return { ...row, state };
+        const role: Role = claimed.current ? "supplementary" : "main";
+        claimed.current = true;
+        return { ...row, state, role };
+      }),
+    );
   }
 
   function add(files: FileList | File[]) {
@@ -112,9 +127,17 @@ export function Uploader({ subjectId }: { subjectId: string }) {
                   className="h-2 w-full accent-hong"
                 />
               ) : null}
+              {row.state.kind === "done" && row.state.documentId && row.role ? (
+                <DocRole subjectId={subjectId} documentId={row.state.documentId} name={row.name} initialRole={row.role} />
+              ) : null}
             </li>
           ))}
         </ul>
+      ) : null}
+      {rows.some((row) => row.state.kind === "done") ? (
+        <div className="mt-6">
+          <Button render={<a href={`/subjects/${subjectId}/syllabus`} />}>Vào môn học</Button>
+        </div>
       ) : null}
     </div>
   );

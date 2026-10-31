@@ -27,7 +27,7 @@ export type UploadState =
   | { kind: "hashing" }
   | { kind: "uploading"; percent: number }
   | { kind: "checking" }
-  | { kind: "done" }
+  | { kind: "done"; documentId?: string }
   | { kind: "failed"; code: string };
 
 type Signed = { url: string; headers: Record<string, string> };
@@ -113,5 +113,5 @@ export async function uploadPdf(
   onState({ kind: "checking" });
   const confirmed = await post<unknown>(`/api/documents/${document.id}/confirm`, {});
   if (!confirmed.ok) return fail(confirmed.code);
-  onState({ kind: "done" });
+  onState({ kind: "done", documentId: document.id });
 }
