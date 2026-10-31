@@ -272,6 +272,15 @@ def upgrade() -> None:
     op.create_index(op.f("ix_unit_edge_subject_id_status"), "unit_edge", ["subject_id", "status"])
     op.create_index(op.f("ix_unit_edge_user_id"), "unit_edge", ["user_id"])
 
+    op.add_column(
+        "doc_section",
+        sa.Column("studied_weight", sa.Float(), server_default="0", nullable=False),
+    )
+    op.create_check_constraint(
+        op.f("ck_doc_section_studied_weight_not_negative"),
+        "doc_section",
+        "studied_weight >= 0 AND studied_weight < 'Infinity'",
+    )
     op.add_column("question", sa.Column("bank_document_id", sa.Uuid(), nullable=True))
     op.add_column("question", sa.Column("bank_ord", sa.Integer(), nullable=True))
     op.create_foreign_key(
@@ -321,10 +330,19 @@ def downgrade() -> None:
     if linked:
         raise RuntimeError(f"0025 downgrade: {linked} question(s) are linked to a question bank")
 
+    studied = bind.execute(
+        sa.text("SELECT count(*) FROM doc_section WHERE studied_weight <> 0")
+    ).scalar_one()
+    if studied:
+        raise RuntimeError(f"0025 downgrade: {studied} doc_section row(s) have studied_weight")
     op.drop_constraint(op.f("ck_question_type_ref_origin_known"), "question_type", type_="check")
     op.create_check_constraint(
         op.f("ck_question_type_ref_origin_known"), "question_type", f"ref_origin IN ({OLD_ORIGINS})"
     )
+    op.drop_constraint(
+        op.f("ck_doc_section_studied_weight_not_negative"), "doc_section", type_="check"
+    )
+    op.drop_column("doc_section", "studied_weight")
     op.drop_index(op.f("ix_question_bank_document_id_bank_ord"), table_name="question")
     op.drop_constraint(op.f("ck_question_bank_ord_not_negative"), "question", type_="check")
     op.drop_constraint(op.f("ck_question_bank_ord_needs_document"), "question", type_="check")

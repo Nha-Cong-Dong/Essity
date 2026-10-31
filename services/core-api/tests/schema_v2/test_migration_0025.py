@@ -284,3 +284,40 @@ def test_0025_downgrade_refuses_default_origin_and_bank_link(
     finally:
         command.upgrade(alembic_cfg, "head")
         erase_user(engine, user)
+
+
+def test_0025_downgrade_refuses_when_a_section_has_studied_weight(
+    engine: Engine, alembic_cfg: Config
+) -> None:
+    # Red when: the downgrade drops studied_weight over learner progress.
+    user, subject = seed_user(engine)
+    document, sha = uuid.uuid4(), "ab" * 32
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO document (id, user_id, subject_id, short_name, sha256, size_bytes,"
+                " object_key, status, presigned_at, uploaded_at)"
+                " VALUES (:d, :u, :s, 'x', :sha, 1, :k, 'uploaded', now(), now())"
+            ),
+            {
+                "d": document,
+                "u": user,
+                "s": subject,
+                "sha": sha,
+                "k": f"users/{user}/subjects/{subject}/raw/{sha}.pdf",
+            },
+        )
+        connection.execute(
+            text(
+                "INSERT INTO doc_section (id, user_id, subject_id, document_id, ord, title,"
+                " unit, source, studied_weight)"
+                " VALUES (gen_random_uuid(), :u, :s, :d, 0, 'C1', 'page', 'user', 2)"
+            ),
+            {"u": user, "s": subject, "d": document},
+        )
+    try:
+        with pytest.raises(RuntimeError, match="0025 downgrade"):
+            command.downgrade(alembic_cfg, "0024")
+    finally:
+        command.upgrade(alembic_cfg, "head")
+        erase_user(engine, user)

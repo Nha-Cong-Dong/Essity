@@ -157,3 +157,19 @@ def test_t210_llm_call_keeps_the_stop_reason(engine: Engine) -> None:
         stored = session.get(LlmCall, call.id)
         assert stored is not None and stored.stop_reason == "max_tokens"
         session.rollback()
+
+
+def test_t74_syllabus_toc_task_is_accepted_and_unknown_refused(engine: Engine) -> None:
+    # Red when: migration 0007 or the model leaves 'syllabus_toc' out of the task CHECKs.
+    with Session(engine) as session:
+        run = new_run(task="syllabus_toc")
+        session.add(run)
+        session.flush()
+        session.add(new_call(run, task="syllabus_toc"))
+        session.flush()
+        session.rollback()
+    with Session(engine) as session:
+        session.add(new_run(task="syllabus_unknown"))
+        with pytest.raises(IntegrityError):
+            session.flush()
+        session.rollback()

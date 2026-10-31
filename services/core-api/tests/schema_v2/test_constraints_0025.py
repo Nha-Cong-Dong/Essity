@@ -24,6 +24,7 @@ from v2_rows import (
     make_document,
     make_grade,
     make_question,
+    make_section,
     make_subject,
     make_type,
     make_unit,
@@ -433,3 +434,22 @@ def test_new_fks_all_include_user_id(world: World) -> None:
     ).all()
     assert len(rows) >= 7
     assert [name for _, name, definition in rows if "user_id" not in definition] == []
+
+
+# --- doc_section.studied_weight (T7.4) --------------------------------------------------------
+
+
+def test_studied_weight_defaults_to_zero_and_takes_positive(world: World) -> None:
+    document = make_document(world.session, world.alice, world.subject)
+    section = make_section(world.session, world.alice, document)
+    world.session.refresh(section)
+    assert section.studied_weight == 0
+    make_section(world.session, world.alice, document, studied_weight=2.5)
+
+
+@pytest.mark.parametrize("value", [-1.0, float("inf"), float("nan")])
+def test_studied_weight_refuses_negative_infinite_and_nan(world: World, value: float) -> None:
+    # Red when: the CHECK is missing or lets NaN through.
+    document = make_document(world.session, world.alice, world.subject)
+    with pytest.raises(IntegrityError), world.session.begin_nested():
+        make_section(world.session, world.alice, document, studied_weight=value)

@@ -6,7 +6,14 @@ from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Task = Literal["grade", "extract_session", "chunk_units", "generate_questions", "parse_command"]
+Task = Literal[
+    "grade",
+    "extract_session",
+    "chunk_units",
+    "generate_questions",
+    "parse_command",
+    "syllabus_toc",
+]
 # The providers a call can go to (CHECK provider_known on llm_call).
 ProviderName = Literal["anthropic", "fake"]
 TASKS: tuple[Task, ...] = (
@@ -15,6 +22,7 @@ TASKS: tuple[Task, ...] = (
     "chunk_units",
     "generate_questions",
     "parse_command",
+    "syllabus_toc",
 )
 
 
