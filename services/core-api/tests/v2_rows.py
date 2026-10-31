@@ -12,6 +12,7 @@ from clock import future_exam
 from core_api.db.models import (
     DocSection,
     Document,
+    Grade,
     KnowledgeUnit,
     Question,
     QuestionType,
@@ -20,6 +21,9 @@ from core_api.db.models import (
     User,
 )
 from core_api.domain.documents import raw_key
+from core_api.domain.scheduling.rating import Verdict
+from core_api.repositories.question import QuestionUnitRepository
+from core_api.repositories.review import AttemptRepository, GradeRepository, ReviewSessionRepository
 from core_api.repositories.subject import SubjectRepository
 
 RUN = uuid.uuid4()
@@ -135,3 +139,24 @@ class World:
     bob: User
     subject: Subject
     other_subject: Subject
+
+
+def make_grade(session: Session, user: User, subject: Subject, question: Question) -> Grade:
+    """A grade of a submitted attempt at `question`, inside its own review session."""
+    unit = make_unit(session, user, subject)
+    QuestionUnitRepository(session, user.id).link(question.id, unit.id)
+    review, _ = ReviewSessionRepository(session, user.id).open_for_day(NOW.date(), NOW)
+    attempts = AttemptRepository(session, user.id)
+    attempt = attempts.create_draft(review.id, question.id)
+    attempts.save_draft(attempt.id, answer_text="x", dont_remember=False)
+    attempts.submit(attempt.id, NOW)
+    grade = GradeRepository(session, user.id).add_with_units(
+        attempt.id,
+        source="ai",
+        overall=Verdict.CORRECT,
+        understanding=3,
+        units={unit.id: Verdict.CORRECT},
+        run_id=RUN,
+    )
+    session.flush()
+    return grade
