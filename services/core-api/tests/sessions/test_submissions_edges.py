@@ -101,15 +101,18 @@ def test_typed_text_is_never_filed_under_a_binary_type(client: TestClient, world
     data = text.encode()
     liar = {"sha256": sha(data), "mime": "application/pdf", "size_bytes": len(data)}
     response = submit(client, world, files=[liar], text=text)
-    if response.status_code == 201:
-        [event] = events(world)
-        mimes = {f["mime"] for f in event.payload["file_keys"]}
-        assert mimes == {"text/plain"}, "typed text stored as application/pdf"
-        rows = world.db.scalars(select(NoteFile)).all()
-        assert {r.mime for r in rows} == {"text/plain"}
-    else:
-        assert response.status_code == 422
-        nothing_written(world)
+    assert response.status_code == 422
+    nothing_written(world)
+
+
+def test_typed_text_declared_size_must_be_its_real_size(client: TestClient, world: World) -> None:
+    # Red when: a file entry carrying the typed text's sha256 with a smaller size_bytes is
+    # trusted, so the note's size (and the quota that sums it) understates the stored text.
+    data = ("x" * 5000).encode()
+    liar = {"sha256": sha(data), "mime": "text/plain", "size_bytes": 1}
+    response = submit(client, world, files=[liar], text=data.decode())
+    assert response.status_code == 422 and response.json()["detail"] == "bad_note"
+    nothing_written(world)
 
 
 # --- Rate limits ------------------------------------------------------------------------------

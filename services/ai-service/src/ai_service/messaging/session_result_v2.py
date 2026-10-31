@@ -31,7 +31,7 @@ def draft_key(study_session_id: uuid.UUID, quote_hash_: str) -> str:
 
 
 class _Closed(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
+    model_config = ConfigDict(extra="forbid", strict=True, frozen=True, hide_input_in_errors=True)
 
 
 class Anchor(_Closed):

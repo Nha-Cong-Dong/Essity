@@ -51,3 +51,13 @@ def test_the_same_quote_in_another_session_has_another_key() -> None:
         SessionResultV2.model_validate_json(json.dumps(result)).drafts[0].draft_key
         == (draft["draft_key"])
     )
+
+
+def test_a_refused_result_never_echoes_the_quote_text() -> None:
+    # Red when: a ValidationError carries the input, so quote_text (user content) reaches logs.
+    result = body()
+    quote = result["drafts"][0]["anchors"][0]["quote_text"]
+    result["drafts"][0]["draft_key"] = "0" * 64
+    with pytest.raises(ValidationError) as error:
+        SessionResultV2.model_validate_json(json.dumps(result))
+    assert quote not in str(error.value)

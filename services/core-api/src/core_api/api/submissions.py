@@ -330,8 +330,10 @@ def submit(  # noqa: PLR0913, PLR0915
         if (first.mime, first.size_bytes) != (item.mime, item.size_bytes):
             raise _error(422, "bad_note")
     typed_sha = hashlib.sha256(typed).hexdigest() if typed is not None else None
-    if typed_sha is not None and typed_sha in files and files[typed_sha].mime != "text/plain":
-        raise _error(422, "bad_note")  # the typed text is never filed under another type
+    if typed is not None and typed_sha in files:
+        declared = files[typed_sha]  # the typed text is never filed under another type or size
+        if (declared.mime, declared.size_bytes) != ("text/plain", len(typed)):
+            raise _error(422, "bad_note")
     if typed is not None and typed_sha is not None and typed_sha not in files:
         files[typed_sha] = FileIn(sha256=typed_sha, mime="text/plain", size_bytes=len(typed))
     if not files:
