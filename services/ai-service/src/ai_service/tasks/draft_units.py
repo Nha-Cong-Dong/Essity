@@ -16,14 +16,15 @@ instead of exceptions for the cases T7.7 must handle without crashing: the AI ca
 (`pending_ai`) and unusable model output (`ok` with no drafts and a `reason`). Over-size input and
 duplicate pages still raise `ChunkInputError`: the caller splits the scope.
 
-`draft_key = sha256(session_id \\0 quote_hash)`, where `quote_hash` covers the verified anchors
-only (document, page, folded quote), sorted. The title and content, which the model may reword
-between runs, are not part of it. The key is therefore stable for the same verified evidence;
-T7.7 caches the result per submission so a redelivery does not ask again.
+`draft_key` is the one of `session-result.v2` (`session_result_v2.draft_key`): the hash of the
+session and of the FIRST anchor's quote. Anchors are put in a fixed order (document, page,
+offset, the learner's notes last) so the first one does not depend on the order the model listed
+them in. The title and content, which the model may reword between runs, are not part of it. The
+key is stable for the same verified evidence; the handler caches the result per submission so a
+redelivery does not ask again.
 """
 
 import dataclasses
-import hashlib
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -33,12 +34,14 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-from ai_service.domain.anchor_check import normalize_with_map
 from ai_service.llm.quota import QuotaExceededError, QuotaUnavailableError
+from ai_service.messaging.session_result_v2 import draft_key as contract_draft_key
+from ai_service.messaging.session_result_v2 import quote_hash as contract_quote_hash
 from ai_service.tasks.chunk_models import ChunkRequest as _ChunkRequest
 from ai_service.tasks.chunk_models import (
     DocInput,
     Dropped,
+    Kind,
     NewUnit,
     PageInput,
 )
@@ -96,13 +99,22 @@ class DraftAnchor:
     page: int | None
     # original[start:end] of the page text, never the string the model returned
     quote: str
+    # Offsets of `quote` in the page text (or in the submitted text for the learner's own notes).
+    start: int = 0
+    end: int = 0
+
+    @property
+    def source(self) -> Literal["document", "notes"]:
+        return "notes" if self.document_id is None else "document"
 
 
 @dataclass(frozen=True)
 class Draft:
     draft_key: str
+    quote_hash: str
     title: str
     content: str
+    kind: Kind
     section_ids: list[uuid.UUID]
     anchors: list[DraftAnchor]
 
@@ -122,19 +134,13 @@ def _system_template() -> str:
     return (_PROMPTS / TASK / f"{PROMPT_VERSION}.md").read_text("utf-8")
 
 
-def _fold(text: str) -> str:
-    return normalize_with_map(text)[0].strip().casefold()
-
-
-def _sha(text: str) -> str:
-    return hashlib.sha256(text.encode()).hexdigest()
-
-
-def _draft_key(session_id: uuid.UUID, anchors: list[DraftAnchor]) -> str:
-    parts = sorted(
-        _sha(f"{a.document_id or 'notes'}|{a.page or 0}|{_fold(a.quote)}") for a in anchors
+def _anchor_order(anchor: DraftAnchor) -> tuple[int, str, int, int]:
+    return (
+        1 if anchor.document_id is None else 0,
+        str(anchor.document_id or ""),
+        anchor.page or 0,
+        anchor.start,
     )
-    return _sha(f"{session_id}\0{_sha(chr(10).join(parts))}")
 
 
 def _chunk_request(request: DraftRequest) -> _ChunkRequest:
@@ -160,15 +166,21 @@ def _has_text(request: DraftRequest) -> bool:
 def _to_draft(
     session_id: uuid.UUID, unit: NewUnit, sections: dict[tuple[uuid.UUID, int], list[uuid.UUID]]
 ) -> Draft:
-    anchors = [DraftAnchor(a.document_id, a.page_no, a.quote_text) for a in unit.anchors]
+    anchors = sorted(
+        (DraftAnchor(a.document_id, a.page_no, a.quote_text, a.start, a.end) for a in unit.anchors),
+        key=_anchor_order,
+    )
+    first_hash = contract_quote_hash(anchors[0].quote)
     section_ids: list[uuid.UUID] = []
     for a in unit.anchors:
         found = sections.get((a.document_id, a.page_no), []) if a.document_id and a.page_no else []
         section_ids.extend(s for s in found if s not in section_ids)
     return Draft(
-        draft_key=_draft_key(session_id, anchors),
+        draft_key=contract_draft_key(session_id, first_hash),
+        quote_hash=first_hash,
         title=unit.title,
         content=unit.summary,
+        kind=unit.kind,
         section_ids=section_ids,
         anchors=anchors,
     )
@@ -211,8 +223,14 @@ def draft_units(request: DraftRequest, ask: Callable[[ChunkPrompt], str]) -> Dra
         if kept is None:
             drafts[draft.draft_key] = draft
         else:  # same evidence under two titles: one draft
+            # The first anchor is the same in both, so the key stays the one of the union.
+            known = {(a.document_id, a.page, a.start, a.end) for a in kept.anchors}
+            extra = [
+                a for a in draft.anchors if (a.document_id, a.page, a.start, a.end) not in known
+            ]
             drafts[draft.draft_key] = dataclasses.replace(
                 kept,
+                anchors=sorted(kept.anchors + extra, key=_anchor_order),
                 section_ids=kept.section_ids
                 + [s for s in draft.section_ids if s not in kept.section_ids],
             )

@@ -78,8 +78,16 @@ def test_same_text_on_two_pages_keeps_page_and_document_apart() -> None:
     req = _two_docs_same_text()
     out = draft_units(req, FakeAsk(output(unit_json(anchors=[("D1.p4", SAME)]))))
     assert [(a.document_id, a.page) for a in out.drafts[0].anchors] == [(DOC1, 4)]
+    # T7.7: the key is the contract's (session + first quote), so the same quote on three pages is
+    # ONE draft key; the pages and documents stay apart as anchors when the model names them.
     keys = {_key(req, "D1.p3"), _key(req, "D1.p4"), _key(req, "D2.p3")}
-    assert len(keys) == 3
+    assert len(keys) == 1
+    both = output(
+        unit_json("A", anchors=[("D1.p3", SAME)]), unit_json("B", anchors=[("D1.p4", SAME)])
+    )
+    united = draft_units(req, FakeAsk(both)).drafts
+    assert len(united) == 1
+    assert [(a.document_id, a.page) for a in united[0].anchors] == [(DOC1, 3), (DOC1, 4)]
 
 
 # Red when: section lookup ignores the document (D2.p3 would take D1.p3's section).
