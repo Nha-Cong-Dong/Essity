@@ -49,6 +49,7 @@ from ai_service.clients.storage import (
 from ai_service.db.models import PipelineRun
 from ai_service.db.session import SessionFactory
 from ai_service.docx.python_docx_impl import read_docx
+from ai_service.llm import vision
 from ai_service.llm.client import AuditUnavailableError, LlmClient, LlmUnavailableError
 from ai_service.llm.quota import QuotaExceededError
 from ai_service.llm.types import LlmRequest, Task
@@ -156,6 +157,7 @@ class _Work:
     skipped: list[Skipped] = field(default_factory=lambda: list[Skipped]())
     dropped_anchors: int = 0
     dropped_drafts: int = 0
+    malformed_batches: int = 0
 
     def skip(self, kind: str, ref: int, reason: str) -> None:
         item = Skipped(kind=kind, ref=ref, reason=reason)  # type: ignore[arg-type]
@@ -235,7 +237,8 @@ class _Asker:
             subject_id=self.event.payload.subject_id,
             pipeline_run_id=self.run_id,
             prompt_version=self.version,
-            attempt=min(self.calls, 2),
+            # a reading has no retry of its own: every call is a first attempt
+            attempt=1 if images else min(self.calls, 2),
             system=prompt.system,
             user=prompt.user,
             output_schema=prompt.output_schema,
@@ -291,6 +294,8 @@ class ProcessSubmission:
                 raise _Fail("unreadable", "nothing_readable")
             batches = _batches(pages, notes_parts)
             drafts = self._draft(event, self.llm, context, batches, work)
+            if not drafts and work.malformed_batches:
+                raise _Fail("internal_error", "model_output")  # nothing usable: not a result
         except _Fail:
             raise
         except (LlmUnavailableError, QuotaExceededError):
@@ -398,7 +403,8 @@ class ProcessSubmission:
         file_of: dict[int, int] = {}  # image ordinal -> index of its file, for `skipped`
         total = 0
         for index, file in enumerate(event.payload.file_keys, 1):
-            raw = self._get(file.object_key, MAX_FILE_BYTES)
+            limit = vision.MAX_BYTES if file.mime in IMAGE_MIMES else MAX_FILE_BYTES
+            raw = self._get(file.object_key, limit)
             if raw is None:
                 work.skip("note", index, "unreadable")
                 continue
@@ -484,7 +490,7 @@ class ProcessSubmission:
         self._finish_run(run_id, None)
         for skip in result.skipped:
             work.skip("note", file_of.get(skip.ref, skip.ref), skip.reason)
-        return [part.text for part in result.parts]
+        return [part.text.replace("\x00", "") for part in result.parts]
 
     # --- the drafts -----------------------------------------------------------------------
 
@@ -565,6 +571,12 @@ class ProcessSubmission:
             if outcome.status == "pending_ai":
                 raise QuotaExceededError(hard=False, window="day")
             drafts = [_shift_notes(d, batch.notes_offset) for d in outcome.drafts]
+            if outcome.reason == "malformed_output":
+                # The model broke the output rules on both attempts: counted, and not cached, so
+                # a retry may do better (review Y-c).
+                work.dropped_drafts += 1
+                work.malformed_batches += 1
+                return drafts
             dropped_anchors = sum(1 for d in outcome.dropped if d.kind == "anchor")
             dropped_drafts = sum(1 for d in outcome.dropped if d.kind == "unit")
             self._save_batch(cache_key, drafts, dropped_anchors, dropped_drafts)
@@ -789,7 +801,7 @@ def _request(
             for n, (doc, pages) in enumerate(order.items(), 1)
         ],
         submission_text=batch.notes,
-        description=context.description,
+        description=context.description.replace("\x00", "") if context.description else None,
     )
 
 

@@ -617,3 +617,64 @@ def test_t77_consumer_has_a_handler_and_fake_responders_for_the_new_tasks(
         redis=redis_client, storage=FakeStorage(), llm=None, sessions=sessions
     )
     assert "submission.created.v1" in handlers
+
+
+def test_review_y_a_nul_in_a_reading_or_description_does_not_fail_the_submission(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    reading = json.dumps({"text": "ty the la noi hop\u0000 ho hap te bao", "legible": True})
+    event = submitted(
+        storage, files=[file_of(storage, png(11), PNG)], description="mo ta\u0000 buoi hoc"
+    )
+    run(handler(storage, redis_client, stream, sessions, Model(read=lambda r: reading)), event)
+    result(storage, event)
+
+
+def test_review_y_c_malformed_model_output_is_not_a_cached_result(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = submitted(storage, files=[file_of(storage, b"x", TXT)], mentions=[mention(1, 1)])
+    run(handler(storage, redis_client, stream, sessions, Model(draft=lambda r: "not json")), event)
+    (out,) = sent(redis_client, stream)
+    assert isinstance(out, SubmissionFailedEvent) and out.payload.reason == "internal_error"
+    assert result_key_for(event) not in storage.objects
+    assert not [k for k in storage.objects if "/derived/submission/" in k]
+    good = Model()
+    run(handler(storage, redis_client, stream, sessions, good), again(event))
+    assert good.calls("draft_units")
+    assert result(storage, event)["drafts"]
+
+
+def test_review_y_d_every_image_reading_is_a_first_attempt(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    event = submitted(storage, files=[file_of(storage, png(i), PNG) for i in range(3)])
+    model = Model()
+    run(handler(storage, redis_client, stream, sessions, model), event)
+    assert [r.attempt for r in model.calls("read_notes")] == [1, 1, 1]
+
+
+def test_review_y_e_an_image_over_the_vision_budget_is_not_read_into_memory(
+    redis_client: Redis,
+    stream: str,
+    sessions: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from ai_service.llm import vision
+
+    storage = FakeStorage()
+    index(storage)
+    monkeypatch.setattr(vision, "MAX_BYTES", 100)
+    event = submitted(storage, files=[file_of(storage, png(0, 400), PNG)])
+    model = Model()
+    run(handler(storage, redis_client, stream, sessions, model), event)
+    assert model.calls("read_notes") == []
+    assert {"kind": "note", "ref": 1, "reason": "unreadable"} in result(storage, event)[
+        "skipped"
+    ] or (sent(redis_client, stream)[-1].payload.reason == "unreadable")
