@@ -1,5 +1,7 @@
 """Inputs and outputs of the llm/ layer (ADR-0010: Pydantic in, Pydantic out)."""
 
+import base64
+import hashlib
 import uuid
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
@@ -30,6 +32,23 @@ TASKS: tuple[Task, ...] = (
 )
 
 
+class ImagePart(BaseModel):
+    """One image of a vision call (T7.7). The bytes go to the provider and nowhere else: the
+    audit row keeps only the hash and the size (ADR-0013)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+
+    data: bytes = Field(repr=False)
+    media_type: Literal["image/jpeg", "image/png"]
+
+    @property
+    def sha256(self) -> str:
+        return hashlib.sha256(self.data).hexdigest()
+
+    def base64(self) -> str:
+        return base64.b64encode(self.data).decode("ascii")
+
+
 class LlmRequest(BaseModel):
     """One call to a model, as a task builds it.
 
@@ -52,6 +71,8 @@ class LlmRequest(BaseModel):
     user: str
     output_schema: dict[str, Any]
     payload: dict[str, Any] = Field(default_factory=dict[str, Any])
+    # Images of a vision call, shown to the model before `user`.
+    images: tuple[ImagePart, ...] = ()
 
 
 @dataclass(frozen=True)
