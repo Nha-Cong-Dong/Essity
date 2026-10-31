@@ -244,7 +244,8 @@ class OutlineService:
         role: str | None = None,
     ) -> Document:
         """Change a document's short name (unique within its subject) or role. Raises
-        DocumentNotFoundError, NoChangeError, NameTakenError, TextbookExistsError (the role
+        DocumentNotFoundError, NoChangeError, NameTakenError, TextbookNotReadyError (the role
+        `textbook` on a document not read), TextbookExistsError (the role
         `textbook` while another document of the subject is the main one: use
         `set_textbook` to replace it)."""
         if short_name is None and role is None:
@@ -265,6 +266,8 @@ class OutlineService:
             document.short_name = short_name
         if role is not None and role != document.role:
             if role == "textbook":
+                if document.status in (*UNCONFIRMED, "failed"):
+                    raise TextbookNotReadyError
                 current = self.textbook(document.subject_id)
                 if current is not None and current.id != document.id:
                     raise TextbookExistsError

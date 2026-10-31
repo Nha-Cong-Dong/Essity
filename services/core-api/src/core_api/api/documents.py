@@ -48,6 +48,7 @@ from core_api.services.outline import (
     NoChangeError,
     OutlineService,
     TextbookExistsError,
+    TextbookNotReadyError,
 )
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
@@ -334,6 +335,7 @@ def patch_document(
     """Rename a document (`short_name`, US-01 AC7) or change its `role` (T7.4). Errors: 404
     `document_not_found` (another user's too); 422 `nothing_to_change`, `invalid_short_name`;
     409 `short_name_taken` (another document of the subject has it: pick another) or
+    `document_not_ready` (role `textbook` on a document not read) or
     `textbook_exists` (the subject already has a main textbook: replace it with
     `PUT /v1/subjects/{id}/textbook`, nothing is overwritten here)."""
     response.headers["Cache-Control"] = "no-store"
@@ -356,6 +358,8 @@ def patch_document(
         raise _error(409, "short_name_taken") from None
     except TextbookExistsError:
         raise _error(409, "textbook_exists") from None
+    except TextbookNotReadyError:
+        raise _error(409, "document_not_ready") from None
     return _out(document)
 
 

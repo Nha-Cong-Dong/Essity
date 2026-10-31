@@ -267,6 +267,20 @@ def test_us01_ac5_a_second_textbook_by_role_change_is_refused(
     assert patch_doc(client, headers, other, role="textbook").json()["role"] == "textbook"
 
 
+def test_us01_ac5_a_document_not_read_cannot_become_the_textbook_by_role(
+    client: TestClient, db_session: Session
+) -> None:
+    user, headers = signed_in(db_session)
+    subject = subject_of(db_session, user)
+    pending = document_in(db_session, user, subject, "Mới", role="auxiliary", status="pending")
+    other = document_in(db_session, user, subject, "Giáo trình", role="auxiliary")
+
+    response = patch_doc(client, headers, pending, role="textbook")
+
+    assert (response.status_code, response.json()["detail"]) == (409, "document_not_ready")
+    assert put(client, headers, subject.id, other.id).status_code == 200  # not a 500
+
+
 def test_a_role_must_be_one_of_the_three(client: TestClient, db_session: Session) -> None:
     user, headers = signed_in(db_session)
     document = document_in(db_session, user, subject_of(db_session, user))
