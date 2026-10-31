@@ -8,6 +8,7 @@ from core_api.domain.outline import (
     RangeError,
     SectionRow,
     check_range,
+    clamp_studied,
     excluded_ids,
     progress,
     reweigh,
@@ -130,3 +131,13 @@ def test_reweigh_leaf_by_range_parent_by_sum() -> None:
     assert weights[A1] == 2
     assert weights[A] == 2 + 6
     assert weights[B] == 10
+
+
+@pytest.mark.parametrize(
+    ("studied", "weight", "expected"),
+    [(5.0, 8.0, 5.0), (9.0, 8.0, 8.0), (-1.0, 8.0, 0.0), (float("nan"), 8.0, 0.0), (3.0, 0.0, 0.0)],
+)
+def test_us13_ac6_studied_weight_stays_between_zero_and_weight(
+    studied: float, weight: float, expected: float
+) -> None:
+    assert clamp_studied(studied, weight) == expected

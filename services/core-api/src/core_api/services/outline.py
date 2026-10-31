@@ -201,6 +201,8 @@ class OutlineService:
                 if sid in leaf_ids:
                     leaf = by_id[sid]
                     leaf.studied_weight = leaf.weight if studied else 0.0
+        for s in sections:  # whatever an edit did, covered stays within 0..weight
+            s.studied_weight = rules.clamp_studied(s.studied_weight, s.weight)
         self.session.flush()
         return section
 

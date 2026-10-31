@@ -334,6 +334,21 @@ def test_us13_ac6_the_same_range_gives_the_same_state_whatever_the_cards(
     assert flat(get(client, headers, subject.id)["sections"])["1.1"]["studied"] is True
 
 
+def test_us13_ac6_an_edit_pulls_studied_weight_back_inside_the_weight(
+    client: TestClient, db_session: Session
+) -> None:
+    _, headers, _, _, sections = world(db_session)
+    sections["1.1"].studied_weight = 99  # over its weight of 8, as a stale row could be
+    sections["Chương 2"].studied_weight = 5
+    db_session.flush()
+
+    assert patch(client, headers, sections["Chương 2"], excluded=True).status_code == 200
+
+    db_session.refresh(sections["1.1"])
+    assert sections["1.1"].studied_weight == 8
+    assert 0 <= sections["Chương 2"].studied_weight <= sections["Chương 2"].weight
+
+
 def test_us13_ac6_editing_the_range_of_a_studied_section_keeps_it_studied(
     client: TestClient, db_session: Session
 ) -> None:

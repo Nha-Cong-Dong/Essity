@@ -137,6 +137,14 @@ def section_progress(rows: Sequence[SectionRow]) -> dict[uuid.UUID, float]:
     return result
 
 
+def clamp_studied(studied: float, weight: float) -> float:
+    """`studied_weight` kept inside `0 <= studied <= weight` (the column refuses negatives and
+    infinity; the weight is the most a section can have covered). NaN counts as nothing."""
+    if studied != studied:  # NaN
+        return 0.0
+    return min(max(studied, 0.0), weight)
+
+
 def reweigh(
     rows: Sequence[SectionRow], ranges: Mapping[uuid.UUID, tuple[int, int]]
 ) -> dict[uuid.UUID, float]:
