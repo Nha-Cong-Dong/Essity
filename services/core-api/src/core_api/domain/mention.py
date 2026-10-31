@@ -303,6 +303,6 @@ def resolve_mentions(
         resolved += _resolve_scope(
             mention, document, sections.get(document.id, ()), scope, len(resolved)
         )
-    if len(resolved) > MAX_MENTIONS:
-        raise MentionError("too_many_mentions", MAX_MENTIONS, "")
+        if len(resolved) > MAX_MENTIONS:
+            raise MentionError("too_many_mentions", MAX_MENTIONS, "")
     return resolved

@@ -43,6 +43,12 @@ def test_more_than_max_mentions_is_refused() -> None:
     assert code_of(over, [SLIDES], {}) == "too_many_mentions"
 
 
+def test_ceiling_stops_before_a_later_bad_mention() -> None:
+    # Red when: the ceiling is checked after the loop (a later unknown name masks it, work wasted).
+    ok = "; ".join(f"@CSDL slide {i}" for i in range(1, MAX_MENTIONS + 2))
+    assert code_of(ok + "; @Khongco", [SLIDES], {}) == "too_many_mentions"
+
+
 def test_a_scope_list_counts_toward_the_ceiling() -> None:
     # Red when: "slide 1, 2, ..." in one mention escapes the ceiling.
     items = ", ".join(str(i) for i in range(1, MAX_MENTIONS + 2))
