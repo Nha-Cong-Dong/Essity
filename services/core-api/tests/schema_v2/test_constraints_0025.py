@@ -155,6 +155,21 @@ def test_practice_log_refuses_update_delete_truncate(world: World) -> None:
     refused_sql(world, "TRUNCATE practice_log")
 
 
+def test_practice_log_triggers_are_the_review_log_refusal(world: World) -> None:
+    # Red when: practice_log loses one of its two triggers, or uses another function than
+    # review_log (T2.22 replaces the one function for both).
+    rows = world.session.execute(
+        text(
+            "SELECT tgname, tgfoid::regproc::text FROM pg_trigger"
+            " WHERE tgrelid = 'practice_log'::regclass AND NOT tgisinternal"
+        )
+    ).all()
+    assert {(name, fn) for name, fn in rows} == {
+        ("practice_log_append_only", "append_only_refuse"),
+        ("practice_log_no_truncate", "append_only_refuse"),
+    }
+
+
 def test_user_delete_blocked_by_practice_log_like_review_log(world: World) -> None:
     # Red when: deleting the account silently erases practice history (T2.22 opens the way).
     question, grade_id = graded(world)
@@ -427,12 +442,21 @@ def test_new_fks_all_include_user_id(world: World) -> None:
         text(
             "SELECT conrelid::regclass::text, conname, pg_get_constraintdef(oid)"
             " FROM pg_constraint WHERE contype = 'f' AND conrelid::regclass::text = ANY(:t)"
-            " AND confrelid::regclass::text <> 'user'"
+            " AND confrelid <> '\"user\"'::regclass"
             " AND (conrelid::regclass::text <> 'question' OR conname LIKE '%bank%')"
         ),
         {"t": [*NEW_TABLES, "question"]},
     ).all()
-    assert len(rows) >= 7
+    expected = {
+        "fk_practice_state_question_id_question",
+        "fk_practice_log_grade_id_grade",
+        "fk_practice_log_question_id_question",
+        "fk_command_log_subject_id_subject",
+        "fk_unit_edge_dst_unit_id_knowledge_unit",
+        "fk_unit_edge_src_unit_id_knowledge_unit",
+        "fk_question_bank_document_id_document",
+    }
+    assert {name for _, name, _ in rows} == expected
     assert [name for _, name, definition in rows if "user_id" not in definition] == []
 
 

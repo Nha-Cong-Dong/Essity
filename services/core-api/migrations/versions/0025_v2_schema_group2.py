@@ -28,7 +28,9 @@ NEW_TABLES = ("practice_state", "practice_log", "command_log", "unit_edge")
 # Written out, not imported: a later change to the models must not change what this ran.
 OLD_ORIGINS = "'learner_median', 'rubric', 'user'"
 NEW_ORIGINS = "'default', 'learner_median', 'rubric', 'user'"
-NOT_BLANK = "raw_text ~ '[^ \\t\\n\\v\\f\\r\\u0085\xa0  -     　]'"  # noqa: E501
+NOT_BLANK = (
+    "raw_text ~ '[^ \\t\\n\\v\\f\\r\\u0085\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]'"  # noqa: E501
+)
 
 # practice_log follows review_log: the same refusal function, so T2.22 (core_eraser) replaces it
 # once for both. command_log is not history of review: it may be deleted with its subject or its
