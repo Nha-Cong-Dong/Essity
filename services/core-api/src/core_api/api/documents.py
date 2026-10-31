@@ -42,6 +42,13 @@ from core_api.repositories.document import (
 )
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
 from core_api.security.rate_limit import RateLimit, RateLimiter, get_rate_limiter
+from core_api.services.outline import (
+    DocumentNotFoundError,
+    NameTakenError,
+    NoChangeError,
+    OutlineService,
+    TextbookExistsError,
+)
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
@@ -66,6 +73,8 @@ class DocumentOut(BaseModel):
     id: uuid.UUID
     subject_id: uuid.UUID
     short_name: str
+    # textbook | question_bank | auxiliary (T7.4); one textbook per subject.
+    role: Literal["textbook", "question_bank", "auxiliary"]
     status: str
     size_bytes: int
     created_at: datetime
@@ -98,6 +107,7 @@ def _out(document: Document) -> DocumentOut:
         id=document.id,
         subject_id=document.subject_id,
         short_name=document.short_name,
+        role=document.role,  # pyright: ignore[reportArgumentType]
         status=document.status,
         size_bytes=document.size_bytes,
         created_at=document.created_at,
@@ -301,6 +311,49 @@ def read_document(
     document = DocumentRepository(session, user.id).get(document_id)
     if document is None:
         raise _error(404, "document_not_found")
+    return _out(document)
+
+
+class DocumentPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    short_name: StrictStr | None = Field(default=None, min_length=1, max_length=FILENAME_MAX)
+    role: Literal["textbook", "question_bank", "auxiliary"] | None = None
+
+
+@router.patch("/documents/{document_id}", response_model=DocumentOut)
+def patch_document(
+    document_id: uuid.UUID,
+    body: DocumentPatch,
+    user: VerifiedUser,
+    session: DbSession,
+    response: Response,
+) -> DocumentOut:
+    """Rename a document (`short_name`, US-01 AC7) or change its `role` (T7.4). Errors: 404
+    `document_not_found` (another user's too); 422 `nothing_to_change`, `invalid_short_name`;
+    409 `short_name_taken` (another document of the subject has it: pick another) or
+    `textbook_exists` (the subject already has a main textbook: replace it with
+    `PUT /v1/subjects/{id}/textbook`, nothing is overwritten here)."""
+    response.headers["Cache-Control"] = "no-store"
+    name: str | None = None
+    if body.short_name is not None:
+        try:
+            storable_text(body.short_name)
+            name = short_name(f"{body.short_name}.pdf")  # the cleaning rules of an upload's name
+        except (ValueError, InvalidFilenameError):
+            raise _error(422, "invalid_short_name") from None
+    try:
+        document = OutlineService(session, user.id).edit_document(
+            document_id, short_name=name, role=body.role
+        )
+    except DocumentNotFoundError:
+        raise _error(404, "document_not_found") from None
+    except NoChangeError:
+        raise _error(422, "nothing_to_change") from None
+    except NameTakenError:
+        raise _error(409, "short_name_taken") from None
+    except TextbookExistsError:
+        raise _error(409, "textbook_exists") from None
     return _out(document)
 
 

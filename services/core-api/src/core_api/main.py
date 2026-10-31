@@ -11,6 +11,7 @@ from core_api.api import (
     grades,
     health,
     me,
+    outline,
     ping,
     review_sessions,
     session_confirm,
@@ -62,6 +63,7 @@ app.include_router(auth.router)
 app.include_router(me.router)
 app.include_router(subjects.router)
 app.include_router(documents.router)
+app.include_router(outline.router)
 app.include_router(today.router)
 app.include_router(review_sessions.router)
 app.include_router(attempts.router)

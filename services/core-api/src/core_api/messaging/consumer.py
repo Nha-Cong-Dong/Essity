@@ -93,12 +93,14 @@ def build_handlers() -> dict[str, Handler]:
     """Every handler of this process: `HANDLERS` and the ones that read the object storage."""
     from core_api.clients.storage import S3Storage
     from core_api.config import get_settings
+    from core_api.handlers.document_indexed import OnDocumentIndexed
     from core_api.handlers.grade_completed import OnGradeCompleted
     from core_api.handlers.session_processed import OnSessionProcessed
 
     settings = get_settings()
     storage = S3Storage.from_settings(settings)
     return HANDLERS | {
+        "document.indexed.v1": OnDocumentIndexed(storage),
         "grade.completed.v1": OnGradeCompleted(storage, environment=settings.environment),
         "session.processed.v1": OnSessionProcessed(storage),
     }

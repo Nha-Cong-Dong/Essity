@@ -43,7 +43,14 @@ def build(world: World, model: type[Any]) -> UserOwned:
     section = make_section(s, a, document)
     if model is DocSection:
         return DocSection(
-            subject_id=sub.id, document_id=document.id, ord=1, title="t", unit="page", source="user"
+            subject_id=sub.id,
+            document_id=document.id,
+            ord=1,
+            page_start=1,
+            page_end=1,
+            title="t",
+            unit="page",
+            source="user",
         )
     unit = make_unit(s, a, sub)
     if model is UnitRevision:
