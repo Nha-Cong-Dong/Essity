@@ -26,7 +26,7 @@ QUESTION_SOURCES = frozenset({"bank", "generated", "review_auto"})
 QUALITY_STATUSES = frozenset({"pending", "ok", "rejected"})
 ANSWER_ORIGINS = frozenset({"bank", "ai", "user"})
 # Where a question type's reference time comes from (spec v2 §16.1 Q-C).
-REF_ORIGINS = frozenset({"rubric", "learner_median", "user"})
+REF_ORIGINS = frozenset({"default", "rubric", "learner_median", "user"})
 
 
 class Question(UserOwned, Base):
@@ -72,9 +72,21 @@ class Question(UserOwned, Base):
             unique=True,
             postgresql_where=text("status = 'active'"),
         ),
+        # The question-bank file a question was read from (T8.1). NO ACTION: deleting the file
+        # never takes questions that already have a schedule.
+        ForeignKeyConstraint(
+            ["bank_document_id", "subject_id", "user_id"],
+            ["document.id", "document.subject_id", "document.user_id"],
+            ondelete="NO ACTION",
+        ),
+        CheckConstraint(
+            "bank_ord IS NULL OR bank_document_id IS NOT NULL", name="bank_ord_needs_document"
+        ),
+        CheckConstraint("bank_ord IS NULL OR bank_ord >= 0", name="bank_ord_not_negative"),
         UniqueConstraint("id", "user_id"),
         UniqueConstraint("id", "subject_id", "user_id"),
         Index(None, "subject_id", "status"),
+        Index(None, "bank_document_id", "bank_ord"),
     )
 
     subject_id: Mapped[uuid.UUID]
@@ -95,6 +107,9 @@ class Question(UserOwned, Base):
     kept_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The unit revision the question was written from (made again, lazily, when that moves on).
     unit_rev: Mapped[int | None] = mapped_column(Integer)
+    # Where it sits in its question-bank file (T8.1); NULL for a question not read from one.
+    bank_document_id: Mapped[uuid.UUID | None]
+    bank_ord: Mapped[int | None] = mapped_column(Integer)
 
 
 class QuestionUnit(UserOwned, Base):

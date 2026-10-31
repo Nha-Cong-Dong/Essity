@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -26,6 +27,10 @@ UNIT_KINDS = frozenset({"concept", "mechanism", "comparison", "formula", "exampl
 UNIT_STATUSES = frozenset({"draft", "canonical", "active", "split", "merged", "retired"})
 # Who wrote a revision: the AI (rev 0) or the learner (rev 1 on; the AI never overwrites these).
 REVISION_ORIGINS = frozenset({"ai", "user"})
+# v2 (T9.9): how two cards relate, who proposed the edge and where it stands.
+EDGE_KINDS = frozenset({"prerequisite", "part_of", "example_of", "contrast", "applies_to"})
+EDGE_ORIGINS = frozenset({"ai", "user"})
+EDGE_STATUSES = frozenset({"proposed", "active", "inactive", "rejected"})
 # Where an anchor's quote comes from: a document page, or the user's own notes (us-02b AC5).
 ANCHOR_SOURCES = frozenset({"document", "notes"})
 
@@ -193,3 +198,44 @@ class UnitSection(UserOwned, Base):
     subject_id: Mapped[uuid.UUID]
     unit_id: Mapped[uuid.UUID]
     section_id: Mapped[uuid.UUID]
+
+
+class UnitEdge(UserOwned, Base):
+    """A link between two cards of one subject (T9.9). The AI proposes it with `evidence`: quotes
+    that may come from either card, each checked by code against its source. A learner's own edge
+    needs none. `contrast` runs one way only (src < dst), so a pair is stored once."""
+
+    __tablename__ = "unit_edge"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["src_unit_id", "subject_id", "user_id"],
+            ["knowledge_unit.id", "knowledge_unit.subject_id", "knowledge_unit.user_id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["dst_unit_id", "subject_id", "user_id"],
+            ["knowledge_unit.id", "knowledge_unit.subject_id", "knowledge_unit.user_id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(one_of("kind", EDGE_KINDS), name="kind_known"),
+        CheckConstraint(one_of("origin", EDGE_ORIGINS), name="origin_known"),
+        CheckConstraint(one_of("status", EDGE_STATUSES), name="status_known"),
+        CheckConstraint("src_unit_id <> dst_unit_id", name="not_to_itself"),
+        CheckConstraint("kind <> 'contrast' OR src_unit_id < dst_unit_id", name="contrast_one_way"),
+        CheckConstraint("jsonb_typeof(evidence) = 'array'", name="evidence_is_array"),
+        CheckConstraint(
+            "origin = 'user' OR jsonb_array_length(evidence) >= 1", name="ai_has_evidence"
+        ),
+        UniqueConstraint("src_unit_id", "dst_unit_id", "kind"),
+        Index(None, "dst_unit_id"),
+        Index(None, "subject_id", "status"),
+    )
+
+    subject_id: Mapped[uuid.UUID]
+    src_unit_id: Mapped[uuid.UUID]
+    dst_unit_id: Mapped[uuid.UUID]
+    kind: Mapped[str] = mapped_column(String(12))
+    origin: Mapped[str] = mapped_column(String(4))
+    status: Mapped[str] = mapped_column(String(8))
+    evidence: Mapped[Any] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
+    run_id: Mapped[uuid.UUID | None]  # pipeline run in the ai database: no foreign key

@@ -154,6 +154,11 @@ class DocSection(UserOwned, Base):
         CheckConstraint("parent_id IS NULL OR parent_id <> id", name="not_its_own_parent"),
         CheckConstraint("ord >= 0", name="ord_not_negative"),
         CheckConstraint("weight >= 0 AND weight < 'Infinity'", name="weight_not_negative"),
+        # NaN is above Infinity in Postgres, so this refuses it too.
+        CheckConstraint(
+            "studied_weight >= 0 AND studied_weight < 'Infinity'",
+            name="studied_weight_not_negative",
+        ),
         CheckConstraint(not_blank("title"), name="title_not_blank"),
         CheckConstraint(one_of("unit", SECTION_UNITS), name="unit_known"),
         CheckConstraint(one_of("source", SECTION_SOURCES), name="source_known"),
@@ -168,6 +173,8 @@ class DocSection(UserOwned, Base):
     ord: Mapped[int] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String(300))
     weight: Mapped[float] = mapped_column(Float, server_default="1")
+    # How much of `weight` the learner has covered (T7.4), in the same unit.
+    studied_weight: Mapped[float] = mapped_column(Float, server_default="0")
     unit: Mapped[str] = mapped_column(String(8))
     source: Mapped[str] = mapped_column(String(8))
     excluded: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
