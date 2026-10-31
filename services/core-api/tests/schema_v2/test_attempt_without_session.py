@@ -172,3 +172,34 @@ def test_downgrade_refuses_while_a_practice_attempt_exists(
                 c.execute(text("ALTER TABLE attempt ENABLE TRIGGER USER"))
             c.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": user})
         command.upgrade(alembic_cfg, "head")
+
+
+def test_downgrade_restores_not_null_and_the_old_guard(engine: Engine, alembic_cfg: Config) -> None:
+    # Red when: the downgrade keeps review_session_id nullable or the IS DISTINCT FROM guard.
+    try:
+        command.downgrade(alembic_cfg, "0026")
+        with engine.connect() as c:
+            nullable = c.execute(
+                text(
+                    "SELECT is_nullable FROM information_schema.columns"
+                    " WHERE table_name = 'attempt' AND column_name = 'review_session_id'"
+                )
+            ).scalar_one()
+            body = c.execute(
+                text("SELECT pg_get_functiondef('attempt_guard'::regproc)")
+            ).scalar_one()
+        assert nullable == "NO"
+        assert "IS DISTINCT FROM" not in body
+    finally:
+        command.upgrade(alembic_cfg, "head")
+
+
+def test_review_path_does_not_touch_a_practice_attempt(world: World) -> None:
+    # Red when: the review repository edits an attempt that has no review session.
+    from core_api.repositories.review import AttemptNotFoundError, AttemptRepository
+
+    question = make_question(world.session, world.alice, world.subject)
+    attempt = insert(world, question.id, None)
+    repo = AttemptRepository(world.session, world.alice.id)
+    with pytest.raises(AttemptNotFoundError):
+        repo.save_draft(attempt, answer_text="x", dont_remember=False)
