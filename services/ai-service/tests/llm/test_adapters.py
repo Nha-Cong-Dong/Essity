@@ -222,6 +222,7 @@ def test_t210_settings_give_the_task_table_a_priced_model(monkeypatch: pytest.Mo
         "chunk_units": MODEL,
         "generate_questions": MODEL,
         "parse_command": MODEL,
+        "syllabus_toc": MODEL,
     }
 
 
