@@ -51,6 +51,8 @@ class Draft(_Closed):
     kind: Literal["concept", "mechanism", "comparison", "formula", "example"]
     section_id: Id | None
     suggested_section_id: Id | None
+    # Optional and additive: every section of the draft; `section_id` is its first (primary).
+    section_ids: Annotated[list[Id], Field(min_length=1)] | None = None
     anchors: Annotated[list[Anchor], Field(min_length=1)]
 
 
@@ -80,6 +82,8 @@ class SessionResultV2(_Closed):
                 raise ValueError("quote_hash is not the hash of the first anchor's quote")
             if draft.draft_key != draft_key(self.study_session_id, draft.quote_hash):
                 raise ValueError("draft_key is not the hash of session and quote")
+            if draft.section_ids is not None and draft.section_id != draft.section_ids[0]:
+                raise ValueError("section_id is not the first of section_ids")
             if draft.draft_key in keys:
                 raise ValueError("draft_key repeats")
             keys.add(draft.draft_key)

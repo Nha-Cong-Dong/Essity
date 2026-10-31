@@ -128,7 +128,7 @@ def test_us02_ac13_submission_without_page_positions_has_no_section_and_is_noted
     assert {"kind": "page", "ref": 0, "reason": "no_text"} in body["skipped"]
 
 
-def test_plan_t77_page_in_two_sections_draft_carries_the_first_on_the_wire(
+def test_plan_t77_page_in_two_sections_draft_carries_both_on_the_wire(
     redis_client: Redis, stream: str, sessions: sessionmaker[Session]
 ) -> None:
     # Two mentions cover page 2 under two sections: the page is read once and belongs to both.
@@ -138,8 +138,10 @@ def test_plan_t77_page_in_two_sections_draft_carries_the_first_on_the_wire(
     model = Model()
     run(handler(storage, redis_client, stream, sessions, model), event)
     body = result(storage, event)
-    by_page = {d["anchors"][0]["page_no"]: d["section_id"] for d in body["drafts"] if d["anchors"]}
-    assert by_page[2] == str(SEC1) and by_page[3] == str(SEC2)
+    by_page = {d["anchors"][0]["page_no"]: d for d in body["drafts"] if d["anchors"]}
+    assert by_page[2]["section_id"] == str(SEC1)
+    assert by_page[2]["section_ids"] == [str(SEC1), str(SEC2)]
+    assert by_page[3]["section_ids"] == [str(SEC2)] and by_page[1]["section_ids"] == [str(SEC1)]
     sources = [s["label"] for s in model.calls("draft_units")[0].payload["sources"]]
     assert sources.count("D1.p2") == 1  # not read twice
 

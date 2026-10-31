@@ -143,6 +143,15 @@
             "items": {
               "$ref": "#/$defs/anchor"
             }
+          },
+          "section_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/uuid"
+            },
+            "description": "Optional, additive: every section the draft's pages belong to. When present, section_id is its first element (the primary section)."
           }
         }
       }

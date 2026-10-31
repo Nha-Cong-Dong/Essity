@@ -627,7 +627,7 @@ class ProcessSubmission:
             dropped=WireDropped(anchors=work.dropped_anchors, drafts=work.dropped_drafts),
             skipped=work.skipped,
         )
-        return result.model_dump_json().encode()
+        return result.model_dump_json(exclude_unset=True).encode()
 
     def _written(self, key: str) -> bool:
         try:
@@ -847,8 +847,8 @@ def _union(kept: Draft, other: Draft) -> Draft:
 
 
 def _wire(draft: Draft) -> WireDraft:
-    """The contract carries one section per draft; a draft over two sections keeps the first
-    (the others stay with the draft until core asks for a list: T7.7 plan, question 2)."""
+    """`section_id` is the primary (first) section; `section_ids` lists all of them."""
+    extra: dict[str, Any] = {"section_ids": draft.section_ids} if draft.section_ids else {}
     return WireDraft(
         draft_key=draft.draft_key,
         quote_hash=draft.quote_hash,
@@ -857,6 +857,7 @@ def _wire(draft: Draft) -> WireDraft:
         kind=draft.kind,
         section_id=draft.section_ids[0] if draft.section_ids else None,
         suggested_section_id=None,
+        **extra,
         anchors=[
             WireAnchor(
                 source=a.source,
