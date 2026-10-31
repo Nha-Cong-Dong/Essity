@@ -1,9 +1,9 @@
 """Syllabus tree of a textbook (T7.2, v2 §5): the table of contents as nodes with page ranges.
 
 The core is pure: `build_syllabus(page_count, outline, pages, ask)` where `ask` sends a
-`SyllabusPrompt` to the model and returns its text. Binding `ask` to `LlmClient` and the quota
-guard, and calling this from the indexing pipeline, is T7.4's work (it needs a new llm `Task` and
-pricing row, which touch the shared llm/ and db layers).
+`SyllabusPrompt` to the model and returns its text. `SyllabusAsker` binds `ask` to `LlmClient`
+(quota guard, audit row) and `outline_file` is the file the indexing pipeline writes for core-api
+(T7.4).
 
 Sources, tried in order, the first usable one wins:
   1. `bookmarks`: the PDF outline;
@@ -19,8 +19,11 @@ untrusted: checked by schema and size here, and any failure of it, or of `ask`, 
 """
 
 import hashlib
+import json
 import logging
 import re
+import time
+import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
@@ -28,13 +31,20 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError
+from sqlalchemy import func, update
 
+from ai_service.db.models import PipelineRun
+from ai_service.db.session import SessionFactory
+from ai_service.llm.client import AuditUnavailableError, LlmClient
+from ai_service.llm.types import LlmRequest
 from ai_service.pdf import OutlineEntry, PageText
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
 
 _log = logging.getLogger(__name__)
 
+TASK = "syllabus_toc"
 PROMPT_VERSION = "v1"
+CALL_SECONDS = 60.0
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
 _NONCE_PLACEHOLDER = "{{NONCE}}"
 ATTEMPTS = 2
@@ -369,3 +379,119 @@ def build_syllabus(
             if len(nodes) <= MAX_NODES and _tiles(nodes, page_count):
                 return nodes
     return chunk10(page_count)
+
+
+# Source names in core-api's `doc_section.source` vocabulary (a "regex" tree is found by headings).
+_SECTION_SOURCE: dict[Source, str] = {
+    "bookmarks": "bookmark",
+    "regex": "heading",
+    "llm_toc": "llm_toc",
+    "chunk10": "chunk10",
+}
+
+
+def outline_file(nodes: Sequence[SyllabusNode]) -> dict[str, Any]:
+    """The `outline.json` body core-api reads: nodes depth first, each with the index of its
+    parent (None for a root). Core owns the rules for what it accepts."""
+    parents: list[int | None] = []
+    stack: list[int] = []
+    for index, node in enumerate(nodes):
+        del stack[node.level :]
+        parents.append(stack[-1] if stack else None)
+        stack.append(index)
+    return {
+        "unit": "page",
+        "nodes": [
+            {
+                "title": node.title,
+                "parent": parent,
+                "page_start": node.page_start,
+                "page_end": node.page_end,
+                "weight": node.weight,
+                "source": _SECTION_SOURCE[node.source],
+            }
+            for node, parent in zip(nodes, parents, strict=True)
+        ],
+    }
+
+
+def fake_toc(request: LlmRequest) -> str:
+    """The fake provider's answer: no entries, so the tree falls through to `chunk10`."""
+    return json.dumps({"entries": []})
+
+
+class SyllabusAsker:
+    """Binds `build_syllabus`'s `ask` to LlmClient. The `pipeline_run` row is written on the first
+    call only, so a book that needs no model leaves no run; `finish` closes it. Never raises from
+    `finish`: the tree is already built."""
+
+    def __init__(
+        self,
+        llm: LlmClient,
+        sessions: SessionFactory,
+        *,
+        user_id: uuid.UUID,
+        subject_id: uuid.UUID,
+    ) -> None:
+        self.llm, self.sessions = llm, sessions
+        self.user_id, self.subject_id = user_id, subject_id
+        self.calls = 0
+        self._run_id: uuid.UUID | None = None
+        self._error: str | None = None
+
+    def __call__(self, prompt: SyllabusPrompt) -> str:
+        if self._run_id is None:
+            self._run_id = self._start_run()
+        self.calls += 1
+        request = LlmRequest(
+            task=TASK,
+            user_id=self.user_id,
+            subject_id=self.subject_id,
+            pipeline_run_id=self._run_id,
+            prompt_version=PROMPT_VERSION,
+            attempt=min(self.calls, 2),
+            system=prompt.system,
+            user=prompt.user,
+            output_schema=prompt.output_schema,
+        )
+        try:
+            return self.llm.call(request, deadline=time.monotonic() + CALL_SECONDS).text
+        except Exception as error:
+            self._error = type(error).__name__[:60]
+            raise
+
+    def _start_run(self) -> uuid.UUID:
+        prompt = load_prompt()
+        run = PipelineRun(
+            user_id=self.user_id,
+            subject_id=self.subject_id,
+            task=TASK,
+            prompt_version=prompt.version,
+            prompt_sha256=prompt.sha256,
+        )
+        try:
+            with self.sessions() as session:
+                session.add(run)
+                session.commit()
+        except Exception as error:
+            _log.exception("pipeline_run not written")
+            raise AuditUnavailableError from error
+        return run.id
+
+    def finish(self) -> None:
+        if self._run_id is None:
+            return
+        try:
+            with self.sessions() as session:
+                session.execute(
+                    update(PipelineRun)
+                    .where(PipelineRun.id == self._run_id)
+                    .values(
+                        status="failed" if self._error else "succeeded",
+                        error_code=self._error,
+                        finished_at=func.now(),
+                    )
+                )
+                session.commit()
+        except Exception:
+            _log.exception("pipeline_run not closed")

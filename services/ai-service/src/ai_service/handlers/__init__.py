@@ -25,7 +25,9 @@ def build_handlers(
     sessions: SessionFactory,
 ) -> dict[str, Handler]:
     return {
-        "document.uploaded.v1": IndexDocument(storage=storage, redis=redis),
+        "document.uploaded.v1": IndexDocument(
+            storage=storage, redis=redis, llm=llm, sessions=sessions
+        ),
         "grade.requested.v1": GradeAsync(storage=storage, redis=redis, llm=llm, sessions=sessions),
         "session.confirmed.v1": ProcessSession(
             storage=storage, redis=redis, llm=llm, sessions=sessions
