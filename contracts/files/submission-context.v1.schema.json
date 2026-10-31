@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/files/submission-context.v1.schema.json",
+  "title": "submission context v1",
+  "description": "core-api writes it at `context_key` (submission.created.v1) when the learner submits; ai-service reads it. What the learner wrote (`description`, untrusted text) travels here, not in the event. `mentions` are the @mentions core resolved at submit time (deterministic, no AI): a document and, when the learner named one, a section and its page positions in the file (1-based; null when the section has none). `existing_units` are the units of the mentioned scope, so duplicates merge without a call back.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "description",
+    "mentions",
+    "existing_units"
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    }
+  },
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 2000
+    },
+    "mentions": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "document_id",
+          "section_id",
+          "first_page",
+          "last_page"
+        ],
+        "properties": {
+          "document_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "section_id": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "last_page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "existing_units": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit_id",
+          "title",
+          "summary"
+        ],
+        "properties": {
+          "unit_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      }
+    }
+  }
+}

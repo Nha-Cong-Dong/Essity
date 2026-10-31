@@ -133,6 +133,19 @@ class NoteFile(_Closed):
     mime: Literal["image/jpeg", "image/png", "application/pdf", "text/plain", "text/markdown"]
 
 
+class SubmissionFile(_Closed):
+    object_key: ObjectKey
+    mime: Literal[
+        "image/jpeg",
+        "image/png",
+        "application/pdf",
+        "text/plain",
+        "text/markdown",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ]
+
+
 class ExistingUnit(_Closed):
     unit_id: Id
     title: Annotated[str, StringConstraints(min_length=1, max_length=200)]
@@ -145,6 +158,30 @@ class SessionConfirmed(_Closed):
     ranges: Annotated[list[SessionRange], Field(max_length=6)]
     notes: Annotated[list[NoteFile], Field(max_length=20)]
     existing_units: Annotated[list[ExistingUnit], Field(max_length=500)]
+
+
+class SubmissionCreated(_Closed):
+    """The learner's words are in the file at `context_key`, never here (ADR-0013)."""
+
+    submission_id: Id
+    study_session_id: Id
+    subject_id: Id
+    file_keys: Annotated[list[SubmissionFile], Field(min_length=1, max_length=20)]
+    context_key: ObjectKey
+
+
+class SubmissionProcessed(_Closed):
+    submission_id: Id
+    study_session_id: Id
+    run_id: Id
+    result_key: ObjectKey
+
+
+class SubmissionFailed(_Closed):
+    submission_id: Id
+    study_session_id: Id
+    run_id: Id
+    reason: Literal["unreadable", "llm_unavailable", "internal_error"]
 
 
 class SessionProgress(_Closed):
@@ -236,6 +273,21 @@ class GradeCompletedEvent(_Envelope):
     payload: GradeCompleted
 
 
+class SubmissionCreatedEvent(_Envelope):
+    event_type: Literal["submission.created.v1"]
+    payload: SubmissionCreated
+
+
+class SubmissionProcessedEvent(_Envelope):
+    event_type: Literal["submission.processed.v1"]
+    payload: SubmissionProcessed
+
+
+class SubmissionFailedEvent(_Envelope):
+    event_type: Literal["submission.failed.v1"]
+    payload: SubmissionFailed
+
+
 class UserDeletedEvent(_Envelope):
     event_type: Literal["user.deleted.v1"]
     payload: UserDeleted
@@ -251,7 +303,10 @@ Event = Annotated[
     | SessionFailedEvent
     | GradeRequestedEvent
     | GradeCompletedEvent
-    | UserDeletedEvent,
+    | UserDeletedEvent
+    | SubmissionCreatedEvent
+    | SubmissionProcessedEvent
+    | SubmissionFailedEvent,
     Field(discriminator="event_type"),
 ]
 

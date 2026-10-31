@@ -16,3 +16,14 @@ description = "Local placeholders in .env.example"
 regexes = [
     '''change-me[a-z0-9-]*''',
 ]
+
+[[allowlists]]
+description = "Contract examples: draft_key and quote_hash are sample hashes"
+condition = "AND"
+regexTarget = "line"
+paths = [
+    '''^contracts/(events|files)/examples/[^/]*\.json$''',
+]
+regexes = [
+    '''"(draft_key|quote_hash)":\s*"[0-9a-f]{64}"''',
+]

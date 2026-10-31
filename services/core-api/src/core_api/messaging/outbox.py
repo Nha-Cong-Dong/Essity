@@ -22,18 +22,27 @@ from core_api.messaging.envelope import (
     GradeRequestedEvent,
     SessionConfirmed,
     SessionConfirmedEvent,
+    SubmissionCreated,
+    SubmissionCreatedEvent,
     TraceContext,
     UserDeleted,
     UserDeletedEvent,
 )
 
-CorePayload = DocumentUploaded | SessionConfirmed | GradeRequested | UserDeleted
-CoreEvent = DocumentUploadedEvent | SessionConfirmedEvent | GradeRequestedEvent | UserDeletedEvent
+CorePayload = DocumentUploaded | SessionConfirmed | SubmissionCreated | GradeRequested | UserDeleted
+CoreEvent = (
+    DocumentUploadedEvent
+    | SessionConfirmedEvent
+    | SubmissionCreatedEvent
+    | GradeRequestedEvent
+    | UserDeletedEvent
+)
 
 # The events core-api sends (core → ai), by payload. The rest arrive on `events.ai`.
 _EVENTS: dict[type[CorePayload], type[CoreEvent]] = {
     DocumentUploaded: DocumentUploadedEvent,
     SessionConfirmed: SessionConfirmedEvent,
+    SubmissionCreated: SubmissionCreatedEvent,
     GradeRequested: GradeRequestedEvent,
     UserDeleted: UserDeletedEvent,
 }

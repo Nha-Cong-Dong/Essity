@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/files/session-result.v2.schema.json",
+  "title": "session result v2",
+  "description": "ai-service writes it at `result_key` (submission.processed.v1); core-api reads it to show the review screen. `drafts` are knowledge-unit drafts for the learner to confirm: nothing here is written to the core database until then. `quote_hash` is the hex SHA-256 of the first anchor's `quote_text` (NFC, whitespace folded, trimmed); `draft_key` is the hex SHA-256 of \"<study_session_id>:<quote_hash>\" and is unique in `drafts` (JSON Schema cannot say it: both services check it). `skipped` and `dropped` carry rule names and counts only, never text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "study_session_id",
+    "drafts",
+    "dropped",
+    "skipped"
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "document_id",
+        "page_no",
+        "start",
+        "end",
+        "quote_text"
+      ],
+      "properties": {
+        "source": {
+          "enum": [
+            "document",
+            "notes"
+          ]
+        },
+        "document_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "page_no": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "quote_text": {
+          "type": "string"
+        }
+      }
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "study_session_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "drafts": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "draft_key",
+          "quote_hash",
+          "title",
+          "content",
+          "kind",
+          "section_id",
+          "suggested_section_id",
+          "anchors"
+        ],
+        "properties": {
+          "draft_key": {
+            "$ref": "#/$defs/hash"
+          },
+          "quote_hash": {
+            "$ref": "#/$defs/hash"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "content": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "concept",
+              "mechanism",
+              "comparison",
+              "formula",
+              "example"
+            ]
+          },
+          "section_id": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "suggested_section_id": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "anchors": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/anchor"
+            }
+          }
+        }
+      }
+    },
+    "dropped": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "anchors",
+        "drafts"
+      ],
+      "properties": {
+        "anchors": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "drafts": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "ref",
+          "reason"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "page",
+              "note"
+            ]
+          },
+          "ref": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "enum": [
+              "no_text",
+              "truncated",
+              "needs_ocr",
+              "unreadable"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

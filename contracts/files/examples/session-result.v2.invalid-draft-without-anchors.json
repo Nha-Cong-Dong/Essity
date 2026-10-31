@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "study_session_id": "5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f",
+  "drafts": [
+    {
+      "draft_key": "af050a6727106822d1d4ec2298aefec504cad40be3e3fc2eb125abe90a1460ad",
+      "quote_hash": "f42729f5b7888515a209a5b5cfbe61bc5017a128825275c5cd9087bdc43c89e3",
+      "title": "Ty the",
+      "content": "Ty the la noi hop ho hap te bao.",
+      "kind": "concept",
+      "section_id": null,
+      "suggested_section_id": null,
+      "anchors": []
+    }
+  ],
+  "dropped": {
+    "anchors": 0,
+    "drafts": 0
+  },
+  "skipped": [
+    {
+      "kind": "note",
+      "ref": 1,
+      "reason": "needs_ocr"
+    }
+  ]
+}

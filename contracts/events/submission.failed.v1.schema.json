@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/submission.failed.v1.schema.json",
+  "title": "submission.failed.v1",
+  "description": "ai → core: processing the submission failed.",
+  "$ref": "envelope.schema.json",
+  "unevaluatedProperties": false,
+  "properties": {
+    "event_type": {
+      "const": "submission.failed.v1"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submission_id",
+        "study_session_id",
+        "run_id",
+        "reason"
+      ],
+      "properties": {
+        "submission_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "study_session_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "run_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "reason": {
+          "enum": [
+            "unreadable",
+            "llm_unavailable",
+            "internal_error"
+          ]
+        }
+      }
+    }
+  }
+}
