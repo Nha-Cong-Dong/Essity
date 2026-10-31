@@ -135,6 +135,7 @@ class LlmClient:
             input={
                 "system": request.system,
                 "messages": [{"role": "user", "content": request.user}],
+                "images": [{"sha256": i.sha256, "bytes": len(i.data)} for i in request.images],
                 "output_schema": request.output_schema,
                 "params": self._adapter.params,
             },

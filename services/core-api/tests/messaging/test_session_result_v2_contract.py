@@ -38,7 +38,7 @@ CONTEXT = sorted(EXAMPLES.glob("submission-context.v1*.json"))
 
 
 def test_examples_are_found() -> None:
-    assert len(V2) == 5 and len(CONTEXT) == 3
+    assert len(V2) == 7 and len(CONTEXT) == 3
 
 
 @pytest.mark.parametrize("path", V2, ids=lambda p: p.name)
@@ -92,3 +92,20 @@ def test_result_v2_rejects_a_key_that_is_not_the_formula() -> None:
     body["drafts"][0]["draft_key"] = "0" * 64
     with pytest.raises(ValidationError):
         SessionResultV2.model_validate_json(json.dumps(body))
+
+
+def test_section_ids_are_optional_and_section_id_is_the_first() -> None:
+    # An old example with only section_id stays valid; with section_ids the primary is the first.
+    old = example("session-result.v2")["drafts"][0]
+    assert "section_ids" not in old
+    parse_result(json.dumps(example("session-result.v2")))
+    body = example("session-result.v2.sections")
+    draft = body["drafts"][0]
+    assert draft["section_id"] == draft["section_ids"][0]
+    parse_result(json.dumps(body))
+    draft["section_id"] = draft["section_ids"][1]
+    with pytest.raises(ValidationError):
+        parse_result(json.dumps(body))
+    draft["section_id"] = None
+    with pytest.raises(ValidationError):
+        parse_result(json.dumps(body))

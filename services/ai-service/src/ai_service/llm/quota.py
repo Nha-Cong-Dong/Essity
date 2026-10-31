@@ -35,6 +35,8 @@ Window = Literal["day", "month"]
 WARN_RATIO = Decimal("0.8")
 # Output tokens assumed when the adapter states no `max_tokens`.
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
+# Worst case of one image (<= 1400 px long side is about 2600 tokens; rounded up).
+IMAGE_TOKENS = 2700
 # An admitted call that never settles (the process died) frees its reservation after this.
 RESERVATION_TTL_SECONDS = 120
 LOCK_TIMEOUT = "2s"
@@ -69,7 +71,9 @@ def estimate_cost(price: Price, request: LlmRequest, params: dict[str, object]) 
     chars = len(request.system) + len(request.user) + len(json.dumps(request.output_schema))
     max_output = params.get("max_tokens", DEFAULT_MAX_OUTPUT_TOKENS)
     assert isinstance(max_output, int)
-    return cost_usd(price, input_tokens=chars, output_tokens=max_output)
+    return cost_usd(
+        price, input_tokens=chars + IMAGE_TOKENS * len(request.images), output_tokens=max_output
+    )
 
 
 class QuotaGuard(Protocol):

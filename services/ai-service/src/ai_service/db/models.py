@@ -29,6 +29,8 @@ TASKS = frozenset(
         "generate_questions",
         "parse_command",
         "syllabus_toc",
+        "draft_units",
+        "read_notes",
     }
 )
 PROVIDERS = frozenset({"anthropic", "fake"})

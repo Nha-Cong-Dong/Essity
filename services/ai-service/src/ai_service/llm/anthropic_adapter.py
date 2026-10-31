@@ -21,6 +21,21 @@ from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError, Provi
 MAX_TOKENS = 800
 
 
+def _content(request: LlmRequest) -> Any:
+    """A plain string for text-only tasks; image blocks first, then the text, for vision."""
+    if not request.images:
+        return request.user
+    blocks: list[dict[str, Any]] = [
+        {
+            "type": "image",
+            "source": {"type": "base64", "media_type": i.media_type, "data": i.base64()},
+        }
+        for i in request.images
+    ]
+    blocks.append({"type": "text", "text": request.user})
+    return blocks
+
+
 class AnthropicAdapter:
     provider: ProviderName = "anthropic"
     fixed_model: str | None = None
@@ -38,7 +53,7 @@ class AnthropicAdapter:
                 model=model,
                 max_tokens=MAX_TOKENS,
                 system=request.system,
-                messages=[{"role": "user", "content": request.user}],
+                messages=[{"role": "user", "content": _content(request)}],
                 output_config={"format": {"type": "json_schema", "schema": request.output_schema}},
                 thinking={"type": "disabled"},
                 timeout=timeout,

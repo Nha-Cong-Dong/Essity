@@ -62,6 +62,8 @@ class Settings(DatabaseSettings):
             "generate_questions": "claude-haiku-5-5",
             "parse_command": "claude-haiku-5-5",
             "syllabus_toc": "claude-haiku-5-5",
+            "draft_units": "claude-haiku-5-5",
+            "read_notes": "claude-haiku-5-5",
         },
         validate_default=True,
     )
