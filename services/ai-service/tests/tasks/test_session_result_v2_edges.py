@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from ai_service.messaging.session_result_v2 import SessionResultV2, draft_key
+from ai_service.messaging.session_result_v2 import SessionResultV2, draft_key, quote_hash
 
 EXAMPLE = (
     Path(__file__).resolve().parents[4]
@@ -61,3 +61,43 @@ def test_a_refused_result_never_echoes_the_quote_text() -> None:
     with pytest.raises(ValidationError) as error:
         SessionResultV2.model_validate_json(json.dumps(result))
     assert quote not in str(error.value)
+
+
+def test_a_refused_anchor_never_echoes_the_quote_text() -> None:
+    # Red when: hide_input_in_errors is dropped. The draft_key error above carries the whole
+    # body, which pydantic truncates before the quote; a field error carries the value itself.
+    result = body()
+    quote = result["drafts"][0]["anchors"][0]["quote_text"]
+    result["drafts"][0]["anchors"][0]["note"] = quote
+    with pytest.raises(ValidationError) as error:
+        SessionResultV2.model_validate_json(json.dumps(result))
+    assert quote not in str(error.value)
+
+
+def test_more_than_200_drafts_is_refused() -> None:
+    # Red when: the drafts ceiling (schema maxItems 200) is lifted in the model, so one result
+    # file can carry an unbounded number of drafts for the learner to review.
+    result = body()
+    template = result["drafts"][0]
+    session = uuid.UUID(result["study_session_id"])
+    drafts = []
+    for i in range(201):
+        draft = json.loads(json.dumps(template))
+        draft["anchors"][0]["quote_text"] = f"quote {i}"
+        draft["quote_hash"] = quote_hash(f"quote {i}")
+        draft["draft_key"] = draft_key(session, draft["quote_hash"])
+        drafts.append(draft)
+    result["drafts"] = drafts[:200]
+    assert len(SessionResultV2.model_validate_json(json.dumps(result)).drafts) == 200
+    result["drafts"] = drafts
+    with pytest.raises(ValidationError):
+        SessionResultV2.model_validate_json(json.dumps(result))
+
+
+def test_a_number_written_as_text_is_refused() -> None:
+    # Red when: the model is not strict, so "3" passes as an anchor offset and a writer's type
+    # error reaches the learner's drafts instead of failing the result.
+    result = body()
+    result["drafts"][0]["anchors"][0]["start"] = str(result["drafts"][0]["anchors"][0]["start"])
+    with pytest.raises(ValidationError):
+        SessionResultV2.model_validate_json(json.dumps(result))
