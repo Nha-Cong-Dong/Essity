@@ -294,3 +294,17 @@ def test_unverified_user_is_rejected(
         assert response.status_code == 403
         assert response.json()["detail"] == "email_not_verified"
     assert client.get("/v1/stats").status_code == 401
+
+
+# US-10 AC8: a subject name a spreadsheet could read as a formula is escaped in the CSV.
+def test_csv_escapes_formula_subject_names(
+    client: TestClient, db_session: Session, two_users: tuple[User, User]
+) -> None:
+    # Red when: the route writes a name starting with = + - @ as it is.
+    alice, _ = two_users
+    headers = headers_of(db_session, alice)
+    for name in ("=cmd", "+x", "@y"):
+        make_subject(db_session, alice, name)
+    rows = list(csv.reader(io.StringIO(client.get("/v1/export.csv", headers=headers).text)))
+    names = {r[1] for r in rows if r[0] == "subject"}
+    assert names == {"'=cmd", "'+x", "'@y"}

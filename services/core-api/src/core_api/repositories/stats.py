@@ -61,6 +61,7 @@ def _state(row: MemoryState | PracticeState) -> State:
 
 class StatsRepository(UserScopedRepository[MemoryState]):
     model = MemoryState
+    _cached_sections: list[DocSection] | None = None
 
     def subjects(self) -> list[SubjectInfo]:
         rows = self.session.execute(
@@ -75,9 +76,12 @@ class StatsRepository(UserScopedRepository[MemoryState]):
         return [SubjectInfo(sid, name, exam, created) for sid, name, created, exam in rows]
 
     def _sections(self) -> list[DocSection]:
-        return list(
-            self.session.scalars(select(DocSection).where(DocSection.user_id == self.user_id))
-        )
+        """The user's outline rows, read once per repository (one request)."""
+        if self._cached_sections is None:
+            self._cached_sections = list(
+                self.session.scalars(select(DocSection).where(DocSection.user_id == self.user_id))
+            )
+        return self._cached_sections
 
     @staticmethod
     def _studied(section: DocSection) -> bool:
