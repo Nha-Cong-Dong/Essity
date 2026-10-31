@@ -56,6 +56,9 @@ class Practice:
         self._units[question.id] = unit.id
         return question
 
+    def unit_of(self, question: Question) -> uuid.UUID:
+        return self._units[question.id]
+
     def attempt(self, question: Question, at: datetime) -> Attempt:
         sessions = ReviewSessionRepository(self.session, self.user.id)
         sitting = sessions.start(at.date(), at)
