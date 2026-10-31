@@ -33,6 +33,8 @@ from ai_service.clients.storage import (
     ObjectTooLarge,
     StorageUnavailable,
 )
+from ai_service.db.session import SessionFactory
+from ai_service.llm.client import LlmClient
 from ai_service.messaging.consumer import Deferred, keys_belong_to_user
 from ai_service.messaging.dead_letter import STREAM_MAXLEN
 from ai_service.messaging.envelope import (
@@ -45,6 +47,7 @@ from ai_service.messaging.envelope import (
     dump_event,
 )
 from ai_service.pdf import OutlineEntry, PageText, PdfError, PdfErrorCode, PdfLimits, open_pdf
+from ai_service.tasks.syllabus import SyllabusAsker, SyllabusPrompt, build_syllabus, outline_file
 
 OUT_STREAM = "events.ai"
 THUMBNAIL_PX = 400
@@ -163,6 +166,13 @@ _FAILURE: dict[PdfErrorCode, str] = {
 }
 
 
+OUTLINE_NAME = "outline.json"
+
+
+def _no_model(prompt: SyllabusPrompt) -> str:
+    raise RuntimeError("no model")
+
+
 def _json(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
@@ -178,7 +188,11 @@ class IndexDocument:
         stream: str = OUT_STREAM,
         limits: PdfLimits | None = None,
         analyze: Target = run_isolated,
+        llm: LlmClient | None = None,
+        sessions: SessionFactory | None = None,
     ) -> None:
+        self.llm = llm
+        self.sessions = sessions
         self.storage = storage
         self.redis = redis
         self.stream = stream
@@ -244,7 +258,13 @@ class IndexDocument:
             unreadable_pages=[n for n, page in enumerate(analysis.pages, 1) if page.needs_vision],
         )
         try:
-            self._write(keys, analysis, payload.object_key[: named.start()], payload.document_id)
+            self._write(
+                keys,
+                analysis,
+                payload.object_key[: named.start()],
+                payload.document_id,
+                self._outline(analysis, event.user_id, payload.subject_id),
+            )
         except StorageUnavailable:
             raise Deferred from None
         self._send(
@@ -265,6 +285,7 @@ class IndexDocument:
         analysis: Analysis,
         subject_prefix: str,
         document_id: uuid.UUID,
+        outline: dict[str, Any],
     ) -> None:
         put = self.storage.put
         json_type = "application/json"
@@ -282,6 +303,12 @@ class IndexDocument:
         ]
         put(keys.toc_key, _json({"entries": toc}), content_type=json_type)
         put(keys.page_labels_key, _json({"labels": analysis.page_labels}), content_type=json_type)
+        # core-api reads it beside the other derived files (T7.4); no event field names it.
+        put(
+            f"{keys.toc_key.rsplit('/', 1)[0]}/{OUTLINE_NAME}",
+            _json(outline),
+            content_type=json_type,
+        )
         put(keys.page_text_key, _json({"pages": pages}), content_type=json_type)
         # Written last among the text files: session.confirmed.v1 names a document by id only
         # (T4.16b), and this is where process_session finds the page text of its latest index.
@@ -292,6 +319,24 @@ class IndexDocument:
         )
         for number, png in enumerate(analysis.thumbnails, 1):
             put(f"{keys.thumbnails_prefix}/{number}.png", png, content_type="image/png")
+
+    def _outline(
+        self, analysis: Analysis, user_id: uuid.UUID, subject_id: uuid.UUID
+    ) -> dict[str, Any]:
+        """The syllabus of the file (T7.4, US-13 AC2-3): bookmarks and headings cost nothing; the
+        model reads contents pages only when there are no bookmarks and no chapter headings. With
+        no model (disabled, or no database to audit in) the tree falls through to blocks of 10."""
+        asker: SyllabusAsker | None = None
+        ask = _no_model
+        if self.llm is not None and self.sessions is not None:
+            asker = SyllabusAsker(self.llm, self.sessions, user_id=user_id, subject_id=subject_id)
+            ask = asker
+        try:
+            nodes = build_syllabus(analysis.page_count, analysis.outline, analysis.pages, ask)
+        finally:
+            if asker is not None:
+                asker.finish()
+        return outline_file(nodes)
 
     def _send(self, event: Event) -> None:
         self.redis.xadd(

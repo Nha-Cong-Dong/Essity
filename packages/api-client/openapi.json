@@ -413,6 +413,15 @@
             ],
             "title": "Page Count"
           },
+          "role": {
+            "enum": [
+              "textbook",
+              "question_bank",
+              "auxiliary"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
           "short_name": {
             "title": "Short Name",
             "type": "string"
@@ -442,6 +451,7 @@
           "id",
           "subject_id",
           "short_name",
+          "role",
           "status",
           "size_bytes",
           "created_at",
@@ -450,6 +460,42 @@
           "failure_reason"
         ],
         "title": "DocumentOut",
+        "type": "object"
+      },
+      "DocumentPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "textbook",
+                  "question_bank",
+                  "auxiliary"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "short_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Name"
+          }
+        },
+        "title": "DocumentPatch",
         "type": "object"
       },
       "DoneOut": {
@@ -905,6 +951,97 @@
         "title": "NoteUploadUrl",
         "type": "object"
       },
+      "OutlineDocumentOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "page_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Count"
+          },
+          "short_name": {
+            "title": "Short Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "short_name",
+          "page_count"
+        ],
+        "title": "OutlineDocumentOut",
+        "type": "object"
+      },
+      "OutlineOut": {
+        "properties": {
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutlineDocumentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_textbook",
+                  "not_indexed",
+                  "no_outline"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/SectionOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "temporary": {
+            "title": "Temporary",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "subject_id",
+          "document",
+          "reason",
+          "progress",
+          "temporary",
+          "sections"
+        ],
+        "title": "OutlineOut",
+        "type": "object"
+      },
       "OverrideIn": {
         "additionalProperties": false,
         "description": "\"Thực ra tôi đúng\" is `correct`, \"Thực ra tôi sai\" is `incorrect` (US-09 AC1).",
@@ -1357,6 +1494,168 @@
         "title": "ResultOut",
         "type": "object"
       },
+      "SectionOut": {
+        "properties": {
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/SectionOut"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "excluded": {
+            "title": "Excluded",
+            "type": "boolean"
+          },
+          "excluded_effective": {
+            "title": "Excluded Effective",
+            "type": "boolean"
+          },
+          "first_page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Page"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Page"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "source": {
+            "enum": [
+              "bookmark",
+              "heading",
+              "llm_toc",
+              "chunk10",
+              "user"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "studied": {
+            "title": "Studied",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "page",
+              "slide",
+              "est_page"
+            ],
+            "title": "Unit",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "parent_id",
+          "title",
+          "first_page",
+          "last_page",
+          "weight",
+          "unit",
+          "source",
+          "excluded",
+          "excluded_effective",
+          "progress",
+          "studied",
+          "children"
+        ],
+        "title": "SectionOut",
+        "type": "object"
+      },
+      "SectionPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "excluded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excluded"
+          },
+          "first_page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Page"
+          },
+          "last_page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Page"
+          },
+          "studied": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Studied"
+          }
+        },
+        "title": "SectionPatch",
+        "type": "object"
+      },
       "SessionCard": {
         "properties": {
           "candidate_document_ids": {
@@ -1801,6 +2100,26 @@
           "session_id"
         ],
         "title": "SubmitRequest",
+        "type": "object"
+      },
+      "TextbookIn": {
+        "additionalProperties": false,
+        "properties": {
+          "confirm": {
+            "default": false,
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ],
+        "title": "TextbookIn",
         "type": "object"
       },
       "TocOut": {
@@ -2734,6 +3053,55 @@
           }
         },
         "summary": "Read Document"
+      },
+      "patch": {
+        "description": "Rename a document (`short_name`, US-01 AC7) or change its `role` (T7.4). Errors: 404\n`document_not_found` (another user's too); 422 `nothing_to_change`, `invalid_short_name`;\n409 `short_name_taken` (another document of the subject has it: pick another) or\n`document_not_ready` (role `textbook` on a document not read) or\n`textbook_exists` (the subject already has a main textbook: replace it with\n`PUT /v1/subjects/{id}/textbook`, nothing is overwritten here).",
+        "operationId": "patch_document_v1_documents__document_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Document"
       }
     },
     "/v1/documents/{document_id}/confirm": {
@@ -3099,6 +3467,50 @@
           }
         },
         "summary": "Stop Session"
+      }
+    },
+    "/v1/sections/{section_id}": {
+      "patch": {
+        "description": "Change a section's page range, `excluded` or `studied` (US-13 AC4). Errors: 404\n`section_not_found` (another user's too); 422 `nothing_to_change`, `invalid_range`\n(`0 < start <= end`, both ends or neither), `outside_document`, `outside_parent`,\n`children_outside`.",
+        "operationId": "patch_section_v1_sections__section_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "section_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Section Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutlineOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "The range breaks a rule"
+          }
+        },
+        "summary": "Patch Section"
       }
     },
     "/v1/sessions/{session_id}/confirm": {
@@ -3500,6 +3912,47 @@
         "summary": "Request Upload"
       }
     },
+    "/v1/subjects/{subject_id}/outline": {
+      "get": {
+        "description": "The outline of the subject's main textbook. Errors: 404 `subject_not_found` (another\nuser's too).",
+        "operationId": "read_outline_v1_subjects__subject_id__outline_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutlineOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Outline"
+      }
+    },
     "/v1/subjects/{subject_id}/sessions": {
       "post": {
         "description": "Save the sentence as a draft and return the card to confirm (US-02 AC3-AC5, AC11).\n\nNever a 5xx for the AI: no answer, over the budget, hard cap or an answer that does not fit\nthe subject's documents all give `card: \"manual\"`. Errors: 404 `subject_not_found`; 429 with\nRetry-After (each call may cost AI money).",
@@ -3593,6 +4046,60 @@
           }
         },
         "summary": "Create Submission Draft"
+      }
+    },
+    "/v1/subjects/{subject_id}/textbook": {
+      "put": {
+        "description": "Set or change the subject's main textbook (US-01 AC5). The old one becomes `auxiliary`;\nnothing is deleted. Errors: 404 `subject_not_found`, `document_not_found` (another subject's\nor user's too); 409 `document_not_ready` (not uploaded, refused or failed), or\n`textbook_has_cards` with `cards`: live cards are linked to the current textbook, send\n`confirm: true` after the learner has agreed.",
+        "operationId": "put_textbook_v1_subjects__subject_id__textbook_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextbookIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutlineOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "The textbook has cards linked to it; confirm to change it"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Textbook"
       }
     },
     "/v1/submissions": {

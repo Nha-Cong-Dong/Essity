@@ -264,7 +264,16 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Patch Document
+         * @description Rename a document (`short_name`, US-01 AC7) or change its `role` (T7.4). Errors: 404
+         *     `document_not_found` (another user's too); 422 `nothing_to_change`, `invalid_short_name`;
+         *     409 `short_name_taken` (another document of the subject has it: pick another) or
+         *     `document_not_ready` (role `textbook` on a document not read) or
+         *     `textbook_exists` (the subject already has a main textbook: replace it with
+         *     `PUT /v1/subjects/{id}/textbook`, nothing is overwritten here).
+         */
+        patch: operations["patch_document_v1_documents__document_id__patch"];
         trace?: never;
     };
     "/v1/documents/{document_id}/confirm": {
@@ -464,6 +473,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sections/{section_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Section
+         * @description Change a section's page range, `excluded` or `studied` (US-13 AC4). Errors: 404
+         *     `section_not_found` (another user's too); 422 `nothing_to_change`, `invalid_range`
+         *     (`0 < start <= end`, both ends or neither), `outside_document`, `outside_parent`,
+         *     `children_outside`.
+         */
+        patch: operations["patch_section_v1_sections__section_id__patch"];
+        trace?: never;
+    };
     "/v1/sessions/{session_id}/confirm": {
         parameters: {
             query?: never;
@@ -615,6 +647,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/outline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Outline
+         * @description The outline of the subject's main textbook. Errors: 404 `subject_not_found` (another
+         *     user's too).
+         */
+        get: operations["read_outline_v1_subjects__subject_id__outline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects/{subject_id}/sessions": {
         parameters: {
             query?: never;
@@ -653,6 +706,30 @@ export interface paths {
          * @description An empty draft session to upload this submission's files to. Calls no AI.
          */
         post: operations["create_submission_draft_v1_subjects__subject_id__submission_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subjects/{subject_id}/textbook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Textbook
+         * @description Set or change the subject's main textbook (US-01 AC5). The old one becomes `auxiliary`;
+         *     nothing is deleted. Errors: 404 `subject_not_found`, `document_not_found` (another subject's
+         *     or user's too); 409 `document_not_ready` (not uploaded, refused or failed), or
+         *     `textbook_has_cards` with `cards`: live cards are linked to the current textbook, send
+         *     `confirm: true` after the learner has agreed.
+         */
+        put: operations["put_textbook_v1_subjects__subject_id__textbook_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -877,6 +954,11 @@ export interface components {
             id: string;
             /** Page Count */
             page_count: number | null;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "textbook" | "question_bank" | "auxiliary";
             /** Short Name */
             short_name: string;
             /** Size Bytes */
@@ -890,6 +972,13 @@ export interface components {
             subject_id: string;
             /** Unreadable Pages */
             unreadable_pages: number[];
+        };
+        /** DocumentPatch */
+        DocumentPatch: {
+            /** Role */
+            role?: ("textbook" | "question_bank" | "auxiliary") | null;
+            /** Short Name */
+            short_name?: string | null;
         };
         /** DoneOut */
         DoneOut: {
@@ -1090,6 +1179,35 @@ export interface components {
             /** Url */
             url: string;
         };
+        /** OutlineDocumentOut */
+        OutlineDocumentOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Page Count */
+            page_count: number | null;
+            /** Short Name */
+            short_name: string;
+        };
+        /** OutlineOut */
+        OutlineOut: {
+            document: components["schemas"]["OutlineDocumentOut"] | null;
+            /** Progress */
+            progress: number;
+            /** Reason */
+            reason: ("no_textbook" | "not_indexed" | "no_outline") | null;
+            /** Sections */
+            sections: components["schemas"]["SectionOut"][];
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /** Temporary */
+            temporary: boolean;
+        };
         /**
          * OverrideIn
          * @description "Thực ra tôi đúng" is `correct`, "Thực ra tôi sai" is `incorrect` (US-09 AC1).
@@ -1254,6 +1372,55 @@ export interface components {
             understanding: number | null;
             /** Units */
             units: components["schemas"]["UnitResult"][];
+        };
+        /** SectionOut */
+        SectionOut: {
+            /** Children */
+            children: components["schemas"]["SectionOut"][];
+            /** Excluded */
+            excluded: boolean;
+            /** Excluded Effective */
+            excluded_effective: boolean;
+            /** First Page */
+            first_page: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Page */
+            last_page: number | null;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Progress */
+            progress: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "bookmark" | "heading" | "llm_toc" | "chunk10" | "user";
+            /** Studied */
+            studied: boolean;
+            /** Title */
+            title: string;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "page" | "slide" | "est_page";
+            /** Weight */
+            weight: number;
+        };
+        /** SectionPatch */
+        SectionPatch: {
+            /** Excluded */
+            excluded?: boolean | null;
+            /** First Page */
+            first_page?: number | null;
+            /** Last Page */
+            last_page?: number | null;
+            /** Studied */
+            studied?: boolean | null;
         };
         /** SessionCard */
         SessionCard: {
@@ -1423,6 +1590,19 @@ export interface components {
             session_id: string;
             /** Text */
             text?: string | null;
+        };
+        /** TextbookIn */
+        TextbookIn: {
+            /**
+             * Confirm
+             * @default false
+             */
+            confirm: boolean;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
         };
         /** TocOut */
         TocOut: {
@@ -2035,6 +2215,41 @@ export interface operations {
             };
         };
     };
+    patch_document_v1_documents__document_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     confirm_upload_v1_documents__document_id__confirm_post: {
         parameters: {
             query?: never;
@@ -2329,6 +2544,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    patch_section_v1_sections__section_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                section_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SectionPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutlineOut"];
+                };
+            };
+            /** @description The range breaks a rule */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2653,6 +2901,37 @@ export interface operations {
             };
         };
     };
+    read_outline_v1_subjects__subject_id__outline_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutlineOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_session_v1_subjects__subject_id__sessions_post: {
         parameters: {
             query?: never;
@@ -2710,6 +2989,48 @@ export interface operations {
             };
             /** @description subject_not_found, or the feature is off */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_textbook_v1_subjects__subject_id__textbook_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TextbookIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutlineOut"];
+                };
+            };
+            /** @description The textbook has cards linked to it; confirm to change it */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

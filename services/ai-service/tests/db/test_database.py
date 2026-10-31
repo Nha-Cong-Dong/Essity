@@ -25,6 +25,9 @@ def table_names(engine: Engine) -> set[str]:
 
 def test_t210_migrations_go_down_to_base_and_back_up(engine: Engine, alembic_cfg: Config) -> None:
     # Red when: a migration's downgrade leaves a table behind or its upgrade cannot run twice.
+    with engine.begin() as connection:  # 0007's downgrade refuses while a row has the new task
+        connection.execute(text("DELETE FROM llm_call WHERE task = 'syllabus_toc'"))
+        connection.execute(text("DELETE FROM pipeline_run WHERE task = 'syllabus_toc'"))
     command.downgrade(alembic_cfg, "base")
     assert not TABLES & table_names(engine)
     command.upgrade(alembic_cfg, "head")
