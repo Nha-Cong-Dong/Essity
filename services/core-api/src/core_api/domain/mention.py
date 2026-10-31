@@ -219,12 +219,14 @@ def _section_scope(
     return current
 
 
-def _page_position(document: DocInfo, number: int) -> int | None:
+def _page_position(mention: int, document: DocInfo, number: int, text: str) -> int | None:
     """File position of a page number: the printed label when the document has labels."""
     if document.page_labels is None:
         return number if 1 <= number <= document.page_count else None
     positions = [p for p, label in enumerate(document.page_labels, start=1) if label == str(number)]
-    return positions[0] if len(positions) == 1 else None  # a repeated label is never guessed
+    if len(positions) > 1:  # a repeated label is never guessed
+        raise MentionError("scope_ambiguous", mention, text)
+    return positions[0] if positions else None
 
 
 def _page_range(mention: int, document: DocInfo, item: str, text: str) -> tuple[int, int]:
@@ -232,7 +234,8 @@ def _page_range(mention: int, document: DocInfo, item: str, text: str) -> tuple[
     first, last = bounds[0], bounds[-1]
     if first > last:
         raise MentionError("scope_out_of_range", mention, text)
-    start, end = _page_position(document, first), _page_position(document, last)
+    start = _page_position(mention, document, first, text)
+    end = _page_position(mention, document, last, text)
     if start is None or end is None or start > end:
         raise MentionError("scope_out_of_range", mention, text)
     return start, end

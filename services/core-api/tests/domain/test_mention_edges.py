@@ -131,7 +131,7 @@ def test_a_printed_page_that_repeats_in_the_labels_is_not_guessed() -> None:
     doc = DocInfo(uid(8), "Giáo trình", "pdf", 4, page_labels=["1", "2", "1", "2"])
     with pytest.raises(MentionError) as caught:
         resolve_mentions("@Giáo trình tr. 1-2", [doc], {})
-    assert caught.value.code in {"scope_ambiguous", "scope_out_of_range"}
+    assert caught.value.code == "scope_ambiguous"
 
 
 def test_explicit_mention_must_cover_at_least_its_at_sign() -> None:
