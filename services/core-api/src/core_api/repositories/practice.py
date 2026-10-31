@@ -167,6 +167,17 @@ class PracticeStateRepository(UserScopedRepository[PracticeStateRow]):
         """Rebuild the cache from the effective log, for some questions or all of this user's:
         drop the rows (keeping each `removed_at`), replay every question's ratings through the
         step the live path uses, insert again. Returns the number of states written."""
+        # Take the question locks first, in id order, so a remove or a recording waits for this
+        # rebuild and then finds the new rows (without them its UPDATE would see the deleted ones).
+        held = select(Question.id).where(
+            Question.user_id == self.user_id,
+            Question.id.in_(
+                select(PracticeLog.question_id).where(PracticeLog.user_id == self.user_id)
+            ),
+        )
+        if question_ids is not None:
+            held = held.where(Question.id.in_(question_ids))
+        self.session.execute(held.order_by(Question.id).with_for_update(key_share=True)).all()
         drop = delete(PracticeStateRow).where(PracticeStateRow.user_id == self.user_id)
         if question_ids is not None:
             drop = drop.where(PracticeStateRow.question_id.in_(question_ids))

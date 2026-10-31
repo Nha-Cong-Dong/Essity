@@ -37,7 +37,7 @@ def test_verdict_of_rating(rating: PracticeRating, verdict: str) -> None:
 def test_replay_ratings_equals_live_apply_every_field() -> None:
     # Red when: the live step and the replay of its log differ in one field (US-06 AC7).
     state = None
-    live = []
+    live: list[tuple[PracticeRating, datetime]] = []
     for i, raw in enumerate(CHAIN):
         at = T0 + timedelta(days=3 * i)
         state = apply_rating(state, PracticeRating(raw), at)

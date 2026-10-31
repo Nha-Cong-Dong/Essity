@@ -172,3 +172,51 @@ def test_whole_user_rebuild_waiting_on_a_remove_keeps_removed_at(
     state = stored(engine, ready)
     assert state is not None
     assert state.removed_at == day(2)
+
+
+def test_remove_waiting_on_a_whole_user_rebuild_is_not_lost(engine: Engine, ready: Ready) -> None:
+    # Red when: a remove that waits behind a CLI rebuild finds the old row deleted and the new one
+    # outside its snapshot, updates 0 rows and returns False: the learner's removal is lost
+    # (task review Y1; the opposite order is covered above).
+    seeded(engine, ready)
+    with Session(engine) as first, Session(engine) as second:
+        assert PracticeStateRepository(first, ready.user_id).rebuild() == 1
+        pid = pid_of(second)
+        thread, outcome = in_thread(
+            lambda: remove(second, ready.user_id, ready.question_id, day(2))
+        )
+        wait_for_lock(engine, pid, outcome)
+        first.commit()
+        result = finished(thread, outcome)
+        second.commit()
+    assert result is True
+    state = stored(engine, ready)
+    assert state is not None
+    assert state.removed_at == day(2)
+
+
+def test_whole_user_rebuild_behind_a_recording_keeps_removed_at(
+    engine: Engine, ready: Ready
+) -> None:
+    # Red when: a CLI rebuild that waited for a recording on a removed question misses the row
+    # in its DELETE, inserts removed_at null, and the upsert writes that null over the removal.
+    seeded(engine, ready)
+    with Session(engine) as setup:
+        assert remove(setup, ready.user_id, ready.question_id, day(1))
+        setup.commit()
+    with Session(engine) as first, Session(engine) as second:
+        record(first, ready, 1, day(3))
+        pid = pid_of(second)
+        thread, outcome = in_thread(
+            lambda: PracticeStateRepository(second, ready.user_id).rebuild()
+        )
+        wait_for_lock(engine, pid, outcome)
+        first.commit()
+        result = finished(thread, outcome)
+        assert not isinstance(result, BaseException), result
+        second.commit()
+    state = stored(engine, ready)
+    assert state is not None
+    assert state.removed_at == day(1)
+    assert state.memory.last_review == day(3)
+    assert counts(engine, ready.user_id) == (1, 2)
