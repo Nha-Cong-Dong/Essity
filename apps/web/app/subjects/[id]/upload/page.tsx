@@ -6,6 +6,7 @@ import { AccountSlot } from "@/components/account-slot";
 import { AppShell } from "@/components/shells";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { UploadStep } from "@/components/subjects/upload-step";
+import { listDocuments } from "@/lib/documents";
 import { requireVerifiedSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Tải tài liệu · Essity" };
@@ -19,7 +20,13 @@ async function Upload({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   await requireVerifiedSession();
   const subject = await subjectForUpload((await params).id);
-  return <UploadStep name={subject.name} subjectId={subject.id} />;
+  // Whether the subject has a main textbook already decides the default role of the first file (T7.5);
+  // a failed read assumes it has one, so nothing is replaced by surprise.
+  const hasMain = await listDocuments(subject.id).then(
+    (docs) => docs.some((doc) => doc.role === "textbook" && doc.status !== "rejected" && doc.status !== "failed"),
+    () => true,
+  );
+  return <UploadStep name={subject.name} subjectId={subject.id} hasMain={hasMain} />;
 }
 
 export default function UploadPage({ params }: { params: Promise<{ id: string }> }) {

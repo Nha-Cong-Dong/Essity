@@ -6,7 +6,7 @@ import { Sheet } from "@/components/ui/sheet";
 
 // T1.20, US-01 AC7 (plan K5): right after "Tạo môn", the upload step; T4.6 made it real. No "Vào môn
 // học" yet: the subject page is T4.9.
-export function UploadStep({ name, subjectId }: { name: string; subjectId: string }) {
+export function UploadStep({ name, subjectId, hasMain = true }: { name: string; subjectId: string; hasMain?: boolean }) {
   return (
     <Sheet className="relative w-full max-w-220" aria-labelledby="upload-title">
       <PageFold />
@@ -16,7 +16,7 @@ export function UploadStep({ name, subjectId }: { name: string; subjectId: strin
       <p className="mt-3 mb-0 max-w-[56ch] text-read text-ink-soft">
         Giáo trình, slide hoặc ảnh vở. Câu hỏi sẽ dựa trên đúng những trang này.
       </p>
-      <Uploader subjectId={subjectId} />
+      <Uploader subjectId={subjectId} hasMain={hasMain} />
       <p className="mt-6 mb-0">
         <a href="/subjects" className={AUTH_LINK}>
           Làm sau
