@@ -1,4 +1,4 @@
-﻿"""Evidence gate and metrics for the agent flow (`.work/<task>/*.yaml`).
+"""Evidence gate and metrics for the agent flow (`.work/<task>/*.yaml`).
 
     python scripts/flow.py check T3.1                       # where is the task, what is next
     python scripts/flow.py gate T3.1 --head <sha>           # exit 1 when anything blocks the merge
@@ -442,6 +442,7 @@ def started_at(
     if card is not None and card.exists():
         return datetime.fromtimestamp(card.stat().st_mtime, timezone.utc).isoformat()
     return ""
+
 
 def build_row(
     work: Path,

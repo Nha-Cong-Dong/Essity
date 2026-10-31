@@ -1,4 +1,4 @@
-﻿"""Tests for flow.py. Run: python -m unittest discover -s scripts -p "test_*.py"."""
+"""Tests for flow.py. Run: python -m unittest discover -s scripts -p "test_*.py"."""
 
 import csv
 import io
