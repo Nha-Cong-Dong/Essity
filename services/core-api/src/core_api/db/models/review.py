@@ -146,7 +146,8 @@ class Attempt(UserOwned, Base):
         UniqueConstraint("id", "user_id"),
     )
 
-    review_session_id: Mapped[uuid.UUID]
+    # NULL for a practice attempt (T8.4): it is not part of a review session.
+    review_session_id: Mapped[uuid.UUID | None]
     question_id: Mapped[uuid.UUID] = mapped_column(index=True)
     answer_text: Mapped[str] = mapped_column(Text, default="", server_default="")
     dont_remember: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
