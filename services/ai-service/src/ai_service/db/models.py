@@ -31,6 +31,9 @@ TASKS = frozenset(
         "syllabus_toc",
         "draft_units",
         "read_notes",
+        "grade_practice",
+        "draft_answer",
+        "parse_question_bank",
     }
 )
 PROVIDERS = frozenset({"anthropic", "fake"})
