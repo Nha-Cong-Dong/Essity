@@ -22,6 +22,7 @@ from core_api.db.models.study_session import (
     NoteFile,
     NoteUpload,
     SessionRange,
+    StudyLedger,
     StudySession,
     Submission,
 )
@@ -64,6 +65,7 @@ __all__ = [
     "ReviewSession",
     "ReviewSessionItem",
     "SessionRange",
+    "StudyLedger",
     "StudySession",
     "Subject",
     "Submission",

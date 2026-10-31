@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -250,6 +251,7 @@ class Submission(UserOwned, Base):
             name="finished_iff_ended",
         ),
         CheckConstraint(FILE_KEYS_SQL, name="file_keys_are_own_notes"),
+        CheckConstraint("retry_count >= 0", name="retry_count_not_negative"),
     )
 
     session_id: Mapped[uuid.UUID]
@@ -257,3 +259,42 @@ class Submission(UserOwned, Base):
     file_keys: Mapped[list[str]] = mapped_column(ARRAY(String(1024)), server_default=text("'{}'"))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Retry bookkeeping of the job that re-runs a submission waiting for the AI (T7.8b).
+    retry_count: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class StudyLedger(UserOwned, Base):
+    """One row per session, learning day and section: how many cards Save made (ARCH §6.2 ⑤,
+    T7.8). The source of the streak line, "subject not studied for long" and the activity grid
+    (T9.4). `section_id` is a plain UUID: the ledger is history and outlives a section. A NULL
+    section counts as one value in the unique key."""
+
+    __tablename__ = "study_ledger"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["subject_id", "user_id"], ["subject.id", "subject.user_id"], ondelete="CASCADE"
+        ),
+        ForeignKeyConstraint(
+            ["session_id", "user_id"],
+            ["study_session.id", "study_session.user_id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("units_saved >= 0", name="units_saved_not_negative"),
+        Index(
+            "uq_study_ledger_session_day_section",
+            "session_id",
+            "learning_day",
+            "section_id",
+            unique=True,
+            postgresql_nulls_not_distinct=True,
+        ),
+        Index("ix_study_ledger_user_id_learning_day", "user_id", "learning_day"),
+    )
+
+    subject_id: Mapped[uuid.UUID]
+    session_id: Mapped[uuid.UUID]
+    learning_day: Mapped[date] = mapped_column(Date)
+    section_id: Mapped[uuid.UUID | None]
+    units_saved: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
