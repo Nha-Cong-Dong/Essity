@@ -220,7 +220,15 @@ def test_command_log_other_users_subject_refused(world: World) -> None:
         {"status": "undone"},
         {"undone_at": NOW},
     ],
-    ids=["blank", "ops_not_array", "inverse_not_array", "bad_status", "negative", "no_time", "no_undo"],
+    ids=[
+        "blank",
+        "ops_not_array",
+        "inverse_not_array",
+        "bad_status",
+        "negative",
+        "no_time",
+        "no_undo",
+    ],
 )
 def test_command_log_checks(world: World, values: dict[str, Any]) -> None:
     refused(world, command(world, **values))
@@ -372,7 +380,9 @@ def test_question_bank_link_needs_document_same_subject_user(world: World) -> No
     other_subject = make_document(
         world.session, world.alice, world.other_subject, "cd" * 32, role="question_bank"
     )
-    bobs = make_document(world.session, world.bob, make_subject(world.session, world.bob), "ef" * 32)
+    bobs = make_document(
+        world.session, world.bob, make_subject(world.session, world.bob), "ef" * 32
+    )
     ok = make_question(world.session, world.alice, world.subject, 1, bank_document_id=mine.id)
     assert ok.bank_document_id == mine.id
     for n, document in enumerate((other_subject, bobs), start=2):

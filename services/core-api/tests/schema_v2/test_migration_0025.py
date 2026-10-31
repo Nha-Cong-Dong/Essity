@@ -128,8 +128,8 @@ def fill_practice_state(engine: Engine, user: uuid.UUID, subject: uuid.UUID) -> 
     with engine.begin() as connection:
         connection.execute(
             text(
-                "INSERT INTO practice_state (user_id, question_id, phase, stability, difficulty,"
-                " due, last_review) VALUES (:u, :q, 'review', 1, 5, now(), now())"
+                "INSERT INTO practice_state (id, user_id, question_id, phase, stability, difficulty,"  # noqa: E501
+                " due, last_review) VALUES (gen_random_uuid(), :u, :q, 'review', 1, 5, now(), now())"  # noqa: E501
             ),
             {"u": user, "q": question},
         )
@@ -162,8 +162,8 @@ def fill_practice_log(engine: Engine, user: uuid.UUID, subject: uuid.UUID) -> No
         )
         connection.execute(
             text(
-                "INSERT INTO practice_log (user_id, question_id, rating, reviewed_at, grade_id)"
-                " VALUES (:u, :q, 3, now(), :g)"
+                "INSERT INTO practice_log (id, user_id, question_id, rating, reviewed_at, grade_id)"
+                " VALUES (gen_random_uuid(), :u, :q, 3, now(), :g)"
             ),
             {"u": user, "q": question, "g": grade},
         )
@@ -173,8 +173,8 @@ def fill_command_log(engine: Engine, user: uuid.UUID, subject: uuid.UUID) -> Non
     with engine.begin() as connection:
         connection.execute(
             text(
-                "INSERT INTO command_log (user_id, subject_id, raw_text, ops_json, inverse_json,"
-                " status, affected_count) VALUES (:u, :s, 'x', '[]', '[]', 'applied', 0)"
+                "INSERT INTO command_log (id, user_id, subject_id, raw_text, ops_json, inverse_json,"  # noqa: E501
+                " status, affected_count) VALUES (gen_random_uuid(), :u, :s, 'x', '[]', '[]', 'applied', 0)"  # noqa: E501
             ),
             {"u": user, "s": subject},
         )
@@ -185,8 +185,8 @@ def fill_unit_edge(engine: Engine, user: uuid.UUID, subject: uuid.UUID) -> None:
     with engine.begin() as connection:
         connection.execute(
             text(
-                "INSERT INTO unit_edge (user_id, subject_id, src_unit_id, dst_unit_id, kind,"
-                " origin, status) VALUES (:u, :s, :a, :b, 'part_of', 'user', 'active')"
+                "INSERT INTO unit_edge (id, user_id, subject_id, src_unit_id, dst_unit_id, kind,"
+                " origin, status) VALUES (gen_random_uuid(), :u, :s, :a, :b, 'part_of', 'user', 'active')"  # noqa: E501
             ),
             {"u": user, "s": subject, "a": a, "b": b},
         )
@@ -246,8 +246,8 @@ def test_0025_downgrade_refuses_default_origin_and_bank_link(
         if held == "default origin":
             connection.execute(
                 text(
-                    "INSERT INTO question_type (user_id, subject_id, name, ref_time_s, ref_origin)"
-                    " VALUES (:u, :s, 'Giải thích', 60, 'default')"
+                    "INSERT INTO question_type (id, user_id, subject_id, name, ref_time_s, ref_origin)"  # noqa: E501
+                    " VALUES (gen_random_uuid(), :u, :s, 'Giải thích', 60, 'default')"
                 ),
                 {"u": user, "s": subject},
             )
@@ -271,9 +271,9 @@ def test_0025_downgrade_refuses_default_origin_and_bank_link(
             )
             connection.execute(
                 text(
-                    "INSERT INTO question (user_id, subject_id, level, prompt, reference_answer,"
+                    "INSERT INTO question (id, user_id, subject_id, level, prompt, reference_answer,"  # noqa: E501
                     " status, content_hash, run_id, bank_document_id, bank_ord)"
-                    " VALUES (:u, :s, 1, 'p', 'a', 'active', :h, :r, :d, 0)"
+                    " VALUES (gen_random_uuid(), :u, :s, 1, 'p', 'a', 'active', :h, :r, :d, 0)"
                 ),
                 {"u": user, "s": subject, "h": "1" * 64, "r": RUN, "d": document},
             )
