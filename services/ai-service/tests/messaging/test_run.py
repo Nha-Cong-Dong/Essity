@@ -26,6 +26,7 @@ CORE_TO_AI = {
     "session.confirmed.v1",
     "grade.requested.v1",
     "user.deleted.v1",
+    "submission.created.v1",  # core -> ai (contracts/events, T7.6/T7.7)
 }
 
 
