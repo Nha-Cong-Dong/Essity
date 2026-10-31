@@ -18,11 +18,12 @@ regexes = [
 ]
 
 [[allowlists]]
-description = "Contract examples: draft_key is a sample hash"
+description = "Contract examples: draft_key and quote_hash are sample hashes"
 condition = "AND"
+regexTarget = "line"
 paths = [
-    '''^contracts/files/examples/session-result\.v2[^/]*\.json$''',
+    '''^contracts/(events|files)/examples/[^/]*\.json$''',
 ]
 regexes = [
-    '''draft_key''',
+    '''"(draft_key|quote_hash)":\s*"[0-9a-f]{64}"''',
 ]
