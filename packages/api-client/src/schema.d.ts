@@ -328,6 +328,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Csv */
+        get: operations["export_csv_v1_export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/grades/{grade_id}/override": {
         parameters: {
             query?: never;
@@ -566,6 +583,23 @@ export interface paths {
          *     for a draft (nothing is processed before the confirm).
          */
         get: operations["session_progress_v1_sessions__session_id__progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stats */
+        get: operations["get_stats_v1_stats_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1019,6 +1053,32 @@ export interface components {
             /** Size Bytes */
             size_bytes: number;
         };
+        /** GridCellOut */
+        GridCellOut: {
+            /** Cards Saved */
+            cards_saved: number;
+            /** Column */
+            column: number;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Exam Day */
+            exam_day: boolean;
+            /** Future */
+            future: boolean;
+            /** Level */
+            level: number;
+            /** Questions Answered */
+            questions_answered: number;
+            /** Row */
+            row: number;
+            /** Sections */
+            sections: components["schemas"]["NamedOut"][];
+            /** Subjects */
+            subjects: components["schemas"]["NamedOut"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1125,6 +1185,16 @@ export interface components {
             last_page: number | null;
             /** Section Id */
             section_id: string | null;
+        };
+        /** NamedOut */
+        NamedOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
         };
         /** NoteIn */
         NoteIn: {
@@ -1492,6 +1562,18 @@ export interface components {
             /** Subject Id */
             subject_id?: string | null;
         };
+        /** StatsOut */
+        StatsOut: {
+            /** Grid */
+            grid: components["schemas"]["GridCellOut"][];
+            /** Subjects */
+            subjects: components["schemas"]["SubjectStatsOut"][];
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+        };
         /** StoppedOut */
         StoppedOut: {
             /** Answered */
@@ -1552,6 +1634,25 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** SubjectStatsOut */
+        SubjectStatsOut: {
+            /** Bank */
+            bank: components["schemas"]["TypeCountsOut"][];
+            /** Days Left */
+            days_left: number | null;
+            /** Exam Date */
+            exam_date: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Retention */
+            retention: number | null;
+            syllabus: components["schemas"]["SyllabusOut"];
+        };
         /** SubmissionOut */
         SubmissionOut: {
             /** Mentions */
@@ -1590,6 +1691,17 @@ export interface components {
             session_id: string;
             /** Text */
             text?: string | null;
+        };
+        /** SyllabusOut */
+        SyllabusOut: {
+            /** By Unit */
+            by_unit: components["schemas"]["UnitWeightOut"][];
+            /** Leaves */
+            leaves: number;
+            /** Percent */
+            percent: number | null;
+            /** Studied Leaves */
+            studied_leaves: number;
         };
         /** TextbookIn */
         TextbookIn: {
@@ -1656,6 +1768,17 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** TypeCountsOut */
+        TypeCountsOut: {
+            /** Mastered */
+            mastered: number;
+            /** Practiced */
+            practiced: number;
+            /** Question Type */
+            question_type: string;
+            /** Ready */
+            ready: number;
+        };
         /** UnitResult */
         UnitResult: {
             /** Title */
@@ -1670,6 +1793,15 @@ export interface components {
              * @enum {string}
              */
             verdict: "correct" | "partial" | "incorrect";
+        };
+        /** UnitWeightOut */
+        UnitWeightOut: {
+            /** Studied */
+            studied: number;
+            /** Total */
+            total: number;
+            /** Unit */
+            unit: string;
         };
         /** UploadOut */
         UploadOut: {
@@ -2317,6 +2449,26 @@ export interface operations {
             };
         };
     };
+    export_csv_v1_export_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     override_v1_grades__grade_id__override_post: {
         parameters: {
             query?: never;
@@ -2697,6 +2849,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stats_v1_stats_get: {
+        parameters: {
+            query?: {
+                subject_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatsOut"];
+                };
             };
             /** @description Validation Error */
             422: {

@@ -584,6 +584,71 @@
         "title": "FileIn",
         "type": "object"
       },
+      "GridCellOut": {
+        "properties": {
+          "cards_saved": {
+            "title": "Cards Saved",
+            "type": "integer"
+          },
+          "column": {
+            "title": "Column",
+            "type": "integer"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "exam_day": {
+            "title": "Exam Day",
+            "type": "boolean"
+          },
+          "future": {
+            "title": "Future",
+            "type": "boolean"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "questions_answered": {
+            "title": "Questions Answered",
+            "type": "integer"
+          },
+          "row": {
+            "title": "Row",
+            "type": "integer"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/NamedOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/NamedOut"
+            },
+            "title": "Subjects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "day",
+          "column",
+          "row",
+          "level",
+          "future",
+          "exam_day",
+          "subjects",
+          "sections",
+          "cards_saved",
+          "questions_answered"
+        ],
+        "title": "GridCellOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -825,6 +890,25 @@
           "last_page"
         ],
         "title": "MentionOut",
+        "type": "object"
+      },
+      "NamedOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "NamedOut",
         "type": "object"
       },
       "NoteIn": {
@@ -1872,6 +1956,36 @@
         "title": "StartIn",
         "type": "object"
       },
+      "StatsOut": {
+        "properties": {
+          "grid": {
+            "items": {
+              "$ref": "#/components/schemas/GridCellOut"
+            },
+            "title": "Grid",
+            "type": "array"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/SubjectStatsOut"
+            },
+            "title": "Subjects",
+            "type": "array"
+          },
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          }
+        },
+        "required": [
+          "today",
+          "subjects",
+          "grid"
+        ],
+        "title": "StatsOut",
+        "type": "object"
+      },
       "StoppedOut": {
         "properties": {
           "answered": {
@@ -2013,6 +2127,74 @@
         "title": "SubjectRef",
         "type": "object"
       },
+      "SubjectStatsOut": {
+        "properties": {
+          "bank": {
+            "items": {
+              "$ref": "#/components/schemas/TypeCountsOut"
+            },
+            "title": "Bank",
+            "type": "array"
+          },
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Left"
+          },
+          "exam_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "retention": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention"
+          },
+          "syllabus": {
+            "$ref": "#/components/schemas/SyllabusOut"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "exam_date",
+          "days_left",
+          "syllabus",
+          "bank",
+          "retention"
+        ],
+        "title": "SubjectStatsOut",
+        "type": "object"
+      },
       "SubmissionOut": {
         "properties": {
           "mentions": {
@@ -2100,6 +2282,44 @@
           "session_id"
         ],
         "title": "SubmitRequest",
+        "type": "object"
+      },
+      "SyllabusOut": {
+        "properties": {
+          "by_unit": {
+            "items": {
+              "$ref": "#/components/schemas/UnitWeightOut"
+            },
+            "title": "By Unit",
+            "type": "array"
+          },
+          "leaves": {
+            "title": "Leaves",
+            "type": "integer"
+          },
+          "percent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent"
+          },
+          "studied_leaves": {
+            "title": "Studied Leaves",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "leaves",
+          "studied_leaves",
+          "percent",
+          "by_unit"
+        ],
+        "title": "SyllabusOut",
         "type": "object"
       },
       "TextbookIn": {
@@ -2267,6 +2487,34 @@
         "title": "TokenBody",
         "type": "object"
       },
+      "TypeCountsOut": {
+        "properties": {
+          "mastered": {
+            "title": "Mastered",
+            "type": "integer"
+          },
+          "practiced": {
+            "title": "Practiced",
+            "type": "integer"
+          },
+          "question_type": {
+            "title": "Question Type",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "question_type",
+          "ready",
+          "practiced",
+          "mastered"
+        ],
+        "title": "TypeCountsOut",
+        "type": "object"
+      },
       "UnitResult": {
         "properties": {
           "title": {
@@ -2294,6 +2542,29 @@
           "verdict"
         ],
         "title": "UnitResult",
+        "type": "object"
+      },
+      "UnitWeightOut": {
+        "properties": {
+          "studied": {
+            "title": "Studied",
+            "type": "number"
+          },
+          "total": {
+            "title": "Total",
+            "type": "number"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit",
+          "studied",
+          "total"
+        ],
+        "title": "UnitWeightOut",
         "type": "object"
       },
       "UploadOut": {
@@ -3182,6 +3453,22 @@
         "summary": "Read Toc"
       }
     },
+    "/v1/export.csv": {
+      "get": {
+        "operationId": "export_csv_v1_export_csv_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Export Csv"
+      }
+    },
     "/v1/grades/{grade_id}/override": {
       "post": {
         "operationId": "override_v1_grades__grade_id__override_post",
@@ -3666,6 +3953,53 @@
           }
         },
         "summary": "Session Progress"
+      }
+    },
+    "/v1/stats": {
+      "get": {
+        "operationId": "get_stats_v1_stats_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "subject_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Stats"
       }
     },
     "/v1/subjects": {
