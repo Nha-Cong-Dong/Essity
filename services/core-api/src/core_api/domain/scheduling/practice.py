@@ -22,6 +22,7 @@ from core_api.domain.learning_day import day_bounds, learning_day
 from core_api.domain.mastery import (
     DEFAULT_CONFIG,
     MasteryConfig,
+    PracticeRating,
     PracticeVerdict,
     is_learned,
     rating_for,
@@ -77,12 +78,36 @@ def apply(
         attempt.timing_ok,
         config,
     )
-    memory = _SCHEDULER.review(state.memory if state else None, rating, attempt.at)
+    return apply_rating(state, rating, attempt.at)
+
+
+def verdict_of(rating: PracticeRating) -> PracticeVerdict:
+    """The verdict a stored rating stands for (`practice_log` keeps the rating only):
+    Easy and Good are correct, Hard partial, Again incorrect."""
+    if rating >= PracticeRating.GOOD:
+        return "correct"
+    return "partial" if rating == PracticeRating.HARD else "incorrect"
+
+
+def apply_rating(
+    state: PracticeState | None, rating: PracticeRating, at: datetime
+) -> PracticeState:
+    """One FSRS step by a rating already decided: the step the live path and the replay of
+    `practice_log` share, so a rebuilt state equals the cached one."""
     return PracticeState(
-        memory=memory,
-        last_verdict=attempt.verdict,
+        memory=_SCHEDULER.review(state.memory if state else None, rating, at),
+        last_verdict=verdict_of(rating),
         removed_at=state.removed_at if state is not None else None,
     )
+
+
+def replay_ratings(log: Iterable[tuple[PracticeRating, datetime]]) -> PracticeState | None:
+    """The state from a question's rating log, oldest first; None if never attempted.
+    `removed_at` is not in the log: the caller sets it."""
+    state: PracticeState | None = None
+    for rating, at in log:
+        state = apply_rating(state, rating, at)
+    return state
 
 
 def remove(state: PracticeState | None, at: datetime) -> PracticeState | None:
