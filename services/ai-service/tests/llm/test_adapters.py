@@ -225,6 +225,9 @@ def test_t210_settings_give_the_task_table_a_priced_model(monkeypatch: pytest.Mo
         "syllabus_toc": MODEL,
         "draft_units": MODEL,
         "read_notes": MODEL,
+        "grade_practice": MODEL,
+        "draft_answer": MODEL,
+        "parse_question_bank": MODEL,
     }
 
 

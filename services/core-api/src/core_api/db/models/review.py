@@ -130,6 +130,18 @@ class Attempt(UserOwned, Base):
             "(status = 'submitted') = (submitted_at IS NOT NULL)", name="submitted_has_time"
         ),
         CheckConstraint(f"char_length(answer_text) <= {MAX_ANSWER_CHARS}", name="answer_length"),
+        # Practice timing (T7.M3, PLAN T8.4): all NULL for a review attempt; `served_at` is the
+        # server's clock, the rest arrive with the submit and are frozen by attempt_guard.
+        CheckConstraint("hidden_ms >= 0", name="hidden_ms_not_negative"),
+        CheckConstraint("active_ms >= 0", name="active_ms_not_negative"),
+        CheckConstraint(
+            "(active_ms IS NULL) = (timing_ok IS NULL)", name="timing_ok_with_active_ms"
+        ),
+        CheckConstraint(
+            "active_ms IS NULL OR (served_at IS NOT NULL AND hidden_ms IS NOT NULL)",
+            name="active_ms_needs_served_and_hidden",
+        ),
+        CheckConstraint("active_ms IS NULL OR status = 'submitted'", name="timing_when_submitted"),
         UniqueConstraint("review_session_id", "question_id"),
         UniqueConstraint("id", "user_id"),
     )
@@ -140,6 +152,10 @@ class Attempt(UserOwned, Base):
     dont_remember: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     status: Mapped[str] = mapped_column(String(10), default="draft", server_default="draft")
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    served_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    hidden_ms: Mapped[int | None]
+    active_ms: Mapped[int | None]
+    timing_ok: Mapped[bool | None]
 
 
 class Grade(UserOwned, Base):

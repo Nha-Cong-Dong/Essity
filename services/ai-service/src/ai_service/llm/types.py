@@ -17,6 +17,9 @@ Task = Literal[
     "syllabus_toc",
     "draft_units",
     "read_notes",
+    "grade_practice",
+    "draft_answer",
+    "parse_question_bank",
 ]
 # The providers a call can go to (CHECK provider_known on llm_call).
 ProviderName = Literal["anthropic", "fake"]
@@ -29,6 +32,9 @@ TASKS: tuple[Task, ...] = (
     "syllabus_toc",
     "draft_units",
     "read_notes",
+    "grade_practice",
+    "draft_answer",
+    "parse_question_bank",
 )
 
 

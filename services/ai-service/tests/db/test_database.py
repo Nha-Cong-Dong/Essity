@@ -17,6 +17,8 @@ from ai_service.db.base import NAMING_CONVENTION, Base
 from ai_service.db.models import LlmCall, PipelineRun
 
 TABLES = {"pipeline_run", "llm_call", "processed_event"}
+T83_TASKS = ["grade_practice", "draft_answer", "parse_question_bank"]
+T83_TASKS_SQL = ", ".join(f"'{task}'" for task in T83_TASKS)
 
 
 def table_names(engine: Engine) -> set[str]:
@@ -32,6 +34,8 @@ def test_t210_migrations_go_down_to_base_and_back_up(engine: Engine, alembic_cfg
         connection.execute(
             text("DELETE FROM pipeline_run WHERE task IN ('draft_units','read_notes')")
         )
+        connection.execute(text(f"DELETE FROM llm_call WHERE task IN ({T83_TASKS_SQL})"))
+        connection.execute(text(f"DELETE FROM pipeline_run WHERE task IN ({T83_TASKS_SQL})"))
     command.downgrade(alembic_cfg, "base")
     assert not TABLES & table_names(engine)
     command.upgrade(alembic_cfg, "head")
@@ -192,3 +196,26 @@ def test_t77_draft_units_and_read_notes_tasks_are_accepted(engine: Engine, task:
         session.add(new_call(run, task=task))
         session.flush()
         session.rollback()
+
+
+@pytest.mark.parametrize("task", T83_TASKS)
+def test_t7m3_practice_and_bank_tasks_are_accepted(engine: Engine, task: str) -> None:
+    # Red when: migration 0009 or the model leaves the task out of the task CHECKs.
+    with Session(engine) as session:
+        run = new_run(task=task)
+        session.add(run)
+        session.flush()
+        session.add(new_call(run, task=task))
+        session.flush()
+        session.rollback()
+
+
+def test_t7m3_new_tasks_are_in_the_literal_and_the_model_table() -> None:
+    # Red when: Task, TASKS, the model's TASKS and the default model table drift apart.
+    from ai_service.config import Settings
+    from ai_service.db.models import TASKS as MODEL_TASKS
+    from ai_service.llm.types import TASKS as LITERAL_TASKS
+
+    assert set(T83_TASKS) <= set(LITERAL_TASKS)
+    assert set(LITERAL_TASKS) == MODEL_TASKS
+    assert set(Settings.model_fields["llm_models"].default_factory()) == MODEL_TASKS  # type: ignore[call-arg,misc]
