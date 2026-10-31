@@ -174,7 +174,7 @@ export const FIXTURES: Record<"ready" | "provisional" | "provisional-scan" | "fl
 /** The open panel a state starts with (the static preview cannot click its way there). */
 export const PANEL_AT: Partial<Record<SyllabusState, { id: string; mode: "actions" | "edit"; from?: string; to?: string; error?: boolean; saveError?: boolean }>> = {
   editing: { id: "2.3", mode: "edit", from: "69", to: "78" },
-  "range-error": { id: "2.3", mode: "edit", from: "66", to: "78", error: true },
+  "range-error": { id: "2.3", mode: "edit", from: "66", to: "120", error: true },
   "parent-panel": { id: "2", mode: "actions" },
   "save-error": { id: "2.3", mode: "edit", from: "69", to: "80", saveError: true },
 };

@@ -125,9 +125,14 @@ describe("range (US-13 AC4)", () => {
     [60, 50, "Trang bắt đầu phải nhỏ hơn hoặc bằng trang kết thúc."],
     [50, 900, "Giáo trình chỉ có 820 trang."],
     [10, 20, "Khoảng này nằm ngoài mục cha (tr. 45–98)."],
-    [58, 60, "Khoảng này chồng lên mục 3.3 (tr. 59–64)."],
   ])("%i-%i is refused: %s", (from, to, message) => {
     expect(validateRange(from, to, ctx, "page")).toBe(message);
+  });
+  // Red when: a range touching or overlapping a sibling is refused (core-api allows it, T7.4).
+  it("US-13 AC4: siblings may touch, overlap or leave gaps", () => {
+    expect(validateRange(58, 60, ctx, "page")).toBeNull();
+    expect(validateRange(64, 70, ctx, "page")).toBeNull();
+    expect(validateRange(46, 47, ctx, "page")).toBeNull();
   });
   it("accepts a range inside its parent and clear of its neighbours", () => {
     expect(validateRange(52, 58, ctx, "page")).toBeNull();

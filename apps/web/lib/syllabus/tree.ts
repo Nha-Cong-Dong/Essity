@@ -163,8 +163,6 @@ export function validateRange(from: number, to: number, ctx: RangeContext, unit:
   if (ctx.parent && (from < ctx.parent[0] || to > ctx.parent[1])) {
     return `Khoảng này nằm ngoài mục cha (${rangeText(ctx.parent[0], ctx.parent[1], unit)}).`;
   }
-  const clash = ctx.siblings.find((s) => from <= s.to && to >= s.from);
-  if (clash) return `Khoảng này chồng lên mục ${clash.label} (${rangeText(clash.from, clash.to, unit)}).`;
   return null;
 }
 
