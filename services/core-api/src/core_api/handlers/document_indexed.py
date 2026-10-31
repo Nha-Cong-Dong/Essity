@@ -114,8 +114,8 @@ def parse_outline(raw: bytes, page_count: int) -> tuple[str, list[NewSection]] |
         NewSection(
             title=n.title.strip(),
             parent=n.parent,
-            page_start=n.page_start,
-            page_end=n.page_end,
+            first_page=n.page_start,
+            last_page=n.page_end,
             weight=n.weight,
             unit=parsed.unit,
             source=n.source,

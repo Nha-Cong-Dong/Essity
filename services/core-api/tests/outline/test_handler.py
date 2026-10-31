@@ -70,9 +70,9 @@ def run(session: Session, storage: FakeStorage, event: DocumentIndexedEvent) -> 
     session.flush()
 
 
-def titles(session: Session, user: User, document: Document) -> list[tuple[str, int, str]]:
+def titles(session: Session, user: User, document: Document) -> list[tuple[str, int | None, str]]:
     rows = DocSectionRepository(session, user.id).of_document(document.id)
-    return [(r.title, r.page_start, r.source) for r in rows]
+    return [(r.title, r.first_page, r.source) for r in rows]
 
 
 def count(session: Session) -> int:
@@ -88,7 +88,7 @@ def test_us13_ac1_indexed_event_stores_the_tree(
     run(db_session, fake_storage, answer(fake_storage, document))
 
     rows = DocSectionRepository(db_session, user.id).of_document(document.id)
-    assert [(r.title, r.page_start, r.page_end, r.weight, r.unit, r.source) for r in rows] == [
+    assert [(r.title, r.first_page, r.last_page, r.weight, r.unit, r.source) for r in rows] == [
         ("Chương 1", 1, 20, 20, "page", "bookmark"),
         ("1.1", 1, 8, 8, "page", "bookmark"),
         ("Chương 2", 21, 40, 20, "page", "bookmark"),
@@ -134,7 +134,7 @@ def test_us13_ac4_a_learners_work_is_not_overwritten(
     service = OutlineService(db_session, user.id)
     section = DocSectionRepository(db_session, user.id).of_document(document.id)[1]
     if touch == "range":
-        service.edit_section(section.id, page_start=2, page_end=8)
+        service.edit_section(section.id, first_page=2, last_page=8)
     elif touch == "excluded":
         service.edit_section(section.id, excluded=True)
     else:

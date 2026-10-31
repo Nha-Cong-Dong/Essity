@@ -62,8 +62,6 @@ def make_section(session: Session, user: User, document: Document, **overrides: 
         "subject_id": document.subject_id,
         "document_id": document.id,
         "ord": 0,
-        "page_start": 1,
-        "page_end": 1,
         "title": "Chương 1",
         "unit": "page",
         "source": "bookmark",

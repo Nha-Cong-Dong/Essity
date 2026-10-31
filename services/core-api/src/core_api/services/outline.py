@@ -82,8 +82,8 @@ def _row(section: DocSection) -> SectionRow:
     return SectionRow(
         id=section.id,
         parent_id=section.parent_id,
-        page_start=section.page_start,
-        page_end=section.page_end,
+        first_page=section.first_page or 0,  # NULL only on rows this code did not write
+        last_page=section.last_page or 0,
         weight=section.weight,
         studied_weight=section.studied_weight,
         excluded=section.excluded,
@@ -143,8 +143,8 @@ class OutlineService:
         self,
         section_id: uuid.UUID,
         *,
-        page_start: int | None = None,
-        page_end: int | None = None,
+        first_page: int | None = None,
+        last_page: int | None = None,
         excluded: bool | None = None,
         studied: bool | None = None,
     ) -> DocSection:
@@ -153,9 +153,9 @@ class OutlineService:
         A range or an exclusion makes the section the learner's (`source = user`): a later
         reading does not overwrite it. The range of a studied leaf keeps its coverage: fully
         covered stays fully covered, partly covered keeps what still fits."""
-        if (page_start is None) != (page_end is None):
+        if (first_page is None) != (last_page is None):
             raise RangeError("invalid_range")
-        if page_start is None and excluded is None and studied is None:
+        if first_page is None and excluded is None and studied is None:
             raise NoChangeError
         found = self.sections.get(section_id)
         if found is None or self.subjects.get(found.subject_id) is None:
@@ -169,20 +169,24 @@ class OutlineService:
         rows = [_row(s) for s in sections]
         leaf_ids = {r.id for r in rules.leaves(rows)}
 
-        if page_start is not None and page_end is not None:
-            kids = [(c.page_start, c.page_end) for c in sections if c.parent_id == section.id]
-            above = by_id.get(section.parent_id) if section.parent_id else None
-            total = document.page_count or max(s.page_end for s in sections)
+        if first_page is not None and last_page is not None:
+            # A section without pages (not from an outline reading) has no range to edit.
+            if any(s.first_page is None or s.last_page is None for s in sections):
+                raise RangeError("invalid_range")
+            rows = [_row(s) for s in sections]
+            kids = [(r.first_page, r.last_page) for r in rows if r.parent_id == section.id]
+            above = next((r for r in rows if r.id == section.parent_id), None)
+            total = document.page_count or max(r.last_page for r in rows)
             rules.check_range(
-                page_start,
-                page_end,
+                first_page,
+                last_page,
                 total,
-                parent=None if above is None else (above.page_start, above.page_end),
+                parent=None if above is None else (above.first_page, above.last_page),
                 children=kids,
             )
-            section.page_start, section.page_end = page_start, page_end
+            section.first_page, section.last_page = first_page, last_page
             section.source = "user"
-            weights = rules.reweigh(rows, {section.id: (page_start, page_end)})
+            weights = rules.reweigh(rows, {section.id: (first_page, last_page)})
             for s in sections:
                 old = s.weight
                 s.weight = weights[s.id]

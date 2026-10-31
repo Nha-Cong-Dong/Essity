@@ -3,7 +3,7 @@
 - `GET /v1/subjects/{id}/outline`: the tree with `weight`, `unit`, `source`, studied state and
   the subject's progress. No main textbook (or none read yet) is a 200 with `reason`, so the
   screen can say why "what to study next" is empty (US-13 AC8).
-- `PATCH /v1/sections/{id}`: page range (`page_start` and `page_end` together), `excluded`,
+- `PATCH /v1/sections/{id}`: page range (`first_page` and `last_page` together), `excluded`,
   `studied`. The answer is the whole outline: an edit moves the weights above it.
 - `PUT /v1/subjects/{id}/textbook`: set or change the main textbook.
 
@@ -43,8 +43,8 @@ class SectionOut(BaseModel):
     id: uuid.UUID
     parent_id: uuid.UUID | None
     title: str
-    page_start: int
-    page_end: int
+    first_page: int | None
+    last_page: int | None
     weight: float
     unit: Unit
     source: Literal["bookmark", "heading", "llm_toc", "chunk10", "user"]
@@ -77,8 +77,8 @@ class OutlineOut(BaseModel):
 class SectionPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    page_start: StrictInt | None = None
-    page_end: StrictInt | None = None
+    first_page: StrictInt | None = None
+    last_page: StrictInt | None = None
     excluded: StrictBool | None = None
     studied: StrictBool | None = None
 
@@ -104,8 +104,8 @@ def _tree(view: OutlineView) -> list[SectionOut]:
             id=section.id,
             parent_id=section.parent_id,
             title=section.title,
-            page_start=section.page_start,
-            page_end=section.page_end,
+            first_page=section.first_page,
+            last_page=section.last_page,
             weight=section.weight,
             unit=section.unit,  # pyright: ignore[reportArgumentType]
             source=section.source,  # pyright: ignore[reportArgumentType]
@@ -178,8 +178,8 @@ def patch_section(
     try:
         section = service.edit_section(
             section_id,
-            page_start=body.page_start,
-            page_end=body.page_end,
+            first_page=body.first_page,
+            last_page=body.last_page,
             excluded=body.excluded,
             studied=body.studied,
         )

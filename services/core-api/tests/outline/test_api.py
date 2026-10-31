@@ -64,7 +64,7 @@ def test_us13_ac1_the_tree_has_weight_unit_source_and_state(
     chapter = body["sections"][0]
     assert [c["title"] for c in chapter["children"]] == ["1.1", "1.2"]
     assert (chapter["weight"], chapter["unit"], chapter["source"]) == (20, "page", "bookmark")
-    assert (chapter["page_start"], chapter["page_end"]) == (1, 20)
+    assert (chapter["first_page"], chapter["last_page"]) == (1, 20)
     assert chapter["progress"] == 0 and chapter["studied"] is False
     assert chapter["excluded"] is False and chapter["excluded_effective"] is False
     assert body["progress"] == 0
@@ -173,29 +173,29 @@ def test_a_deleted_subject_has_no_outline(client: TestClient, db_session: Sessio
 def test_us13_ac4_a_range_is_saved_as_the_learners(client: TestClient, db_session: Session) -> None:
     _, headers, subject, _, sections = world(db_session)
 
-    response = patch(client, headers, sections["1.1"], page_start=2, page_end=6)
+    response = patch(client, headers, sections["1.1"], first_page=2, last_page=6)
 
     assert response.status_code == 200
     items = flat(response.json()["sections"])
-    assert (items["1.1"]["page_start"], items["1.1"]["page_end"]) == (2, 6)
+    assert (items["1.1"]["first_page"], items["1.1"]["last_page"]) == (2, 6)
     assert (items["1.1"]["source"], items["1.1"]["weight"]) == ("user", 5)
     # the parent weighs what is under it: 5 + 12
     assert items["Chương 1"]["weight"] == 17
     assert items["Chương 1"]["source"] == "bookmark"
-    assert get(client, headers, subject.id)["sections"][0]["children"][0]["page_start"] == 2
+    assert get(client, headers, subject.id)["sections"][0]["children"][0]["first_page"] == 2
 
 
 @pytest.mark.parametrize(
     ("body", "code"),
     [
-        ({"page_start": 0, "page_end": 5}, "invalid_range"),
-        ({"page_start": -3, "page_end": 5}, "invalid_range"),
-        ({"page_start": 6, "page_end": 5}, "invalid_range"),
-        ({"page_start": 3}, "invalid_range"),
-        ({"page_end": 3}, "invalid_range"),
-        ({"page_start": 1, "page_end": PAGES + 1}, "outside_document"),
-        ({"page_start": 1, "page_end": 21}, "outside_parent"),
-        ({"page_start": 0 + 21, "page_end": 22}, "outside_parent"),
+        ({"first_page": 0, "last_page": 5}, "invalid_range"),
+        ({"first_page": -3, "last_page": 5}, "invalid_range"),
+        ({"first_page": 6, "last_page": 5}, "invalid_range"),
+        ({"first_page": 3}, "invalid_range"),
+        ({"last_page": 3}, "invalid_range"),
+        ({"first_page": 1, "last_page": PAGES + 1}, "outside_document"),
+        ({"first_page": 1, "last_page": 21}, "outside_parent"),
+        ({"first_page": 0 + 21, "last_page": 22}, "outside_parent"),
         ({}, "nothing_to_change"),
     ],
 )
@@ -205,17 +205,17 @@ def test_us13_ac4_a_range_that_breaks_a_rule_is_refused(
     _, headers, subject, _, sections = world(db_session)
     response = client.patch(f"/v1/sections/{sections['1.1'].id}", json=body, headers=headers)
     assert (response.status_code, response.json()["detail"]) == (422, code)
-    assert get(client, headers, subject.id)["sections"][0]["children"][0]["page_start"] == 1
+    assert get(client, headers, subject.id)["sections"][0]["children"][0]["first_page"] == 1
 
 
 def test_us13_ac4_a_parent_cannot_shrink_off_its_children(
     client: TestClient, db_session: Session
 ) -> None:
     _, headers, _, _, sections = world(db_session)
-    response = patch(client, headers, sections["Chương 1"], page_start=3, page_end=20)
+    response = patch(client, headers, sections["Chương 1"], first_page=3, last_page=20)
     assert (response.status_code, response.json()["detail"]) == (422, "children_outside")
     assert (
-        patch(client, headers, sections["Chương 1"], page_start=1, page_end=20).status_code == 200
+        patch(client, headers, sections["Chương 1"], first_page=1, last_page=20).status_code == 200
     )
 
 
@@ -224,18 +224,30 @@ def test_us13_ac4_a_root_may_move_to_the_ends_of_the_document(
 ) -> None:
     _, headers, _, _, sections = world(db_session)
     assert (
-        patch(client, headers, sections["Chương 2"], page_start=21, page_end=PAGES).status_code
+        patch(client, headers, sections["Chương 2"], first_page=21, last_page=PAGES).status_code
         == 200
     )
-    assert patch(client, headers, sections["Chương 2"], page_start=1, page_end=1).status_code == 200
+    response = patch(client, headers, sections["Chương 2"], first_page=1, last_page=1)
+    assert response.status_code == 200
+
+
+def test_us13_ac4_a_section_without_pages_has_no_range_to_edit(
+    client: TestClient, db_session: Session
+) -> None:
+    _, headers, _, _, sections = world(db_session)
+    sections["Chương 2"].first_page = sections["Chương 2"].last_page = None
+    db_session.flush()
+    response = patch(client, headers, sections["Chương 1"], first_page=1, last_page=20)
+    assert (response.status_code, response.json()["detail"]) == (422, "invalid_range")
+    assert patch(client, headers, sections["Chương 1"], excluded=True).status_code == 200
 
 
 @pytest.mark.parametrize(
     "body",
     [
-        {"page_start": "2", "page_end": 5},
-        {"page_start": 2.5, "page_end": 5},
-        {"page_start": True, "page_end": 5},
+        {"first_page": "2", "last_page": 5},
+        {"first_page": 2.5, "last_page": 5},
+        {"first_page": True, "last_page": 5},
         {"excluded": "yes"},
         {"studied": 1},
         {"title": "x"},
@@ -329,7 +341,7 @@ def test_us13_ac6_editing_the_range_of_a_studied_section_keeps_it_studied(
     patch(client, headers, sections["1.1"], studied=True)
 
     items = flat(
-        patch(client, headers, sections["1.1"], page_start=1, page_end=10).json()["sections"]
+        patch(client, headers, sections["1.1"], first_page=1, last_page=10).json()["sections"]
     )
 
     assert items["1.1"]["weight"] == 10 and items["1.1"]["studied"] is True
@@ -337,7 +349,7 @@ def test_us13_ac6_editing_the_range_of_a_studied_section_keeps_it_studied(
     sections["1.2"].studied_weight = 9
     db_session.flush()
     items = flat(
-        patch(client, headers, sections["1.2"], page_start=11, page_end=14).json()["sections"]
+        patch(client, headers, sections["1.2"], first_page=11, last_page=14).json()["sections"]
     )
     assert items["1.2"]["weight"] == 4
     assert items["1.2"]["studied"] is True  # 9 covered of 12 became min(9, 4): all of the 4 pages
@@ -348,7 +360,7 @@ def test_us13_ac4_a_section_of_another_user_is_not_found(
 ) -> None:
     _, _, _, _, sections = world(db_session)
     _, other = signed_in(db_session)
-    for body in ({"excluded": True}, {"page_start": 1, "page_end": 2}, {"studied": True}):
+    for body in ({"excluded": True}, {"first_page": 1, "last_page": 2}, {"studied": True}):
         response = client.patch(f"/v1/sections/{sections['1.1'].id}", json=body, headers=other)
         assert (response.status_code, response.json()["detail"]) == (404, "section_not_found")
     assert (

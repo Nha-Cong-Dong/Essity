@@ -107,7 +107,12 @@ def test_us13_ac3_bookmarked_pdf_costs_no_call(
     assert _calls(engine) == before
     outline = _outline(storage, event)
     assert {n["source"] for n in outline["nodes"]} == {"bookmark"}
-    assert [n["title"] for n in outline["nodes"]] == ["Chapter 1", "Chapter 1", "Section 1.1", "Two"]
+    assert [n["title"] for n in outline["nodes"]] == [
+        "Chapter 1",
+        "Chapter 1",
+        "Section 1.1",
+        "Two",
+    ]
     assert [n["parent"] for n in outline["nodes"]] == [None, 0, 0, None]
 
 
@@ -163,7 +168,7 @@ def test_the_outline_file_is_written_with_the_other_derived_files_and_event_is_u
     ((_, fields),) = redis_client.xrange(stream)  # type: ignore[misc]
     from ai_service.messaging.envelope import parse_event
 
-    out = parse_event(fields["envelope"])
+    out = parse_event(fields["envelope"])  # pyright: ignore[reportOptionalSubscript, reportUnknownArgumentType]
     assert isinstance(out, DocumentIndexedEvent)
     prefix = out.payload.toc_key.rsplit("/", 1)[0]
     assert f"{prefix}/outline.json" in storage.objects

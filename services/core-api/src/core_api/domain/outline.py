@@ -26,8 +26,8 @@ class RangeError(ValueError):
 class SectionRow:
     id: uuid.UUID
     parent_id: uuid.UUID | None
-    page_start: int
-    page_end: int
+    first_page: int
+    last_page: int
     weight: float
     studied_weight: float
     excluded: bool
@@ -150,7 +150,7 @@ def reweigh(
         if kids:
             value = sum(weigh(kid) for kid in kids)
         else:
-            start, end = ranges.get(row.id, (row.page_start, row.page_end))
+            start, end = ranges.get(row.id, (row.first_page, row.last_page))
             value = float(end - start + 1)
         weights[row.id] = value
         return value

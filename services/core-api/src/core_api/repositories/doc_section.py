@@ -19,8 +19,8 @@ class NewSection:
 
     title: str
     parent: int | None
-    page_start: int
-    page_end: int
+    first_page: int
+    last_page: int
     weight: float
     unit: str
     source: str
@@ -101,8 +101,8 @@ class DocSectionRepository(UserScopedRepository[DocSection]):
                 parent_id=None if node.parent is None else made[node.parent].id,
                 ord=position,
                 title=node.title,
-                page_start=node.page_start,
-                page_end=node.page_end,
+                first_page=node.first_page,
+                last_page=node.last_page,
                 weight=node.weight,
                 unit=node.unit,
                 source=node.source,
