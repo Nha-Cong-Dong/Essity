@@ -16,3 +16,13 @@ description = "Local placeholders in .env.example"
 regexes = [
     '''change-me[a-z0-9-]*''',
 ]
+
+[[allowlists]]
+description = "Contract examples: draft_key is a sample hash"
+condition = "AND"
+paths = [
+    '''^contracts/files/examples/session-result\.v2[^/]*\.json$''',
+]
+regexes = [
+    '''draft_key''',
+]
