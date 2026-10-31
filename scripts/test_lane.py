@@ -349,3 +349,184 @@ class Next(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+MODELS = """from sqlalchemy.orm import Mapped, mapped_column
+
+
+class DocSection(Base):
+    __tablename__ = "doc_section"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str]
+
+
+class Unit(Base):
+    __tablename__ = 'unit'
+
+    page_start: Mapped[int]
+"""
+
+
+class Schema(unittest.TestCase):
+    """W4: a card's `needs_schema` columns must exist in the base's core-api models."""
+
+    def setUp(self) -> None:
+        self.repo = Path(tempfile.mkdtemp()) / "repo"
+        models = self.repo / "services" / "core-api" / "src" / "core_api" / "db" / "models"
+        models.mkdir(parents=True)
+        git(self.repo, "init", "-q", "-b", "main")
+        git(self.repo, "config", "user.email", "t@example.com")
+        git(self.repo, "config", "user.name", "t")
+        (models / "document.py").write_text(MODELS, encoding="utf-8")
+        git(self.repo, "add", ".")
+        git(self.repo, "commit", "-q", "-m", "models")
+        (self.repo / ".work" / "T7.4").mkdir(parents=True)
+
+    def card(self, extra: str) -> None:
+        text = f"task: T7.4\nbranch: t7.4-x\nbase: main\n{extra}"
+        (self.repo / ".work" / "T7.4" / "card.yaml").write_text(text, encoding="utf-8")
+
+    def test_all_columns_present(self) -> None:
+        self.card("needs_schema: [doc_section.title, doc_section.id, unit.page_start]\n")
+        self.assertEqual(lane.schema_check(self.repo, "T7.4"), ([], []))
+
+    def test_missing_columns_are_listed(self) -> None:
+        # page_start exists on unit, not on doc_section: the class block decides
+        self.card("needs_schema:\n  - doc_section.page_start\n  - doc_section.title\n  - nope.x\n")
+        missing, notes = lane.schema_check(self.repo, "T7.4")
+        self.assertEqual(missing, ["doc_section.page_start", "nope.x"])
+        self.assertEqual(notes, [])
+
+    def test_a_card_without_the_field_warns_and_passes(self) -> None:
+        self.card("risk: red\n")
+        missing, notes = lane.schema_check(self.repo, "T7.4")
+        self.assertEqual(missing, [])
+        self.assertIn("needs_schema", notes[0])
+
+    def test_cli_exit_codes(self) -> None:
+        self.card("needs_schema: [doc_section.studied_weight]\n")
+        with mock.patch.object(lane, "main_repo", lambda: self.repo):
+            self.assertEqual(lane.main(["preflight", "T7.4"]), 1)
+            self.card("needs_schema: []\n")
+            self.assertEqual(lane.main(["preflight", "T7.4"]), 0)
+
+
+class Lanes(unittest.TestCase):
+    """W5–W7: a repo with a bare remote and lane worktrees."""
+
+    def setUp(self) -> None:
+        root = Path(tempfile.mkdtemp())
+        self.remote = root / "remote.git"
+        git(root, "init", "-q", "--bare", str(self.remote))
+        self.repo = root / "repo"
+        self.repo.mkdir()
+        git(self.repo, "init", "-q", "-b", "main")
+        git(self.repo, "config", "user.email", "t@example.com")
+        git(self.repo, "config", "user.name", "t")
+        (self.repo / "a.txt").write_text("a")
+        (self.repo / ".gitignore").write_text(".work/\n.claude/\n")
+        git(self.repo, "add", "a.txt", ".gitignore")
+        git(self.repo, "commit", "-q", "-m", "a")
+        git(self.repo, "remote", "add", "origin", str(self.remote))
+        git(self.repo, "push", "-q", "origin", "main")
+
+    def lane(self, n: int, task: str, status: str, name: str = "") -> Path:
+        path = self.repo / ".claude" / "worktrees" / (name or f"L{n}")
+        git(self.repo, "worktree", "add", "-q", "-b", f"{task.lower()}-x", str(path), "main")
+        git(path, "push", "-q", "-u", "origin", f"{task.lower()}-x")
+        card = self.repo / ".work" / task
+        card.mkdir(parents=True, exist_ok=True)
+        (card / "card.yaml").write_text(
+            f"task: {task}\nlane: L{n}\nbranch: {task.lower()}-x\nworktree: {path.as_posix()}\n",
+            encoding="utf-8",
+        )
+        report = path / ".work" / task
+        report.mkdir(parents=True)
+        (report / "lane-report.yaml").write_text(f"status: {status}\n", encoding="utf-8")
+        return path
+
+    # -- W5 stop-all
+    def test_stop_all_commits_only_code_pushes_and_notes_next(self) -> None:
+        busy = self.lane(3, "T7.4", "in_progress", "L3-t74")
+        done = self.lane(2, "T7.2", "done")
+        for rel in ["services/x.py", "tests/t.py", ".plan/p.md", "junk.txt"]:
+            (busy / rel).parent.mkdir(parents=True, exist_ok=True)
+            (busy / rel).write_text("x")
+        (done / "apps").mkdir()
+        (done / "apps" / "y.ts").write_text("y")
+        rows = lane.stop_all(self.repo)
+        head = git(busy, "rev-parse", "HEAD")
+        self.assertEqual(git(busy, "log", "-1", "--format=%s"), "T7.4: WIP (safe stop)")
+        self.assertEqual(
+            sorted(git(busy, "show", "--name-only", "--format=", "HEAD").split()),
+            ["services/x.py", "tests/t.py"],
+        )
+        self.assertEqual(git(self.repo, "ls-remote", str(self.remote), "t7.4-x").split()[0], head)
+        report = (busy / ".work" / "T7.4" / "lane-report.yaml").read_text(encoding="utf-8")
+        self.assertIn("next:", report)
+        self.assertIn("junk.txt", git(busy, "status", "--short"))  # left alone
+        self.assertEqual(git(done, "log", "-1", "--format=%s"), "a")  # done lane untouched
+        self.assertTrue(any("T7.4" in r and head[:7] in r for r in rows))
+
+    def test_stop_all_without_changes_does_not_commit_and_keeps_next(self) -> None:
+        busy = self.lane(1, "T7.6", "in_progress")
+        report = busy / ".work" / "T7.6" / "lane-report.yaml"
+        report.write_text("status: in_progress\nnext: write test X\n", encoding="utf-8")
+        lane.stop_all(self.repo)
+        self.assertEqual(git(busy, "log", "-1", "--format=%s"), "a")
+        self.assertEqual(report.read_text(encoding="utf-8").count("next:"), 1)
+
+    # -- W6 gc
+    def test_gc_removes_merged_clean_worktrees_and_keeps_the_rest(self) -> None:
+        merged = self.lane(4, "T9.7a", "done", "L4-t97a")
+        dirty = self.lane(5, "T9.8", "done")
+        (dirty / "new.txt").write_text("x")
+        open_pr = self.lane(1, "T7.6", "in_progress")
+        scratch = self.repo.parent / "scratch" / "wt-mut"
+        git(self.repo, "worktree", "add", "-q", "--detach", str(scratch), "main")
+        rows = lane.gc(self.repo, merged=lambda branch, _repo: branch in ("t9.7a-x", "t9.8-x"),
+                       scratch=[self.repo.parent / "scratch"])  # fmt: skip
+        self.assertFalse(merged.exists())
+        self.assertFalse(scratch.exists())
+        self.assertTrue(dirty.exists())
+        self.assertTrue(open_pr.exists())
+        text = "\n".join(rows)
+        self.assertIn("removed", text)
+        self.assertIn("dirty", text)
+        self.assertNotIn(str(self.repo) + " ", text)  # the main checkout is never listed
+
+    def test_gc_brings_worktree_evidence_home_before_removing(self) -> None:
+        # .work/ is gitignored, so a clean worktree may still hold the only copy of the evidence
+        merged = self.lane(4, "T9.7a", "done", "L4-t97a")
+        (merged / ".work" / "T9.7a" / "review.yaml").write_text("verdict: merge\n")
+        lane.gc(self.repo, merged=lambda *_: True, scratch=[])
+        self.assertFalse(merged.exists())
+        home = self.repo / ".work" / "T9.7a"
+        self.assertEqual(
+            sorted(p.name for p in home.iterdir()), ["card.yaml", "lane-report.yaml", "review.yaml"]
+        )
+
+    def test_gc_keeps_a_detached_worktree_whose_commit_is_on_no_branch(self) -> None:
+        scratch = self.repo.parent / "scratch" / "wt-mut"
+        git(self.repo, "worktree", "add", "-q", "--detach", str(scratch), "main")
+        (scratch / "b.txt").write_text("b")
+        git(scratch, "add", "b.txt")
+        git(scratch, "commit", "-q", "-m", "orphan")
+        lane.gc(self.repo, merged=lambda *_: False, scratch=[self.repo.parent / "scratch"])
+        self.assertTrue(scratch.exists())
+
+    # -- W7 up + env --for-review
+    def test_up_syncs_both_services(self) -> None:
+        calls: list[tuple[str, ...]] = []
+        lane.up(self.repo, 2, "t1-x", base="main", create_db=False,
+                sync=lambda path: calls.append(lane.uv_sync_targets(path)) or [])  # fmt: skip
+        self.assertEqual(len(calls), 1)
+        self.assertEqual([Path(p).name for p in calls[0]], ["core-api", "ai-service"])
+
+    def test_env_for_review_uses_the_owning_lane(self) -> None:
+        busy = self.lane(3, "T7.4", "in_progress", "L3-t74")
+        env = lane.review_env(self.repo, busy / "services")
+        self.assertEqual(env, lane.lane_env(3))
+        with self.assertRaises(ValueError):
+            lane.review_env(self.repo, self.repo.parent)

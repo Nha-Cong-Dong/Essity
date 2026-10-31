@@ -3,9 +3,13 @@
     python scripts/lane.py up L1 t2.23-skip-unit          # new branch from origin/main, or continue
     python scripts/lane.py up L3 t3.1-grade-evals --base origin/main
     python scripts/lane.py env L3 [--shell powershell]   # the lane's test databases and Redis db
+    python scripts/lane.py env --for-review <worktree>   # same, for the lane owning that worktree
     python scripts/lane.py down L3                        # removes the folder; the branch stays
     python scripts/lane.py status [--stale]               # --stale: ages, STALE, ORPHAN
     python scripts/lane.py preflight                      # Docker, containers, free RAM, encoding
+    python scripts/lane.py preflight T7.4                 # card's needs_schema exists on its base
+    python scripts/lane.py stop-all                       # safe stop: WIP commit + push every lane
+    python scripts/lane.py gc                             # remove merged, clean worktrees (+ docs)
     python scripts/lane.py next [--all] [--limit N]       # PR caps and which task to hand out next
 
 A lane is a git worktree at `.claude/worktrees/L<n>` with its own test databases
@@ -29,7 +33,7 @@ from typing import Any
 
 import flow
 from agent_env import DATABASE_URL, REDIS_URL, ensure_database
-from wt_remove import unlink_links
+from wt_remove import check_removable, unlink_links
 
 LANES = range(1, 6)
 DOCKER_BIN = Path("E:/Docker/Docker/resources/bin")
@@ -67,12 +71,35 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+SERVICES = ("core-api", "ai-service")
+
+
+def uv_sync_targets(path: Path) -> tuple[str, ...]:
+    return tuple(str(path / "services" / name) for name in SERVICES)
+
+
+def uv_sync(path: Path) -> list[str]:
+    """`uv sync` both services, so reviewers and testers in the worktree can run pytest (31/10: a
+    fresh worktree had no sqlalchemy). Returns warnings; a failed sync does not undo `up`."""
+    notes = []
+    for target in uv_sync_targets(path):
+        if not Path(target).exists():
+            continue
+        result = subprocess.run(
+            ["uv", "sync", "--directory", target], check=False, capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            notes.append(f"lane: uv sync failed in {target}: {result.stderr.strip()[-300:]}")
+    return notes
+
+
 def up(
     repo: Path,
     lane: int,
     branch: str,
     base: str = "origin/main",
     create_db: bool = True,
+    sync: Callable[[Path], list[str]] | None = uv_sync,
 ) -> Path:
     path = lane_path(repo, lane)
     if path.exists():
@@ -93,7 +120,164 @@ def up(
         # the superuser creates them (`core` has no CREATEDB), see agent_env.ensure_database
         ensure_database(f"core_test_l{lane}")
         ensure_database(f"ai_test_l{lane}")
+    for note in sync(path) if sync else []:
+        print(note, file=sys.stderr)
     return path
+
+
+def _inside(path: Path, parent: Path) -> bool:
+    path, parent = path.resolve(), parent.resolve()
+    return path == parent or parent in path.parents
+
+
+def review_env(repo: Path, where: Path) -> dict[str, str]:
+    """Test env of the lane that owns `where`, for a reviewer or tester working in that worktree.
+
+    The ad-hoc pool of `agent_env.py` (Redis dbs 6..14) ran out on 31/10; the lane's own
+    databases are free while its lead waits on the reviewer.
+    """
+    for card_file in sorted((repo / ".work").glob("*/card.yaml")):
+        card = flow.load(card_file) or {}
+        worktree = str(card.get("worktree") or "")
+        found = re.fullmatch(r"[Ll](\d+)", str(card.get("lane") or ""))
+        if worktree and found and _inside(where, Path(worktree)):
+            return lane_env(int(found.group(1)))
+    root = repo / ".claude" / "worktrees"
+    if _inside(where, root) and where.resolve() != root.resolve():
+        name = where.resolve().relative_to(root.resolve()).parts[0]
+        found = re.match(r"L(\d+)(?:-|$)", name)
+        if found:
+            return lane_env(int(found.group(1)))
+    raise ValueError(
+        f"no lane owns {where} (no card with that worktree, not .claude/worktrees/L<n>)"
+    )
+
+
+CODE_DIRS = ("services", "apps", "packages", "tests")
+
+
+def _report_path(repo: Path, task: str, card: dict[str, Any]) -> Path | None:
+    for place in flow.folders(repo / ".work", task, card):
+        if (place / "lane-report.yaml").exists():
+            return place / "lane-report.yaml"
+    return None
+
+
+def stop_all(repo: Path) -> list[str]:
+    """Safe stop: in every lane whose report is `in_progress`, commit code dirs as WIP and push.
+
+    Only services/ apps/ packages/ tests/ are staged: never .plan or stray files. Before 31/10 the
+    orchestrator committed each lane's WIP by hand because agents stopped without committing.
+    """
+    rows = []
+    for card_file in sorted((repo / ".work").glob("*/card.yaml")):
+        task = card_file.parent.name
+        card = flow.load(card_file) or {}
+        report = _report_path(repo, task, card)
+        doc = flow.load(report) if report else None
+        if not report or not doc or doc.get("status") != "in_progress":
+            continue
+        worktree = Path(str(card.get("worktree") or ""))
+        if not card.get("worktree") or not worktree.exists():
+            rows.append(f"{card.get('lane', '?')}  {task}  worktree missing: {worktree}")
+            continue
+        present = [d for d in CODE_DIRS if (worktree / d).exists()]
+        if present:
+            _git(worktree, "add", "--", *present)
+        committed = _git(worktree, "diff", "--cached", "--quiet").returncode != 0
+        if committed:
+            _git(worktree, "commit", "-q", "-m", f"{task}: WIP (safe stop)")
+        pushed = _git(worktree, "push", "-q", "origin", "HEAD").returncode == 0
+        head = _git(worktree, "rev-parse", "--short", "HEAD").stdout.strip()
+        if "next" not in doc:
+            text = report.read_text(encoding="utf-8")
+            text += (
+                "" if text.endswith("\n") else "\n"
+            ) + f'next: "resume from {head} (safe stop)"\n'
+            report.write_text(text, encoding="utf-8")
+        branch = _git(worktree, "branch", "--show-current").stdout.strip()
+        rows.append(
+            f"{card.get('lane', '?')}  {task}  {branch}  HEAD {head}  "
+            f"{'WIP commit' if committed else 'no change'}  push {'ok' if pushed else 'FAILED'}"
+        )
+    return rows or ["stop-all: no lane in_progress"]
+
+
+def _worktrees(repo: Path) -> list[dict[str, str]]:
+    """`git worktree list --porcelain` as one dict per worktree (worktree, HEAD, branch, ...)."""
+    listing = _git(repo, "worktree", "list", "--porcelain").stdout
+    found = []
+    for block in listing.split("\n\n"):
+        fields: dict[str, str] = {}
+        for line in block.splitlines():
+            key, _, value = line.partition(" ")
+            fields[key] = value
+        if "worktree" in fields:
+            found.append(fields)
+    return found
+
+
+def _pr_merged(branch: str, repo: Path) -> bool:
+    out = flow._run(
+        ["gh", "pr", "list", "--head", branch, "--state", "merged", "--json", "number"], repo
+    )
+    try:
+        return bool(json.loads(out or "[]"))
+    except ValueError:
+        return False
+
+
+SCRATCH_ROOTS = [Path("E:/DevCache")]
+
+
+def gc(
+    repo: Path,
+    merged: Callable[[str, Path], bool] = _pr_merged,
+    scratch: list[Path] = SCRATCH_ROOTS,
+) -> list[str]:
+    """Remove clean worktrees whose PR merged, and clean detached scratch copies (mutation runs)
+    whose commit is still on a branch. Dirty, locked and unmerged worktrees stay."""
+    rows = []
+    for fields in _worktrees(repo):
+        path = Path(fields["worktree"])
+        if _inside(path, repo) and path.resolve() == repo.resolve():
+            continue
+        if "locked" in fields or not path.exists():
+            rows.append(f"keep     {path}  ({'locked' if 'locked' in fields else 'missing'})")
+            continue
+        dirty = _git(path, "status", "--porcelain").stdout.splitlines()
+        if dirty:
+            rows.append(f"keep     {path}  (dirty, {len(dirty)} file(s))")
+            continue
+        branch = fields.get("branch", "").removeprefix("refs/heads/")
+        if branch:
+            ok = merged(branch, repo)
+            why = f"{branch}: PR {'merged' if ok else 'not merged'}"
+        else:
+            on_branch = bool(
+                _git(repo, "branch", "-a", "--contains", fields.get("HEAD", "")).stdout.strip()
+            )
+            ok = on_branch and any(_inside(path, root) for root in scratch)
+            why = f"detached {fields.get('HEAD', '')[:7]}" + (
+                "" if on_branch else ", commit on no branch"
+            )
+        if not ok:
+            rows.append(f"keep     {path}  ({why})")
+            continue
+        try:
+            check_removable(path, repo, scratch)
+        except ValueError as error:
+            rows.append(f"keep     {path}  ({error})")
+            continue
+        for card_file in sorted((repo / ".work").glob("*/card.yaml")):
+            card = flow.load(card_file) or {}
+            if card.get("worktree") and _inside(path, Path(str(card["worktree"]))):
+                flow.bring_home(repo / ".work", card_file.parent.name)  # .work/ is gitignored
+        unlink_links(path)  # pnpm junctions point into the main repo (R45)
+        result = _git(repo, "worktree", "remove", "--force", str(path))
+        rows.append(f"{'removed' if result.returncode == 0 else 'FAILED '}  {path}  ({why})")
+    _git(repo, "worktree", "prune")
+    return rows or ["gc: no worktree besides the main checkout"]
 
 
 def down(repo: Path, lane: int, force: bool = False) -> None:
@@ -129,8 +313,8 @@ def _lane_report(repo: Path, branch: str, now: float) -> tuple[str, float | None
     """(status, minutes since the file changed) of the lane-report of the task on `branch`."""
     for card in sorted((repo / ".work").glob("*/card.yaml")):
         doc = flow.load(card)
-        report = card.parent / "lane-report.yaml"
-        if doc and doc.get("branch") == branch and report.exists():
+        report = _report_path(repo, card.parent.name, doc) if doc else None
+        if doc and doc.get("branch") == branch and report:
             found = flow.load(report) or {}
             return str(found.get("status") or "?"), (now - report.stat().st_mtime) / 60
     return "-", None
@@ -264,6 +448,46 @@ def preflight(sleep: Callable[[float], None] = time.sleep) -> tuple[list[str], b
     return notes or ["preflight: ok"], ok
 
 
+MODELS_DIR = "services/core-api/src/core_api/db/models"
+
+
+def _model_columns(repo: Path, base: str) -> dict[str, str]:
+    """Table name -> source of its model class, read from `base` (not the working tree)."""
+    listing = _git(repo, "ls-tree", "-r", "--name-only", base, "--", MODELS_DIR).stdout.split()
+    tables: dict[str, str] = {}
+    for name in (n for n in listing if n.endswith(".py")):
+        source = _git(repo, "show", f"{base}:{name}").stdout
+        for block in re.split(r"^class ", source, flags=re.MULTILINE)[1:]:
+            found = re.search(r"__tablename__\s*=\s*[\"']([\w.]+)[\"']", block)
+            if found:
+                tables[found.group(1)] = block
+    return tables
+
+
+def schema_check(repo: Path, task: str) -> tuple[list[str], list[str]]:
+    """(missing `table.column`s, notes) for the card's `needs_schema` against its base.
+
+    A task handed out before its migration merged wastes a lane: T7.4 (31/10) burned 17M tokens
+    and wrote a stopgap migration it had to drop. No `needs_schema` field only warns.
+    """
+    card = flow.load(repo / ".work" / task / "card.yaml")
+    if card is None:
+        return [], [f"preflight {task}: thiếu .work/{task}/card.yaml, bỏ qua kiểm schema"]
+    needs = card.get("needs_schema")
+    if needs is None:
+        return [], [f"preflight {task}: card không có needs_schema, chưa kiểm schema (cảnh báo)"]
+    base = str(card.get("base") or "origin/main")
+    tables = _model_columns(repo, base)
+    missing = []
+    for item in needs if isinstance(needs, list) else [needs]:
+        table, _, column = str(item).partition(".")
+        block = tables.get(table, "")
+        pattern = rf"^\s+{re.escape(column)}\s*:|[\"']{re.escape(column)}[\"']"
+        if not (block and column and re.search(pattern, block, re.MULTILINE)):
+            missing.append(str(item))
+    return missing, []
+
+
 Row = dict[str, Any]
 
 
@@ -304,8 +528,8 @@ def _read_cards(repo: Path) -> list[Row]:
     cards: list[Row] = []
     for card_file in sorted((repo / ".work").glob("*/card.yaml")):
         card = _read_yaml_flat(card_file)
-        report_file = card_file.with_name("lane-report.yaml")
-        report = _read_yaml_flat(report_file) if report_file.exists() else {}
+        report_file = _report_path(repo, card_file.parent.name, dict(card))
+        report = _read_yaml_flat(report_file) if report_file else {}
         touches = [t.strip().strip("\"'") for t in card.get("touches", "").strip("[]").split(",")]
         cards.append(
             {
@@ -461,15 +685,20 @@ def main(argv: list[str]) -> int:
     p_up.add_argument("--base", default="origin/main")
     p_up.add_argument("--no-db", action="store_true")
     p_up.add_argument("--no-preflight", action="store_true")
+    p_up.add_argument("--no-sync", action="store_true", help="skip `uv sync` of the services")
     p_env = sub.add_parser("env")
-    p_env.add_argument("lane")
+    p_env.add_argument("lane", nargs="?")
+    p_env.add_argument("--for-review", type=Path, help="worktree: env of the lane that owns it")
     p_env.add_argument("--shell", choices=["bash", "powershell"], default="bash")
+    sub.add_parser("stop-all")
+    sub.add_parser("gc")
     p_down = sub.add_parser("down")
     p_down.add_argument("lane")
     p_down.add_argument("--force", action="store_true", help="discard uncommitted files")
     p_status = sub.add_parser("status")
     p_status.add_argument("--stale", action="store_true", help="ages, STALE and ORPHAN worktrees")
-    sub.add_parser("preflight")
+    p_pre = sub.add_parser("preflight")
+    p_pre.add_argument("task", nargs="?", help="check the card's needs_schema instead of Docker")
     p_next = sub.add_parser("next")
     p_next.add_argument("--all", action="store_true", help="also list blocked tasks and why")
     p_next.add_argument("--limit", type=int, default=10)
@@ -477,6 +706,13 @@ def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
     repo = main_repo()
     try:
+        if args.action == "preflight" and args.task:
+            missing, notes = schema_check(repo, args.task)
+            print("\n".join(notes or [f"preflight {args.task}: schema ok"]))
+            if missing:
+                print(f"preflight {args.task}: thiếu cột trên base: {', '.join(missing)}")
+                return 1
+            return 0
         if args.action == "preflight":
             notes, ok = preflight()
             print("\n".join(notes))
@@ -490,9 +726,27 @@ def main(argv: list[str]) -> int:
                 print("\n".join(notes))
                 if not ok:
                     return 1
-            print(up(repo, parse_lane(args.lane), args.branch, args.base, not args.no_db))
+            sync = None if args.no_sync else uv_sync
+            print(up(repo, parse_lane(args.lane), args.branch, args.base, not args.no_db, sync))
+        elif args.action == "stop-all":
+            print("\n".join(stop_all(repo)))
+        elif args.action == "gc":
+            rows = gc(repo)
+            docs = repo / "docs"
+            if (docs / ".git").exists():  # the private docs repo has worktrees of its own
+                rows += [
+                    f"docs: {row}"
+                    for row in gc(docs, scratch=[*SCRATCH_ROOTS, repo / ".claude" / "worktrees"])
+                ]
+            print("\n".join(rows))
         elif args.action == "env":
-            for key, value in lane_env(parse_lane(args.lane)).items():
+            if args.for_review:
+                env = review_env(repo, args.for_review)
+            elif args.lane:
+                env = lane_env(parse_lane(args.lane))
+            else:
+                raise ValueError("env needs a lane (L1..L5) or --for-review <worktree>")
+            for key, value in env.items():
                 print(
                     f"$env:{key} = '{value}'"
                     if args.shell == "powershell"
