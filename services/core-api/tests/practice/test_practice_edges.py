@@ -63,7 +63,7 @@ def test_is_known_on_the_stored_state_needs_recall_and_last_correct(practice: Pr
     assert is_known(state, day(3) + timedelta(days=3650)) is False  # recall has faded
     # US-16 AC10: a regrade of the last attempt to wrong makes it not "thuộc" at once.
     regrade = practice.grade(last.attempt, "incorrect")
-    practice.record(question, regrade, "incorrect", day(3))
+    practice.record(question, regrade, "incorrect")
     practice.session.expire_all()
     after = repo.state(question.id)
     assert after is not None

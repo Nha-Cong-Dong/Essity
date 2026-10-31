@@ -85,7 +85,6 @@ class Practice:
         question: Question,
         grade: Grade,
         verdict: PracticeVerdict,
-        at: datetime,
         *,
         active: float = 100.0,
         reference: float = 100.0,
@@ -100,7 +99,6 @@ class Practice:
             active_seconds=active,
             reference_seconds=reference,
             timing_ok=timing_ok,
-            at=at,
         )
 
     def do(
@@ -116,6 +114,6 @@ class Practice:
         attempt = self.attempt(question, at)
         grade = self.grade(attempt, verdict)
         state = self.record(
-            question, grade, verdict, at, active=active, reference=reference, timing_ok=timing_ok
+            question, grade, verdict, active=active, reference=reference, timing_ok=timing_ok
         )
         return Done(attempt, grade, state)

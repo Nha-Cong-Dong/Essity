@@ -116,7 +116,7 @@ def test_regrade_live_equals_rebuild(practice: Practice) -> None:
     practice.do(question, "correct", day(0))
     second = practice.do(question, "correct", day(3))
     again = practice.grade(second.attempt, "incorrect")
-    live = practice.record(question, again, "incorrect", day(3))
+    live = practice.record(question, again, "incorrect")
     expected = replay_ratings([(PracticeRating.GOOD, day(0)), (PracticeRating.AGAIN, day(3))])
     assert expected is not None
     assert live.memory == expected.memory
@@ -132,7 +132,7 @@ def test_regrade_previous_verdict_ignores_the_regraded_attempts_old_grade(
     question = practice.question()
     first = practice.do(question, "correct", day(0))
     regrade = practice.grade(first.attempt, "correct")
-    practice.record(question, regrade, "correct", day(0), active=10.0)
+    practice.record(question, regrade, "correct", active=10.0)
     assert ratings(practice) == [3, 3]  # no earlier attempt: Good, not Easy
 
 
@@ -153,7 +153,7 @@ def test_same_grade_twice_one_log_row_state_unchanged(practice: Practice) -> Non
     # Red when: a retried grade writes a second log row or moves the schedule again.
     question = practice.question()
     done = practice.do(question, "correct", day(0))
-    again = practice.record(question, done.grade, "correct", day(0))
+    again = practice.record(question, done.grade, "correct")
     assert again == done.state
     assert ratings(practice) == [3]
     assert PracticeLogRepository(practice.session, practice.user.id).by_grade(done.grade.id)
@@ -164,7 +164,7 @@ def test_grade_of_another_question_is_refused(practice: Practice) -> None:
     first, second = practice.question(), practice.question()
     done = practice.do(second, "correct", day(0))
     with pytest.raises(GradeMismatchError):
-        practice.record(first, done.grade, "correct", day(1))
+        practice.record(first, done.grade, "correct")
     assert stored(practice, first.id) is None
 
 
@@ -173,7 +173,7 @@ def test_other_users_question_is_refused(practice: Practice, bobs: Practice) -> 
     theirs = bobs.question()
     done = practice.do(practice.question(), "correct", day(0))
     with pytest.raises(QuestionNotFoundError):
-        practice.record(theirs, done.grade, "correct", day(1))
+        practice.record(theirs, done.grade, "correct")
 
 
 # US-16 AC11: take a question out of practice and the schedule stops.
@@ -233,3 +233,21 @@ def test_wrong_answer_is_due_within_a_day(practice: Practice) -> None:
     done = practice.do(practice.question(), "incorrect", day(0))
     assert done.state.due is not None
     assert done.state.due - day(0) <= timedelta(days=1)
+
+
+def test_regrade_keeps_the_attempts_own_time_in_the_history(practice: Practice) -> None:
+    # Red when: a regrade is logged at the time of the call, so an old attempt jumps behind newer
+    # ones and changes the order, the "previous" for Easy, and the state (final review F1).
+    question = practice.question()
+    old = practice.do(question, "correct", day(0))
+    practice.do(question, "correct", day(3), active=10.0)  # Easy: previous (day 0) correct
+    regrade = practice.grade(old.attempt, "correct")
+    state = practice.record(question, regrade, "correct")
+    rows = practice.session.scalars(
+        select(PracticeLog.reviewed_at).where(PracticeLog.grade_id == regrade.id)
+    ).all()
+    assert list(rows) == [day(0)]
+    assert ratings(practice) == [3, 4, 3]
+    expected = replay_ratings([(PracticeRating.GOOD, day(0)), (PracticeRating.EASY, day(3))])
+    assert expected is not None
+    assert state.memory == expected.memory

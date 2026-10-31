@@ -61,7 +61,7 @@ def test_rebuild_uses_the_latest_grade_of_each_attempt(practice: Practice) -> No
     question = practice.question()
     done = practice.do(question, "correct", day(0))
     regrade = practice.grade(done.attempt, "incorrect")
-    practice.record(question, regrade, "incorrect", day(0))
+    practice.record(question, regrade, "incorrect")
     state = PracticeStateRepository(practice.session, practice.user.id).state(question.id)
     assert state is not None
     assert state.last_verdict == "incorrect"

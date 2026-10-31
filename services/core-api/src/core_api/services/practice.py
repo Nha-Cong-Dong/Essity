@@ -43,14 +43,15 @@ def record_grade(
     active_seconds: float,
     reference_seconds: float,
     timing_ok: bool,
-    at: datetime,
     config: MasteryConfig = DEFAULT_CONFIG,
 ) -> PracticeState:
     """One log row for the grade, then the question's state rebuilt from its log, in the caller's
     transaction. The first attempt creates the state; the same grade twice changes nothing.
 
     The state is always rebuilt, not stepped: a regrade of an older attempt or a grade that
-    arrives late must give the same state a replay gives (US-06 AC7, US-16 AC10)."""
+    arrives late must give the same state a replay gives (US-06 AC7, US-16 AC10). The time of the
+    review is the attempt's `submitted_at`, never the time of this call: a regrade made now must
+    not move an old attempt in the history (as `overriding.py` does for cards)."""
     states = PracticeStateRepository(session, user_id)
     log = PracticeLogRepository(session, user_id)
     states.hold_question(question_id)
@@ -58,6 +59,8 @@ def record_grade(
     attempt = AttemptRepository(session, user_id).get(grade.attempt_id) if grade else None
     if grade is None or attempt is None or attempt.question_id != question_id:
         raise GradeMismatchError(grade_id)
+    assert attempt.submitted_at is not None  # a grade exists only for a submitted attempt
+    at = attempt.submitted_at
     if log.by_grade(grade_id) is None:
         earlier = [
             r

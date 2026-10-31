@@ -6,7 +6,6 @@ The setup commits, so the teardown switches the guards off to remove the rows, a
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime
 
 import pytest
 from sqlalchemy import Engine, text
@@ -58,7 +57,7 @@ def ready(engine: Engine) -> Iterator[Ready]:
             connection.execute(text(f'ALTER TABLE "{name}" ENABLE TRIGGER USER'))
 
 
-def record(session: Session, ready: Ready, n: int, at: datetime) -> DomainState:
+def record(session: Session, ready: Ready, n: int) -> DomainState:
     return record_grade(
         session,
         ready.user_id,
@@ -68,7 +67,6 @@ def record(session: Session, ready: Ready, n: int, at: datetime) -> DomainState:
         active_seconds=100.0,
         reference_seconds=100.0,
         timing_ok=True,
-        at=at,
     )
 
 
@@ -94,9 +92,9 @@ def test_two_first_attempts_at_once_serialise_to_one_state_row(
 ) -> None:
     # Red when: two first attempts make two state rows, a UNIQUE error, or lose a log row.
     with Session(engine) as first, Session(engine) as second:
-        record(first, ready, 0, day(0))
+        record(first, ready, 0)
         pid = pid_of(second)
-        thread, outcome = in_thread(lambda: record(second, ready, 1, day(3)))
+        thread, outcome = in_thread(lambda: record(second, ready, 1))
         wait_for_lock(engine, pid, outcome)
         first.commit()
         result = finished(thread, outcome)
@@ -112,7 +110,7 @@ def test_two_first_attempts_at_once_serialise_to_one_state_row(
 
 def seeded(engine: Engine, ready: Ready) -> None:
     with Session(engine) as seed:
-        record(seed, ready, 0, day(0))
+        record(seed, ready, 0)
         seed.commit()
 
 
@@ -120,7 +118,7 @@ def test_remove_waits_for_a_recording_and_both_survive(engine: Engine, ready: Re
     # Red when: a remove racing a recording is lost, or the recording drops removed_at.
     seeded(engine, ready)
     with Session(engine) as first, Session(engine) as second:
-        record(first, ready, 1, day(3))
+        record(first, ready, 1)
         pid = pid_of(second)
         thread, outcome = in_thread(
             lambda: remove(second, ready.user_id, ready.question_id, day(4))
@@ -142,7 +140,7 @@ def test_recording_waits_for_a_remove_and_keeps_it(engine: Engine, ready: Ready)
     with Session(engine) as first, Session(engine) as second:
         assert remove(first, ready.user_id, ready.question_id, day(2))
         pid = pid_of(second)
-        thread, outcome = in_thread(lambda: record(second, ready, 1, day(3)))
+        thread, outcome = in_thread(lambda: record(second, ready, 1))
         wait_for_lock(engine, pid, outcome)
         first.commit()
         result = finished(thread, outcome)
@@ -205,7 +203,7 @@ def test_whole_user_rebuild_behind_a_recording_keeps_removed_at(
         assert remove(setup, ready.user_id, ready.question_id, day(1))
         setup.commit()
     with Session(engine) as first, Session(engine) as second:
-        record(first, ready, 1, day(3))
+        record(first, ready, 1)
         pid = pid_of(second)
         thread, outcome = in_thread(
             lambda: PracticeStateRepository(second, ready.user_id).rebuild()
