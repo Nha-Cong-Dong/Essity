@@ -4,17 +4,19 @@
 review Y-T1, plan review O1). ai-service and the limiter are fakes: no model is called."""
 
 import json
+import logging
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
-from sqlalchemy import event, select
+from sqlalchemy import Engine, event, select, text
 from sqlalchemy.orm import Session
 from test_t84_practice_api import FakeAi, Learner, ai, count, learner  # noqa: F401
 from test_t84b_retry import Boom, Limiter, boom, job_of, queued  # noqa: F401
 
+import core_api.jobs.practice_grade_retry as retry_module
 import core_api.jobs.registry  # registers kinds
 from core_api.api.ping import get_ai_client
 from core_api.api.practice import DRAFTS_PER_USER
@@ -25,6 +27,7 @@ from core_api.jobs.app import app as jobs_app
 from core_api.jobs.practice_grade_retry import BATCH, PRACTICE_GRADE_RETRY, retry_pending
 from core_api.main import app
 from core_api.repositories.review import GradeRepository
+from core_api.security.rate_limit import RateLimit, RateLimiter, RateLimiterUnavailableError
 
 
 def now() -> datetime:
@@ -223,3 +226,103 @@ def test_the_failure_log_line_names_the_attempt(
     retry_pending(db_session, boom, Limiter(), now())
     [line] = [json.loads(x) for x in log_output().splitlines() if "practice grade retry" in x]
     assert line["attempt_id"] == attempt, line
+
+
+class Down:
+    """A limiter whose Redis does not answer."""
+
+    def enforce(self, rule: RateLimit, key: str) -> None:
+        raise RateLimiterUnavailableError
+
+
+def test_a_limiter_that_cannot_answer_means_no_call_and_no_error(
+    learner: Learner, db_session: Session, ai: FakeAi, caplog: pytest.LogCaptureFixture
+) -> None:
+    # Budget, rate limits fail closed. Red when: Redis being down lets the job call the AI (fail
+    # open), or each answer is logged as a broken row instead of waiting for the next run.
+    attempt = queued(learner, ai)
+    with caplog.at_level(logging.DEBUG, logger="core_api.jobs"):
+        report = retry_pending(db_session, ai, Down(), now())
+    job = job_of(db_session, attempt)
+    assert ai.graded == [] and job is not None and job.status == "queued"
+    assert report.graded == report.failed == 0
+    assert "practice grade retry failed" not in caplog.text
+
+
+class Rules:
+    """A limiter that lets everything through and remembers each (rule, key)."""
+
+    def __init__(self) -> None:
+        self.hits: list[tuple[str, str]] = []
+
+    def enforce(self, rule: RateLimit, key: str) -> None:
+        self.hits.append((rule.name, key))
+
+
+def test_the_job_spends_the_grading_limit_of_the_answers_owner(
+    learner: Learner, db_session: Session, ai: FakeAi
+) -> None:
+    # US-05 AC14, ADR-0014. Red when: the job grades under another bucket than `grade_user` (or
+    # another key than the owner's id), so a user's queued answers bypass their grading limit.
+    queued(learner, ai)
+    rules = Rules()
+    assert retry_pending(db_session, ai, rules, now()).graded == 1
+    assert rules.hits == [("grade_user", str(learner.user.id))]
+
+
+def test_a_row_that_breaks_in_the_database_still_goes_behind(
+    learner: Learner, db_session: Session, ai: FakeAi, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Plan review O1(b). Red when: after a database error on one row the job does not roll back
+    # before pushing the row back, the push-back fails on the broken transaction, the row keeps
+    # its place, and with a full batch the rows behind it wait for ever.
+    bad, good = queued(learner, ai), queued(learner, ai)
+    start = now() - timedelta(hours=1)
+    place(db_session, bad, start)
+    place(db_session, good, start + timedelta(minutes=1))
+    real = GradeRepository.try_lock_attempt
+
+    def lock(self: GradeRepository, attempt_id: uuid.UUID) -> bool:
+        if str(attempt_id) == bad:
+            self.session.execute(text("SELECT 1 / 0"))
+        return real(self, attempt_id)
+
+    monkeypatch.setattr(GradeRepository, "try_lock_attempt", lock)
+    retry_pending(db_session, ai, Limiter(), now(), batch=1)
+    assert job_of(db_session, good) is not None
+    report = retry_pending(db_session, ai, Limiter(), now(), batch=1)
+    assert report.graded == 1 and job_of(db_session, good) is None
+
+
+class Client:
+    closed = False
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_the_worker_entry_runs_with_an_aware_clock_and_closes_the_client(
+    monkeypatch: pytest.MonkeyPatch, engine: Engine
+) -> None:
+    # US-05 AC14 (the cron entry nothing else calls). Red when: the worker passes a naive clock
+    # (every row then breaks on `now - created_at` and nothing is ever graded), a limiter other
+    # than the Redis one, or leaves the AI client open when the run raises.
+    client = Client()
+    seen: dict[str, Any] = {}
+
+    def fake_retry(session: Session, ai: object, limiter: object, at: datetime) -> None:
+        seen.update(ai=ai, limiter=limiter, at=at)
+        raise RuntimeError("stop")
+
+    def build(settings: object) -> Client:
+        return client
+
+    monkeypatch.setattr(retry_module.AiServiceClient, "from_settings", build)
+    monkeypatch.setattr(retry_module, "get_redis", lambda: object())
+    monkeypatch.setattr(retry_module, "get_engine", lambda: engine)
+    monkeypatch.setattr(retry_module, "retry_pending", fake_retry)
+    with pytest.raises(RuntimeError):
+        retry_module.practice_grade_retry_job({})
+    assert seen["ai"] is client and client.closed
+    assert isinstance(seen["limiter"], RateLimiter)
+    assert seen["at"].tzinfo is not None
