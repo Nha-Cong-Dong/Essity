@@ -7,7 +7,7 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
 const PAGE = "/design-preview/subjects";
 const ROWS = 6; // the fixture's subjects
 const BASE = [320, 390, 768, 1440];
-const HEADER = [...BASE, 359, 360]; // both sides of `max-[360px]:` (width < 360px)
+const HEADER = [...BASE, 359, 360, 479, 480]; // both sides of `max-[360px]:` and of the two-row header (width < 480px)
 const ROW = [...BASE, 639, 640]; // both sides of `sm` (width >= 40rem)
 const NARROW = [320, 390]; // below `sm`
 const SM = 640;
@@ -136,7 +136,7 @@ test("smoke: the fixture renders, hydrates and breaks no CSP rule", async ({ pag
   });
   await open(page, 390);
   await expect(rows(page)).toHaveCount(ROWS);
-  await expect(nav(page).getByRole("link")).toHaveText(["Hôm nay", "Môn học"]);
+  await expect(nav(page).getByRole("link")).toHaveText(["Hôm nay", "Môn học", "Thống kê"]);
   // Hydrated: "Sửa" opens the edit form only once React runs.
   await page.getByRole("button", { name: "Sửa Mạng máy tính" }).click();
   await expect(page.getByLabel("Môn")).toBeVisible();
@@ -198,10 +198,17 @@ const headerFits = async (page: Page) => {
 };
 const headerApart = async (page: Page) => {
   const [l, n, a] = [await box(logo(page)), await box(nav(page)), await box(account(page))];
-  expect(right(l)).toBeLessThanOrEqual(n.x + 0.5);
-  // At least 4px to spare beside the account button, with the web fonts or the fallback ones
-  // (T2.3c plan G12, design-director): exactly fitting would turn red on the next font change.
-  expect(a.x - right(n)).toBeGreaterThanOrEqual(MIN_GAP);
+  if (n.y >= bottom(l) - 0.5) {
+    // Under 480px (T9.5, three items): the nav is its own row below the logo and the account
+    // button, and both rows keep the page's gutters.
+    expect(overlap(n, a)).toBe(false);
+    expect(n.x).toBeGreaterThanOrEqual(l.x - 0.5);
+  } else {
+    expect(right(l)).toBeLessThanOrEqual(n.x + 0.5);
+    // At least 4px to spare beside the account button, with the web fonts or the fallback ones
+    // (T2.3c plan G12, design-director): exactly fitting would turn red on the next font change.
+    expect(a.x - right(n)).toBeGreaterThanOrEqual(MIN_GAP);
+  }
   for (const pill of await nav(page).getByRole("link").all()) expect(inside(await box(pill), n)).toBe(true);
 };
 rule("R46-a nav labels are not clipped", HEADER, headerFits);

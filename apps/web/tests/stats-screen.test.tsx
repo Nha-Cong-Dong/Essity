@@ -3,16 +3,27 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { StatsScreen } from "@/components/stats/stats-screen";
-import { STATS_STATE_IDS, type StatsState } from "@/lib/fixtures/stats";
-import { LEVEL_FLOORS } from "@/lib/stats";
+import { StatsScreen as Screen } from "@/components/stats/stats-screen";
+import { STATS_STATE_IDS, statsFixture, type StatsState } from "@/lib/fixtures/stats";
+import { buildGrid, LEVEL_FLOORS } from "@/lib/stats";
 
 const nav = vi.hoisted(() => ({ replace: vi.fn(), query: "" }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: nav.replace }),
+  useRouter: () => ({ replace: nav.replace, refresh: nav.replace }),
   usePathname: () => "/design-preview/stats",
   useSearchParams: () => new URLSearchParams(nav.query),
 }));
+
+
+/** What /design-preview/stats passes: the fixture as a view, the grid for the ?subject= in nav.query. */
+function StatsScreen({ state }: { state: StatsState }) {
+  const data = statsFixture(state);
+  const wanted = new URLSearchParams(nav.query).get("subject") ?? "";
+  const chosen = data.subjects.find((s) => s.id === wanted)?.id;
+  const view = { today: data.today, subjects: data.subjects, cells: buildGrid(data.subjects, data.events, data.today, chosen) };
+  const mode = state === "loading" || state === "error" ? state : "ready";
+  return <Screen view={view} subject={chosen ?? ""} mode={mode} />;
+}
 
 afterEach(() => {
   cleanup();
@@ -226,5 +237,23 @@ describe("states", () => {
   it("empty says the grid arrives after the first week", () => {
     render(<StatsScreen state="empty" />);
     expect(screen.getByText("Thống kê hiện sau tuần học đầu tiên. Nộp bài ở một buổi học để bắt đầu.")).toBeTruthy();
+  });
+});
+
+describe("T9.5 wiring", () => {
+  // US-10 AC8. Red when: the CSV button is a dead "#" link instead of the download route.
+  it("the CSV button downloads /api/export", () => {
+    const { container } = render(<StatsScreen state="full-year" />);
+    const link = container.querySelector("a[href='/api/export']") as HTMLElement;
+    expect(link.textContent).toBe("Tải dữ liệu (CSV)");
+    expect(link.hasAttribute("download")).toBe(true);
+  });
+
+  // PLAN T9.5 (director-r2 D6). Red when: the subject block goes back to the 600 px container query.
+  it("the subject block's three tiles switch at @min-[480px]", () => {
+    const { container } = render(<StatsScreen state="full-year" />);
+    const block = container.querySelector("[data-subject-block]") as HTMLElement;
+    expect(block.innerHTML).toContain("@min-[480px]:grid-cols-3");
+    expect(block.innerHTML).not.toContain("@min-[600px]");
   });
 });

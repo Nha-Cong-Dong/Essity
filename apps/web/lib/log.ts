@@ -8,6 +8,7 @@ import { trace } from "@opentelemetry/api";
 export type LogRoute =
   | "attempt"
   | "documents"
+  | "export"
   | "login"
   | "logout"
   | "password-reset"
@@ -17,6 +18,7 @@ export type LogRoute =
   | "review-sessions"
   | "session-check"
   | "sessions"
+  | "stats"
   | "subject"
   | "subjects"
   | "today"

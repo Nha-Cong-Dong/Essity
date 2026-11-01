@@ -113,3 +113,34 @@ test("US-10 AC4: ?subject= filters the blocks", async ({ page }) => {
   await open(page, 1440, "/design-preview/stats?state=many-subjects&subject=0b8f1d2e-0000-4000-8000-000000000002");
   await expect(page.locator("[data-subject-block]")).toHaveCount(1);
 });
+
+// T9.5. Red when: the third nav item is missing, or the current page is not marked "Thống kê".
+test("US-10 AC1: the nav has Thống kê and marks it current", async ({ page }) => {
+  await open(page, 390, "/design-preview/stats?state=full-year");
+  const nav = page.getByRole("navigation", { name: "Chính" });
+  await expect(nav.getByRole("link")).toHaveText(["Hôm nay", "Môn học", "Thống kê"]);
+  await expect(nav.locator('[aria-current="page"]')).toHaveText("Thống kê");
+  expect(await nav.getByRole("link", { name: "Thống kê" }).getAttribute("href")).toBe("/stats");
+});
+
+// Red when: the CSV button is a dead link instead of the download route (AC8).
+test("US-10 AC8: the CSV button points at /api/export", async ({ page }) => {
+  await open(page, 1440, "/design-preview/stats?state=full-year");
+  const link = page.locator('main a[href="/api/export"]');
+  await expect(link).toHaveText("Tải dữ liệu (CSV)");
+  await expect(link).toHaveAttribute("download", "");
+});
+
+// Red when: the live route lets a visitor without a session in (the proxy only checks the cookie).
+test("US-10: /stats without a session goes to the login page", async ({ page }) => {
+  await page.goto("/stats");
+  await expect(page).toHaveURL(/\/login/);
+});
+
+// Red when: the three tiles of a subject block stay stacked at 480 px of block (director-r2 D6).
+test("US-10 AC1: a wide block shows its three tiles in a row", async ({ page }) => {
+  await open(page, 1440, "/design-preview/stats?state=full-year");
+  const tiles = await page.locator("[data-subject-block]").first().locator("[data-stat-tile]").all();
+  const ys = await Promise.all(tiles.map(async (t) => (await box(t)).y));
+  expect(new Set(ys.map(Math.round)).size).toBe(1);
+});

@@ -11,7 +11,11 @@ const CONTAINER = "mx-auto w-full max-w-(--page-max) px-(--page-gutter)";
 export type { NavItem } from "@/components/main-nav";
 
 function Logo() {
-  return <span className="font-display text-logo text-hong">Essity</span>;
+  return (
+    <span className="font-display text-logo text-hong max-[480px]:flex max-[480px]:h-(--header-h) max-[480px]:items-center">
+      Essity
+    </span>
+  );
 }
 
 /**
@@ -30,10 +34,19 @@ export function AppShell({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="sticky top-0 z-(--z-header) border-b border-line bg-bg">
-        <div className={cn(CONTAINER, "flex h-(--header-h) items-center gap-2 max-[360px]:gap-1 min-[401px]:gap-4 min-[901px]:gap-10")}>
+        <div
+          className={cn(
+            CONTAINER,
+            // Under 480px three nav items cannot share a row with the logo and the account button
+            // at 320 (T9.5): the nav drops to its own row, below, as wide as the page.
+            "flex h-(--header-h) items-center gap-4 max-[480px]:h-auto max-[480px]:flex-wrap max-[480px]:gap-x-2 max-[480px]:gap-y-0 min-[901px]:gap-10",
+          )}
+        >
           <Logo />
           <MainNav current={current} />
-          <div className="ml-auto flex min-w-10 justify-end">{account}</div>
+          <div className="ml-auto flex min-w-10 justify-end max-[480px]:order-1 max-[480px]:h-(--header-h) max-[480px]:items-center">
+            {account}
+          </div>
         </div>
       </header>
       <main className={cn(CONTAINER, "flex flex-1 flex-col pt-10 pb-24")}>{children}</main>

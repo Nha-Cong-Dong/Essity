@@ -1,13 +1,13 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
-import { statsFixture, type StatsState, type SubjectStats } from "@/lib/fixtures/stats";
-import { buildGrid, daysLeftText, percentOf } from "@/lib/stats";
+import { daysLeftText, percentOf } from "@/lib/stats";
+import type { StatsView, ViewSubject } from "@/lib/stats-view";
 
 import { ActivityGrid } from "./activity-grid";
 import { MiniNotebook, StatTile } from "./stat-tile";
@@ -19,7 +19,7 @@ import { MiniNotebook, StatTile } from "./stat-tile";
 
 const ALL = "";
 
-function examLine(s: SubjectStats): string {
+function examLine(s: ViewSubject): string {
   if (s.examOn === null || s.daysLeft === null) return "Chưa đặt ngày thi";
   const [y, m, d] = s.examOn.split("-");
   const date = `${Number(d)}/${Number(m)}/${y}`;
@@ -37,14 +37,14 @@ function Skeleton() {
   );
 }
 
-function BankTile({ s, open }: { s: SubjectStats; open: boolean }) {
+function BankTile({ s, open }: { s: ViewSubject; open: boolean }) {
   if (s.bank === null) {
     return (
       <StatTile
         label="Bộ câu hỏi"
         value="Chưa có bộ câu hỏi."
         note={
-          <a href="#" className="underline">
+          <a href={`/subjects/${s.id}/upload`} className="underline">
             Tải bộ câu hỏi
           </a>
         }
@@ -100,7 +100,7 @@ function BankTile({ s, open }: { s: SubjectStats; open: boolean }) {
   );
 }
 
-function SubjectBlock({ s, open }: { s: SubjectStats; open: boolean }) {
+function SubjectBlock({ s, open }: { s: ViewSubject; open: boolean }) {
   const { studied, leaves, pagesDone, pages } = s.syllabus;
   return (
     <Sheet data-subject-block={s.id} className="@container">
@@ -116,7 +116,7 @@ function SubjectBlock({ s, open }: { s: SubjectStats; open: boolean }) {
           </p>
         </div>
       </div>
-      <div className="mt-6 grid grid-cols-1 gap-6 @min-[600px]:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-6 @min-[480px]:grid-cols-3">
         {leaves === 0 ? (
           <StatTile label="Đề cương đã học" value="Chưa có đề cương để tính." />
         ) : (
@@ -158,23 +158,40 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-export function StatsScreen({ state }: { state: StatsState }) {
+/** The loading state without hooks, so a Suspense fallback can prerender it. */
+export function StatsLoading() {
+  return (
+    <>
+      <h1 className="m-0 text-title">Thống kê</h1>
+      <Skeleton />
+    </>
+  );
+}
+
+export type StatsMode = "ready" | "loading" | "error";
+
+/**
+ * `view.cells` is already the grid of the chosen scope (the page asks core-api, or the preview
+ * builds it); `subject` is the validated ?subject= id, "" for all subjects.
+ */
+export function StatsScreen({
+  view,
+  subject = ALL,
+  mode = "ready",
+}: {
+  view: StatsView;
+  subject?: string;
+  mode?: StatsMode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const data = useMemo(() => statsFixture(state), [state]);
-  const subjects = useMemo(
-    () =>
-      [...data.subjects].sort((a, b) => (a.examOn ?? "9999").localeCompare(b.examOn ?? "9999")),
-    [data],
+  const subjects = [...view.subjects].sort((a, b) =>
+    (a.examOn ?? "9999").localeCompare(b.examOn ?? "9999"),
   );
-  const wanted = params.get("subject") ?? ALL;
-  const chosen = subjects.find((s) => s.id === wanted);
-  const scope = useMemo(() => (chosen ? [chosen] : subjects), [chosen, subjects]);
-  const cells = useMemo(
-    () => buildGrid(scope, data.events, data.today, chosen?.id),
-    [scope, data, chosen],
-  );
+  const chosen = subjects.find((s) => s.id === subject);
+  const scope = chosen ? [chosen] : subjects;
+  const cells = view.cells;
   const examBy: Record<string, string[]> = {};
   for (const s of scope) if (s.examOn) (examBy[s.examOn] ??= []).push(s.name);
 
@@ -185,23 +202,16 @@ export function StatsScreen({ state }: { state: StatsState }) {
     router.replace(`${pathname}?${next.toString()}`, { scroll: false });
   }
 
-  if (state === "loading") {
+  if (mode === "loading") return <StatsLoading />;
+  if (mode === "error") {
     return (
       <>
         <h1 className="m-0 text-title">Thống kê</h1>
-        <Skeleton />
+        <ErrorState onRetry={() => router.refresh()} />
       </>
     );
   }
-  if (state === "error") {
-    return (
-      <>
-        <h1 className="m-0 text-title">Thống kê</h1>
-        <ErrorState onRetry={() => router.replace(pathname)} />
-      </>
-    );
-  }
-  if (data.events.length === 0 && scope.length === 0) {
+  if (subjects.length === 0) {
     return (
       <>
         <h1 className="m-0 text-title">Thống kê</h1>
@@ -242,7 +252,7 @@ export function StatsScreen({ state }: { state: StatsState }) {
             </Select>
           </div>
           <Button
-            render={<a href="#" />}
+            render={<a href="/api/export" download />}
             nativeButton={false}
             variant="secondary"
             className="max-sm:w-full"
@@ -275,7 +285,7 @@ export function StatsScreen({ state }: { state: StatsState }) {
         <ActivityGrid
           key={chosen?.id ?? ALL}
           cells={cells}
-          today={data.today}
+          today={view.today}
           subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
           examBy={examBy}
         />
