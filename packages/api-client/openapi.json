@@ -754,6 +754,42 @@
         "title": "EmailBody",
         "type": "object"
       },
+      "EmptyOut": {
+        "properties": {
+          "links": {
+            "items": {
+              "enum": [
+                "review",
+                "practice"
+              ],
+              "type": "string"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "reason": {
+            "enum": [
+              "no_subjects",
+              "nothing_open",
+              "no_syllabus",
+              "all_studied"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "text",
+          "links"
+        ],
+        "title": "EmptyOut",
+        "type": "object"
+      },
       "FileIn": {
         "additionalProperties": false,
         "properties": {
@@ -1368,6 +1404,53 @@
           "verdict"
         ],
         "title": "OverrideIn",
+        "type": "object"
+      },
+      "PaceOut": {
+        "properties": {
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Left"
+          },
+          "remaining_leaves": {
+            "title": "Remaining Leaves",
+            "type": "integer"
+          },
+          "remaining_weight": {
+            "title": "Remaining Weight",
+            "type": "number"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "remaining_leaves",
+          "remaining_weight",
+          "unit",
+          "days_left",
+          "text"
+        ],
+        "title": "PaceOut",
         "type": "object"
       },
       "PartIn": {
@@ -2829,6 +2912,24 @@
         "title": "SubjectStatsOut",
         "type": "object"
       },
+      "SubjectSuggestionOut": {
+        "properties": {
+          "suggestion": {
+            "$ref": "#/components/schemas/SuggestionOut"
+          },
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          }
+        },
+        "required": [
+          "today",
+          "suggestion"
+        ],
+        "title": "SubjectSuggestionOut",
+        "type": "object"
+      },
       "SubmissionOut": {
         "properties": {
           "mentions": {
@@ -2943,6 +3044,139 @@
           "session_id"
         ],
         "title": "SubmitRequest",
+        "type": "object"
+      },
+      "SuggestionOut": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "next_leaf",
+              "review_practice",
+              "free_session"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "pace": {
+            "$ref": "#/components/schemas/PaceOut"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining"
+          },
+          "section_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Id"
+          },
+          "section_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Title"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "subject_id",
+          "subject_name",
+          "kind",
+          "section_id",
+          "section_title",
+          "partial",
+          "remaining",
+          "unit",
+          "reason",
+          "pace"
+        ],
+        "title": "SuggestionOut",
+        "type": "object"
+      },
+      "SuggestionsOut": {
+        "properties": {
+          "empty": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmptyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionOut"
+            },
+            "title": "Finished",
+            "type": "array"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionOut"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          }
+        },
+        "required": [
+          "today",
+          "suggestions",
+          "finished",
+          "empty"
+        ],
+        "title": "SuggestionsOut",
         "type": "object"
       },
       "SyllabusOut": {
@@ -5916,6 +6150,46 @@
         "summary": "Create Submission Draft"
       }
     },
+    "/v1/subjects/{subject_id}/suggestion": {
+      "get": {
+        "operationId": "get_subject_suggestion_v1_subjects__subject_id__suggestion_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubjectSuggestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Subject Suggestion"
+      }
+    },
     "/v1/subjects/{subject_id}/textbook": {
       "put": {
         "description": "Set or change the subject's main textbook (US-01 AC5). The old one becomes `auxiliary`;\nnothing is deleted. Errors: 404 `subject_not_found`, `document_not_found` (another subject's\nor user's too); 409 `document_not_ready` (not uploaded, refused or failed), or\n`textbook_has_cards` with `cards`: live cards are linked to the current textbook, send\n`confirm: true` after the learner has agreed.",
@@ -6016,6 +6290,24 @@
           }
         },
         "summary": "Submit"
+      }
+    },
+    "/v1/suggestions": {
+      "get": {
+        "operationId": "get_suggestions_v1_suggestions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Suggestions"
       }
     },
     "/v1/today": {
