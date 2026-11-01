@@ -170,3 +170,13 @@ def test_a_retired_draft_is_not_brought_back_by_a_resent_result(world: World) ->
     run(world, key)
     assert count(world.db, KnowledgeUnit) == 1
     assert unit.status == "retired"
+
+
+def test_y9_a_late_result_never_revives_a_failed_submission(world: World) -> None:
+    # Red when: the processed handler ignores only "done", so a result arriving after the
+    # submission ended as failed writes drafts and flips it to done (US-02b AC13).
+    on_submission_failed(world.db, world.failed("unreadable"))
+    assert world.submission.status == "failed"
+    run(world)
+    assert count(world.db, KnowledgeUnit) == 0
+    assert world.submission.status == "failed"

@@ -105,7 +105,8 @@ def merge(cards: list[DraftCard]) -> tuple[DraftCard, list[DraftCard]]:
 
 def split(card: DraftCard, parts: list[SplitPart]) -> list[SplitPart]:
     """Check a split request: at least two parts, each with a title and content, anchors only from
-    the card, each in one part (anchors not given to a part stay on the merged original). Returns the parts unchanged."""
+    the card, each in one part (anchors not given to a part stay on the merged original). Returns
+    the parts unchanged."""
     _require_drafts([card])
     if len(parts) < 2:
         raise ValueError("split needs at least two parts")

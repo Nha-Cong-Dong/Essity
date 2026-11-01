@@ -14,7 +14,8 @@ The consumer has claimed the event. Nothing else in it or in the file is trusted
   back. The AI's own version is stored as revision 0 (origin `ai`) and never rewritten.
 
 `submission.failed.v1` with `llm_unavailable` parks the submission as `pending_ai` (the retry job
-is T7.8b); any other reason ends it as `failed`. A submission already done is never moved back.
+is `jobs/submission_retry.py`); any other reason ends it as `failed`. A submission already ended
+(done or failed) is never moved back, by either event.
 
 Logs hold ids and counts, never a title, a quote or a key (ADR-0013).
 """
@@ -70,8 +71,8 @@ class OnSubmissionProcessed:
         if study is None or submission is None or submission.session_id != study.id:
             _log.warning("submission result ignored", extra=extra | {"found": study is not None})
             return
-        if submission.status == "done":
-            _log.info("submission result ignored", extra=extra | {"reason": "done"})
+        if submission.status in ENDED:  # done or failed: a late result never revives it (Y9)
+            _log.info("submission result ignored", extra=extra | {"reason": submission.status})
             return
         if SubjectRepository(session, user_id).get(study.subject_id) is None:
             _log.warning("submission result ignored", extra=extra | {"reason": "subject_gone"})
