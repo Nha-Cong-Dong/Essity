@@ -83,22 +83,22 @@ def saved(client: TestClient, db_session: Session, fake_storage: FakeStorage) ->
     return Saved(client, db_session, fake_storage)
 
 
-def jobs(db: Session) -> list[dict[str, Any]]:
+def jobs(db: Session, user_id: uuid.UUID) -> list[dict[str, Any]]:
     rows = db.execute(
         text("SELECT args FROM procrastinate_jobs WHERE task_name = :k"),
         {"k": REGENERATE_REVIEW_QUESTION},
     )
-    return [r[0]["payload"] for r in rows]
+    return [r[0]["payload"] for r in rows if r[0]["payload"]["user_id"] == str(user_id)]
 
 
 def test_ac11_save_enqueues_one_job_per_card_and_a_second_save_none(saved: Saved) -> None:
     # Red when: Save does not ask for the questions, or a re-Save asks again.
     assert saved.save().status_code == 200
-    first = jobs(saved.db)
+    first = jobs(saved.db, saved.user.id)
     assert sorted(j["unit_id"] for j in first) == sorted(str(i) for i in saved.ids)
     assert all(j["lazy"] is False and j["user_id"] == str(saved.user.id) for j in first)
     saved.save()
-    assert len(jobs(saved.db)) == 2
+    assert len(jobs(saved.db, saved.user.id)) == 2
 
 
 def test_ac1_a_draft_has_no_review_question(saved: Saved) -> None:
