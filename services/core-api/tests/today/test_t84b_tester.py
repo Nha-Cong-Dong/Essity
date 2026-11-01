@@ -216,10 +216,10 @@ def test_the_failure_log_line_holds_no_exception_text(
 def test_the_failure_log_line_names_the_attempt(
     learner: Learner, db_session: Session, boom: Boom, log_output: Callable[[], str]
 ) -> None:
-    # Plan review O1 ("log chỉ attempt_id + type"). Red when: the id of the row that raised is
-    # dropped from the line (not an allowed log field), so nobody can find the poison row.
+    # Plan review O1 (log id + type only). Red when: the id of the row that raised is missing from
+    # the line (`attempt_id` must be an allowed log field), so nobody can find the poison row.
     attempt = queued(learner, boom, "boom")
     boom.armed = True
     retry_pending(db_session, boom, Limiter(), now())
     [line] = [json.loads(x) for x in log_output().splitlines() if "practice grade retry" in x]
-    assert attempt in json.dumps(line), line
+    assert line["attempt_id"] == attempt, line

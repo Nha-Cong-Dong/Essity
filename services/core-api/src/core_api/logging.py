@@ -85,6 +85,7 @@ ALLOWED_FIELDS = frozenset(
         "job_kind",
         "job_id",
         "attempt",
+        "attempt_id",  # a uuid naming the row a job gave up on, never the answer
         "outcome",
         "deleted_count",  # purge_unverified
         "jobs_failed_recent",  # job_health (R05)
