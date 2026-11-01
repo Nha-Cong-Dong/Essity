@@ -142,6 +142,18 @@ class Attempt(UserOwned, Base):
             name="active_ms_needs_served_and_hidden",
         ),
         CheckConstraint("active_ms IS NULL OR status = 'submitted'", name="timing_when_submitted"),
+        # T8.4 (migration 0029): a practice attempt is timed from the server's `served_at`, and a
+        # user has one open practice draft per question (two concurrent opens get the same row).
+        CheckConstraint(
+            "review_session_id IS NOT NULL OR served_at IS NOT NULL", name="practice_has_served_at"
+        ),
+        Index(
+            "ix_attempt_one_practice_draft",
+            "user_id",
+            "question_id",
+            unique=True,
+            postgresql_where=text("review_session_id IS NULL AND status = 'draft'"),
+        ),
         UniqueConstraint("review_session_id", "question_id"),
         UniqueConstraint("id", "user_id"),
     )
