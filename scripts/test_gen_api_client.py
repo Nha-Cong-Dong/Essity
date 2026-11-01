@@ -1,152 +1,149 @@
 """Tests for scripts/gen_api_client.py (subprocess mocked)."""
 
+import contextlib
+import io
 import json
 import sys
+import tempfile
+import unittest
 from pathlib import Path
-
-import pytest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).parent))
 import gen_api_client as g  # noqa: E402
 
 
-def _make_repo(tmp_path: Path, *, with_modules: bool = True) -> Path:
-    api = tmp_path / "packages" / "api-client"
+def _make_repo(base: Path, *, with_modules: bool = True) -> Path:
+    api = base / "packages" / "api-client"
     api.mkdir(parents=True)
-    (api / "package.json").write_text(
-        json.dumps(
-            {"scripts": {"generate": "openapi-typescript openapi.json --output src/schema.d.ts"}}
-        )
-    )
-    (tmp_path / "apps" / "web").mkdir(parents=True)
+    generate = "openapi-typescript openapi.json --output src/schema.d.ts"
+    (api / "package.json").write_text(json.dumps({"scripts": {"generate": generate}}))
+    (base / "apps" / "web").mkdir(parents=True)
     if with_modules:
-        cli = api / "node_modules" / "openapi-typescript" / "bin"
-        cli.mkdir(parents=True)
-        (cli / "cli.js").write_text("")
-        (api / "node_modules" / "openapi-typescript" / "package.json").write_text(
-            json.dumps({"bin": {"openapi-typescript": "bin/cli.js"}})
-        )
-        web = tmp_path / "apps" / "web" / "node_modules"
+        ots = api / "node_modules" / "openapi-typescript"
+        (ots / "bin").mkdir(parents=True)
+        (ots / "bin" / "cli.js").write_text("")
+        (ots / "package.json").write_text(json.dumps({"bin": {"openapi-typescript": "bin/cli.js"}}))
+        web = base / "apps" / "web" / "node_modules"
         (web / "next" / "dist" / "bin").mkdir(parents=True)
         (web / "next" / "dist" / "bin" / "next").write_text("")
         (web / "next" / "package.json").write_text(json.dumps({"bin": {"next": "dist/bin/next"}}))
         (web / "typescript" / "bin").mkdir(parents=True)
         (web / "typescript" / "bin" / "tsc").write_text("")
         (web / "typescript" / "package.json").write_text(json.dumps({"bin": {"tsc": "bin/tsc"}}))
-    return tmp_path
+    return base
 
 
-def test_generate_command_read_from_package_json(tmp_path: Path) -> None:
-    root = _make_repo(tmp_path)
-    assert g.generate_args(root) == ["openapi.json", "--output", "src/schema.d.ts"]
+class Recorder:
+    def __init__(self, code: int = 0) -> None:
+        self.code = code
+        self.calls: list[tuple[list[str], Path | None]] = []
+
+    def __call__(self, cmd: list[str], cwd: Path | None = None) -> int:
+        self.calls.append((cmd, cwd))
+        return self.code
 
 
-def test_resolve_bin(tmp_path: Path) -> None:
-    root = _make_repo(tmp_path)
-    got = g.resolve_bin(
-        root / "packages" / "api-client", "openapi-typescript", "openapi-typescript", root
-    )
-    assert got.name == "cli.js" and got.is_file()
+class GenApiClient(unittest.TestCase):
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.base = Path(tmp.name)
+
+    def test_generate_command_read_from_package_json(self) -> None:
+        root = _make_repo(self.base)
+        self.assertEqual(g.generate_args(root), ["openapi.json", "--output", "src/schema.d.ts"])
+
+    def test_resolve_bin(self) -> None:
+        root = _make_repo(self.base)
+        api = root / "packages" / "api-client"
+        with contextlib.redirect_stderr(io.StringIO()):
+            got = g.resolve_bin(api, "openapi-typescript", "openapi-typescript", root)
+        self.assertEqual(got.name, "cli.js")
+        self.assertTrue(got.is_file())
+
+    def test_resolve_bin_reports_chosen_root(self) -> None:
+        root = _make_repo(self.base)
+        api = root / "packages" / "api-client"
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            g.resolve_bin(api, "openapi-typescript", "openapi-typescript", root)
+        self.assertIn(str(api), err.getvalue())
+
+    def test_resolve_bin_missing_raises(self) -> None:
+        root = _make_repo(self.base, with_modules=False)
+        api = root / "packages" / "api-client"
+        with self.assertRaises(g.GenError):
+            g.resolve_bin(api, "openapi-typescript", "openapi-typescript", root)
+
+    def test_generate_steps(self) -> None:
+        root = _make_repo(self.base)
+        run = Recorder()
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(g.generate(root, run=run), 0)
+        self.assertEqual(len(run.calls), 2)
+        dump = run.calls[0][0]
+        core = str(root / "services" / "core-api")
+        self.assertEqual(dump[:6], ["uv", "run", "--directory", core, "--no-sync", "python"])
+        self.assertEqual(dump[-1], str(root / "packages" / "api-client" / "openapi.json"))
+        node, cwd = run.calls[1]
+        self.assertEqual(node[0], "node")
+        self.assertTrue(node[1].endswith("cli.js"))
+        self.assertEqual(node[2:], ["openapi.json", "--output", "src/schema.d.ts"])
+        self.assertEqual(cwd, root / "packages" / "api-client")
+
+    def test_generate_stops_on_dump_failure(self) -> None:
+        root = _make_repo(self.base)
+        run = Recorder(3)
+        self.assertEqual(g.generate(root, run=run), 3)
+        self.assertEqual(len(run.calls), 1)
+
+    def test_typecheck_steps_use_with_lock_web(self) -> None:
+        root = _make_repo(self.base)
+        run = Recorder()
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(g.typecheck(root, run=run), 0)
+        self.assertEqual(len(run.calls), 2)
+        for cmd, cwd in run.calls:
+            self.assertTrue(cmd[1].endswith("with_lock.py"))
+            self.assertEqual(cmd[2:5], ["web", "--", "node"])
+            self.assertEqual(cwd, root / "apps" / "web")
+        self.assertTrue(run.calls[0][0][5].endswith("next"))
+        self.assertEqual(run.calls[0][0][6:], ["typegen"])
+        self.assertTrue(run.calls[1][0][5].endswith("tsc"))
+        self.assertEqual(run.calls[1][0][6:], ["--noEmit"])
+
+    def test_typecheck_returns_first_failure(self) -> None:
+        root = _make_repo(self.base)
+        run = Recorder(1)
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(g.typecheck(root, run=run), 1)
+        self.assertEqual(len(run.calls), 1)
+
+    def test_main_flag_runs_both(self) -> None:
+        root = _make_repo(self.base)
+        with (
+            mock.patch.object(g, "generate", return_value=0) as gen,
+            mock.patch.object(g, "typecheck", return_value=0) as tc,
+        ):
+            self.assertEqual(g.main(["--typecheck"], root=root), 0)
+            gen.assert_called_once()
+            tc.assert_called_once()
+            gen.reset_mock()
+            tc.reset_mock()
+            self.assertEqual(g.main([], root=root), 0)
+            gen.assert_called_once()
+            tc.assert_not_called()
+
+    def test_main_gen_failure_skips_typecheck(self) -> None:
+        root = _make_repo(self.base)
+        with (
+            mock.patch.object(g, "generate", return_value=4),
+            mock.patch.object(g, "typecheck") as tc,
+        ):
+            self.assertEqual(g.main(["--typecheck"], root=root), 4)
+            tc.assert_not_called()
 
 
-def test_resolve_bin_reports_chosen_root(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    root = _make_repo(tmp_path)
-    api = root / "packages" / "api-client"
-    g.resolve_bin(api, "openapi-typescript", "openapi-typescript", root)
-    assert str(api) in capsys.readouterr().err
-
-
-def test_resolve_bin_missing_raises(tmp_path: Path) -> None:
-    root = _make_repo(tmp_path, with_modules=False)
-    with pytest.raises(g.GenError):
-        g.resolve_bin(
-            root / "packages" / "api-client", "openapi-typescript", "openapi-typescript", root
-        )
-
-
-def test_generate_steps(tmp_path: Path) -> None:
-    root = _make_repo(tmp_path)
-    calls: list[tuple[list[str], Path | None]] = []
-
-    def fake(cmd: list[str], cwd: Path | None = None) -> int:
-        calls.append((cmd, cwd))
-        return 0
-
-    assert g.generate(root, run=fake) == 0
-    assert len(calls) == 2
-    dump = calls[0][0]
-    assert dump[:6] == [
-        "uv",
-        "run",
-        "--directory",
-        str(root / "services" / "core-api"),
-        "--no-sync",
-        "python",
-    ]
-    assert dump[-1] == str(root / "packages" / "api-client" / "openapi.json")
-    assert calls[1][0][0] == "node"
-    assert calls[1][0][1].endswith("cli.js")
-    assert calls[1][0][2:] == ["openapi.json", "--output", "src/schema.d.ts"]
-    assert calls[1][1] == root / "packages" / "api-client"
-
-
-def test_generate_stops_on_dump_failure(tmp_path: Path) -> None:
-    root = _make_repo(tmp_path)
-    calls: list[list[str]] = []
-
-    def fake(cmd: list[str], cwd: Path | None = None) -> int:
-        calls.append(cmd)
-        return 3
-
-    assert g.generate(root, run=fake) == 3
-    assert len(calls) == 1
-
-
-def test_typecheck_steps_use_with_lock_web(tmp_path: Path) -> None:
-    root = _make_repo(tmp_path)
-    calls: list[tuple[list[str], Path | None]] = []
-
-    def fake(cmd: list[str], cwd: Path | None = None) -> int:
-        calls.append((cmd, cwd))
-        return 0
-
-    assert g.typecheck(root, run=fake) == 0
-    assert len(calls) == 2
-    for cmd, cwd in calls:
-        assert cmd[1].endswith("with_lock.py") and cmd[2:5] == ["web", "--", "node"]
-        assert cwd == root / "apps" / "web"
-    assert calls[0][0][5].endswith("next") and calls[0][0][6:] == ["typegen"]
-    assert calls[1][0][5].endswith("tsc") and calls[1][0][6:] == ["--noEmit"]
-
-
-def test_typecheck_returns_first_failure(tmp_path: Path) -> None:
-    root = _make_repo(tmp_path)
-    calls: list[list[str]] = []
-
-    def fake(cmd: list[str], cwd: Path | None = None) -> int:
-        calls.append(cmd)
-        return 1
-
-    assert g.typecheck(root, run=fake) == 1
-    assert len(calls) == 1
-
-
-def test_main_flag_runs_both(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    root = _make_repo(tmp_path)
-    seen: list[str] = []
-    monkeypatch.setattr(g, "generate", lambda r: seen.append("gen") or 0)
-    monkeypatch.setattr(g, "typecheck", lambda r: seen.append("tc") or 0)
-    assert g.main(["--typecheck"], root=root) == 0
-    assert seen == ["gen", "tc"]
-    seen.clear()
-    assert g.main([], root=root) == 0
-    assert seen == ["gen"]
-
-
-def test_main_gen_failure_skips_typecheck(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    root = _make_repo(tmp_path)
-    monkeypatch.setattr(g, "generate", lambda r: 4)
-    monkeypatch.setattr(g, "typecheck", lambda r: pytest.fail("must not run"))
-    assert g.main(["--typecheck"], root=root) == 4
+if __name__ == "__main__":
+    unittest.main()
