@@ -1521,6 +1521,78 @@
         "title": "PracticeResultOut",
         "type": "object"
       },
+      "PracticeTypeOut": {
+        "properties": {
+          "attempts_counted": {
+            "title": "Attempts Counted",
+            "type": "integer"
+          },
+          "formula_version": {
+            "title": "Formula Version",
+            "type": "string"
+          },
+          "mastery": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mastery"
+          },
+          "mastery_line": {
+            "title": "Mastery Line",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ref_origin": {
+            "title": "Ref Origin",
+            "type": "string"
+          },
+          "reference_seconds": {
+            "title": "Reference Seconds",
+            "type": "number"
+          },
+          "sensitivity": {
+            "enum": [
+              "not_enough_data",
+              "faster",
+              "near",
+              "slower"
+            ],
+            "title": "Sensitivity",
+            "type": "string"
+          },
+          "sensitivity_line": {
+            "title": "Sensitivity Line",
+            "type": "string"
+          },
+          "type_id": {
+            "format": "uuid",
+            "title": "Type Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type_id",
+          "name",
+          "mastery",
+          "attempts_counted",
+          "mastery_line",
+          "sensitivity",
+          "sensitivity_line",
+          "reference_seconds",
+          "ref_origin",
+          "formula_version"
+        ],
+        "title": "PracticeTypeOut",
+        "type": "object"
+      },
       "PracticeView": {
         "properties": {
           "answer_text": {
@@ -5703,6 +5775,50 @@
           }
         },
         "summary": "Read Outline"
+      }
+    },
+    "/v1/subjects/{subject_id}/practice-types": {
+      "get": {
+        "operationId": "list_practice_types_v1_subjects__subject_id__practice_types_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PracticeTypeOut"
+                  },
+                  "title": "Response List Practice Types V1 Subjects  Subject Id  Practice Types Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Practice Types"
       }
     },
     "/v1/subjects/{subject_id}/sessions": {
