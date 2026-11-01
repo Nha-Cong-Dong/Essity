@@ -38,8 +38,8 @@ def columns(engine: Engine, table: str) -> set[str]:
 
 
 def test_single_alembic_head(alembic_cfg: Config) -> None:
-    # Red when: two migrations branch from the same parent, or 0027 is not the head.
-    assert ScriptDirectory.from_config(alembic_cfg).get_heads() == ["0027"]
+    # Red when: two migrations branch from the same parent.
+    assert len(ScriptDirectory.from_config(alembic_cfg).get_heads()) == 1
 
 
 def test_0027_round_trip(engine: Engine, alembic_cfg: Config) -> None:

@@ -333,7 +333,8 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
 
     def _change_draft(self, id: uuid.UUID, **values: object) -> None:
         attempt = self.get(id)
-        if attempt is None:
+        # A practice attempt has no review session (T8.4): this path is the review one.
+        if attempt is None or attempt.review_session_id is None:
             raise AttemptNotFoundError(id)
         self._lock_open_session(attempt.review_session_id)
         if attempt.status == "draft":
