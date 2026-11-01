@@ -34,6 +34,8 @@ TASKS = frozenset(
         "grade_practice",
         "draft_answer",
         "parse_question_bank",
+        "generate_like",
+        "judge_questions",
     }
 )
 PROVIDERS = frozenset({"anthropic", "fake"})

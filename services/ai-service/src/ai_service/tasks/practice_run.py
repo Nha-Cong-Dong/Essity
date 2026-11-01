@@ -34,7 +34,7 @@ from ai_service.tasks.grade_practice import (
 _log = logging.getLogger(__name__)
 
 DEADLINE_SECONDS = 20.0
-Task = Literal["grade_practice", "draft_answer", "generate_questions"]
+Task = Literal["grade_practice", "draft_answer", "generate_questions", "generate_like"]
 
 
 class GradePracticeBody(PracticeGradeRequest):
