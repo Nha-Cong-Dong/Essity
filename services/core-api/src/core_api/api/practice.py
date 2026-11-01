@@ -24,7 +24,6 @@ from core_api.api.ping import get_ai_client
 from core_api.api.review_sessions import AnswerText
 from core_api.clients.ai_client import AiServiceClient
 from core_api.db.models import Attempt, Grade, Question
-from core_api.db.models.grade_job import GRADE_JOB_FAILURES
 from core_api.db.session import DbSession
 from core_api.repositories.grade_job import GradeJobRepository
 from core_api.repositories.practice_attempt import (
@@ -309,27 +308,6 @@ def _may_call(limiter: Limiter, user_id: uuid.UUID) -> bool:
     return True
 
 
-def record_queue(
-    session: DbSession,
-    user_id: uuid.UUID,
-    attempt_id: uuid.UUID,
-    outcome: PracticeOutcome,
-    now: dt.datetime,
-) -> None:
-    """Keep the attempt's `grade_job` row true to the outcome (T8.4b, US-05 AC14). Only the request
-    that holds the grading lock sees `pending` or `failed`, so rows are never raced. A queued
-    practice job has no file: the answer is in the attempt (`request_key` is empty)."""
-    jobs = GradeJobRepository(session, user_id)
-    if outcome.grading == "graded":
-        jobs.done(attempt_id)
-    elif outcome.grading == "pending":
-        jobs.queue(attempt_id, "", now)
-    elif outcome.grading == "failed":
-        failure = outcome.failure if outcome.failure in GRADE_JOB_FAILURES else "invalid"
-        jobs.queue(attempt_id, "", now)
-        jobs.fail(attempt_id, failure or "invalid", now)
-
-
 def _graded(
     session: DbSession,
     user_id: uuid.UUID,
@@ -346,6 +324,8 @@ def _graded(
         raise _error(status.HTTP_404_NOT_FOUND, "attempt_not_found") from error
     except AttemptNotDraftError as error:
         raise _error(status.HTTP_409_CONFLICT, "attempt_not_submitted") from error
-    record_queue(session, user_id, attempt_id, outcome, now)
+    GradeJobRepository(session, user_id).settle_practice(
+        attempt_id, outcome.grading, outcome.failure, now
+    )
     attempt, question = _owned(session, user_id, attempt_id)
     return _view(session, user_id, attempt, question, outcome)

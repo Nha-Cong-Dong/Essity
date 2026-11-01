@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 from core_api.db.models import GradeJob
+from core_api.db.models.grade_job import GRADE_JOB_FAILURES
 from core_api.repositories.base import UserScopedRepository
 
 
@@ -47,3 +48,19 @@ class GradeJobRepository(UserScopedRepository[GradeJob]):
         if job is not None:
             self.session.delete(job)
             self.session.flush()
+
+    def settle_practice(
+        self, attempt_id: uuid.UUID, grading: str, failure: str | None, now: datetime
+    ) -> None:
+        """Keep a practice attempt's row true to its grading outcome (T8.4b, US-05 AC14).
+
+        `graded` ends the row; `pending` queues it (a practice job holds no file: the answer is in
+        the attempt, `request_key` is empty); `failed` keeps it as `failed`, with a failure code
+        the table knows. `in_progress` changes nothing."""
+        if grading == "graded":
+            self.done(attempt_id)
+        elif grading == "pending":
+            self.queue(attempt_id, "", now)
+        elif grading == "failed":
+            self.queue(attempt_id, "", now)
+            self.fail(attempt_id, failure if failure in GRADE_JOB_FAILURES else "invalid", now)

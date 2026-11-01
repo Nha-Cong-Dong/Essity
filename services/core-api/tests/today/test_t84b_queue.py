@@ -1,3 +1,5 @@
+# ruff: noqa: F811
+# pyright: reportUnusedImport=false
 """T8.4b: a practice answer that cannot be graded now is queued in `grade_job` (US-05 AC14).
 ai-service is a fake: nothing here calls a model."""
 
@@ -17,7 +19,9 @@ def jobs(session: Session) -> list[GradeJob]:
 
 
 def regrade(learner: Learner, attempt: str) -> dict[str, object]:
-    response = learner.client.post(f"/v1/practice/attempts/{attempt}/regrade", headers=learner.headers)
+    response = learner.client.post(
+        f"/v1/practice/attempts/{attempt}/regrade", headers=learner.headers
+    )
     assert response.status_code == 200, response.text
     return response.json()
 
