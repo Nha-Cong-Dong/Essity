@@ -305,3 +305,25 @@ def test_unverified_user_is_rejected(
         response = client.get(path, headers=h)
         assert response.status_code == 403
         assert response.json()["detail"] == "email_not_verified"
+
+
+# AC10: the service reads the user's timezone and day_start_hour (03:30 in Ho Chi Minh City).
+def test_ac10_user_timezone_and_day_start_hour_shift_the_learning_day(
+    client: TestClient, db_session: Session, two_users: tuple[User, User]
+) -> None:
+    alice = two_users[0]
+    h = headers_of(db_session, alice)
+    s, *_ = subject_with(db_session, alice, "A", [{"weight": 10}], days=5)  # exam TODAY + 5
+    alice.timezone = "Asia/Ho_Chi_Minh"
+    alice.day_start_hour = 4  # 03:30 is before the cut: still the 22nd
+    db_session.flush()
+    body = get(client, h)
+    assert body["today"] == str(TODAY)
+    assert body["suggestions"][0]["pace"]["days_left"] == 5
+    alice.day_start_hour = 0  # the 23rd already began
+    db_session.flush()
+    body = get(client, h)
+    assert body["today"] == str(TODAY + timedelta(days=1))
+    assert body["suggestions"][0]["pace"]["days_left"] == 4
+    one = get(client, h, f"/v1/subjects/{s.id}/suggestion")
+    assert one["today"] == str(TODAY + timedelta(days=1))
