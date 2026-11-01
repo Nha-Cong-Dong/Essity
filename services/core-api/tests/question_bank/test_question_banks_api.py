@@ -502,3 +502,16 @@ def test_logs_never_hold_question_text(
     ai.script = reply([bq(1, "Câu hỏi bí mật số một?", "Đáp án bí mật.")])
     world.post()
     assert "bí mật" not in log_output()
+
+
+def test_an_unverified_account_is_refused_before_any_call(
+    world: World, db_session: Session, ai: FakeBank
+) -> None:
+    # US-14 section 7 ("chưa xác minh bị từ chối"). Red when: an account whose email is not
+    # verified can reach the import, call ai-service or store questions.
+    _, headers = signed_in(db_session, verified=False)
+    response = world.client.post(
+        f"/v1/subjects/{world.subject.id}/question-banks/{world.bank.id}/import",
+        headers=headers,
+    )
+    assert response.status_code == 403 and ai.payloads == [] and world.questions() == []
