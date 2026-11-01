@@ -24,14 +24,14 @@ export function MainNav({ current }: { current?: NavItem }) {
     ref.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView?.({ inline: "nearest", block: "nearest" });
   }, [current]);
   return (
-    <nav ref={ref} aria-label="Chính" className="flex min-w-0 gap-1 overflow-x-auto max-[479px]:order-2 max-[479px]:basis-full max-[479px]:pb-2 max-[360px]:gap-0.5">
+    <nav ref={ref} aria-label="Chính" className="flex min-w-0 gap-1 overflow-x-auto max-[480px]:order-2 max-[480px]:basis-full max-[480px]:pb-2 max-[360px]:gap-0.5">
       {NAV.map((item) => (
         <a
           key={item.href}
           href={item.href}
           aria-current={item.href === current ? "page" : undefined}
           className={cn(
-            "flex h-10 shrink-0 items-center rounded-full max-[479px]:flex-1 max-[479px]:justify-center px-2.5 text-body font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink max-[360px]:px-1.5 min-[401px]:px-3 min-[901px]:px-4",
+            "flex h-10 shrink-0 items-center rounded-full max-[480px]:flex-1 max-[480px]:justify-center px-2.5 text-body font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink max-[360px]:px-1.5 min-[401px]:px-3 min-[901px]:px-4",
             "aria-[current=page]:bg-ink aria-[current=page]:font-semibold aria-[current=page]:text-bg",
             // The nav scrolls, so it clips anything drawn outside it: the focus ring goes inside the
             // pill (review C2 #1, WCAG 2.4.7).

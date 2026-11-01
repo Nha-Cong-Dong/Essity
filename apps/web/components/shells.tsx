@@ -12,7 +12,7 @@ export type { NavItem } from "@/components/main-nav";
 
 function Logo() {
   return (
-    <span className="font-display text-logo text-hong max-[479px]:flex max-[479px]:h-(--header-h) max-[479px]:items-center">
+    <span className="font-display text-logo text-hong max-[480px]:flex max-[480px]:h-(--header-h) max-[480px]:items-center">
       Essity
     </span>
   );
@@ -39,12 +39,12 @@ export function AppShell({
             CONTAINER,
             // Under 480px three nav items cannot share a row with the logo and the account button
             // at 320 (T9.5): the nav drops to its own row, below, as wide as the page.
-            "flex h-(--header-h) items-center gap-4 max-[479px]:h-auto max-[479px]:flex-wrap max-[479px]:gap-x-2 max-[479px]:gap-y-0 min-[901px]:gap-10",
+            "flex h-(--header-h) items-center gap-4 max-[480px]:h-auto max-[480px]:flex-wrap max-[480px]:gap-x-2 max-[480px]:gap-y-0 min-[901px]:gap-10",
           )}
         >
           <Logo />
           <MainNav current={current} />
-          <div className="ml-auto flex min-w-10 justify-end max-[479px]:order-1 max-[479px]:h-(--header-h) max-[479px]:items-center">
+          <div className="ml-auto flex min-w-10 justify-end max-[480px]:order-1 max-[480px]:h-(--header-h) max-[480px]:items-center">
             {account}
           </div>
         </div>
