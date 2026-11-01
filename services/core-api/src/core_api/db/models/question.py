@@ -83,10 +83,18 @@ class Question(UserOwned, Base):
             "bank_ord IS NULL OR bank_document_id IS NOT NULL", name="bank_ord_needs_document"
         ),
         CheckConstraint("bank_ord IS NULL OR bank_ord >= 0", name="bank_ord_not_negative"),
+        # The press of "Thêm câu như thế này" that made it (T9.6b); the row may go, the question
+        # stays.
+        ForeignKeyConstraint(
+            ["generation_id", "user_id"],
+            ["question_generation.id", "question_generation.user_id"],
+            ondelete="SET NULL (generation_id)",
+        ),
         UniqueConstraint("id", "user_id"),
         UniqueConstraint("id", "subject_id", "user_id"),
         Index(None, "subject_id", "status"),
         Index(None, "bank_document_id", "bank_ord"),
+        Index(None, "generation_id"),
     )
 
     subject_id: Mapped[uuid.UUID]
@@ -110,6 +118,7 @@ class Question(UserOwned, Base):
     # Where it sits in its question-bank file (T8.1); NULL for a question not read from one.
     bank_document_id: Mapped[uuid.UUID | None]
     bank_ord: Mapped[int | None] = mapped_column(Integer)
+    generation_id: Mapped[uuid.UUID | None]
 
 
 class QuestionUnit(UserOwned, Base):
@@ -182,3 +191,40 @@ class QuestionSection(UserOwned, Base):
     subject_id: Mapped[uuid.UUID]
     question_id: Mapped[uuid.UUID]
     section_id: Mapped[uuid.UUID]
+
+
+GENERATION_TARGETS = frozenset({"question", "type", "section"})
+GENERATION_STATUSES = frozenset({"running", "done"})
+
+
+class QuestionGeneration(UserOwned, Base):
+    """One press of "Thêm câu như thế này" while it runs (T9.6b, US-17 AC1): the row is committed
+    before the AI is called, and a partial unique index allows one running row per target, so a
+    double click (or a second tab) cannot generate two sets. `target_id` is a plain UUID: the
+    target is a question, a type or an outline section by `target_kind`. A row left `running` by
+    a crash goes stale (the service ignores and replaces it after a minute)."""
+
+    __tablename__ = "question_generation"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["subject_id", "user_id"], ["subject.id", "subject.user_id"], ondelete="CASCADE"
+        ),
+        UniqueConstraint("id", "user_id"),
+        CheckConstraint(one_of("target_kind", GENERATION_TARGETS), name="target_kind_known"),
+        CheckConstraint(one_of("status", GENERATION_STATUSES), name="status_known"),
+        Index(
+            "uq_question_generation_running",
+            "user_id",
+            "subject_id",
+            "target_kind",
+            "target_id",
+            unique=True,
+            postgresql_where=text("status = 'running'"),
+        ),
+    )
+
+    subject_id: Mapped[uuid.UUID]
+    target_kind: Mapped[str] = mapped_column(String(8))
+    target_id: Mapped[uuid.UUID]
+    status: Mapped[str] = mapped_column(String(7), server_default="running")
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
