@@ -5,6 +5,8 @@ export type Anchor = { id: string; kind: "document" | "notes"; label: string; qu
 
 export type Draft = {
   id: string;
+  /** React key kept when `id` changes (a card added here gets its real id, T7.12), so it is not remounted. */
+  key?: string;
   title: string;
   summary: string;
   /** Outline section the card is filed under ("3.2"); null = "Chưa gắn mục". */
@@ -97,7 +99,7 @@ export function draftsReducer(drafts: Draft[], action: DraftAction): Draft[] {
     case "reload":
       return drafts.map((d) => (d.id === action.draft.id ? { ...action.draft, conflict: null } : d));
     case "synced":
-      return drafts.map((d) => (d.id === action.id ? { ...d, id: action.to, version: action.version } : d));
+      return drafts.map((d) => (d.id === action.id ? { ...d, key: d.key ?? d.id, id: action.to, version: action.version } : d));
     case "replace": {
       const at = drafts.findIndex((d) => action.ids.includes(d.id));
       if (at < 0) return drafts;

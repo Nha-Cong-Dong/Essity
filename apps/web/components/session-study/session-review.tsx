@@ -162,7 +162,7 @@ export function ReviewArea({
         <ol className="m-0 flex list-none flex-col p-0" aria-label="Thẻ nháp">
           {drafts.map((draft) => (
             <DraftCard
-              key={draft.id}
+              key={draft.key ?? draft.id}
               draft={draft}
               dispatch={dispatch}
               mergeFrom={mergeFrom}

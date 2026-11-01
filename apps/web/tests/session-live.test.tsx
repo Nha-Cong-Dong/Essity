@@ -224,6 +224,43 @@ describe("study session on core-api", () => {
     expect(api.add).toHaveBeenCalledWith("Mới", "Nội dung mới hơn");
   });
 
+  // US-02b AC6, AC9. Red when: text typed while the add is in flight is lost (the timer still names
+  // the local id), or Save sends the old text.
+  it("keeps what is typed while a new card is being added, also for Save", async () => {
+    let land: (card: Draft) => void = () => undefined;
+    const api = fakeApi({ add: vi.fn(() => new Promise<ApiResult<Draft>>((r) => { land = (d) => r({ ok: true, data: d }); })) });
+    show(api, { ...review, drafts: [card("u1")] });
+    fireEvent.click(screen.getByRole("button", { name: "Thêm thẻ" }));
+    fireEvent.change(screen.getByLabelText("Tên thẻ"), { target: { value: "Mới" } });
+    fireEvent.change(screen.getByLabelText(/Nội dung thẻ/), { target: { value: "Bản một" } });
+    await tick(900);
+    expect(api.add).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByLabelText(/Nội dung thẻ/), { target: { value: "Bản hai" } });
+    await act(async () => { land(card("srv1", { title: "Mới", summary: "Bản một", version: 1 })); });
+    await tick(900);
+    expect(api.edit).toHaveBeenCalledWith("srv1", 1, { title: "Mới", content: "Bản hai" });
+    fireEvent.change(screen.getByLabelText(/Nội dung thẻ/), { target: { value: "Bản ba" } });
+    fireEvent.click(screen.getByRole("button", { name: "Đúng rồi, lưu" }));
+    await tick(50);
+    expect(api.edit).toHaveBeenLastCalledWith("srv1", 2, { title: "Mới", content: "Bản ba" });
+    expect(api.save).toHaveBeenCalled();
+  });
+
+  // US-02b AC8. Red when: a card dropped while its add is in flight stays on the server as a draft.
+  it("drops the server copy of a card discarded before its add landed", async () => {
+    let land: (card: Draft) => void = () => undefined;
+    const api = fakeApi({ add: vi.fn(() => new Promise<ApiResult<Draft>>((r) => { land = (d) => r({ ok: true, data: d }); })) });
+    show(api, { ...review, drafts: [card("u1")] });
+    fireEvent.click(screen.getByRole("button", { name: "Thêm thẻ" }));
+    fireEvent.change(screen.getByLabelText("Tên thẻ"), { target: { value: "Mới" } });
+    fireEvent.change(screen.getByLabelText(/Nội dung thẻ/), { target: { value: "Nội dung" } });
+    await tick(900);
+    fireEvent.click(cards().getAllByRole("button", { name: "Bỏ thẻ" })[1]);
+    await act(async () => { land(card("srv1")); });
+    await tick(50);
+    expect(api.discard).toHaveBeenCalledWith("srv1");
+  });
+
   // US-02b AC6 and a11y (T7.12a review): the split box closes when the split took effect, only then.
   it("split closes its box on success and stays open on a refusal", async () => {
     const api = fakeApi({ split: vi.fn(() => fail(422, "bad_split")) });

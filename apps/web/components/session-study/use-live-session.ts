@@ -53,7 +53,10 @@ export function useDraftSync(
 
   const serverId = (id: string) => real.current.get(id) ?? (isLocal(id) ? null : id);
   const versionOf = (id: string) => versions.current.get(serverId(id) ?? id) ?? latest.current.find((d) => d.id === id)?.version ?? 1;
-  const current = (id: string) => latest.current.find((d) => d.id === id);
+  // A card added here is known by its local id until core-api answers, then by the real one.
+  const current = (id: string) => latest.current.find((d) => d.id === id || d.id === real.current.get(id));
+  // Cards dropped while their add was still in flight: the server copy is dropped when it lands.
+  const dropped = useRef(new Set<string>());
   const remember = (card: Draft) => versions.current.set(card.id, card.version);
 
   function later<T>(task: () => Promise<T>): Promise<T> {
@@ -76,6 +79,10 @@ export function useDraftSync(
         real.current.set(id, added.data.id);
         remember(added.data);
         dispatch({ type: "synced", id, to: added.data.id, version: added.data.version });
+        if (dropped.current.has(id)) {
+          const gone = await api.discard(added.data.id);
+          if (gone.ok) remember(gone.data);
+        }
       } else say(COPY.draftNotSaved);
       return;
     }
@@ -163,7 +170,10 @@ export function useDraftSync(
         case "discard": {
           dispatch(action);
           const id = serverId(action.id);
-          if (id === null) return;
+          if (id === null) {
+            dropped.current.add(action.id);
+            return;
+          }
           void later(async () => {
             const done = await api.discard(id);
             if (done.ok) remember(done.data);
@@ -176,6 +186,7 @@ export function useDraftSync(
         }
         case "undo": {
           dispatch(action);
+          dropped.current.delete(action.id);
           const id = serverId(action.id);
           if (id === null) return;
           void later(async () => {
