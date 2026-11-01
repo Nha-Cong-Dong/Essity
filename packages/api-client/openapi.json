@@ -298,6 +298,44 @@
         "title": "BacklogOut",
         "type": "object"
       },
+      "CandidateOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "const": "Câu sinh thêm",
+            "default": "Câu sinh thêm",
+            "title": "Label",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "type_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type Id"
+          }
+        },
+        "required": [
+          "id",
+          "prompt",
+          "type_id"
+        ],
+        "title": "CandidateOut",
+        "type": "object"
+      },
       "CardRange": {
         "properties": {
           "basis_assumed_file": {
@@ -823,6 +861,90 @@
           "size_bytes"
         ],
         "title": "FileIn",
+        "type": "object"
+      },
+      "GenerateIn": {
+        "additionalProperties": false,
+        "description": "Exactly one target.",
+        "properties": {
+          "question_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Id"
+          },
+          "section_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Id"
+          },
+          "type_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type Id"
+          }
+        },
+        "title": "GenerateIn",
+        "type": "object"
+      },
+      "GeneratedSetOut": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateOut"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "empty",
+              "pending_ai",
+              "failed",
+              "running"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "candidates"
+        ],
+        "title": "GeneratedSetOut",
         "type": "object"
       },
       "GridCellOut": {
@@ -4703,6 +4825,74 @@
         "summary": "Export Csv"
       }
     },
+    "/v1/generated-questions/{question_id}/keep": {
+      "post": {
+        "description": "Đưa vào luyện tập: the question becomes a practice question (its schedule starts at the\nfirst attempt, T8.3). Keeping twice keeps the first time.",
+        "operationId": "keep_v1_generated_questions__question_id__keep_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Keep"
+      }
+    },
+    "/v1/generated-questions/{question_id}/reject": {
+      "post": {
+        "description": "Không giữ: retired and marked rejected; its text stays in the duplicate checks, so it is\nnever suggested again. A kept question is removed by `worthless`, not here.",
+        "operationId": "reject_v1_generated_questions__question_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject"
+      }
+    },
     "/v1/grades/{grade_id}/override": {
       "post": {
         "operationId": "override_v1_grades__grade_id__override_post",
@@ -5968,6 +6158,98 @@
           }
         },
         "summary": "Request Upload"
+      }
+    },
+    "/v1/subjects/{subject_id}/generated-questions": {
+      "get": {
+        "operationId": "waiting_candidates_v1_subjects__subject_id__generated_questions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CandidateOut"
+                  },
+                  "title": "Response Waiting Candidates V1 Subjects  Subject Id  Generated Questions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Waiting Candidates"
+      },
+      "post": {
+        "operationId": "generate_questions_v1_subjects__subject_id__generated_questions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneratedSetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Questions"
       }
     },
     "/v1/subjects/{subject_id}/outline": {
