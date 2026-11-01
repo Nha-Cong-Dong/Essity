@@ -228,6 +228,8 @@ def test_t210_settings_give_the_task_table_a_priced_model(monkeypatch: pytest.Mo
         "grade_practice": MODEL,
         "draft_answer": MODEL,
         "parse_question_bank": MODEL,
+        "generate_like": MODEL,
+        "judge_questions": MODEL,
     }
 
 

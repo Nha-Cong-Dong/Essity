@@ -171,6 +171,8 @@ class StatsRepository(UserScopedRepository[MemoryState]):
                 Question.status == "active",
                 Question.quality_status == "ok",
                 Question.source.in_(_BANK_SOURCES),
+                # A generated candidate is a practice question only once kept (T9.6b, AC5).
+                (Question.source != "generated") | Question.kept_at.is_not(None),
             )
         ).all()
         out: dict[uuid.UUID, list[BankQuestion]] = {}

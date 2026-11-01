@@ -8,7 +8,13 @@ from core_api.db.models.grade_job import GradeJob
 from core_api.db.models.outbox import Outbox
 from core_api.db.models.practice import PracticeLog, PracticeState
 from core_api.db.models.processed_event import ProcessedEvent
-from core_api.db.models.question import Question, QuestionSection, QuestionType, QuestionUnit
+from core_api.db.models.question import (
+    Question,
+    QuestionGeneration,
+    QuestionSection,
+    QuestionType,
+    QuestionUnit,
+)
 from core_api.db.models.review import (
     Attempt,
     Grade,
@@ -58,6 +64,7 @@ __all__ = [
     "PracticeState",
     "ProcessedEvent",
     "Question",
+    "QuestionGeneration",
     "QuestionSection",
     "QuestionType",
     "QuestionUnit",

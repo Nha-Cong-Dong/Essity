@@ -398,6 +398,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/generated-questions/{question_id}/keep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Keep
+         * @description Đưa vào luyện tập: the question becomes a practice question (its schedule starts at the
+         *     first attempt, T8.3). Keeping twice keeps the first time.
+         */
+        post: operations["keep_v1_generated_questions__question_id__keep_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/generated-questions/{question_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject
+         * @description Không giữ: retired and marked rejected; its text stays in the duplicate checks, so it is
+         *     never suggested again. A kept question is removed by `worthless`, not here.
+         */
+        post: operations["reject_v1_generated_questions__question_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/grades/{grade_id}/override": {
         parameters: {
             query?: never;
@@ -926,6 +968,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/generated-questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Waiting Candidates */
+        get: operations["waiting_candidates_v1_subjects__subject_id__generated_questions_get"];
+        put?: never;
+        /** Generate Questions */
+        post: operations["generate_questions_v1_subjects__subject_id__generated_questions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects/{subject_id}/outline": {
         parameters: {
             query?: never;
@@ -1223,6 +1283,24 @@ export interface components {
             /** Subject Name */
             subject_name: string;
         };
+        /** CandidateOut */
+        CandidateOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Label
+             * @default Câu sinh thêm
+             * @constant
+             */
+            label: "Câu sinh thêm";
+            /** Prompt */
+            prompt: string;
+            /** Type Id */
+            type_id: string | null;
+        };
         /** CardRange */
         CardRange: {
             /** Basis Assumed File */
@@ -1412,6 +1490,30 @@ export interface components {
             sha256: string;
             /** Size Bytes */
             size_bytes: number;
+        };
+        /**
+         * GenerateIn
+         * @description Exactly one target.
+         */
+        GenerateIn: {
+            /** Question Id */
+            question_id?: string | null;
+            /** Section Id */
+            section_id?: string | null;
+            /** Type Id */
+            type_id?: string | null;
+        };
+        /** GeneratedSetOut */
+        GeneratedSetOut: {
+            /** Candidates */
+            candidates: components["schemas"]["CandidateOut"][];
+            /** Message */
+            message: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "empty" | "pending_ai" | "failed" | "running";
         };
         /** GridCellOut */
         GridCellOut: {
@@ -3246,6 +3348,64 @@ export interface operations {
             };
         };
     };
+    keep_v1_generated_questions__question_id__keep_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_v1_generated_questions__question_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     override_v1_grades__grade_id__override_post: {
         parameters: {
             query?: never;
@@ -4209,6 +4369,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    waiting_candidates_v1_subjects__subject_id__generated_questions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_questions_v1_subjects__subject_id__generated_questions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneratedSetOut"];
                 };
             };
             /** @description Validation Error */

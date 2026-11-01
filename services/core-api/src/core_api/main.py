@@ -10,6 +10,7 @@ from core_api.api import (
     documents,
     drafts,
     export,
+    generated_questions,
     grades,
     health,
     me,
@@ -76,6 +77,7 @@ app.include_router(attempts.router)
 app.include_router(grades.router)
 app.include_router(practice.router)
 app.include_router(practice_types.router)
+app.include_router(generated_questions.router)
 app.include_router(units.router)
 app.include_router(sessions.router)
 app.include_router(session_confirm.router)

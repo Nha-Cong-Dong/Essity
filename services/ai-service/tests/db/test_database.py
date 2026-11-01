@@ -18,7 +18,8 @@ from ai_service.db.models import LlmCall, PipelineRun
 
 TABLES = {"pipeline_run", "llm_call", "processed_event"}
 T83_TASKS = ["grade_practice", "draft_answer", "parse_question_bank"]
-T83_TASKS_SQL = ", ".join(f"'{task}'" for task in T83_TASKS)
+T96_TASKS = ["generate_like", "judge_questions"]
+T83_TASKS_SQL = ", ".join(f"'{task}'" for task in [*T83_TASKS, *T96_TASKS])
 
 
 def table_names(engine: Engine) -> set[str]:
@@ -201,6 +202,18 @@ def test_t77_draft_units_and_read_notes_tasks_are_accepted(engine: Engine, task:
 @pytest.mark.parametrize("task", T83_TASKS)
 def test_t7m3_practice_and_bank_tasks_are_accepted(engine: Engine, task: str) -> None:
     # Red when: migration 0009 or the model leaves the task out of the task CHECKs.
+    with Session(engine) as session:
+        run = new_run(task=task)
+        session.add(run)
+        session.flush()
+        session.add(new_call(run, task=task))
+        session.flush()
+        session.rollback()
+
+
+@pytest.mark.parametrize("task", T96_TASKS)
+def test_t96b_generated_question_tasks_are_accepted(engine: Engine, task: str) -> None:
+    # Red when: migration 0010 or the model leaves the task out of the task CHECKs.
     with Session(engine) as session:
         run = new_run(task=task)
         session.add(run)

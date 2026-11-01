@@ -67,6 +67,8 @@ class Settings(DatabaseSettings):
             "grade_practice": "claude-haiku-5-5",
             "draft_answer": "claude-haiku-5-5",
             "parse_question_bank": "claude-haiku-5-5",
+            "generate_like": "claude-haiku-5-5",
+            "judge_questions": "claude-haiku-5-5",
         },
         validate_default=True,
     )

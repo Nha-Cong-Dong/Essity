@@ -6,6 +6,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from ai_service.api import (
     extract_session,
+    generate_like,
     grade,
     health,
     parse_command,
@@ -20,9 +21,11 @@ from ai_service.llm.quota import DbQuotaGuard, QuotaLimits
 from ai_service.logging import configure_logging, log_requests
 from ai_service.security import require_service_token
 from ai_service.tasks import extract_session as extract_task
+from ai_service.tasks import generate_like as generate_like_task
 from ai_service.tasks import grade_practice as grade_practice_task
 from ai_service.tasks import parse_command as parse_task
 from ai_service.tasks.grade import fake_grade, load_prompt
+from ai_service.tasks.like_run import fake_generate_like, fake_judge_questions
 from ai_service.tasks.practice_run import fake_draft_answer, fake_grade_practice
 from ai_service.tasks.process_session import fake_questions
 from ai_service.telemetry import configure_tracing
@@ -38,6 +41,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     extract_task.load_prompt()
     parse_task.load_prompt()
     grade_practice_task.load_prompt()
+    generate_like_task.load_prompt(generate_like_task.GENERATE_TASK)
+    generate_like_task.load_prompt(generate_like_task.JUDGE_TASK)
     adapter = build_adapter(
         settings,
         {
@@ -46,6 +51,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             "parse_command": parse_task.fake_parse,
             "grade_practice": fake_grade_practice,
             "draft_answer": fake_draft_answer,
+            "generate_like": fake_generate_like,
+            "judge_questions": fake_judge_questions,
             "generate_questions": fake_questions,
         },
     )
@@ -87,6 +94,8 @@ def create_app() -> FastAPI:
     app.include_router(parse_command.router)
     parse_command.add_error_handlers(app)
     app.include_router(practice.router)
+    app.include_router(generate_like.router)
+    generate_like.add_error_handlers(app)
     app.include_router(review_question.router)
     # Outermost middleware: continues the trace started by core-api (W3C traceparent).
     FastAPIInstrumentor.instrument_app(

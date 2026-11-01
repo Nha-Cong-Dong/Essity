@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from core_api.clients.extract_contract import Clarify, ExtractAnswer, NoteOnly, Proposed
 from core_api.clients.grade_contract import GradeResponse
+from core_api.clients.like_contract import LikeReply
 from core_api.clients.practice_contract import DraftAnswerReply, PracticeGradeReply
 from core_api.clients.review_question_contract import ReviewQuestionReply
 from core_api.config import Settings
@@ -35,6 +36,8 @@ GRADE_CALL_SECONDS = 10.0
 GRADE_TOTAL_SECONDS = 20.0
 GRADE_MIN_RETRY_SECONDS = 3.0
 GRADE_CONNECT_SECONDS = 2.0
+# Generate then judge, two model calls inside ai-service (its own deadline is 20 s): one try.
+LIKE_CALL_SECONDS = 25.0
 
 # The /v1/extract-session leg (T4.12): one try, connecting capped at 1 s, no retry.
 EXTRACT_CONNECT_SECONDS = 1.0
@@ -208,16 +211,24 @@ class AiServiceClient:
         """POST /v1/review-question, once (T7.9): the review question of one saved card."""
         return self._practice("/v1/review-question", payload, ReviewQuestionReply)
 
-    def _practice[R: (PracticeGradeReply, DraftAnswerReply, ReviewQuestionReply)](
-        self, path: str, payload: Mapping[str, object], reply: type[R]
+    def generate_like(self, payload: Mapping[str, object]) -> LikeReply | NotGraded:
+        """POST /v1/generate-like, once (T9.6b): generate and judge happen inside ai-service.
+        Never raises for ai-service's answers and never retries (US-17 AC6)."""
+        return self._practice("/v1/generate-like", payload, LikeReply, seconds=LIKE_CALL_SECONDS)
+
+    def _practice[R: (PracticeGradeReply, DraftAnswerReply, ReviewQuestionReply, LikeReply)](
+        self,
+        path: str,
+        payload: Mapping[str, object],
+        reply: type[R],
+        *,
+        seconds: float = GRADE_CALL_SECONDS,
     ) -> R | NotGraded:
         try:
             response = self._http.post(
                 path,
                 json=dict(payload),
-                timeout=httpx2.Timeout(
-                    GRADE_CALL_SECONDS, connect=min(GRADE_CONNECT_SECONDS, GRADE_CALL_SECONDS)
-                ),
+                timeout=httpx2.Timeout(seconds, connect=min(GRADE_CONNECT_SECONDS, seconds)),
             )
         except httpx2.TimeoutException:
             return _failed("unavailable", "timeout", None)
