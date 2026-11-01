@@ -43,6 +43,12 @@ _log = logging.getLogger(__name__)
 Grading = Literal["graded", "pending", "failed", "in_progress"]
 MAX_RUBRIC_IDEAS = 8
 MAX_DRAFT_CARDS = 6
+# ai-service's limits (grade_practice.py): beyond them it answers 422 for good, so core refuses
+# first and spends no turn.
+MAX_QUESTION_CHARS = 1000
+MAX_IDEA_CHARS = 400
+MAX_REFERENCE_CHARS = 1500
+MAX_ANSWER_CHARS = 8000
 
 
 class PracticeAi(Protocol):
@@ -81,7 +87,9 @@ def rubric_of(question: Question) -> list[str] | None:
     ideas = [item.strip() for item in raw if isinstance(item, str) and item.strip()]  # pyright: ignore[reportUnknownVariableType]
     if not ideas or len(ideas) != len(raw):  # pyright: ignore[reportUnknownArgumentType]
         return None
-    return ideas[:MAX_RUBRIC_IDEAS]
+    if len(ideas) > MAX_RUBRIC_IDEAS or any(len(i) > MAX_IDEA_CHARS for i in ideas):
+        return None  # never cut: the overall would be judged on part of the rubric
+    return ideas
 
 
 def standard_answer(question: Question) -> str | None:
@@ -238,7 +246,12 @@ def grade_practice_attempt(
         )
         return PracticeOutcome("graded", grade)
     reference = standard_answer(question)
-    if ideas is None or reference is None or not attempt.answer_text.strip():
+    too_long = (
+        len(question.prompt) > MAX_QUESTION_CHARS
+        or (reference is not None and len(reference) > MAX_REFERENCE_CHARS)
+        or len(attempt.answer_text) > MAX_ANSWER_CHARS
+    )
+    if ideas is None or reference is None or too_long or not attempt.answer_text.strip():
         return PracticeOutcome("failed", failure="not_ready")  # fail closed, no AI call
     if not may_call_ai():
         return PracticeOutcome("pending")

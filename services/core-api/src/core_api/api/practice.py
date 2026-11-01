@@ -36,6 +36,7 @@ from core_api.repositories.subject import SubjectNotFoundError, SubjectRepositor
 from core_api.security.rate_limit import RateLimitedError, RateLimiterUnavailableError
 from core_api.services.practice import remove
 from core_api.services.practice_grading import (
+    MAX_ANSWER_CHARS,
     GradeBusyError,
     GradeNotCurrentError,
     GradeNotFoundError,
@@ -229,6 +230,8 @@ def submit_attempt(
     if attempt.status != "submitted":
         if not body.dont_remember and not body.answer_text.strip():
             raise _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "answer_empty")
+        if len(body.answer_text) > MAX_ANSWER_CHARS:
+            raise _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "answer_too_long")
         ideas = rubric_of(question)
         try:
             PracticeAttemptRepository(session, user.id).submit(

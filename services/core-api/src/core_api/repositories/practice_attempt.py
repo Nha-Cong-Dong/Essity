@@ -67,11 +67,16 @@ class PracticeAttemptRepository(AppendOnlyRepository[Attempt]):
             )
             .returning(Attempt.id)
         ).scalar_one_or_none()
-        found = self.session.scalars(
+        found = self._open_one(question_id)
+        if found is None:  # the other tab submitted between our insert and read: ours is new
+            return self.open_draft(question_id, now)
+        return found, made is not None
+
+    def _open_one(self, question_id: uuid.UUID) -> Attempt | None:
+        return self.session.scalars(
             self._select().where(Attempt.question_id == question_id, Attempt.status == "draft"),
             execution_options={"populate_existing": True},
-        ).one()
-        return found, made is not None
+        ).one_or_none()
 
     def save_draft(self, id: uuid.UUID, *, answer_text: str, dont_remember: bool) -> None:
         self._change_draft(id, answer_text=answer_text, dont_remember=dont_remember)

@@ -305,6 +305,8 @@ def test_override_appends_a_log_row_and_rebuilds_without_touching_cards(
     assert response.status_code == 200, response.text
     assert response.json()["result"]["overall"] == "incorrect"
     assert count(db_session, PracticeLog) == 2 and count(db_session, Grade) == 2
+    ratings = list(db_session.scalars(select(PracticeLog.rating).order_by(PracticeLog.seq)))
+    assert ratings[1] == 1  # AGAIN: the override is the verdict the log carries
     assert (count(db_session, ReviewLog), count(db_session, MemoryState)) == cards
     state = db_session.scalars(select(PracticeState)).one()
     assert state.step is not None or state.stability > 0  # rebuilt from the effective log
@@ -481,3 +483,26 @@ def test_export_skips_practice_attempts_and_stats_counts_them(
     assert list(export_rows(db_session)) == []
     events = StatsRepository(db_session, learner.user.id).events()
     assert sum(e.questions_answered for e in events) == 1
+
+
+def test_limits_are_checked_in_core_without_a_call(
+    learner: Learner, db_session: Session, ai: FakeAi
+) -> None:
+    # Review T5. Red when: a too-long reference/rubric reaches ai-service (a 422 forever), or a
+    # rubric of more than 8 ideas is cut, or a too-long answer is not told to the learner.
+    for fields in (
+        {"answer_text": "x" * 1501},
+        {"rubric": [f"ý {n}" for n in range(9)]},
+        {"rubric": ["y" * 401]},
+    ):
+        body = learner.submit(learner.open(learner.question(**fields))["attempt_id"])
+        assert (body["grading"], body["failure"]) == ("failed", "not_ready")
+    assert ai.graded == []
+    attempt = learner.open(learner.question())["attempt_id"]
+    response = learner.client.post(
+        f"/v1/practice/attempts/{attempt}/submit",
+        json={"answer_text": "z" * 8001, "dont_remember": False},
+        headers=learner.headers,
+    )
+    assert (response.status_code, response.json()["detail"]) == (422, "answer_too_long")
+    assert count(db_session, Grade) == 0
