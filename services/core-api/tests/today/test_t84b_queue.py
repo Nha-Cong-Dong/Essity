@@ -5,11 +5,13 @@ ai-service is a fake: nothing here calls a model."""
 
 import json
 import uuid
+from datetime import timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from test_t84_practice_api import FakeAi, Learner, ai, count, learner  # noqa: F401
 
+from clock import FROZEN_NOW
 from core_api.clients.ai_client import NotGraded
 from core_api.db.models import Grade, GradeJob, PracticeLog
 from core_api.handlers.grade_completed import OnGradeCompleted
@@ -130,3 +132,20 @@ def test_grade_completed_ignores_a_practice_attempt_and_keeps_its_job(
     [row] = jobs(db_session)
     assert (row.status, row.request_key) == ("queued", "")
     assert count(db_session, Grade) == 0
+
+
+def test_regrade_of_a_failed_job_starts_its_age_again(
+    learner: Learner, db_session: Session, ai: FakeAi
+) -> None:
+    # Review Y-T2. Red when: a failed job asked again keeps its old created_at, so the next run of
+    # the job gives it up at once as "older than the limit".
+    attempt = learner.open(learner.question())["attempt_id"]
+    ai.verdicts = NotGraded("invalid", "bad")
+    learner.submit(attempt)
+    [row] = jobs(db_session)
+    row.created_at = FROZEN_NOW - timedelta(days=30)
+    db_session.flush()
+    ai.verdicts = NotGraded("quota", "quota_hard_cap")
+    assert regrade(learner, attempt)["grading"] == "pending"
+    [row] = jobs(db_session)
+    assert row.status == "queued" and row.created_at == FROZEN_NOW

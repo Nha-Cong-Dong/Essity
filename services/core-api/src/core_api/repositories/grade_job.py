@@ -30,6 +30,8 @@ class GradeJobRepository(UserScopedRepository[GradeJob]):
                 )
             )
         else:
+            if job.status == "failed":
+                job.created_at = now  # asked again: its age (the retry job's limit) starts over
             job.status, job.failure = "queued", None
             job.request_key, job.updated_at = request_key, now
         self.session.flush()
