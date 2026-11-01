@@ -12,7 +12,11 @@ from core_api.domain.scheduling.rating import Verdict
 from core_api.repositories.auth_session import AuthSessionRepository
 from core_api.repositories.practice_attempt import PracticeAttemptRepository
 from core_api.repositories.question import QuestionUnitRepository
-from core_api.repositories.review import GradeRepository
+from core_api.repositories.review import (
+    AttemptRepository,
+    GradeRepository,
+    ReviewSessionRepository,
+)
 from v2_rows import RUN, make_question, make_subject, make_type, make_unit
 
 T0 = datetime(2026, 10, 1, 8, 0, tzinfo=UTC)
@@ -106,7 +110,23 @@ def test_review_attempts_do_not_count(  # US-16 AC9, AC11
     alice, _ = two_users
     h = headers_of(db_session, alice)
     subject = make_subject(db_session, alice)
-    make_type(db_session, alice, subject)
+    kind = make_type(db_session, alice, subject)
+    q = make_question(db_session, alice, subject, n=1, type_id=kind.id)
+    sessions = ReviewSessionRepository(db_session, alice.id)
+    sitting = sessions.start(T0.date(), T0)
+    attempts = AttemptRepository(db_session, alice.id)
+    attempt = attempts.create_draft(sitting.id, q.id)
+    attempts.submit(attempt.id, T0)
+    unit = unit_of(db_session, alice, q)
+    GradeRepository(db_session, alice.id).add_with_units(
+        attempt.id,
+        source="ai",
+        overall=Verdict.CORRECT,
+        understanding=None,
+        units={unit.id: Verdict.CORRECT},
+        run_id=RUN,
+    )
+    db_session.flush()
     assert get(client, h, subject)[0]["attempts_counted"] == 0
 
 
