@@ -45,6 +45,9 @@ def override_grade(session: Session, user: User, grade_id: uuid.UUID, choice: Ch
     grade = grades.get(grade_id)
     if grade is None:
         raise GradeNotFoundError(grade_id)
+    held = AttemptRepository(session, user.id).get(grade.attempt_id)
+    if held is None or held.review_session_id is None:
+        raise GradeNotFoundError(grade_id)  # a practice grade: `services.practice_grading`
     if not grades.try_lock_attempt(grade.attempt_id):
         raise GradeBusyError(grade.attempt_id)
     current = grades.latest_for_attempt(grade.attempt_id)
