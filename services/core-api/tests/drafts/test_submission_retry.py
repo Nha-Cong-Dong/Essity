@@ -7,7 +7,7 @@ from draft_world import NOW, World
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core_api.db.models import NoteFile, Outbox, User
+from core_api.db.models import NoteFile, Outbox, StudySession, User
 from core_api.handlers.session_result_v2 import OnSubmissionProcessed, on_submission_failed
 from core_api.jobs.submission_retry import MAX_RETRIES, delay_after, retry_pending_ai
 from fake_storage import FakeStorage
@@ -128,3 +128,52 @@ def test_a_key_without_a_note_row_of_this_session_is_not_sent(world: World) -> N
     ]
     world.db.flush()
     assert retry_pending_ai(world.db, NOW)["unsendable"] == 1
+
+
+def test_o1_a_deleted_account_is_never_sent_again(world: World) -> None:
+    # Red when: the job re-sends a deleted user's notes to ai-service and the model (fail closed).
+    park(world)
+    world.user.deleted_at = NOW
+    world.db.flush()
+    assert retry_pending_ai(world.db, NOW)["unsendable"] == 1
+    assert sent(world) == [] and world.submission.status == "failed"
+
+
+def test_o1_a_deleted_subject_is_never_sent_again(world: World) -> None:
+    # Red when: a submission of a deleted subject is retried and then sticks in `queued`.
+    park(world)
+    world.subject.deleted_at = NOW
+    world.db.flush()
+    assert retry_pending_ai(world.db, NOW)["unsendable"] == 1
+    assert sent(world) == [] and world.submission.status == "failed"
+
+
+def test_y1_note_rows_of_another_session_or_user_do_not_count(
+    world: World, two_users: tuple[User, User]
+) -> None:
+    # Red when: the lookup drops its user_id or session_id condition.
+    park(world, with_file=False)
+    key = f"users/{world.user.id}/sessions/{world.study.id}/notes/{'c' * 64}.png"
+    world.submission.file_keys = [key]
+    other = StudySession(
+        user_id=world.user.id,
+        subject_id=world.subject.id,
+        description_raw="khác",
+        extraction="proposed",
+        status="draft",
+    )
+    world.db.add(other)
+    world.db.flush()
+    world.db.add(
+        NoteFile(
+            user_id=world.user.id,
+            session_id=other.id,
+            object_key=f"users/{world.user.id}/sessions/{other.id}/notes/{'c' * 64}.png",
+            sha256="c" * 64,
+            mime="image/png",
+            size_bytes=10,
+        )
+    )
+    world.db.flush()
+    assert retry_pending_ai(world.db, NOW)["unsendable"] == 1
+    assert sent(world) == []

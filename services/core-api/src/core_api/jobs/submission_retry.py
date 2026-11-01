@@ -10,7 +10,8 @@ ai-service again, with a growing delay and a bound.
   the session stays open all the while (AC10).
 - Idempotent: a repeat run finds the rows already `queued`, or not yet due, and does nothing. A
   result that lands anyway is written once (draft_key), and an ended submission is never revived.
-- A submission whose files are gone cannot be sent: it ends as `failed`.
+- A submission whose files, subject or account are gone cannot be sent (a deleted account's notes
+  never go to the model again): it ends as `failed`.
 
 Logs hold ids and counts, never a key (ADR-0013). Runs every 10 minutes.
 """
@@ -24,10 +25,11 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from core_api.db.engine import get_engine
-from core_api.db.models import NoteFile, StudySession, Submission
+from core_api.db.models import NoteFile, StudySession, Submission, User
 from core_api.jobs.handler import periodic_job
 from core_api.messaging.envelope import SubmissionCreated, SubmissionFile
 from core_api.messaging.outbox import enqueue_event
+from core_api.repositories.subject import SubjectRepository
 
 SUBMISSION_RETRY = "submission_retry"
 MAX_RETRIES = 6
@@ -69,7 +71,15 @@ def retry_pending_ai(session: Session, now: datetime) -> dict[str, int]:
             continue
         study = session.get(StudySession, row.session_id)
         files = _files(session, row)
-        if study is None or study.user_id != row.user_id or not files:
+        user = session.get(User, row.user_id)
+        gone = user is None or user.deleted_at is not None
+        if (
+            gone
+            or study is None
+            or study.user_id != row.user_id
+            or SubjectRepository(session, row.user_id).get(study.subject_id) is None
+            or not files
+        ):
             _end(row, now)
             counts["unsendable"] += 1
             continue
