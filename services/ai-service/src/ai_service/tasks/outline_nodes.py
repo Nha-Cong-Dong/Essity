@@ -16,7 +16,7 @@ MAX_NODES = 2000
 MAX_LEVEL = 3
 
 Unit = Literal["est_page", "slide"]
-Source = Literal["headings", "sections", "slides", "chunk10"]
+Source = Literal["headings", "sections", "slides", "llm_toc", "chunk10"]
 
 
 @dataclass(frozen=True)
