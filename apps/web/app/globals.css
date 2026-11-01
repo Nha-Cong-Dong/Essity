@@ -437,6 +437,12 @@
     /* The sticky header never hides the focused element (WCAG 2.4.11). */
     scroll-padding-top: calc(var(--header-h) + 8px);
   }
+  /* Under 480px the nav sits on its own 48px row below the logo row (T9.5, three nav items). */
+  @media (max-width: 479px) {
+    html {
+      scroll-padding-top: calc(var(--header-h) + 48px + 8px);
+    }
+  }
   body {
     @apply bg-bg text-ink text-body;
   }
