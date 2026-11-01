@@ -109,6 +109,8 @@ export function MentionBox({ value, mentions, docs, onChange, say, rejectedDoc, 
 
   const describedBy = [problem ? `${id}-problem` : null, rejectedDoc ? `${id}-rejected` : null].filter(Boolean).join(" ");
   const rejected = mentions.find((m) => m.docId === rejectedDoc);
+  // T7.12: the same document chosen twice is allowed (two sections of one book); say once how it reads.
+  const repeated = [...new Set(mentions.filter((m, i) => mentions.findIndex((x) => x.docId === m.docId) !== i).map((m) => m.name))];
   const message = !open
     ? ""
     : options.length > 0
@@ -202,6 +204,11 @@ export function MentionBox({ value, mentions, docs, onChange, say, rejectedDoc, 
             </li>
           ))}
         </ul>
+      )}
+      {repeated.length > 0 && (
+        <p className="m-0 text-meta text-ink-soft">
+          {repeated.join(", ")} có mặt nhiều lần. Mỗi chỗ @ được hiểu riêng theo phần viết sau nó.
+        </p>
       )}
       {rejected && (
         <FieldError id={`${id}-rejected`}>

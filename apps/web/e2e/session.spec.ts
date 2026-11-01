@@ -56,7 +56,7 @@ for (const width of WIDTHS) {
       });
     }
 
-    // US-02 AC14. Red when: the one primary button or "Thêm thẻ" falls outside the column, or the two
+    // US-02 AC14 and US-02b AC6 (the save row; after Lưu two equal buttons). Red when: the one primary button or "Thêm thẻ" falls outside the column, or the two
     // buttons after Lưu differ in size (they are equals: no primary, nothing pushes the learner).
     test("review: the save row stays in the column; after saving the two buttons are equals", async ({ page }) => {
       await open(page, width, "20 thẻ");
@@ -74,7 +74,7 @@ for (const width of WIDTHS) {
       expect(Math.abs(a.width - b.width)).toBeLessThan(width < 481 ? 1 : 80);
     });
 
-    // US-02 AC13 (files). Red when: a file row's state text runs over its remove button.
+    // US-02 AC2 (files). Red when: a file row's state text runs over its remove button.
     test("files: every row stays inside the column", async ({ page }) => {
       await open(page, width, "Có file");
       const main = page.locator("main");
@@ -88,7 +88,7 @@ for (const width of WIDTHS) {
 test.describe("keyboard", () => {
   test.beforeEach(async ({ page }) => open(page, 390, undefined, false));
 
-  // US-02 AC2, AC3. Red when: @ no longer opens the list, ↓ + Enter does not choose, or the chosen document is not
+  // US-02 AC2, AC3 (the @ list). Red when: @ no longer opens the list, ↓ + Enter does not choose, or the chosen document is not
   // shown as a chip (US-02 AC2: a reference is exact, never guessed).
   test("@ opens the documents, arrows and Enter choose one, Esc closes", async ({ page }) => {
     const field = page.getByRole("combobox");
@@ -115,7 +115,7 @@ test.describe("keyboard", () => {
     await expect(field).not.toBeFocused();
   });
 
-  // US-02 AC6 (user edits kept). Red when: a card cannot be opened and closed from the keyboard, or its text is lost.
+  // US-02b AC6 (user edits kept). Red when: a card cannot be opened and closed from the keyboard, or its text is lost.
   test("a card is edited from the keyboard and what was typed stays", async ({ page }) => {
     await page.getByRole("button", { name: "Duyệt thẻ", exact: true }).click();
     const edit = page.getByRole("button", { name: "Sửa thẻ Cửa sổ trượt" });
@@ -129,7 +129,7 @@ test.describe("keyboard", () => {
     await expect(page.getByRole("button", { name: "Sửa thẻ Cửa sổ trượt" })).toContainText("Thêm ý mới.");
   });
 
-  // US-02 AC8 (discard = retired, undo). Red when: discarding asks for confirmation, loses the card, or Hoàn tác does not bring it back.
+  // US-02b AC6, AC8 (discard = retired, undo). Red when: discarding asks for confirmation, loses the card, or Hoàn tác does not bring it back.
   test("Bỏ thẻ is one tap and Hoàn tác restores it", async ({ page }) => {
     await page.getByRole("button", { name: "Duyệt thẻ", exact: true }).click();
     await page.getByRole("button", { name: "Bỏ thẻ" }).first().click();

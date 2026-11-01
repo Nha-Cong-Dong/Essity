@@ -36,7 +36,7 @@ function fakeFetch(reply: (url: string, init: RequestInit) => Response) {
 }
 
 describe("toDraft", () => {
-  // US-02 AC5. Red when: where the card was seen (notebook, textbook, both) is lost, or an anchor
+  // US-02b AC5. Red when: where the card was seen (notebook, textbook, both) is lost, or an anchor
   // loses its document name or page.
   it("maps a card, its anchors and where it was seen", () => {
     const draft = toDraft(core(), DOCS);
@@ -47,7 +47,7 @@ describe("toDraft", () => {
     expect(toDraft(core({ anchors: [core().anchors[0]] }), DOCS).source).toBe("document");
   });
 
-  // US-02b AC7. Red when: a card the learner edited still says "ai".
+  // US-02b AC6, AC9. Red when: a card the learner edited still says "ai".
   it("marks a card the learner wrote as theirs", () => {
     const edited = core({ revisions: [{ rev: 0, origin: "ai", content: {} }, { rev: 1, origin: "user", content: {} }] });
     expect(toDraft(edited, DOCS).origin).toBe("user");
@@ -56,7 +56,7 @@ describe("toDraft", () => {
 });
 
 describe("readStatus", () => {
-  // US-02 AC11. Red when: a status core-api sends has no phase on the screen.
+  // US-02 AC11, AC15. Red when: a status core-api sends has no phase on the screen.
   it.each([
     ["queued", "queued"],
     ["processing", "processing"],

@@ -130,7 +130,7 @@ describe("draft routes (T7.12)", () => {
     expect(calls).toHaveLength(3);
   });
 
-  // US-02b AC8. Red when: split loses If-Match or the parts.
+  // US-02b AC6. Red when: split loses If-Match or the parts.
   it("split sends If-Match and the parts", async () => {
     const calls = fakeCoreApi(() => Response.json({ drafts: [], submission_status: null }));
     const parts = [

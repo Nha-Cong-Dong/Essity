@@ -31,7 +31,11 @@ export type DraftAction =
   | { type: "append-ai"; drafts: Draft[] }
   | { type: "clear" }
   | { type: "conflict"; id: string; mine: string }
-  | { type: "reload"; draft: Draft };
+  | { type: "reload"; draft: Draft }
+  /** T7.12: core-api took a card: its id (a card added here gets a real one) and its new version. */
+  | { type: "synced"; id: string; to: string; version: number }
+  /** T7.12: core-api answered a merge or split: these cards stand where the first of `ids` was. */
+  | { type: "replace"; ids: string[]; drafts: Draft[] };
 
 export type SplitPart = { id: string; title: string; summary: string };
 
@@ -92,6 +96,14 @@ export function draftsReducer(drafts: Draft[], action: DraftAction): Draft[] {
       return drafts.map((d) => (d.id === action.id ? { ...d, conflict: { mine: action.mine } } : d));
     case "reload":
       return drafts.map((d) => (d.id === action.draft.id ? { ...action.draft, conflict: null } : d));
+    case "synced":
+      return drafts.map((d) => (d.id === action.id ? { ...d, id: action.to, version: action.version } : d));
+    case "replace": {
+      const at = drafts.findIndex((d) => action.ids.includes(d.id));
+      if (at < 0) return drafts;
+      const rest = drafts.filter((d) => !action.ids.includes(d.id));
+      return [...rest.slice(0, at), ...action.drafts, ...rest.slice(at)];
+    }
   }
 }
 

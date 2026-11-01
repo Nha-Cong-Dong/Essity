@@ -1,14 +1,15 @@
 "use client";
 
-import { type Dispatch, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { PARTIAL_NOTE } from "@/lib/fixtures/session-study";
-import { type Draft, type DraftAction, savableCount } from "@/lib/session-study/drafts";
+import { type Draft, savableCount } from "@/lib/session-study/drafts";
 
 import { DraftCard } from "./session-draft-card";
+import type { Act } from "./use-live-session";
 import { Notice } from "./session-parts";
 
 // T7.12a (US-02 AC4-AC8; DESIGN.md §6.7 vùng 4; design decisions C9, C12, C16, C18): the scope that
@@ -87,6 +88,7 @@ function ScopeBlock({ rows }: { rows: ScopeRow[] }) {
 export function ReviewArea({
   drafts,
   dispatch,
+  sections,
   scope,
   partialNote,
   saveError,
@@ -99,7 +101,9 @@ export function ReviewArea({
   say,
 }: {
   drafts: Draft[];
-  dispatch: Dispatch<DraftAction>;
+  dispatch: Act;
+  /** Outline sections a card can be filed under; none = the picker is not shown (T7.12). */
+  sections?: string[];
   scope: ScopeRow[];
   partialNote: boolean;
   saveError: boolean;
@@ -163,13 +167,14 @@ export function ReviewArea({
               dispatch={dispatch}
               mergeFrom={mergeFrom}
               onMergeStart={setMergeFrom}
-              onMergeInto={(targetId) => {
+              onMergeInto={async (targetId) => {
                 if (mergeFrom) {
-                  dispatch({ type: "merge", sourceId: mergeFrom, targetId });
-                  say("Đã gộp hai thẻ");
+                  const done = await dispatch({ type: "merge", sourceId: mergeFrom, targetId });
+                  if (done !== false) say("Đã gộp hai thẻ");
                 }
                 setMergeFrom(null);
               }}
+              sections={sections}
               newId={newId}
               onReload={onReload}
               startEditing={draft.id === justAdded}
