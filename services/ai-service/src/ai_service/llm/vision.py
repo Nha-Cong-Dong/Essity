@@ -12,6 +12,9 @@ from typing import Literal
 from PIL import Image, ImageOps
 
 MAX_LONG_SIDE = 1400
+# The advanced path (T9.8: small text, tables, text formulas) keeps more pixels and a better JPEG.
+ADVANCED_LONG_SIDE = 2400
+ADVANCED_JPEG_QUALITY = 92
 MAX_PIXELS = 40_000_000
 MAX_BYTES = 15_000_000
 JPEG_QUALITY = 85
@@ -26,8 +29,9 @@ class ImageRejected(Exception):
         self.code: ImageErrorCode = code
 
 
-def shrink(data: bytes) -> bytes:
-    """JPEG bytes of the image, long side at most `MAX_LONG_SIDE`."""
+def shrink(data: bytes, *, advanced: bool = False) -> bytes:
+    """JPEG bytes of the image, long side at most `MAX_LONG_SIDE` (`ADVANCED_LONG_SIDE` when
+    `advanced`: the same checks and refusals, more pixels kept, contrast stretched)."""
     if len(data) > MAX_BYTES:
         raise ImageRejected("too_large")
     try:
@@ -42,9 +46,12 @@ def shrink(data: bytes) -> bytes:
         raise
     except Exception:  # Pillow's own errors name the file; the code is enough
         raise ImageRejected("not_an_image") from None
-    rgb.thumbnail((MAX_LONG_SIDE, MAX_LONG_SIDE), Image.Resampling.LANCZOS)
+    side = ADVANCED_LONG_SIDE if advanced else MAX_LONG_SIDE
+    rgb.thumbnail((side, side), Image.Resampling.LANCZOS)
+    if advanced:
+        rgb = ImageOps.autocontrast(rgb)
     out = io.BytesIO()
-    rgb.save(out, format="JPEG", quality=JPEG_QUALITY)
+    rgb.save(out, format="JPEG", quality=ADVANCED_JPEG_QUALITY if advanced else JPEG_QUALITY)
     return out.getvalue()
 
 

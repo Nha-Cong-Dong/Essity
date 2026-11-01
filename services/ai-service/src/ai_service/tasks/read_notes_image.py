@@ -35,6 +35,12 @@ _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
 MAX_IMAGES = 20
 MAX_IMAGE_TEXT_CHARS = 20_000
 USER_LINE = "Transcribe the image."
+# T9.8: for small text, tables and text formulas; same schema, same untrusted handling.
+USER_LINE_ADVANCED = (
+    "Transcribe the image carefully. It may hold small text, a table or a formula written as "
+    "text: keep every cell of a table as a row with ' | ' between cells, and keep formulas "
+    "exactly as written."
+)
 
 SkipReason = Literal["no_text", "truncated", "unreadable"]
 
@@ -103,28 +109,33 @@ def system_prompt() -> str:
     return (_PROMPTS / TASK / f"{PROMPT_VERSION}.md").read_text("utf-8")
 
 
-def cache_key(raw: bytes) -> str:
-    return f"{hashlib.sha256(raw).hexdigest()}-{PROMPT_VERSION}"
+def cache_key(raw: bytes, *, advanced: bool = False) -> str:
+    suffix = "-adv" if advanced else ""
+    return f"{hashlib.sha256(raw).hexdigest()}-{PROMPT_VERSION}{suffix}"
 
 
 def read_images(
-    sources: list[ImageSource], ask: Callable[[ReadPrompt], str], cache: VisionCache
+    sources: list[ImageSource],
+    ask: Callable[[ReadPrompt], str],
+    cache: VisionCache,
+    *,
+    advanced: bool = False,
 ) -> NotesRead:
     out = NotesRead()
     for source in sources[:MAX_IMAGES]:
-        key = cache_key(source.data)
+        key = cache_key(source.data, advanced=advanced)
         cached = cache.get(key)
         if cached is not None:
             out.parts.append(NotePart(source.ref, cached))
             continue
         try:
-            jpeg = shrink(source.data)
+            jpeg = shrink(source.data, advanced=advanced)
         except ImageRejected:
             out.skipped.append(NoteSkip(source.ref, "unreadable"))
             continue
         prompt = ReadPrompt(
             system=system_prompt(),
-            user=USER_LINE,
+            user=USER_LINE_ADVANCED if advanced else USER_LINE,
             image=ImagePart(data=jpeg, media_type="image/jpeg"),
             output_schema=OUTPUT_SCHEMA,
         )
