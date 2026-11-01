@@ -24,7 +24,9 @@ from core_api.api.ping import get_ai_client
 from core_api.api.review_sessions import AnswerText
 from core_api.clients.ai_client import AiServiceClient
 from core_api.db.models import Attempt, Grade, Question
+from core_api.db.models.grade_job import GRADE_JOB_FAILURES
 from core_api.db.session import DbSession
+from core_api.repositories.grade_job import GradeJobRepository
 from core_api.repositories.practice_attempt import (
     AttemptNotDraftError,
     AttemptNotFoundError,
@@ -132,7 +134,11 @@ def _view(
         elif grades.is_being_graded(attempt.id):
             outcome = PracticeOutcome("in_progress")
         else:
-            outcome = PracticeOutcome("pending")  # saved, waiting for a turn: "Chấm lại"
+            job = GradeJobRepository(session, user_id).for_attempt(attempt.id)
+            if job is not None and job.status == "queued":
+                outcome = PracticeOutcome("pending")  # saved, queued: graded when there is a turn
+            else:  # failed for good, or an old answer nothing queued: "Chấm lại"
+                outcome = PracticeOutcome("failed", failure=job.failure if job else "invalid")
     result = _result(question, outcome.grade) if outcome.grade is not None else None
     return PracticeView(
         attempt_id=attempt.id,
@@ -248,17 +254,22 @@ def submit_attempt(
         except AttemptNotDraftError:
             session.rollback()  # another request submitted it first: grade that one
     session.commit()  # the answer and its timing are kept, whatever grading does next
-    return _graded(session, user.id, attempt_id, ai, limiter)
+    return _graded(session, user.id, attempt_id, ai, limiter, now)
 
 
 @router.post("/attempts/{attempt_id}/regrade")
 def regrade_attempt(
-    attempt_id: uuid.UUID, user: VerifiedUser, session: DbSession, ai: Ai, limiter: Limiter
+    attempt_id: uuid.UUID,
+    user: VerifiedUser,
+    session: DbSession,
+    ai: Ai,
+    limiter: Limiter,
+    now: Now,
 ) -> PracticeView:
     """ "Chấm lại": grade a submitted answer that has no grade yet; a graded one is returned as it
     is, never paid for (or scheduled) twice."""
     _owned(session, user.id, attempt_id)
-    return _graded(session, user.id, attempt_id, ai, limiter)
+    return _graded(session, user.id, attempt_id, ai, limiter, now)
 
 
 @router.post("/grades/{grade_id}/override")
@@ -298,12 +309,34 @@ def _may_call(limiter: Limiter, user_id: uuid.UUID) -> bool:
     return True
 
 
+def record_queue(
+    session: DbSession,
+    user_id: uuid.UUID,
+    attempt_id: uuid.UUID,
+    outcome: PracticeOutcome,
+    now: dt.datetime,
+) -> None:
+    """Keep the attempt's `grade_job` row true to the outcome (T8.4b, US-05 AC14). Only the request
+    that holds the grading lock sees `pending` or `failed`, so rows are never raced. A queued
+    practice job has no file: the answer is in the attempt (`request_key` is empty)."""
+    jobs = GradeJobRepository(session, user_id)
+    if outcome.grading == "graded":
+        jobs.done(attempt_id)
+    elif outcome.grading == "pending":
+        jobs.queue(attempt_id, "", now)
+    elif outcome.grading == "failed":
+        failure = outcome.failure if outcome.failure in GRADE_JOB_FAILURES else "invalid"
+        jobs.queue(attempt_id, "", now)
+        jobs.fail(attempt_id, failure or "invalid", now)
+
+
 def _graded(
     session: DbSession,
     user_id: uuid.UUID,
     attempt_id: uuid.UUID,
     ai: Ai,
     limiter: Limiter,
+    now: dt.datetime,
 ) -> PracticeView:
     try:
         outcome = grade_practice_attempt(
@@ -313,5 +346,6 @@ def _graded(
         raise _error(status.HTTP_404_NOT_FOUND, "attempt_not_found") from error
     except AttemptNotDraftError as error:
         raise _error(status.HTTP_409_CONFLICT, "attempt_not_submitted") from error
+    record_queue(session, user_id, attempt_id, outcome, now)
     attempt, question = _owned(session, user_id, attempt_id)
     return _view(session, user_id, attempt, question, outcome)

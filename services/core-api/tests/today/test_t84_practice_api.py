@@ -29,6 +29,7 @@ from core_api.db.models import (
     ReviewLog,
 )
 from core_api.main import app
+from core_api.security.rate_limit import get_rate_limiter
 from core_api.repositories.practice_attempt import DraftContendedError, PracticeAttemptRepository
 from core_api.services import practice_grading
 
@@ -76,12 +77,23 @@ class FakeAi:
         )
 
 
+class Open:
+    """A limiter with turns to spare."""
+
+    def enforce(self, *_: object) -> None:
+        return None
+
+
 @pytest.fixture
 def ai() -> Iterator[FakeAi]:
     fake = FakeAi()
     app.dependency_overrides[get_ai_client] = lambda: fake
+    # Never the real Redis limiter (fail closed when it is slow): tests that need a limit
+    # override it after this fixture (the flaky out-of-turns test, T8.4 review).
+    app.dependency_overrides[get_rate_limiter] = lambda: Open()
     yield fake
     app.dependency_overrides.pop(get_ai_client, None)
+    app.dependency_overrides.pop(get_rate_limiter, None)
 
 
 class Learner:
