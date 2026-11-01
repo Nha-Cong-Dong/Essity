@@ -165,6 +165,18 @@ def test_t43_entry_that_is_not_utf8_goes_to_dead_letter(
     assert len(recorder.calls) == 1
 
 
+def test_t78_unit_saved_is_acked_and_skipped_until_its_contract_lands(
+    redis_client: Redis, names: Names, session_factory: sessionmaker[Session]
+) -> None:
+    # T7.8a/Y7. Red when: core's unit.saved.v1 (no contract here until T7.8b) reaches events.dead.
+    publish(redis_client, names.stream, {**uploaded(), "event_type": "unit.saved.v1"})
+    consumer = make_consumer(redis_client, names, session_factory, {DOCUMENT_UPLOADED: Recorder()})
+    consumer.ensure_group()
+    assert consumer.run_once() == ["skipped"]
+    assert dead_entries(redis_client, names) == []
+    assert redis_client.xpending(names.stream, names.group)["pending"] == 0
+
+
 def test_t43_unknown_event_type_dead_lettered(
     redis_client: Redis, names: Names, session_factory: sessionmaker[Session]
 ) -> None:
