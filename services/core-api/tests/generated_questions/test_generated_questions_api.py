@@ -210,10 +210,12 @@ def test_a_press_sends_the_studied_cards_and_stores_five_unkept_candidates(
             "Nêu được ý chính.",
             "Dùng đúng thẻ.",
         ]
-    linked = world.session.scalars(
-        select(QuestionUnit.unit_id).where(QuestionUnit.question_id == rows[0].id)
-    ).all()
-    assert list(linked) == [world.u1.id]
+    first_card = uuid.UUID(cards_of(payload)[0]["card_id"])
+    for row in rows:
+        linked = world.session.scalars(
+            select(QuestionUnit.unit_id).where(QuestionUnit.question_id == row.id)
+        ).all()
+        assert list(linked) == [first_card]
 
 
 def test_a_second_press_with_candidates_waiting_generates_nothing(
