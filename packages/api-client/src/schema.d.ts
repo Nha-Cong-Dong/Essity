@@ -1010,7 +1010,7 @@ export interface components {
             /** Grading */
             grading: ("graded" | "failed" | "in_progress") | null;
             question: components["schemas"]["QuestionRef"] | null;
-            result: components["schemas"]["core_api__api__attempts__ResultOut"] | null;
+            result: components["schemas"]["ResultOut"] | null;
             /**
              * Status
              * @enum {string}
@@ -1428,6 +1428,17 @@ export interface components {
             /** Temporary */
             temporary: boolean;
         };
+        /**
+         * OverrideIn
+         * @description "Thực ra tôi đúng" is `correct`, "Thực ra tôi sai" is `incorrect` (US-09 AC1).
+         */
+        OverrideIn: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "correct" | "incorrect";
+        };
         /** PingResponse */
         PingResponse: {
             /**
@@ -1440,6 +1451,35 @@ export interface components {
              * @enum {string}
              */
             core_api: "ok" | "unavailable";
+        };
+        /** PracticeOverrideIn */
+        PracticeOverrideIn: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "correct" | "incorrect";
+        };
+        /** PracticeResultOut */
+        PracticeResultOut: {
+            /** Answer Origin */
+            answer_origin: ("bank" | "ai" | "user") | null;
+            /** Differs From Card Id */
+            differs_from_card_id?: string | null;
+            /**
+             * Grade Id
+             * Format: uuid
+             */
+            grade_id: string;
+            /** Missing */
+            missing: string[];
+            /**
+             * Overall
+             * @enum {string}
+             */
+            overall: "correct" | "partial" | "incorrect" | "forgot";
+            /** Reference Answer */
+            reference_answer: string | null;
         };
         /** PracticeView */
         PracticeView: {
@@ -1457,7 +1497,7 @@ export interface components {
             /** Grading */
             grading: ("graded" | "pending" | "failed" | "in_progress") | null;
             question: components["schemas"]["QuestionRef"];
-            result: components["schemas"]["core_api__api__practice__ResultOut"] | null;
+            result: components["schemas"]["PracticeResultOut"] | null;
             /**
              * Status
              * @enum {string}
@@ -1583,6 +1623,31 @@ export interface components {
             password: string;
             /** Token */
             token: string;
+        };
+        /** ResultOut */
+        ResultOut: {
+            /**
+             * Grade Id
+             * Format: uuid
+             */
+            grade_id: string;
+            /** Missing */
+            missing: string[];
+            /**
+             * Overall
+             * @enum {string}
+             */
+            overall: "correct" | "partial" | "incorrect" | "forgot";
+            /** Practice */
+            practice: boolean;
+            /** Reference Answer */
+            reference_answer: string;
+            /** Sources */
+            sources: components["schemas"]["Source"][];
+            /** Understanding */
+            understanding: number | null;
+            /** Units */
+            units: components["schemas"]["UnitResult"][];
         };
         /** SectionOut */
         SectionOut: {
@@ -2007,71 +2072,6 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
-        };
-        /** ResultOut */
-        core_api__api__attempts__ResultOut: {
-            /**
-             * Grade Id
-             * Format: uuid
-             */
-            grade_id: string;
-            /** Missing */
-            missing: string[];
-            /**
-             * Overall
-             * @enum {string}
-             */
-            overall: "correct" | "partial" | "incorrect" | "forgot";
-            /** Practice */
-            practice: boolean;
-            /** Reference Answer */
-            reference_answer: string;
-            /** Sources */
-            sources: components["schemas"]["Source"][];
-            /** Understanding */
-            understanding: number | null;
-            /** Units */
-            units: components["schemas"]["UnitResult"][];
-        };
-        /**
-         * OverrideIn
-         * @description "Thực ra tôi đúng" is `correct`, "Thực ra tôi sai" is `incorrect` (US-09 AC1).
-         */
-        core_api__api__grades__OverrideIn: {
-            /**
-             * Verdict
-             * @enum {string}
-             */
-            verdict: "correct" | "incorrect";
-        };
-        /** OverrideIn */
-        core_api__api__practice__OverrideIn: {
-            /**
-             * Verdict
-             * @enum {string}
-             */
-            verdict: "correct" | "incorrect";
-        };
-        /** ResultOut */
-        core_api__api__practice__ResultOut: {
-            /** Answer Origin */
-            answer_origin: ("bank" | "ai" | "user") | null;
-            /** Differs From Card Id */
-            differs_from_card_id?: string | null;
-            /**
-             * Grade Id
-             * Format: uuid
-             */
-            grade_id: string;
-            /** Missing */
-            missing: string[];
-            /**
-             * Overall
-             * @enum {string}
-             */
-            overall: "correct" | "partial" | "incorrect" | "forgot";
-            /** Reference Answer */
-            reference_answer: string | null;
         };
         /** SessionOut */
         core_api__api__review_sessions__SessionOut: {
@@ -2701,7 +2701,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["core_api__api__grades__OverrideIn"];
+                "application/json": components["schemas"]["OverrideIn"];
             };
         };
         responses: {
@@ -2906,7 +2906,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["core_api__api__practice__OverrideIn"];
+                "application/json": components["schemas"]["PracticeOverrideIn"];
             };
         };
         responses: {

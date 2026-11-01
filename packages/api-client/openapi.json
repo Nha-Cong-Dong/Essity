@@ -109,7 +109,7 @@
           "result": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/core_api__api__attempts__ResultOut"
+                "$ref": "#/components/schemas/ResultOut"
               },
               {
                 "type": "null"
@@ -1146,6 +1146,25 @@
         "title": "OutlineOut",
         "type": "object"
       },
+      "OverrideIn": {
+        "additionalProperties": false,
+        "description": "\"Thực ra tôi đúng\" is `correct`, \"Thực ra tôi sai\" is `incorrect` (US-09 AC1).",
+        "properties": {
+          "verdict": {
+            "enum": [
+              "correct",
+              "incorrect"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "OverrideIn",
+        "type": "object"
+      },
       "PingResponse": {
         "properties": {
           "ai_service": {
@@ -1170,6 +1189,98 @@
           "ai_service"
         ],
         "title": "PingResponse",
+        "type": "object"
+      },
+      "PracticeOverrideIn": {
+        "additionalProperties": false,
+        "properties": {
+          "verdict": {
+            "enum": [
+              "correct",
+              "incorrect"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "PracticeOverrideIn",
+        "type": "object"
+      },
+      "PracticeResultOut": {
+        "properties": {
+          "answer_origin": {
+            "anyOf": [
+              {
+                "enum": [
+                  "bank",
+                  "ai",
+                  "user"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer Origin"
+          },
+          "differs_from_card_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Differs From Card Id"
+          },
+          "grade_id": {
+            "format": "uuid",
+            "title": "Grade Id",
+            "type": "string"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "overall": {
+            "enum": [
+              "correct",
+              "partial",
+              "incorrect",
+              "forgot"
+            ],
+            "title": "Overall",
+            "type": "string"
+          },
+          "reference_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Answer"
+          }
+        },
+        "required": [
+          "grade_id",
+          "overall",
+          "missing",
+          "reference_answer",
+          "answer_origin"
+        ],
+        "title": "PracticeResultOut",
         "type": "object"
       },
       "PracticeView": {
@@ -1228,7 +1339,7 @@
           "result": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/core_api__api__practice__ResultOut"
+                "$ref": "#/components/schemas/PracticeResultOut"
               },
               {
                 "type": "null"
@@ -1616,6 +1727,77 @@
           "password"
         ],
         "title": "ResetBody",
+        "type": "object"
+      },
+      "ResultOut": {
+        "properties": {
+          "grade_id": {
+            "format": "uuid",
+            "title": "Grade Id",
+            "type": "string"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "overall": {
+            "enum": [
+              "correct",
+              "partial",
+              "incorrect",
+              "forgot"
+            ],
+            "title": "Overall",
+            "type": "string"
+          },
+          "practice": {
+            "title": "Practice",
+            "type": "boolean"
+          },
+          "reference_answer": {
+            "title": "Reference Answer",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "understanding": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Understanding"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/UnitResult"
+            },
+            "title": "Units",
+            "type": "array"
+          }
+        },
+        "required": [
+          "grade_id",
+          "overall",
+          "understanding",
+          "missing",
+          "units",
+          "reference_answer",
+          "sources",
+          "practice"
+        ],
+        "title": "ResultOut",
         "type": "object"
       },
       "SectionOut": {
@@ -2763,188 +2945,6 @@
         "title": "ValidationError",
         "type": "object"
       },
-      "core_api__api__attempts__ResultOut": {
-        "properties": {
-          "grade_id": {
-            "format": "uuid",
-            "title": "Grade Id",
-            "type": "string"
-          },
-          "missing": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Missing",
-            "type": "array"
-          },
-          "overall": {
-            "enum": [
-              "correct",
-              "partial",
-              "incorrect",
-              "forgot"
-            ],
-            "title": "Overall",
-            "type": "string"
-          },
-          "practice": {
-            "title": "Practice",
-            "type": "boolean"
-          },
-          "reference_answer": {
-            "title": "Reference Answer",
-            "type": "string"
-          },
-          "sources": {
-            "items": {
-              "$ref": "#/components/schemas/Source"
-            },
-            "title": "Sources",
-            "type": "array"
-          },
-          "understanding": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Understanding"
-          },
-          "units": {
-            "items": {
-              "$ref": "#/components/schemas/UnitResult"
-            },
-            "title": "Units",
-            "type": "array"
-          }
-        },
-        "required": [
-          "grade_id",
-          "overall",
-          "understanding",
-          "missing",
-          "units",
-          "reference_answer",
-          "sources",
-          "practice"
-        ],
-        "title": "ResultOut",
-        "type": "object"
-      },
-      "core_api__api__grades__OverrideIn": {
-        "additionalProperties": false,
-        "description": "\"Thực ra tôi đúng\" is `correct`, \"Thực ra tôi sai\" is `incorrect` (US-09 AC1).",
-        "properties": {
-          "verdict": {
-            "enum": [
-              "correct",
-              "incorrect"
-            ],
-            "title": "Verdict",
-            "type": "string"
-          }
-        },
-        "required": [
-          "verdict"
-        ],
-        "title": "OverrideIn",
-        "type": "object"
-      },
-      "core_api__api__practice__OverrideIn": {
-        "additionalProperties": false,
-        "properties": {
-          "verdict": {
-            "enum": [
-              "correct",
-              "incorrect"
-            ],
-            "title": "Verdict",
-            "type": "string"
-          }
-        },
-        "required": [
-          "verdict"
-        ],
-        "title": "OverrideIn",
-        "type": "object"
-      },
-      "core_api__api__practice__ResultOut": {
-        "properties": {
-          "answer_origin": {
-            "anyOf": [
-              {
-                "enum": [
-                  "bank",
-                  "ai",
-                  "user"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Answer Origin"
-          },
-          "differs_from_card_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Differs From Card Id"
-          },
-          "grade_id": {
-            "format": "uuid",
-            "title": "Grade Id",
-            "type": "string"
-          },
-          "missing": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Missing",
-            "type": "array"
-          },
-          "overall": {
-            "enum": [
-              "correct",
-              "partial",
-              "incorrect",
-              "forgot"
-            ],
-            "title": "Overall",
-            "type": "string"
-          },
-          "reference_answer": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reference Answer"
-          }
-        },
-        "required": [
-          "grade_id",
-          "overall",
-          "missing",
-          "reference_answer",
-          "answer_origin"
-        ],
-        "title": "ResultOut",
-        "type": "object"
-      },
       "core_api__api__review_sessions__SessionOut": {
         "properties": {
           "answered": {
@@ -3737,7 +3737,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/core_api__api__grades__OverrideIn"
+                "$ref": "#/components/schemas/OverrideIn"
               }
             }
           },
@@ -4000,7 +4000,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/core_api__api__practice__OverrideIn"
+                "$ref": "#/components/schemas/PracticeOverrideIn"
               }
             }
           },
