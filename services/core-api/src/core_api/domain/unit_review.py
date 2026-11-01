@@ -19,13 +19,13 @@ from core_api.db.models import (
     Anchor,
     DocSection,
     KnowledgeUnit,
-    Outbox,
     SessionRange,
     StudySession,
     UnitRevision,
 )
 from core_api.domain.learning_day import learning_day
-from core_api.messaging.outbox import current_trace_context
+from core_api.messaging.envelope import UnitSaved
+from core_api.messaging.outbox import enqueue_event
 from core_api.repositories.study_session import StudySessionRepository
 from core_api.repositories.unit import DraftRepository, UnitLineageRepository
 
@@ -520,22 +520,11 @@ def _enqueue_unit_saved(
     session: Session, user_id: uuid.UUID, unit: KnowledgeUnit, rev: int, now: datetime
 ) -> None:
     """One `unit.saved.v1` row in the outbox, in the caller's transaction (ARCH 7.3: unit_id,
-    unit_rev, subject_id). The contract file and the envelope model come with T7.8b; until then
-    the row is written directly and nothing relays it to a consumer that exists."""
-    trace = current_trace_context().model_dump()
-    session.add(
-        Outbox(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            event_type="unit.saved.v1",
-            payload={
-                "unit_id": str(unit.id),
-                "unit_rev": rev,
-                "subject_id": str(unit.subject_id),
-            },
-            trace_context={k: v for k, v in trace.items() if v is not None},
-            occurred_at=now,
-            available_at=now,
-        )
+    unit_rev, subject_id), validated against the contract."""
+    enqueue_event(
+        session,
+        UnitSaved(unit_id=unit.id, unit_rev=rev, subject_id=unit.subject_id),
+        user_id=user_id,
+        now=now,
     )
     session.flush()

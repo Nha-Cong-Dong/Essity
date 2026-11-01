@@ -224,19 +224,6 @@ def _is_object_key(metadata: Any) -> bool:
     return isinstance(metadata, StringConstraints) and metadata.pattern == OBJECT_KEY_PATTERN
 
 
-# Types core already publishes whose contract ai-service gets later (T7.8b): acknowledged and
-# dropped, so they never reach the dead letter stream. Remove the entry when the handler lands.
-SKIPPED_TYPES = frozenset({"unit.saved.v1"})
-
-
-def _is_skipped_type(envelope: str) -> bool:
-    try:
-        data = json.loads(envelope)
-    except ValueError:
-        return False
-    return isinstance(data, dict) and cast(dict[str, Any], data).get("event_type") in SKIPPED_TYPES
-
-
 def _rejection_reason(envelope: str) -> str:
     """`unknown_type` for a well-formed event of a type outside the contract, else invalid."""
     try:
@@ -359,9 +346,6 @@ class Consumer:
         deliveries: int,
     ) -> "_Result":
         if event is None:
-            if rejected == UNKNOWN_TYPE and _is_skipped_type(envelope):
-                self.redis.xack(self.stream, self.group, entry_id)
-                return _Result("skipped")
             return self._dead(entry_id, envelope, rejected or INVALID_ENVELOPE, deliveries)
         if not keys_belong_to_user(event):
             return self._dead(entry_id, envelope, USER_MISMATCH, deliveries)

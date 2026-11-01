@@ -25,16 +25,26 @@ from core_api.messaging.envelope import (
     SubmissionCreated,
     SubmissionCreatedEvent,
     TraceContext,
+    UnitSaved,
+    UnitSavedEvent,
     UserDeleted,
     UserDeletedEvent,
 )
 
-CorePayload = DocumentUploaded | SessionConfirmed | SubmissionCreated | GradeRequested | UserDeleted
+CorePayload = (
+    DocumentUploaded
+    | SessionConfirmed
+    | SubmissionCreated
+    | GradeRequested
+    | UnitSaved
+    | UserDeleted
+)
 CoreEvent = (
     DocumentUploadedEvent
     | SessionConfirmedEvent
     | SubmissionCreatedEvent
     | GradeRequestedEvent
+    | UnitSavedEvent
     | UserDeletedEvent
 )
 
@@ -44,6 +54,7 @@ _EVENTS: dict[type[CorePayload], type[CoreEvent]] = {
     SessionConfirmed: SessionConfirmedEvent,
     SubmissionCreated: SubmissionCreatedEvent,
     GradeRequested: GradeRequestedEvent,
+    UnitSaved: UnitSavedEvent,
     UserDeleted: UserDeletedEvent,
 }
 

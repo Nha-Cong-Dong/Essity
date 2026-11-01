@@ -27,6 +27,7 @@ CORE_TO_AI = {
     "grade.requested.v1",
     "user.deleted.v1",
     "submission.created.v1",  # core -> ai (contracts/events, T7.6/T7.7)
+    "unit.saved.v1",  # core -> ai (T7.8b)
 }
 
 

@@ -64,6 +64,7 @@ EVENTS_IN_ARCH = [
     "submission.created.v1",
     "submission.processed.v1",
     "submission.failed.v1",
+    "unit.saved.v1",
 ]
 
 

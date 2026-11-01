@@ -213,6 +213,14 @@ class GradeCompleted(_Closed):
     result_key: ObjectKey
 
 
+class UnitSaved(_Closed):
+    """A card was saved (US-02b AC9): ids and the revision only; the card is read by id."""
+
+    unit_id: Id
+    unit_rev: Annotated[int, Field(ge=1)]
+    subject_id: Id
+
+
 class UserDeleted(_Closed):
     pass
 
@@ -288,6 +296,11 @@ class SubmissionFailedEvent(_Envelope):
     payload: SubmissionFailed
 
 
+class UnitSavedEvent(_Envelope):
+    event_type: Literal["unit.saved.v1"]
+    payload: UnitSaved
+
+
 class UserDeletedEvent(_Envelope):
     event_type: Literal["user.deleted.v1"]
     payload: UserDeleted
@@ -306,7 +319,8 @@ Event = Annotated[
     | UserDeletedEvent
     | SubmissionCreatedEvent
     | SubmissionProcessedEvent
-    | SubmissionFailedEvent,
+    | SubmissionFailedEvent
+    | UnitSavedEvent,
     Field(discriminator="event_type"),
 ]
 
