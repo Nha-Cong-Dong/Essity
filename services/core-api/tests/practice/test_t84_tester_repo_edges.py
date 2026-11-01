@@ -1,12 +1,17 @@
 """T8.4 tester (ADR-0014, US-16): the practice repository never writes a review attempt."""
 
+import uuid
 from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.orm import Session
 
 from core_api.db.models import Attempt
-from core_api.repositories.practice_attempt import AttemptNotFoundError, PracticeAttemptRepository
+from core_api.repositories.practice_attempt import (
+    AttemptNotFoundError,
+    DraftContendedError,
+    PracticeAttemptRepository,
+)
 from core_api.repositories.review import AttemptRepository, ReviewSessionRepository
 from practice_rows import Practice
 
@@ -28,3 +33,20 @@ def test_tester_practice_save_draft_cannot_write_a_review_draft(
     db_session.expire_all()
     row = db_session.get(Attempt, review.id)
     assert row is not None and (row.answer_text, row.dont_remember) == ("", False)
+
+
+def test_open_draft_gives_up_after_a_few_tries_instead_of_recursing(
+    practice: Practice, db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Review T1 / tester: the draft is never readable (submitted again and again by other tabs):
+    # a bounded retry then DraftContendedError, never an unbounded recursion (a 500).
+    repo = PracticeAttemptRepository(db_session, practice.user.id)
+    calls: list[int] = []
+
+    def never_readable(question_id: uuid.UUID) -> None:
+        calls.append(1)
+
+    monkeypatch.setattr(repo, "_open_one", never_readable)
+    with pytest.raises(DraftContendedError):
+        repo.open_draft(practice.question().id, NOW)
+    assert len(calls) == 3

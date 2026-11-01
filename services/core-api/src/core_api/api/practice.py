@@ -28,6 +28,7 @@ from core_api.db.session import DbSession
 from core_api.repositories.practice_attempt import (
     AttemptNotDraftError,
     AttemptNotFoundError,
+    DraftContendedError,
     PracticeAttemptRepository,
 )
 from core_api.repositories.question import QuestionNotFoundError, QuestionRepository
@@ -183,6 +184,8 @@ def open_question(
         attempt, _ = attempts.open_draft(question_id, now)
     except (QuestionNotFoundError, SubjectNotFoundError) as error:
         raise _error(status.HTTP_404_NOT_FOUND, "question_not_found") from error
+    except DraftContendedError as error:
+        raise _error(status.HTTP_409_CONFLICT, "try_again") from error
     session.commit()
     question = QuestionRepository(session, user.id).get(question_id)
     assert question is not None

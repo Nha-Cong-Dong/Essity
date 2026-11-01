@@ -22,11 +22,17 @@ from core_api.repositories.subject import SubjectRepository
 __all__ = [
     "AttemptNotDraftError",
     "AttemptNotFoundError",
+    "DraftContendedError",
     "PracticeAttemptRepository",
     "QuestionNotFoundError",
 ]
 
+OPEN_TRIES = 3
 DRAFT_INDEX_WHERE = text("review_session_id IS NULL AND status = 'draft'")
+
+
+class DraftContendedError(Exception):
+    """Other tabs keep submitting the draft as fast as we open it: give up after `OPEN_TRIES`."""
 
 
 class PracticeAttemptRepository(AppendOnlyRepository[Attempt]):
@@ -53,24 +59,26 @@ class PracticeAttemptRepository(AppendOnlyRepository[Attempt]):
         if question is None:
             raise QuestionNotFoundError(question_id)
         SubjectRepository(self.session, self.user_id).hold_for_share(question.subject_id)
-        made = self.session.execute(
-            insert(Attempt)
-            .values(
-                id=uuid.uuid4(),
-                user_id=self.user_id,
-                review_session_id=None,
-                question_id=question_id,
-                served_at=now,
-            )
-            .on_conflict_do_nothing(
-                index_elements=["user_id", "question_id"], index_where=DRAFT_INDEX_WHERE
-            )
-            .returning(Attempt.id)
-        ).scalar_one_or_none()
-        found = self._open_one(question_id)
-        if found is None:  # the other tab submitted between our insert and read: ours is new
-            return self.open_draft(question_id, now)
-        return found, made is not None
+        for _ in range(OPEN_TRIES):
+            made = self.session.execute(
+                insert(Attempt)
+                .values(
+                    id=uuid.uuid4(),
+                    user_id=self.user_id,
+                    review_session_id=None,
+                    question_id=question_id,
+                    served_at=now,
+                )
+                .on_conflict_do_nothing(
+                    index_elements=["user_id", "question_id"], index_where=DRAFT_INDEX_WHERE
+                )
+                .returning(Attempt.id)
+            ).scalar_one_or_none()
+            found = self._open_one(question_id)
+            if found is not None:
+                return found, made is not None
+            # the other tab submitted between our insert and read: insert again (bounded)
+        raise DraftContendedError(question_id)
 
     def _open_one(self, question_id: uuid.UUID) -> Attempt | None:
         return self.session.scalars(
