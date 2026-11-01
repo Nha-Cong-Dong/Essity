@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from ai_service.api import extract_session, grade, health, parse_command, ping
+from ai_service.api import extract_session, grade, health, parse_command, ping, practice
 from ai_service.config import get_settings
 from ai_service.db.session import get_session_factory
 from ai_service.llm.client import LlmClient, build_adapter
@@ -12,8 +12,10 @@ from ai_service.llm.quota import DbQuotaGuard, QuotaLimits
 from ai_service.logging import configure_logging, log_requests
 from ai_service.security import require_service_token
 from ai_service.tasks import extract_session as extract_task
+from ai_service.tasks import grade_practice as grade_practice_task
 from ai_service.tasks import parse_command as parse_task
 from ai_service.tasks.grade import fake_grade, load_prompt
+from ai_service.tasks.practice_run import fake_draft_answer, fake_grade_practice
 from ai_service.telemetry import configure_tracing
 
 
@@ -26,12 +28,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     load_prompt()
     extract_task.load_prompt()
     parse_task.load_prompt()
+    grade_practice_task.load_prompt()
     adapter = build_adapter(
         settings,
         {
             "grade": fake_grade,
             "extract_session": extract_task.fake_extract,
             "parse_command": parse_task.fake_parse,
+            "grade_practice": fake_grade_practice,
+            "draft_answer": fake_draft_answer,
         },
     )
     sessions = get_session_factory()
@@ -71,6 +76,7 @@ def create_app() -> FastAPI:
     extract_session.add_error_handlers(app)
     app.include_router(parse_command.router)
     parse_command.add_error_handlers(app)
+    app.include_router(practice.router)
     # Outermost middleware: continues the trace started by core-api (W3C traceparent).
     FastAPIInstrumentor.instrument_app(
         app, excluded_urls="healthz", exclude_spans=["receive", "send"]

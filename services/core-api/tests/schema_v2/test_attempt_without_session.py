@@ -33,10 +33,12 @@ def insert(
     attempt = uuid.uuid4()
     submitted = ", submitted_at" if status == "submitted" else ""
     now = ", now()" if status == "submitted" else ""
+    served = ", served_at" if review is None else ""  # 0029: a practice attempt has served_at
+    served_now = ", now()" if review is None else ""
     world.session.execute(
         text(
             "INSERT INTO attempt (id, user_id, review_session_id, question_id, status"  # noqa: S608
-            f"{submitted}) VALUES (:a, :u, :r, :q, :s{now})"
+            f"{submitted}{served}) VALUES (:a, :u, :r, :q, :s{now}{served_now})"
         ),
         {"a": attempt, "u": world.alice.id, "r": review, "q": question, "s": status},
     )
@@ -155,8 +157,8 @@ def test_downgrade_refuses_while_a_practice_attempt_exists(
         )
         c.execute(
             text(
-                "INSERT INTO attempt (id, user_id, question_id, status) VALUES"
-                " (gen_random_uuid(), :u, :q, 'draft')"
+                "INSERT INTO attempt (id, user_id, question_id, status, served_at) VALUES"
+                " (gen_random_uuid(), :u, :q, 'draft', now())"
             ),
             {"u": user, "q": question},
         )
@@ -257,5 +259,79 @@ def test_tester_downgraded_guard_still_refuses_delete_and_key_changes(
                 with pytest.raises(DBAPIError, match="is refused"), c.begin_nested():
                     c.execute(text(sql), ids)
             outer.rollback()
+    finally:
+        command.upgrade(alembic_cfg, "head")
+
+
+# --- T8.4 migration 0029 -----------------------------------------------------------------------
+
+
+def test_one_open_practice_draft_per_user_and_question(world: World) -> None:
+    # Red when: the partial unique index is missing (US-16 AC2, T7.M5 review): two concurrent
+    # "open the question" requests would leave two drafts.
+    question = make_question(world.session, world.alice, world.subject)
+    insert(world, question.id, None)
+    with pytest.raises(IntegrityError), world.session.begin_nested():
+        insert(world, question.id, None)
+
+
+def test_practice_draft_index_leaves_other_cases_alone(world: World) -> None:
+    # Red when: the index covers submitted practice attempts (a question is practised again),
+    # another question or user, or a review attempt.
+    q1 = make_question(world.session, world.alice, world.subject)
+    q2 = make_question(world.session, world.alice, world.subject, 1)
+    insert(world, q1.id, None, "submitted")
+    insert(world, q1.id, None, "submitted")
+    insert(world, q1.id, None)  # the new open draft after submitted ones
+    insert(world, q2.id, None)
+    insert(world, q1.id, new_review(world))
+
+
+def test_practice_attempt_needs_served_at(world: World) -> None:
+    # Red when: CHECK practice_has_served_at is missing (US-16 AC5: timing starts at the server).
+    question = make_question(world.session, world.alice, world.subject)
+    with (
+        pytest.raises(IntegrityError, match="practice_has_served_at"),
+        world.session.begin_nested(),
+    ):
+        world.session.execute(
+            text(
+                "INSERT INTO attempt (id, user_id, question_id, status)"
+                " VALUES (gen_random_uuid(), :u, :q, 'draft')"
+            ),
+            {"u": world.alice.id, "q": question.id},
+        )
+
+
+def test_review_attempt_does_not_need_served_at(world: World) -> None:
+    # Red when: the CHECK also binds a review attempt (it has no served_at).
+    question = make_question(world.session, world.alice, world.subject)
+    world.session.execute(
+        text(
+            "INSERT INTO attempt (id, user_id, review_session_id, question_id, status)"
+            " VALUES (gen_random_uuid(), :u, :r, :q, 'draft')"
+        ),
+        {"u": world.alice.id, "r": new_review(world), "q": question.id},
+    )
+
+
+def test_downgrade_0029_drops_index_and_check(engine: Engine, alembic_cfg: Config) -> None:
+    # Red when: the downgrade leaves the index or the CHECK behind.
+    try:
+        command.downgrade(alembic_cfg, "0028")
+        with engine.connect() as c:
+            index = c.execute(
+                text(
+                    "SELECT count(*) FROM pg_indexes"
+                    " WHERE indexname = 'ix_attempt_one_practice_draft'"
+                )
+            ).scalar_one()
+            check = c.execute(
+                text(
+                    "SELECT count(*) FROM pg_constraint"
+                    " WHERE conname = 'ck_attempt_practice_has_served_at'"
+                )
+            ).scalar_one()
+        assert (index, check) == (0, 0)
     finally:
         command.upgrade(alembic_cfg, "head")

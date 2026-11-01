@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from core_api.clients.extract_contract import Clarify, ExtractAnswer, NoteOnly, Proposed
 from core_api.clients.grade_contract import GradeResponse
+from core_api.clients.practice_contract import DraftAnswerReply, PracticeGradeReply
 from core_api.config import Settings
 from core_api.logging import REQUEST_ID_HEADER, request_id_var
 from core_api.security.service_token import SERVICE_TOKEN_HEADER
@@ -192,6 +193,43 @@ class AiServiceClient:
         return _extract_failed(
             "unavailable", "server_error" if status >= 500 else "client_error", status
         )
+
+    def grade_practice(self, payload: Mapping[str, object]) -> PracticeGradeReply | NotGraded:
+        """POST /v1/grade-practice, once (T8.4). Never raises for ai-service's answers; never
+        logs a body, which may echo the answer (ADR-0013)."""
+        return self._practice("/v1/grade-practice", payload, PracticeGradeReply)
+
+    def draft_answer(self, payload: Mapping[str, object]) -> DraftAnswerReply | NotGraded:
+        """POST /v1/draft-answer, once (T8.4)."""
+        return self._practice("/v1/draft-answer", payload, DraftAnswerReply)
+
+    def _practice[R: (PracticeGradeReply, DraftAnswerReply)](
+        self, path: str, payload: Mapping[str, object], reply: type[R]
+    ) -> R | NotGraded:
+        try:
+            response = self._http.post(
+                path,
+                json=dict(payload),
+                timeout=httpx2.Timeout(
+                    GRADE_CALL_SECONDS, connect=min(GRADE_CONNECT_SECONDS, GRADE_CALL_SECONDS)
+                ),
+            )
+        except httpx2.TimeoutException:
+            return _failed("unavailable", "timeout", None)
+        except httpx2.RequestError:
+            return _failed("unavailable", "connection_error", None)
+        status = response.status_code
+        if 200 <= status < 300:
+            try:
+                return reply.model_validate_json(response.content)
+            except (ValidationError, ValueError):
+                return _failed("invalid", "response_schema", status)
+        code = _error_code(response)
+        if code in _CODES:
+            return _failed(_CODES[code][0], code, status)
+        if status in (413, 422):
+            return _failed("invalid", "refused", status)
+        return _failed("unavailable", "server_error" if status >= 500 else "client_error", status)
 
     def close(self) -> None:
         self._http.close()

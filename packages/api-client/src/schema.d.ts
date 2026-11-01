@@ -396,6 +396,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/practice/attempts/{attempt_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Attempt
+         * @description The attempt as the screen shows it (after a reload too). Never grades.
+         */
+        get: operations["read_attempt_v1_practice_attempts__attempt_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/practice/attempts/{attempt_id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Draft */
+        put: operations["save_draft_v1_practice_attempts__attempt_id__draft_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/practice/attempts/{attempt_id}/regrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Regrade Attempt
+         * @description "Chấm lại": grade a submitted answer that has no grade yet; a graded one is returned as it
+         *     is, never paid for (or scheduled) twice.
+         */
+        post: operations["regrade_attempt_v1_practice_attempts__attempt_id__regrade_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/practice/attempts/{attempt_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Attempt
+         * @description Save the last text, submit with the timing, commit; then grade. Submitting again, or from
+         *     a second tab, grades what was submitted first and keeps its timing.
+         */
+        post: operations["submit_attempt_v1_practice_attempts__attempt_id__submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/practice/grades/{grade_id}/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Override
+         * @description "Chấm sai": append a user grade; the practice schedule is rebuilt from `practice_log`.
+         */
+        post: operations["override_v1_practice_grades__grade_id__override_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/practice/questions/{question_id}/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Question
+         * @description Serve a question: its open draft (made if there is none, with the server's `served_at`).
+         *     A bank question with no answer gets an AI-drafted one now, once, so it is ready (AC13).
+         */
+        post: operations["open_question_v1_practice_questions__question_id__open_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/practice/questions/{question_id}/worthless": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Worthless
+         * @description "Câu này vô giá trị": never asked again and its schedule stops; its log stays.
+         */
+        post: operations["worthless_v1_practice_questions__question_id__worthless_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/questions/{question_id}/drop": {
         parameters: {
             query?: never;
@@ -1028,6 +1168,16 @@ export interface components {
              */
             ungraded: string[];
         };
+        /** DraftIn */
+        DraftIn: {
+            /** Answer Text */
+            answer_text: string;
+            /**
+             * Dont Remember
+             * @default false
+             */
+            dont_remember: boolean;
+        };
         /** DraftOut */
         DraftOut: {
             /**
@@ -1301,6 +1451,62 @@ export interface components {
              * @enum {string}
              */
             core_api: "ok" | "unavailable";
+        };
+        /** PracticeOverrideIn */
+        PracticeOverrideIn: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "correct" | "incorrect";
+        };
+        /** PracticeResultOut */
+        PracticeResultOut: {
+            /** Answer Origin */
+            answer_origin: ("bank" | "ai" | "user") | null;
+            /** Differs From Card Id */
+            differs_from_card_id?: string | null;
+            /**
+             * Grade Id
+             * Format: uuid
+             */
+            grade_id: string;
+            /** Missing */
+            missing: string[];
+            /**
+             * Overall
+             * @enum {string}
+             */
+            overall: "correct" | "partial" | "incorrect" | "forgot";
+            /** Reference Answer */
+            reference_answer: string | null;
+        };
+        /** PracticeView */
+        PracticeView: {
+            /** Answer Text */
+            answer_text: string | null;
+            /**
+             * Attempt Id
+             * Format: uuid
+             */
+            attempt_id: string;
+            /** Dont Remember */
+            dont_remember: boolean;
+            /** Failure */
+            failure: string | null;
+            /** Grading */
+            grading: ("graded" | "pending" | "failed" | "in_progress") | null;
+            question: components["schemas"]["QuestionRef"];
+            result: components["schemas"]["PracticeResultOut"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "submitted";
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Timing Ok */
+            timing_ok: boolean | null;
         };
         /** ProgressOut */
         ProgressOut: {
@@ -1669,6 +1875,21 @@ export interface components {
              * Format: uuid
              */
             submission_id: string;
+        };
+        /** SubmitIn */
+        SubmitIn: {
+            /** Answer Text */
+            answer_text: string;
+            /**
+             * Dont Remember
+             * @default false
+             */
+            dont_remember: boolean;
+            /**
+             * Hidden Ms
+             * @default 0
+             */
+            hidden_ms: number;
         };
         /** SubmitRequest */
         SubmitRequest: {
@@ -2540,6 +2761,231 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PingResponse"];
+                };
+            };
+        };
+    };
+    read_attempt_v1_practice_attempts__attempt_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_draft_v1_practice_attempts__attempt_id__draft_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regrade_attempt_v1_practice_attempts__attempt_id__regrade_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_attempt_v1_practice_attempts__attempt_id__submit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    override_v1_practice_grades__grade_id__override_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grade_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PracticeOverrideIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_question_v1_practice_questions__question_id__open_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    worthless_v1_practice_questions__question_id__worthless_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

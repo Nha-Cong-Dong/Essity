@@ -190,7 +190,7 @@ def submit_attempt(
     then grade. Submitting again, or from a second tab, grades what was submitted first."""
     attempts = AttemptRepository(session, user.id)
     found = attempts.get(attempt_id)
-    if found is None:
+    if found is None or found.review_session_id is None:  # a practice attempt: its own routes
         raise _error(status.HTTP_404_NOT_FOUND, "attempt_not_found")
     if found.status != "submitted":
         if not body.dont_remember and not body.answer_text.strip():
@@ -222,6 +222,9 @@ def regrade_attempt(
 ) -> AttemptView:
     """ "Chấm lại": grade a submitted answer that has no grade yet; a graded one is returned as it
     is, never paid for twice."""
+    found = AttemptRepository(session, user.id).get(attempt_id)
+    if found is not None and found.review_session_id is None:
+        raise _error(status.HTTP_404_NOT_FOUND, "attempt_not_found")  # practice: its own route
     return _graded_view(session, user, attempt_id, grader, limiter, storage, now)
 
 
@@ -231,7 +234,7 @@ def read_attempt(
 ) -> AttemptView:
     """The attempt as the answer and result screens show it (after a reload too). Never grades."""
     found = AttemptRepository(session, user.id).get(attempt_id)
-    if found is None:
+    if found is None or found.review_session_id is None:
         raise _error(status.HTTP_404_NOT_FOUND, "attempt_not_found")
     return attempt_view(session, user.id, found, None, now)
 

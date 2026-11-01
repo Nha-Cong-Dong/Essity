@@ -14,6 +14,7 @@ from core_api.api import (
     me,
     outline,
     ping,
+    practice,
     review_sessions,
     session_confirm,
     session_notes,
@@ -70,6 +71,7 @@ app.include_router(today.router)
 app.include_router(review_sessions.router)
 app.include_router(attempts.router)
 app.include_router(grades.router)
+app.include_router(practice.router)
 app.include_router(units.router)
 app.include_router(sessions.router)
 app.include_router(session_confirm.router)
