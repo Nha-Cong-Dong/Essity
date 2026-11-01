@@ -77,7 +77,7 @@ class QuestionRef(BaseModel):
     prompt: str
 
 
-class ResultOut(BaseModel):
+class PracticeResultOut(BaseModel):
     grade_id: uuid.UUID  # what "Chấm sai" overrides
     overall: Literal["correct", "partial", "incorrect", "forgot"]
     missing: list[str]  # the rubric ideas not fully met
@@ -91,7 +91,7 @@ class PracticeView(BaseModel):
     status: Literal["draft", "submitted"]
     grading: Literal["graded", "pending", "failed", "in_progress"] | None
     failure: str | None
-    result: ResultOut | None
+    result: PracticeResultOut | None
     answer_text: str | None
     dont_remember: bool
     submitted_at: dt.datetime | None
@@ -148,8 +148,8 @@ def _view(
     )
 
 
-def _result(question: Question, grade: Grade) -> ResultOut:
-    return ResultOut(
+def _result(question: Question, grade: Grade) -> PracticeResultOut:
+    return PracticeResultOut(
         grade_id=grade.id,
         overall=grade.overall,  # type: ignore[arg-type]
         missing=[str(m) for m in grade.missing],
