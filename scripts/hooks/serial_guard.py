@@ -18,7 +18,7 @@ from pathlib import Path
 
 SERIAL_COMMANDS = [
     re.compile(r"\balembic\b.*\brevision\b"),
-    re.compile(r"gen_api_client"),
+    re.compile(r"(?<!\w)gen_api_client\.(sh|py)\b"),  # not test_gen_api_client.py
     re.compile(r"\bjust\s+gen-api\b"),
     re.compile(r"openapi-typescript"),
     re.compile(r"api-client\b.*\bgenerate\b"),
@@ -54,6 +54,7 @@ def _in_other_worktree(where: Path, owner: Path, repo: Path) -> bool:
 READERS = {
     "echo", "printf", "cat", "grep", "egrep", "fgrep", "rg", "head", "tail", "ls", "less",
     "wc", "diff", "find", "stat", "test", "pwd", "git", "sort", "uniq", "tr", "cut", "jq",
+    "ruff", "pyright", "pytest",
 }  # fmt: skip
 _REDIRECT = re.compile(r"^[^>]*>>?(.*)$")
 _ASSIGN = re.compile(r"^[A-Za-z_]\w*=")

@@ -59,6 +59,7 @@ def resolve_bin(package_dir: Path, package: str, bin_name: str, root: Path = ROO
         bins = json.loads(manifest.read_text(encoding="utf-8")).get("bin", {})
         rel = bins if isinstance(bins, str) else bins.get(bin_name)
         if rel and (pkg / rel).is_file():
+            print(f"gen_api_client: using node_modules from {base}", file=sys.stderr)
             return pkg / rel
     raise GenError(f"{package} is not installed; looked in: {', '.join(tried)}")
 

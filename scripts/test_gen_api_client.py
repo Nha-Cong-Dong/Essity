@@ -49,6 +49,15 @@ def test_resolve_bin(tmp_path: Path) -> None:
     assert got.name == "cli.js" and got.is_file()
 
 
+def test_resolve_bin_reports_chosen_root(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _make_repo(tmp_path)
+    api = root / "packages" / "api-client"
+    g.resolve_bin(api, "openapi-typescript", "openapi-typescript", root)
+    assert str(api) in capsys.readouterr().err
+
+
 def test_resolve_bin_missing_raises(tmp_path: Path) -> None:
     root = _make_repo(tmp_path, with_modules=False)
     with pytest.raises(g.GenError):
