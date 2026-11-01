@@ -4,14 +4,24 @@ questions only. One query each, whatever the number of units (US-03 AC2: under 3
 
 import uuid
 from collections.abc import Sequence
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import ColumnElement, and_, exists, func, or_, select
+from sqlalchemy import ColumnElement, and_, exists, func, or_, select, text
 
-from core_api.db.models import KnowledgeUnit, MemoryState, Question, QuestionUnit, Subject
+from core_api.db.models import (
+    KnowledgeUnit,
+    MemoryState,
+    Question,
+    QuestionUnit,
+    StudySession,
+    Subject,
+    Submission,
+    UnitRevision,
+)
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
 from core_api.domain.scheduling.fsrs_adapter import Phase
 from core_api.domain.today import RECALL_LEVEL, DueUnit, NewQuestion
+from core_api.domain.today_v2 import DraftSession
 from core_api.repositories.base import UserScopedRepository
 
 # Both while the status rename is in flight: a card saved by T7.8 is `canonical`, a legacy one is
@@ -260,3 +270,102 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                 )
             )
         )
+
+    def unfinished_sessions(self) -> list[DraftSession]:
+        """Study sessions of visible subjects with draft cards left or a submission waiting for
+        the AI (`pending_ai`): one line each on Today, never a backlog count (US-03 AC1)."""
+        drafts = (
+            select(KnowledgeUnit.session_id, func.count().label("n"))
+            .where(
+                KnowledgeUnit.user_id == self.user_id,
+                KnowledgeUnit.status == "draft",
+                KnowledgeUnit.session_id.is_not(None),
+            )
+            .group_by(KnowledgeUnit.session_id)
+            .subquery()
+        )
+        waiting = (
+            select(Submission.session_id)
+            .where(Submission.user_id == self.user_id, Submission.status == "pending_ai")
+            .distinct()
+            .subquery()
+        )
+        rows = self.session.execute(
+            select(
+                StudySession.id,
+                StudySession.subject_id,
+                StudySession.created_at,
+                func.coalesce(drafts.c.n, 0),
+                waiting.c.session_id.is_not(None),
+            )
+            .outerjoin(drafts, drafts.c.session_id == StudySession.id)
+            .outerjoin(waiting, waiting.c.session_id == StudySession.id)
+            .where(
+                StudySession.user_id == self.user_id,
+                self._visible_subject(StudySession.subject_id),  # type: ignore[arg-type]
+                or_(drafts.c.n > 0, waiting.c.session_id.is_not(None)),
+            )
+        ).all()
+        return [
+            DraftSession(sid, subject, count, bool(pending), at)
+            for sid, subject, at, count, pending in rows
+        ]
+
+    def stale_rev_units(self, question_ids: Sequence[uuid.UUID]) -> list[uuid.UUID]:
+        """Canonical cards of these questions whose newest revision is later than the revision
+        their review question was written from (a question from before revisions counts as 0):
+        the condition of the lazy regeneration (T7.9 `ensure_review_question`, US-02b AC11)."""
+        if not question_ids:
+            return []
+        links = self.session.execute(
+            select(QuestionUnit.unit_id, func.max(func.coalesce(Question.unit_rev, 0)))
+            .join(Question, Question.id == QuestionUnit.question_id)
+            .join(KnowledgeUnit, KnowledgeUnit.id == QuestionUnit.unit_id)
+            .where(
+                QuestionUnit.user_id == self.user_id,
+                Question.user_id == self.user_id,
+                KnowledgeUnit.user_id == self.user_id,
+                KnowledgeUnit.status == "canonical",
+                KnowledgeUnit.retired_at.is_(None),
+                Question.source == "review_auto",
+                Question.status == "active",
+                QuestionUnit.unit_id.in_(
+                    select(QuestionUnit.unit_id).where(
+                        QuestionUnit.user_id == self.user_id,
+                        QuestionUnit.question_id.in_(question_ids),
+                    )
+                ),
+            )
+            .group_by(QuestionUnit.unit_id)
+        ).all()
+        have = {unit_id: rev for unit_id, rev in links}
+        newest = {
+            unit_id: rev
+            for unit_id, rev in self.session.execute(
+                select(UnitRevision.unit_id, func.max(UnitRevision.rev))
+                .where(UnitRevision.user_id == self.user_id, UnitRevision.unit_id.in_(have))
+                .group_by(UnitRevision.unit_id)
+            )
+        }
+        return [u for u, rev in have.items() if u in newest and rev < newest[u]]
+
+    def lazy_jobs_since(self, unit_ids: Sequence[uuid.UUID], since: datetime) -> set[uuid.UUID]:
+        """Cards that already have a lazy review-question job of this user waiting or running, or
+        deferred since `since` (the learning day's start), whatever became of it: one job per
+        card per learning day, so a failed or empty one is not retried by every refetch of Today
+        (plan review P1, the model budget)."""
+        if not unit_ids:
+            return set()
+        rows = self.session.execute(
+            text(
+                "SELECT DISTINCT j.args->>'unit_id' FROM procrastinate_jobs j"
+                " WHERE j.task_name = 'regenerate_review_question'"
+                " AND j.args->>'user_id' = :user"
+                " AND j.args->>'unit_id' = ANY(:units)"
+                " AND (j.status IN ('todo', 'doing') OR EXISTS ("
+                "  SELECT 1 FROM procrastinate_events e"
+                "  WHERE e.job_id = j.id AND e.type = 'deferred' AND e.at >= :since))"
+            ),
+            {"user": str(self.user_id), "units": [str(u) for u in unit_ids], "since": since},
+        )
+        return {uuid.UUID(row[0]) for row in rows}
