@@ -139,16 +139,45 @@ def _block(lines: list[tuple[int, str]], start: int, indent: int) -> tuple[Any, 
 
 
 def parse_yaml(text: str) -> dict[str, Any]:
-    """Flat key/value YAML with inline `[..]`/`{..}`, block lists and one level of nesting."""
+    """Flat key/value YAML with inline `[..]`/`{..}`, block lists, one level of nesting and
+    `key: |` / `key: >` block scalars (task cards put `scope: |` before `touches`)."""
     lines = []
-    for raw in text.splitlines():
-        stripped = _strip_comment(raw).rstrip()
-        if stripped.strip():
-            lines.append((len(stripped) - len(stripped.lstrip()), stripped.strip()))
+    blocks: dict[str, str] = {}
+    raws = text.splitlines()
+    index = 0
+    while index < len(raws):
+        stripped = _strip_comment(raws[index]).rstrip()
+        index += 1
+        if not stripped.strip():
+            continue
+        indent = len(stripped) - len(stripped.lstrip())
+        found = re.fullmatch(r"([\w-]+):\s+([|>])([+-]?)", stripped.strip())
+        if found:
+            body: list[str] = []
+            while index < len(raws) and (
+                not raws[index].strip() or len(raws[index]) - len(raws[index].lstrip()) > indent
+            ):
+                body.append(raws[index])
+                index += 1
+            while body and not body[-1].strip():
+                body.pop()
+            cut = min((len(b) - len(b.lstrip()) for b in body if b.strip()), default=0)
+            body = [b[cut:] for b in body]
+            if found.group(2) == ">":
+                value = " ".join(b.strip() for b in body if b.strip())
+            else:
+                value = "\n".join(body)
+            value += "" if found.group(3) == "-" or not body else "\n"
+            mark = f"\x00{len(blocks)}"
+            blocks[mark] = value
+            stripped = f"{' ' * indent}{found.group(1)}: {mark}"
+        lines.append((indent, stripped.strip()))
     if not lines:
         return {}
-    found, _ = _block(lines, 0, lines[0][0])
-    return found if isinstance(found, dict) else {}
+    result, _ = _block(lines, 0, lines[0][0])
+    if not isinstance(result, dict):
+        return {}
+    return {k: blocks.get(v, v) if isinstance(v, str) else v for k, v in result.items()}
 
 
 # -- evidence ---------------------------------------------------------------------------------

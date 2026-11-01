@@ -57,6 +57,17 @@ class Reader(unittest.TestCase):
         got = flow.parse_yaml('status: done\ndecisions: ["a -> b (Coder)", "c (x)"]\n')
         self.assertEqual(got["decisions"], ["a -> b (Coder)", "c (x)"])
 
+    def test_block_scalar_keeps_text_and_later_keys(self) -> None:
+        # Cards use `scope: |`; keys after it (touches, needs_schema) were dropped (02/11).
+        got = flow.parse_yaml(
+            "task: T8.6\nscope: |\n  line one: PR #119\n\n    - indented 'x\n  last\n"
+            "touches: [a, b]\nwhy: >-\n  folded\n  text\nneeds_schema: [t.c]\n"
+        )
+        self.assertEqual(got["scope"], "line one: PR #119\n\n  - indented 'x\nlast\n")
+        self.assertEqual(got["touches"], ["a", "b"])
+        self.assertEqual(got["why"], "folded text")
+        self.assertEqual(got["needs_schema"], ["t.c"])
+
 
 class Fixture(unittest.TestCase):
     def setUp(self) -> None:

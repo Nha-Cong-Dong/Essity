@@ -474,15 +474,34 @@ MODELS_DIR = "services/core-api/src/core_api/db/models"
 
 
 def _model_columns(repo: Path, base: str) -> dict[str, str]:
-    """Table name -> source of its model class, read from `base` (not the working tree)."""
-    listing = _git(repo, "ls-tree", "-r", "--name-only", base, "--", MODELS_DIR).stdout.split()
-    tables: dict[str, str] = {}
+    """Table name -> source of its model class plus its base classes and mixins (where `id`,
+    `user_id` live), read from `base` (not the working tree)."""
+    db_dir = MODELS_DIR.rsplit("/", 1)[0]  # mixins (UserOwned, CreatedAt) live in db/base.py
+    listing = _git(repo, "ls-tree", "-r", "--name-only", base, "--", db_dir).stdout.split()
+    classes: dict[str, str] = {}
     for name in (n for n in listing if n.endswith(".py")):
         source = _git(repo, "show", f"{base}:{name}").stdout
         for block in re.split(r"^class ", source, flags=re.MULTILINE)[1:]:
-            found = re.search(r"__tablename__\s*=\s*[\"']([\w.]+)[\"']", block)
-            if found:
-                tables[found.group(1)] = block
+            classes[re.split(r"[(:\s]", block, maxsplit=1)[0]] = block
+    return _tables(classes)
+
+
+def _tables(classes: dict[str, str]) -> dict[str, str]:
+    def with_parents(name: str, seen: set[str]) -> str:
+        block = classes.get(name, "")
+        parents = re.match(r"\w+\(([^)]*)\)", block)
+        seen.add(name)
+        for parent in parents.group(1).split(",") if parents else []:
+            parent = parent.strip().split("[")[0]
+            if parent in classes and parent not in seen:
+                block += "\n" + with_parents(parent, seen)
+        return block
+
+    tables: dict[str, str] = {}
+    for name, block in classes.items():
+        found = re.search(r"__tablename__\s*=\s*[\"']([\w.]+)[\"']", block)
+        if found:
+            tables[found.group(1)] = with_parents(name, set())
     return tables
 
 
