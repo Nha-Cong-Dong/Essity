@@ -27,7 +27,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StrictInt, StrictStr
 
 from core_api.api.deps import Now, Storage, VerifiedUser, verified_user
-from core_api.api.text import storable_text
+from core_api.api.text import DbText, storable_text
 from core_api.clients.storage import StorageUnavailableError
 from core_api.db.models import Anchor, KnowledgeUnit, UnitRevision
 from core_api.db.session import DbSession
@@ -322,7 +322,7 @@ def edit_draft(
     body: EditIn,
     user: VerifiedUser,
     session: DbSession,
-    if_match: Annotated[str | None, Header()] = None,
+    if_match: Annotated[DbText | None, Header()] = None,
 ) -> DraftOut:
     version = _version(if_match)
     service = review.UnitReviewService(session, user.id)
@@ -371,7 +371,7 @@ def split_draft(
     body: SplitIn,
     user: VerifiedUser,
     session: DbSession,
-    if_match: Annotated[str | None, Header()] = None,
+    if_match: Annotated[DbText | None, Header()] = None,
 ) -> DraftsOut:
     version = _version(if_match)
     service = review.UnitReviewService(session, user.id)
