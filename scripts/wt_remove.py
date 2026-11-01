@@ -11,6 +11,8 @@ first, then lets git remove the rest, and refuses any path that is not a worktre
 
 import argparse
 import os
+import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -37,6 +39,41 @@ def unlink_links(root: Path) -> list[Path]:
                 elif entry.is_dir(follow_symlinks=False):
                     stack.append(path)
     return removed
+
+
+def sweep_leftover(path: Path) -> str | None:
+    """Delete what `git worktree remove` left behind (read-only files, junctions, long paths).
+
+    Returns None when the folder is gone, else the reason it stays. Refuses a folder that still
+    holds a `.git` entry: that is a live checkout, not a leftover.
+    """
+    if not path.exists():
+        return None
+    if (path / ".git").exists():
+        return "has a .git entry"
+    errors: list[str] = []
+
+    def retry(func, target, exc) -> None:  # type: ignore[no-untyped-def]
+        try:
+            os.chmod(target, stat.S_IWRITE)
+            func(target)
+        except OSError as error:
+            errors.append(str(error))
+
+    try:
+        unlink_links(path)
+        # the extended-length prefix lifts the 260-character limit of pnpm's nested node_modules
+        prefix = (r"\\?" + "\\") if sys.platform == "win32" else ""
+        target = prefix + str(path.resolve())
+        if sys.version_info >= (3, 12):
+            shutil.rmtree(target, onexc=retry)
+        else:
+            shutil.rmtree(target, onerror=lambda f, t, e: retry(f, t, e[1]))
+    except OSError as error:
+        errors.append(str(error))
+    if path.exists():
+        return errors[0] if errors else "still exists"
+    return None
 
 
 def _inside(path: Path, parent: Path) -> bool:
