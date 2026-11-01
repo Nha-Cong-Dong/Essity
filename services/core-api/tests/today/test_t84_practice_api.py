@@ -504,5 +504,5 @@ def test_limits_are_checked_in_core_without_a_call(
         json={"answer_text": "z" * 4001, "dont_remember": False},
         headers=learner.headers,
     )
-    assert response.status_code == 422  # the request schema (4000) is tighter than ai-service (8000)
+    assert response.status_code == 422  # schema cap 4000
     assert count(db_session, Grade) == 0
