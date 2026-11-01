@@ -189,6 +189,62 @@ class AncestorGit(unittest.TestCase):
         self.assertTrue(flow.is_ancestor(repo, second, second))
 
 
+class RebasedEvidence(unittest.TestCase):
+    def setUp(self) -> None:
+        self.repo = Path(tempfile.mkdtemp())
+        self.g("init", "-q", "-b", "main")
+        self.g("config", "user.email", "t@example.com")
+        self.g("config", "user.name", "t")
+        (self.repo / "base").write_text("0")
+        self.g("add", "base")
+        self.g("commit", "-q", "-m", "base")
+        self.g("checkout", "-q", "-b", "feat")
+        (self.repo / "f").write_text("feature")
+        self.g("add", "f")
+        self.g("commit", "-q", "-m", "feat")
+        self.old = self.g("rev-parse", "HEAD")
+        self.g("checkout", "-q", "main")
+        (self.repo / "other").write_text("x")
+        self.g("add", "other")
+        self.g("commit", "-q", "-m", "other")
+        self.g("checkout", "-q", "feat")
+        self.g("rebase", "-q", "main")
+        self.head = self.g("rev-parse", "HEAD")
+
+    def g(self, *args: str) -> str:
+        return git(self.repo, *args)
+
+    def test_rebased_sha_accepted_by_patch_id(self) -> None:
+        self.assertNotEqual(self.old, self.head)
+        self.assertTrue(flow.is_ancestor(self.repo, self.old, self.head) is False)
+        self.assertEqual(flow.on_branch(self.repo, self.old, self.head), "")
+
+    def test_different_patch_rejected(self) -> None:
+        self.g("checkout", "-q", "-b", "side", "main")
+        (self.repo / "g").write_text("different")
+        self.g("add", "g")
+        self.g("commit", "-q", "-m", "side")
+        side = self.g("rev-parse", "HEAD")
+        self.assertIn("patch-id", flow.on_branch(self.repo, side, self.head))
+
+    def test_missing_object_rejected_with_reason(self) -> None:
+        reason = flow.on_branch(self.repo, "deadbeef" * 5, self.head)
+        self.assertIn("không có trong repo", reason)
+
+    def test_sha_original_alone_not_trusted(self) -> None:
+        doc: dict[str, Any] = {
+            "verdict": "pass", "open_orange": 0, "sha": "deadbeef" * 5,
+            "sha_original": self.old,
+        }  # fmt: skip
+        state, _ = flow.judge("tester", [("t.yaml", doc)], self.head, self.repo)
+        self.assertEqual(state, "fail")
+
+    def test_judge_accepts_rebased_tester(self) -> None:
+        doc: dict[str, Any] = {"verdict": "pass", "open_orange": 0, "sha": self.old}
+        state, why = flow.judge("tester", [("t.yaml", doc)], self.head, self.repo)
+        self.assertEqual((state, why), ("ok", ""))
+
+
 class Check(Fixture):
     def run_check(self, pr: dict[str, Any] | None) -> list[str]:
         with (
