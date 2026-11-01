@@ -76,3 +76,30 @@ def test_failures_are_stable_codes_and_never_retried() -> None:
         assert (out.failure, out.reason) == (failure, reason)
         assert len(seen) == 1
         assert "SECRET" not in repr(out)
+
+
+def test_review_question_t79_parses_the_reply_and_posts_once() -> None:
+    # T7.9. Red when: the strict contract refuses a reply with the question, rubric and answer, or
+    # the path is not /v1/review-question, or a second call is made.
+    client, seen = client_answering(
+        httpx2.Response(
+            200,
+            json={
+                **BASE,
+                "status": "ok",
+                "prompt": "Q?",
+                "reference_answer": "A.",
+                "rubric": "R.",
+            },
+        )
+    )
+    reply = client.review_question({"title": "t"})
+    assert not isinstance(reply, NotGraded)
+    assert (reply.status, reply.prompt, reply.rubric) == ("ok", "Q?", "R.")
+    assert len(seen) == 1
+
+
+def test_review_question_t79_connection_error_is_unavailable() -> None:
+    client, _ = client_answering(httpx2.ConnectError("down"))
+    reply = client.review_question({})
+    assert isinstance(reply, NotGraded) and reply.failure == "unavailable"

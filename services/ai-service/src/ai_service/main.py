@@ -4,7 +4,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from ai_service.api import extract_session, grade, health, parse_command, ping, practice
+from ai_service.api import (
+    extract_session,
+    grade,
+    health,
+    parse_command,
+    ping,
+    practice,
+    review_question,
+)
 from ai_service.config import get_settings
 from ai_service.db.session import get_session_factory
 from ai_service.llm.client import LlmClient, build_adapter
@@ -16,6 +24,7 @@ from ai_service.tasks import grade_practice as grade_practice_task
 from ai_service.tasks import parse_command as parse_task
 from ai_service.tasks.grade import fake_grade, load_prompt
 from ai_service.tasks.practice_run import fake_draft_answer, fake_grade_practice
+from ai_service.tasks.process_session import fake_questions
 from ai_service.telemetry import configure_tracing
 
 
@@ -37,6 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             "parse_command": parse_task.fake_parse,
             "grade_practice": fake_grade_practice,
             "draft_answer": fake_draft_answer,
+            "generate_questions": fake_questions,
         },
     )
     sessions = get_session_factory()
@@ -77,6 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(parse_command.router)
     parse_command.add_error_handlers(app)
     app.include_router(practice.router)
+    app.include_router(review_question.router)
     # Outermost middleware: continues the trace started by core-api (W3C traceparent).
     FastAPIInstrumentor.instrument_app(
         app, excluded_urls="healthz", exclude_spans=["receive", "send"]
