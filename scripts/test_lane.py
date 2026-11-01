@@ -361,7 +361,11 @@ class DocSection(Base):
     title: Mapped[str]
 
 
-class Unit(Base):
+class UserOwned:
+    user_id: Mapped[int]
+
+
+class Unit(UserOwned, Base):
     __tablename__ = 'unit'
 
     page_start: Mapped[int]
@@ -397,6 +401,13 @@ class Schema(unittest.TestCase):
         missing, notes = lane.schema_check(self.repo, "T7.4")
         self.assertEqual(missing, ["doc_section.page_start", "nope.x"])
         self.assertEqual(notes, [])
+
+    def test_columns_from_mixins_count_and_block_scope_does_not_hide_the_field(self) -> None:
+        # 02/11: `scope: |` hid needs_schema; `grade_job.id` (from a mixin) read as missing
+        self.card("scope: |\n  text # x\ntouches: [a]\nneeds_schema: [unit.user_id]\n")
+        self.assertEqual(lane.schema_check(self.repo, "T7.4"), ([], []))
+        self.card("scope: |\n  text\nneeds_schema: [doc_section.user_id]\n")
+        self.assertEqual(lane.schema_check(self.repo, "T7.4")[0], ["doc_section.user_id"])
 
     def test_a_card_without_the_field_warns_and_passes(self) -> None:
         self.card("risk: red\n")
