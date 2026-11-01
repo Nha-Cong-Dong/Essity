@@ -55,7 +55,7 @@ READERS = {
     "echo", "printf", "cat", "grep", "egrep", "fgrep", "rg", "head", "tail", "ls", "less",
     "wc", "diff", "find", "stat", "test", "pwd", "git", "sort", "uniq", "tr", "cut", "jq",
 }  # fmt: skip
-_REDIRECT = re.compile(r"^\d*>>?(.*)$")
+_REDIRECT = re.compile(r"^[^>]*>>?(.*)$")
 _ASSIGN = re.compile(r"^[A-Za-z_]\w*=")
 _SEPARATORS = set(";&|\n")
 
@@ -78,9 +78,7 @@ def _drop_heredocs(command: str) -> str:
 
 def _tokens(command: str) -> list[list[str]]:
     """Simple commands of a shell line (quotes honoured; `;` `&&` `||` `|` newline split)."""
-    text = re.sub(
-        r"\\(?=[\w.])", "/", _drop_heredocs(command)
-    )  # Windows paths survive shlex
+    text = re.sub(r"\\(?=[\w.])", "/", _drop_heredocs(command))  # Windows paths survive shlex
     lexer = shlex.shlex(text, posix=True, punctuation_chars=";&|\n")
     lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
@@ -118,36 +116,94 @@ def _lane_dir(words: list[str], base: Path) -> Path:
     return base
 
 
+_WRITERS = {"tee", "cp", "mv", "touch", "install"}
+_SHELLS = {"bash", "sh", "zsh", "dash"}
+
+
+def _substitutions(command: str) -> tuple[str, list[str]]:
+    """Split `$(...)`, `<(...)`, `>(...)` and backtick bodies out of a command line."""
+    bodies: list[str] = []
+    text = command
+    while True:
+        start = -1
+        for opener in ("$(", "<(", ">("):
+            at = text.find(opener)
+            if at != -1 and (start == -1 or at < start):
+                start = at
+        if start == -1:
+            break
+        depth, end = 0, len(text)
+        for index in range(start + 1, len(text)):
+            depth += {"(": 1, ")": -1}.get(text[index], 0)
+            if depth == 0:
+                end = index
+                break
+        bodies.append(text[start + 2 : end])
+        text = text[:start] + " " + text[end + 1 :]
+    parts = text.split("`")
+    bodies.extend(parts[1::2])
+    return " ".join(parts[0::2]), bodies
+
+
+def _inner_command(words: list[str]) -> list[str] | None:
+    """The command a wrapper runs: `find -exec X ...`, `bash -c "X"`."""
+    program = Path(words[0]).name
+    if program == "find":
+        for flag in ("-exec", "-execdir", "-ok", "-okdir"):
+            if flag in words:
+                rest = words[words.index(flag) + 1 :]
+                end = [i for i, w in enumerate(rest) if w in (";", "+")]
+                return rest[: end[0]] if end else rest
+    if program in _SHELLS and "-c" in words[:-1]:
+        return _tokens(words[words.index("-c") + 1])[0] if words[words.index("-c") + 1] else None
+    return None
+
+
+def _words_targets(words: list[str], here: Path) -> list[Path]:
+    targets: list[Path] = []
+    program = Path(words[0]).name
+    base = here
+    if program == "git" and "-C" in words[:-1]:
+        base = _resolve(words[words.index("-C") + 1], here)
+    base = _lane_dir(words, base)
+    reader = program in READERS and not (program == "git" and "-c" in words)
+    if not reader and any(
+        p.search(f"{base.as_posix()} {' '.join(words)}") for p in SERIAL_COMMANDS
+    ):
+        targets.append(base)
+    inner = _inner_command(words)
+    if inner:
+        targets.extend(_words_targets(inner, base))
+    writes = program in _WRITERS or (program == "sed" and any(w.startswith("-i") for w in words))
+    for index, word in enumerate(words):
+        found = _REDIRECT.match(word)
+        if found:
+            target = found.group(1) or (words[index + 1] if index + 1 < len(words) else "")
+            candidates = [target] if target and not target.startswith("&") else []
+        else:
+            candidates = [word] if writes and index and not word.startswith("-") else []
+        for candidate in candidates:
+            path = _resolve(candidate, base)
+            if _is_protected_path(path):
+                targets.append(path)
+    return targets
+
+
 def _bash_targets(command: str, cwd: Path) -> list[Path]:
     targets: list[Path] = []
     here = cwd.resolve()
-    for words in _tokens(command):
+    text, bodies = _substitutions(_drop_heredocs(command))
+    for body in bodies:
+        targets.extend(_bash_targets(body, here))
+    for words in _tokens(text):
         while words and _ASSIGN.match(words[0]):
             words = words[1:]
         if not words:
             continue
-        program, base = Path(words[0]).name, here
-        if program == "cd" and len(words) > 1:
+        if Path(words[0]).name == "cd" and len(words) > 1:
             here = _resolve(words[1], here)
             continue
-        if program == "git" and "-C" in words[:-1]:
-            base = _resolve(words[words.index("-C") + 1], here)
-        base = _lane_dir(words, base)
-        if program not in READERS and any(
-            p.search(f"{base.as_posix()} {' '.join(words)}") for p in SERIAL_COMMANDS
-        ):
-            targets.append(base)
-        for index, word in enumerate(words):
-            found = _REDIRECT.match(word)
-            if not found:
-                continue
-            target = found.group(1) or (
-                words[index + 1] if index + 1 < len(words) else ""
-            )
-            if target and not target.startswith("&"):
-                path = _resolve(target, base)
-                if _is_protected_path(path):
-                    targets.append(path)
+        targets.extend(_words_targets(words, here))
     return targets
 
 
@@ -169,9 +225,7 @@ def serial_target(tool: str, tool_input: dict[str, object], cwd: Path) -> Path |
     return targets[0] if targets else None
 
 
-def blocked_reason(
-    tool: str, tool_input: dict[str, object], cwd: Path, repo: Path
-) -> str | None:
+def blocked_reason(tool: str, tool_input: dict[str, object], cwd: Path, repo: Path) -> str | None:
     """Why the call must be blocked, or None to let it through."""
     owner = owner_path(repo)
     for where in serial_targets(tool, tool_input, cwd):

@@ -86,15 +86,10 @@ def uv_sync(path: Path) -> list[str]:
         if not Path(target).exists():
             continue
         result = subprocess.run(
-            ["uv", "sync", "--directory", target],
-            check=False,
-            capture_output=True,
-            text=True,
+            ["uv", "sync", "--directory", target], check=False, capture_output=True, text=True
         )
         if result.returncode != 0:
-            notes.append(
-                f"lane: uv sync failed in {target}: {result.stderr.strip()[-300:]}"
-            )
+            notes.append(f"lane: uv sync failed in {target}: {result.stderr.strip()[-300:]}")
     return notes
 
 
@@ -108,18 +103,14 @@ exec python "$guard" "{repo}"
 
 def install_branch_guard(repo: Path) -> None:
     """pre-commit and pre-push in the shared hooks dir (all worktrees), see branch_guard.py."""
-    common = _git(
-        repo, "rev-parse", "--path-format=absolute", "--git-common-dir"
-    ).stdout.strip()
+    common = _git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip()
     hooks = Path(common) / "hooks"
     hooks.mkdir(parents=True, exist_ok=True)
     for name in ("pre-commit", "pre-push"):
         hook = hooks / name
         if hook.exists() and "branch_guard.py" not in hook.read_text(encoding="utf-8"):
             continue  # someone else's hook: leave it alone
-        hook.write_text(
-            HOOK_TEMPLATE.format(repo=repo.as_posix()), encoding="utf-8", newline="\n"
-        )
+        hook.write_text(HOOK_TEMPLATE.format(repo=repo.as_posix()), encoding="utf-8", newline="\n")
         hook.chmod(0o755)
 
 
@@ -137,12 +128,7 @@ def up(
         raise RuntimeError(
             f"L{lane} is in use (branch {current or '?'}); run `lane.py down L{lane}`"
         )
-    exists = (
-        _git(
-            repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"
-        ).returncode
-        == 0
-    )
+    exists = _git(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}").returncode == 0
     args = (
         ["worktree", "add", str(path), branch]
         if exists
@@ -215,9 +201,7 @@ def stop_all(repo: Path) -> list[str]:
             continue
         worktree = Path(str(card.get("worktree") or ""))
         if not card.get("worktree") or not worktree.exists():
-            rows.append(
-                f"{card.get('lane', '?')}  {task}  worktree missing: {worktree}"
-            )
+            rows.append(f"{card.get('lane', '?')}  {task}  worktree missing: {worktree}")
             continue
         present = [d for d in CODE_DIRS if (worktree / d).exists()]
         if present:
@@ -257,8 +241,7 @@ def _worktrees(repo: Path) -> list[dict[str, str]]:
 
 def _pr_merged(branch: str, repo: Path) -> bool:
     out = flow._run(
-        ["gh", "pr", "list", "--head", branch, "--state", "merged", "--json", "number"],
-        repo,
+        ["gh", "pr", "list", "--head", branch, "--state", "merged", "--json", "number"], repo
     )
     try:
         return bool(json.loads(out or "[]"))
@@ -282,9 +265,7 @@ def gc(
         if _inside(path, repo) and path.resolve() == repo.resolve():
             continue
         if "locked" in fields or not path.exists():
-            rows.append(
-                f"keep     {path}  ({'locked' if 'locked' in fields else 'missing'})"
-            )
+            rows.append(f"keep     {path}  ({'locked' if 'locked' in fields else 'missing'})")
             continue
         dirty = _git(path, "status", "--porcelain").stdout.splitlines()
         if dirty:
@@ -296,9 +277,7 @@ def gc(
             why = f"{branch}: PR {'merged' if ok else 'not merged'}"
         else:
             on_branch = bool(
-                _git(
-                    repo, "branch", "-a", "--contains", fields.get("HEAD", "")
-                ).stdout.strip()
+                _git(repo, "branch", "-a", "--contains", fields.get("HEAD", "")).stdout.strip()
             )
             ok = on_branch and any(_inside(path, root) for root in scratch)
             why = f"detached {fields.get('HEAD', '')[:7]}" + (
@@ -315,14 +294,10 @@ def gc(
         for card_file in sorted((repo / ".work").glob("*/card.yaml")):
             card = flow.load(card_file) or {}
             if card.get("worktree") and _inside(path, Path(str(card["worktree"]))):
-                flow.bring_home(
-                    repo / ".work", card_file.parent.name
-                )  # .work/ is gitignored
+                flow.bring_home(repo / ".work", card_file.parent.name)  # .work/ is gitignored
         unlink_links(path)  # pnpm junctions point into the main repo (R45)
         result = _git(repo, "worktree", "remove", "--force", str(path))
-        rows.append(
-            f"{'removed' if result.returncode == 0 else 'FAILED '}  {path}  ({why})"
-        )
+        rows.append(f"{'removed' if result.returncode == 0 else 'FAILED '}  {path}  ({why})")
     _git(repo, "worktree", "prune")
     return rows or ["gc: no worktree besides the main checkout"]
 
@@ -383,9 +358,7 @@ def status(repo: Path, stale: bool = False, now: float | None = None) -> list[st
             state, report_age = _lane_report(repo, branch, now)
             commit_age = _commit_age(path, now)
             row += f"  commit {_age(commit_age)} ago  report {state} {_age(report_age)}"
-            old = all(
-                a is not None and a > STALE_MINUTES for a in (commit_age, report_age)
-            )
+            old = all(a is not None and a > STALE_MINUTES for a in (commit_age, report_age))
             if state == "in_progress" and old:
                 row += "  STALE"
         rows.append(row)
@@ -429,9 +402,7 @@ def find_docker() -> str | None:
 
 
 def _docker(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["docker", *args], check=False, capture_output=True, text=True
-    )
+    return subprocess.run(["docker", *args], check=False, capture_output=True, text=True)
 
 
 def docker_running() -> bool:
@@ -470,9 +441,7 @@ def free_ram_gb() -> float | None:
         capture_output=True,
         text=True,
     )
-    return (
-        int(out.stdout.strip()) / 2**20 if out.stdout.strip().isdigit() else None
-    )  # KiB -> GiB
+    return int(out.stdout.strip()) / 2**20 if out.stdout.strip().isdigit() else None  # KiB -> GiB
 
 
 def preflight(sleep: Callable[[float], None] = time.sleep) -> tuple[list[str], bool]:
@@ -497,9 +466,7 @@ def preflight(sleep: Callable[[float], None] = time.sleep) -> tuple[list[str], b
     elif ram is not None and ram < RAM_WARN_GB:
         notes.append(f"preflight: warning, {ram:.1f} GB RAM free (< {RAM_WARN_GB})")
     if os.environ.get("PYTHONIOENCODING", "").lower().replace("-", "") != "utf8":
-        notes.append(
-            "preflight: warning, PYTHONIOENCODING is not utf-8 (Vietnamese text breaks)"
-        )
+        notes.append("preflight: warning, PYTHONIOENCODING is not utf-8 (Vietnamese text breaks)")
     return notes or ["preflight: ok"], ok
 
 
@@ -508,9 +475,7 @@ MODELS_DIR = "services/core-api/src/core_api/db/models"
 
 def _model_columns(repo: Path, base: str) -> dict[str, str]:
     """Table name -> source of its model class, read from `base` (not the working tree)."""
-    listing = _git(
-        repo, "ls-tree", "-r", "--name-only", base, "--", MODELS_DIR
-    ).stdout.split()
+    listing = _git(repo, "ls-tree", "-r", "--name-only", base, "--", MODELS_DIR).stdout.split()
     tables: dict[str, str] = {}
     for name in (n for n in listing if n.endswith(".py")):
         source = _git(repo, "show", f"{base}:{name}").stdout
@@ -529,14 +494,10 @@ def schema_check(repo: Path, task: str) -> tuple[list[str], list[str]]:
     """
     card = flow.load(repo / ".work" / task / "card.yaml")
     if card is None:
-        return [], [
-            f"preflight {task}: thiếu .work/{task}/card.yaml, bỏ qua kiểm schema"
-        ]
+        return [], [f"preflight {task}: thiếu .work/{task}/card.yaml, bỏ qua kiểm schema"]
     needs = card.get("needs_schema")
     if needs is None:
-        return [], [
-            f"preflight {task}: card không có needs_schema, chưa kiểm schema (cảnh báo)"
-        ]
+        return [], [f"preflight {task}: card không có needs_schema, chưa kiểm schema (cảnh báo)"]
     base = str(card.get("base") or "origin/main")
     tables = _model_columns(repo, base)
     missing = []
@@ -591,10 +552,7 @@ def _read_cards(repo: Path) -> list[Row]:
         card = _read_yaml_flat(card_file)
         report_file = _report_path(repo, card_file.parent.name, dict(card))
         report = _read_yaml_flat(report_file) if report_file else {}
-        touches = [
-            t.strip().strip("\"'")
-            for t in card.get("touches", "").strip("[]").split(",")
-        ]
+        touches = [t.strip().strip("\"'") for t in card.get("touches", "").strip("[]").split(",")]
         cards.append(
             {
                 "task": card.get("task", card_file.parent.name),
@@ -677,9 +635,7 @@ def next_tasks(
     prs = gh()
     red_task = {r["task"] for r in rows if _is_red(r["risk"])}
     red_branch = {c["branch"]: _is_red(c["risk"]) for c in cards if c["branch"]}
-    notes = (
-        ["warning: gh failed, open PRs unknown (counted as 0)"] if prs is None else []
-    )
+    notes = ["warning: gh failed, open PRs unknown (counted as 0)"] if prs is None else []
     open_branches: set[str] = set()
     open_red = 0
     pr_tasks: set[str] = set()
@@ -721,9 +677,7 @@ def next_tasks(
         if missing:
             blocked.append(f"{code} | thiếu phụ thuộc {', '.join(missing)}")
         elif clash:
-            blocked.append(
-                f"{code} | trùng touches với {clash['task']} ({clash['lane']})"
-            )
+            blocked.append(f"{code} | trùng touches với {clash['task']} ({clash['lane']})")
         else:
             hint = any(h in f.lower() for f in files for h in MIGRATION_HINTS)
             candidates.append((row, "L1" if hint else "bất kỳ"))
@@ -735,9 +689,7 @@ def next_tasks(
     if not candidates:
         lines.append("(không có ứng viên)")
     if show_all:
-        lines.extend(
-            ["-- bị chặn --", *blocked] if blocked else ["-- bị chặn -- (không có)"]
-        )
+        lines.extend(["-- bị chặn --", *blocked] if blocked else ["-- bị chặn -- (không có)"])
     return lines
 
 
@@ -755,34 +707,22 @@ def main(argv: list[str]) -> int:
     p_up.add_argument("--base", default="origin/main")
     p_up.add_argument("--no-db", action="store_true")
     p_up.add_argument("--no-preflight", action="store_true")
-    p_up.add_argument(
-        "--no-sync", action="store_true", help="skip `uv sync` of the services"
-    )
+    p_up.add_argument("--no-sync", action="store_true", help="skip `uv sync` of the services")
     p_env = sub.add_parser("env")
     p_env.add_argument("lane", nargs="?")
-    p_env.add_argument(
-        "--for-review", type=Path, help="worktree: env of the lane that owns it"
-    )
+    p_env.add_argument("--for-review", type=Path, help="worktree: env of the lane that owns it")
     p_env.add_argument("--shell", choices=["bash", "powershell"], default="bash")
     sub.add_parser("stop-all")
     sub.add_parser("gc")
     p_down = sub.add_parser("down")
     p_down.add_argument("lane")
-    p_down.add_argument(
-        "--force", action="store_true", help="discard uncommitted files"
-    )
+    p_down.add_argument("--force", action="store_true", help="discard uncommitted files")
     p_status = sub.add_parser("status")
-    p_status.add_argument(
-        "--stale", action="store_true", help="ages, STALE and ORPHAN worktrees"
-    )
+    p_status.add_argument("--stale", action="store_true", help="ages, STALE and ORPHAN worktrees")
     p_pre = sub.add_parser("preflight")
-    p_pre.add_argument(
-        "task", nargs="?", help="check the card's needs_schema instead of Docker"
-    )
+    p_pre.add_argument("task", nargs="?", help="check the card's needs_schema instead of Docker")
     p_next = sub.add_parser("next")
-    p_next.add_argument(
-        "--all", action="store_true", help="also list blocked tasks and why"
-    )
+    p_next.add_argument("--all", action="store_true", help="also list blocked tasks and why")
     p_next.add_argument("--limit", type=int, default=10)
     args = parser.parse_args(argv)
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
@@ -792,9 +732,7 @@ def main(argv: list[str]) -> int:
             missing, notes = schema_check(repo, args.task)
             print("\n".join(notes or [f"preflight {args.task}: schema ok"]))
             if missing:
-                print(
-                    f"preflight {args.task}: thiếu cột trên base: {', '.join(missing)}"
-                )
+                print(f"preflight {args.task}: thiếu cột trên base: {', '.join(missing)}")
                 return 1
             return 0
         if args.action == "preflight":
@@ -811,29 +749,16 @@ def main(argv: list[str]) -> int:
                 if not ok:
                     return 1
             sync = None if args.no_sync else uv_sync
-            print(
-                up(
-                    repo,
-                    parse_lane(args.lane),
-                    args.branch,
-                    args.base,
-                    not args.no_db,
-                    sync,
-                )
-            )
+            print(up(repo, parse_lane(args.lane), args.branch, args.base, not args.no_db, sync))
         elif args.action == "stop-all":
             print("\n".join(stop_all(repo)))
         elif args.action == "gc":
             rows = gc(repo)
             docs = repo / "docs"
-            if (
-                docs / ".git"
-            ).exists():  # the private docs repo has worktrees of its own
+            if (docs / ".git").exists():  # the private docs repo has worktrees of its own
                 rows += [
                     f"docs: {row}"
-                    for row in gc(
-                        docs, scratch=[*SCRATCH_ROOTS, repo / ".claude" / "worktrees"]
-                    )
+                    for row in gc(docs, scratch=[*SCRATCH_ROOTS, repo / ".claude" / "worktrees"])
                 ]
             print("\n".join(rows))
         elif args.action == "env":

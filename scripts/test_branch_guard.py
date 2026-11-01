@@ -16,9 +16,7 @@ from branch_guard import refusal
 def _card(root: Path, task: str, lane_name: str, branch: str) -> None:
     folder = root / ".work" / task
     folder.mkdir(parents=True)
-    (folder / "card.yaml").write_text(
-        f"task: {task}\nlane: {lane_name}\nbranch: {branch}\n"
-    )
+    (folder / "card.yaml").write_text(f"task: {task}\nlane: {lane_name}\nbranch: {branch}\n")
 
 
 class Refusal(unittest.TestCase):
