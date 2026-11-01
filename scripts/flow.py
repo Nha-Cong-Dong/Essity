@@ -184,6 +184,48 @@ def is_ancestor(repo: Path, sha: str, head: str) -> bool:
     return result.returncode == 0
 
 
+def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], check=False, capture_output=True, text=True
+    )
+
+
+def _patch_id(repo: Path, sha: str) -> str:
+    shown = _git(repo, "show", "--format=", sha)
+    if shown.returncode != 0 or not shown.stdout.strip():
+        return ""
+    out = subprocess.run(
+        ["git", "-C", str(repo), "patch-id", "--stable"],
+        input=shown.stdout, check=False, capture_output=True, text=True,
+    )  # fmt: skip
+    return out.stdout.split()[0] if out.returncode == 0 and out.stdout.split() else ""
+
+
+def on_branch(repo: Path, sha: str, head: str) -> str:
+    """'' when `sha` is an ancestor of head, or (after a rebase) a commit in base..head has the
+    same stable patch-id; otherwise the reason. `sha_original` is never consulted here."""
+    if is_ancestor(repo, sha, head):
+        return ""
+    if not sha or _git(repo, "cat-file", "-e", f"{sha}^{{commit}}").returncode != 0:
+        return f"sha {sha} không có trong repo"
+    base = ""
+    for ref in ("origin/main", "main"):
+        found = _git(repo, "merge-base", ref, head)
+        if found.returncode == 0:
+            base = found.stdout.strip()
+            break
+    if not base:
+        return f"sha {sha} không thuộc nhánh và không tìm được base để so patch-id"
+    wanted = _patch_id(repo, sha)
+    commits = _git(repo, "rev-list", f"{base}..{head}").stdout.split()
+    if wanted and any(_patch_id(repo, c) == wanted for c in commits):
+        return ""
+    return (
+        f"sha {sha} không thuộc nhánh và không có commit cùng patch-id "
+        f"trong {base[:7]}..{head[:7]}"
+    )
+
+
 def folders(work: Path, task: str, card: dict[str, Any] | None = None) -> list[Path]:
     """Where a task's evidence may be: <worktree>/.work/<task>/ first, then <main>/.work/<task>/.
 
@@ -258,13 +300,11 @@ def judge(
         if head and name in ("review", "pm") and not same_sha(doc.get("sha"), head):
             reasons.append(f"{file}: sha {doc.get('sha')} khác HEAD {head[:7]}")
             continue
-        if (
-            head
-            and name in ("tester", "review-task")
-            and not is_ancestor(repo, str(doc.get("sha") or ""), head)
-        ):
-            reasons.append(f"{file}: sha {doc.get('sha')} không thuộc nhánh tới {head[:7]}")
-            continue
+        if head and name in ("tester", "review-task"):
+            why = on_branch(repo, str(doc.get("sha") or ""), head)
+            if why:
+                reasons.append(f"{file}: {why}")
+                continue
         passed += 1
     # review-task: one file per task; every present file must pass, at least one must exist
     if reasons:
