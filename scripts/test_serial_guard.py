@@ -66,6 +66,22 @@ class Guard(unittest.TestCase):
         ]:
             self.assertIsNotNone(self.bash(command, self.l2), command)
 
+    def test_running_the_generator_script_is_blocked_but_checking_it_is_not(self) -> None:
+        for command in [
+            "python scripts/gen_api_client.py",
+            "python scripts/gen_api_client.py --typecheck",
+            "bash scripts/gen_api_client.sh",
+        ]:
+            self.assertIsNotNone(self.bash(command, self.l2), command)
+        for command in [
+            "pytest scripts/test_gen_api_client.py",
+            "python -m pytest scripts/test_gen_api_client.py -q",
+            "ruff check scripts/gen_api_client.py scripts/test_gen_api_client.py",
+            "ruff format --check scripts/gen_api_client.py",
+            "pyright scripts/gen_api_client.py",
+        ]:
+            self.assertIsNone(self.bash(command, self.l2), command)
+
     def test_writing_the_exported_openapi_outside_the_owner_is_blocked(self) -> None:
         self.assertIsNotNone(
             self.edit(self.l2 / "packages" / "api-client" / "openapi.json", self.l2)
