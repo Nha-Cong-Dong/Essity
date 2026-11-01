@@ -124,6 +124,7 @@ def test_ac5_a_backlog_of_200_keeps_the_cap_and_says_how_many_sessions_it_needs(
     assert len(plan.items) == MAX_QUESTIONS
     assert plan.backlog is not None
     assert (plan.backlog.subject_id, plan.backlog.sessions, plan.backlog.days) == (MMT, 10, 5)
+    assert plan.backlog.units == 200  # T7.11 D15: the screen words "còn 200 mục, 5 ngày" (AC5)
 
 
 def test_ac5_no_note_when_the_backlog_fits_before_the_exam() -> None:

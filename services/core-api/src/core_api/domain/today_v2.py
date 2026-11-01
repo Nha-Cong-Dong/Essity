@@ -25,6 +25,7 @@ from datetime import date, datetime, timedelta
 from typing import Literal
 from zoneinfo import ZoneInfo
 
+from core_api.domain.explain import Reason
 from core_api.domain.learning_day import learning_day
 from core_api.domain.suggest import (
     SubjectInput,
@@ -36,6 +37,8 @@ from core_api.domain.today import (
     MAX_MINUTES,
     MAX_QUESTIONS,
     MINUTES_PER_QUESTION,
+    PlannedQuestion,
+    TodayPlan,
     exam_weight,
 )
 
@@ -114,9 +117,17 @@ class NextStudy:
 
 @dataclass(frozen=True)
 class ReviewItem:
-    card_id: uuid.UUID
+    """One question to review. `card_id` is the card of the pure card-based composer; the items
+    built from the v1 plan (`review_from_plan`, what production uses) set `question_id` instead,
+    plus the structured reason the screen words itself (T7.11 D4)."""
+
+    card_id: uuid.UUID | None
     subject_id: uuid.UUID
     why: str
+    question_id: uuid.UUID | None = None
+    kind: Literal["review", "new"] = "review"
+    retrievability: float | None = None
+    days_since_last: int | None = None
 
 
 @dataclass(frozen=True)
@@ -143,12 +154,48 @@ class TodayV2:
     practice: PracticePart | None = None
 
 
-def compose(inputs: TodayInputs) -> TodayV2:
+def review_from_plan(
+    plan: TodayPlan, reasons: Mapping[uuid.UUID, Reason], *, new_saved_today: bool
+) -> Review:
+    """The review part from the v1 plan: the one chooser of questions, so what Today shows is what
+    the review session starts with (T7.11 D1). `reasons`: why each question, by question id."""
+    items = tuple(_planned_item(q, reasons.get(q.question_id)) for q in plan.items)
+    return Review(
+        items=items,
+        minutes=plan.minutes,
+        next_due_day=None if items else plan.next_day,
+        new_saved_today=new_saved_today,
+    )
+
+
+def _planned_item(question: PlannedQuestion, reason: Reason | None) -> ReviewItem:
+    if reason is None or reason.kind == "new" or reason.retrievability is None:
+        return ReviewItem(
+            None,
+            question.subject_id,
+            "Câu mới, bạn chưa ôn lần nào.",
+            question_id=question.question_id,
+            kind="new",
+        )
+    return ReviewItem(
+        None,
+        question.subject_id,
+        _card_why(reason.retrievability),
+        question_id=question.question_id,
+        kind="review",
+        retrievability=reason.retrievability,
+        days_since_last=reason.days_since_last,
+    )
+
+
+def compose(inputs: TodayInputs, review: Review | None = None) -> TodayV2:
+    """`review`: a ready review part (from `review_from_plan`); without it the cards in `inputs`
+    are composed (the pure path of T7.11a)."""
     today = learning_day(inputs.now, inputs.tz, inputs.day_start_hour)
     return TodayV2(
         day=today,
         unfinished=_unfinished(inputs),
-        review=_review(inputs, today),
+        review=review if review is not None else _review(inputs, today),
         next_study=_next_study(inputs, today),
         practice=inputs.practice,
     )

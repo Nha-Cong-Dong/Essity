@@ -77,6 +77,7 @@ class Backlog:
     subject_id: uuid.UUID
     sessions: int
     days: int
+    units: int = 0  # the units behind `sessions` (due and never asked, exams up to this one)
 
 
 @dataclass(frozen=True)
@@ -235,5 +236,5 @@ def _backlog(
         units = sum(counts[s] for s, day in upcoming.items() if day <= exam_day)
         sessions, days = math.ceil(units / MAX_QUESTIONS), (exam_day - today).days
         if sessions > days and (worst is None or sessions / days > worst.sessions / worst.days):
-            worst = Backlog(subject_id, sessions, days)
+            worst = Backlog(subject_id, sessions, days, units)
     return worst
