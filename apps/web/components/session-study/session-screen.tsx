@@ -7,6 +7,7 @@ import { FieldHint } from "@/components/field-error";
 import { FocusShell } from "@/components/shells";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { FileRow, Suggestion } from "@/lib/fixtures/session-study";
+import type { SessionApi } from "@/lib/session-study/api";
 import { type Draft, draftsReducer } from "@/lib/session-study/drafts";
 import type { DocRef, Mention } from "@/lib/session-study/mention";
 import { type Round, roundReducer } from "@/lib/session-study/round";
@@ -17,6 +18,7 @@ import { DoneLine, Region } from "./session-parts";
 import { ProcessingArea } from "./session-processing";
 import { ReviewArea, type ScopeRow } from "./session-review";
 import { SavedArea, type SavedKind } from "./session-saved";
+import { useDraftSync } from "./use-live-session";
 
 // T7.12a (US-02, US-02b; DESIGN.md §6.7; docs in .work/T7.12a/design-decisions.md): the whole study
 // session on one screen: suggestion, submission, reading, cards, "Học tiếp hay dừng?". One round
@@ -45,11 +47,25 @@ export type SessionScreenProps = {
   initial: SessionInitial;
   /** Preview only: a send runs on to its cards by itself after a moment. */
   autoAdvance?: boolean;
-  /** The cards a finished read produces. */
-  readDrafts: () => Draft[];
-  /** What the server holds when a card was changed elsewhere (409, "Tải lại thẻ"). */
-  serverDraft: Draft;
+  /** The cards a finished read produces (the preview). */
+  readDrafts?: () => Draft[];
+  /** What the server holds when a card was changed elsewhere (409, "Tải lại thẻ"; the preview). */
+  serverDraft?: Draft;
+  /** T7.12: core-api behind the screen. Without it (the preview) the screen runs on its own. */
+  api?: SessionApi;
 };
+
+/** T7.12: how long the reading is asked about while it runs (a retry after a hiccup is the same). */
+const POLL_MS = 2500;
+export const SUBMIT_COPY = {
+  network: "Chưa gửi được, mạng đang chập chờn. Câu của bạn vẫn được giữ, thử gửi lại.",
+  tooLong: "Câu mô tả dài quá. Rút gọn bớt rồi gửi lại.",
+  nothing: "Viết vài dòng mô tả buổi học rồi gửi.",
+  mention: "Chưa hiểu một chỗ @ trong câu. Xem chỗ được đánh dấu rồi gửi lại.",
+  saveFailed: "Chưa lưu được.",
+  saveConflict: "Có thẻ đã đổi ở nơi khác. Tải lại thẻ trước khi lưu.",
+  saveEmpty: "Thẻ mới cần có tên và nội dung để lưu.",
+} as const;
 
 const kindOf = (name: string): FileRow["kind"] =>
   /\.(jpe?g|png|heic|webp)$/i.test(name) ? "image" : /\.pdf$/i.test(name) ? "pdf" : /\.docx$/i.test(name) ? "docx" : /\.pptx$/i.test(name) ? "pptx" : "text";
@@ -79,7 +95,7 @@ function Suggest({ suggestion, id }: { suggestion: Suggestion; id: string }) {
 }
 
 export function SessionScreen(props: SessionScreenProps) {
-  const { subject, stopHref, docs, initial } = props;
+  const { subject, stopHref, docs, initial, api } = props;
   const [round, send] = useReducer(roundReducer, initial.round);
   const [drafts, dispatch] = useReducer(draftsReducer, initial.drafts);
   const [text, setText] = useState(initial.text);
@@ -96,6 +112,7 @@ export function SessionScreen(props: SessionScreenProps) {
 
   const newId = () => `new-${++counter.current}`;
   const say = (value: string) => setNote(value);
+  const { act, saveAll, reload: reloadFromServer } = useDraftSync(api, drafts, dispatch, say);
   const later = (ms: number, run: () => void) => {
     timers.current.push(window.setTimeout(run, ms));
   };
@@ -112,28 +129,103 @@ export function SessionScreen(props: SessionScreenProps) {
   const isFree = free && round.round === 1;
 
   function finishRead() {
+    const made = props.readDrafts?.() ?? [];
     dispatch({ type: "clear" });
-    dispatch({ type: "append-ai", drafts: props.readDrafts() });
+    dispatch({ type: "append-ai", drafts: made });
     setScope(isFree ? [] : mentions.length > 0 ? mentions.map((m) => ({ id: `${m.docId}`, doc: m.name, from: 52, to: 58 })) : [{ id: "textbook", doc: "Giáo trình", from: 52, to: 58 }]);
-    send({ type: "drafts-ready", count: props.readDrafts().length });
+    send({ type: "drafts-ready", count: made.length });
+  }
+
+  // T7.12: while the reading runs, ask core-api where it stands (never kept here, so leaving the
+  // screen and coming back shows the true state). Cards that arrive replace the list.
+  useEffect(() => {
+    if (!api || round.phase !== "processing" || round.submission === "failed") return;
+    let stopped = false;
+    const timer = window.setInterval(async () => {
+      const found = await api.load();
+      if (stopped || !found.ok) return;
+      if (found.data.phase === "done") {
+        dispatch({ type: "clear" });
+        dispatch({ type: "append-ai", drafts: found.data.drafts });
+        send({ type: "drafts-ready", count: found.data.drafts.length });
+      } else if (found.data.phase === "failed") send({ type: "failed" });
+      else if (found.data.phase === "pending_ai") send({ type: "pending-ai" });
+      else if (found.data.phase === "processing") send({ type: "processing" });
+    }, POLL_MS);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [api, round.phase, round.submission]);
+
+  async function handIn() {
+    if (!api) return;
+    const result = await api.submit(text, mentions);
+    if (result.ok) {
+      if (result.data.status !== "queued") send({ type: "processing" });
+      return;
+    }
+    if (result.docId) {
+      send({ type: "scope-rejected", docId: result.docId });
+      say(SUBMIT_COPY.mention);
+      return;
+    }
+    send({ type: "back" });
+    setProblem(
+      result.error === "text_too_long" ? SUBMIT_COPY.tooLong : result.error === "nothing_submitted" ? SUBMIT_COPY.nothing : SUBMIT_COPY.network,
+    );
   }
 
   function submit() {
     if (uploading > 0) return;
-    if (text.trim() === "" && usableFiles === 0) {
-      setProblem("Thêm ít nhất một file hoặc vài dòng mô tả.");
+    if (text.trim() === "" && (api || usableFiles === 0)) {
+      setProblem(api ? SUBMIT_COPY.nothing : "Thêm ít nhất một file hoặc vài dòng mô tả.");
       return;
     }
     setProblem(null);
     setNote("");
     send({ type: "send" });
+    if (api) {
+      void handIn();
+      return;
+    }
     if (props.autoAdvance) {
       later(600, () => send({ type: "processing" }));
       later(1600, finishRead);
     }
   }
 
+  /** "Thử lại": the same words go again; with none left (the page was reopened) the form shows. */
+  function retry() {
+    if (!api) {
+      send({ type: "retry" });
+      return;
+    }
+    if (text.trim() === "") {
+      send({ type: "back" });
+      return;
+    }
+    send({ type: "retry" });
+    void handIn();
+  }
+
+  async function saveLive() {
+    setSaving(true);
+    const result = await saveAll();
+    setSaving(false);
+    if (result.kind === "ok") send({ type: "save-ok" });
+    else if (result.kind === "conflict") say(SUBMIT_COPY.saveConflict);
+    else if (result.kind === "empty") say(SUBMIT_COPY.saveEmpty);
+    else send({ type: "save-error" });
+  }
+
   function save() {
+    if (api) {
+      if (!drafts.some((d) => d.status === "draft" && d.conflict)) {
+        void saveLive();
+        return;
+      }
+    }
     const hit = drafts.find((d) => d.status === "draft" && d.conflict);
     if (hit) {
       say("Có thẻ đã đổi ở nơi khác. Tải lại thẻ trước khi lưu.");
@@ -149,9 +241,13 @@ export function SessionScreen(props: SessionScreenProps) {
   }
 
   function reload(id: string) {
+    if (api) {
+      void reloadFromServer(id);
+      return;
+    }
     const current = drafts.find((d) => d.id === id);
     if (!current) return;
-    const server = props.serverDraft.id === id ? props.serverDraft : { ...current, version: current.version + 1 };
+    const server = props.serverDraft?.id === id ? props.serverDraft : { ...current, version: current.version + 1 };
     dispatch({ type: "reload", draft: server });
   }
 
@@ -193,18 +289,20 @@ export function SessionScreen(props: SessionScreenProps) {
                   setProblem(null);
                 }}
               />
+              {api ? null : (
               <FileDrop
-                rows={files}
-                tooManyPages={initial.tooManyPages}
-                onAdd={(added) =>
-                  setFiles((rows) => [
-                    ...rows,
-                    ...added.map((file) => ({ id: newId(), name: file.name, kind: kindOf(file.name), state: "done" as const })),
-                  ])
-                }
-                onRemove={(id) => setFiles((rows) => rows.filter((row) => row.id !== id))}
-                onRetry={(id) => setFiles((rows) => rows.map((row) => (row.id === id ? { ...row, state: "done" as const } : row)))}
-              />
+                  rows={files}
+                  tooManyPages={initial.tooManyPages}
+                  onAdd={(added) =>
+                    setFiles((rows) => [
+                      ...rows,
+                      ...added.map((file) => ({ id: newId(), name: file.name, kind: kindOf(file.name), state: "done" as const })),
+                    ])
+                  }
+                  onRemove={(id) => setFiles((rows) => rows.filter((row) => row.id !== id))}
+                  onRetry={(id) => setFiles((rows) => rows.map((row) => (row.id === id ? { ...row, state: "done" as const } : row)))}
+                />
+              )}
               <div className="flex flex-col items-start gap-2">
                 <Button
                   type="button"
@@ -234,7 +332,7 @@ export function SessionScreen(props: SessionScreenProps) {
           </>
         ) : (
           <>
-            <DoneLine label={isFree ? "Gợi ý: học tự do" : `Gợi ý: ${suggestion.kind === "section" ? "mục 3.2 TCP flow control" : "học tự do"}`} />
+            <DoneLine label={isFree ? "Gợi ý: học tự do" : `Gợi ý: ${suggestion.kind === "section" ? suggestion.text : "học tự do"}`} />
             <DoneLine label={`Bài nộp: ${files.length} file, ${text.trim() ? 1 : 0} mô tả`}>
               {text.trim() ? <span className="whitespace-pre-line">{text}</span> : null}
             </DoneLine>
@@ -243,7 +341,7 @@ export function SessionScreen(props: SessionScreenProps) {
 
         {round.phase === "processing" && round.submission && (
           <Region phase="processing" title="Đang đọc bài nộp">
-            <ProcessingArea submission={round.submission} onRetry={() => send({ type: "retry" })} onManual={() => send({ type: "manual" })} />
+            <ProcessingArea submission={round.submission} onRetry={retry} onManual={() => send({ type: "manual" })} />
           </Region>
         )}
 
@@ -251,14 +349,15 @@ export function SessionScreen(props: SessionScreenProps) {
           <Region phase="review" title="Thẻ nháp">
             <ReviewArea
               drafts={drafts}
-              dispatch={dispatch}
+              dispatch={act}
+              sections={api ? [] : undefined}
               scope={scope}
               partialNote={round.partialNote}
               saveError={round.saveError}
               saving={saving}
               newId={newId}
               onSave={save}
-              onRetryRead={() => send({ type: "retry" })}
+              onRetryRead={retry}
               onReload={reload}
               lateCount={0}
               say={say}
@@ -271,7 +370,7 @@ export function SessionScreen(props: SessionScreenProps) {
             <DoneLine label={`Đã lưu ${savedCount} thẻ`} />
             <Region phase="saved" title="Đã lưu">
               <SavedArea
-                kind={isFree ? "free" : initial.saved}
+                kind={api || isFree ? "free" : initial.saved}
                 count={savedCount}
                 stopHref={stopHref}
                 onContinue={() => {

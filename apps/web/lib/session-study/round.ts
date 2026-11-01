@@ -45,7 +45,9 @@ export type RoundEvent =
   | { type: "manual" }
   | { type: "save-ok" }
   | { type: "save-error" }
-  | { type: "continue" };
+  | { type: "continue" }
+  /** T7.12: a send that could not be made, or a read to start over: the form again, text kept. */
+  | { type: "back" };
 
 export function roundReducer(state: Round, event: RoundEvent): Round {
   const quiet = { focus: null, announce: null } as const;
@@ -86,6 +88,8 @@ export function roundReducer(state: Round, event: RoundEvent): Round {
       return { ...state, ...quiet, phase: "saved", saveError: false, focus: "saved" };
     case "save-error":
       return { ...state, ...quiet, saveError: true };
+    case "back":
+      return { ...state, ...quiet, phase: "compose", submission: null, focus: "compose" };
     case "continue":
       return { ...initialRound, round: state.round + 1, focus: "compose" };
   }

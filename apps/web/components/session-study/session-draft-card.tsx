@@ -1,12 +1,13 @@
 "use client";
 
-import { type Dispatch, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Draft, DraftAction } from "@/lib/session-study/drafts";
+import type { Draft } from "@/lib/session-study/drafts";
 
 import { Notice } from "./session-parts";
+import type { Act } from "./use-live-session";
 
 // T7.12a (US-02 AC5-AC8, US-02b; DESIGN.md §6.7 vùng 4; design decisions C1, C9-C11, C15, C18):
 // one draft card, straight on the page and told apart by a rule above it. Tap the text to edit in
@@ -24,7 +25,9 @@ const SOURCE_NOTE = { notes: "Chỉ thấy trong vở", document: "Chỉ thấy 
 
 export type DraftCardProps = {
   draft: Draft;
-  dispatch: Dispatch<DraftAction>;
+  dispatch: Act;
+  /** Sections to pick from; none = no picker (core-api has no section edit yet, T7.12). */
+  sections?: string[];
   /** Id of the card being merged into another, or null. */
   mergeFrom: string | null;
   onMergeStart: (id: string) => void;
@@ -38,6 +41,7 @@ export type DraftCardProps = {
 
 export function DraftCard(props: DraftCardProps) {
   const { draft, dispatch, mergeFrom, onMergeStart, onMergeInto, newId, onReload, say } = props;
+  const sections = props.sections ?? SECTIONS;
   const id = useId();
   const [editing, setEditing] = useState(props.startEditing ?? false);
   const [mode, setMode] = useState<"idle" | "split" | "more">("idle");
@@ -85,7 +89,8 @@ export function DraftCard(props: DraftCardProps) {
 
   return (
     <li id={`session-card-${draft.id}`} className="flex flex-col gap-3 border-t border-line py-6 first:border-t-0 first:pt-0">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={sections.length === 0 && draft.source === "both" ? "hidden" : "flex flex-wrap items-center gap-2"}>
+        {sections.length > 0 && (<>
         <label className="sr-only" htmlFor={`${id}-section`}>
           Mục đề cương của thẻ {label}
         </label>
@@ -95,13 +100,14 @@ export function DraftCard(props: DraftCardProps) {
           onChange={(event) => dispatch({ type: "edit", id: draft.id, patch: { section: event.target.value || null } })}
           className="h-10 max-w-full rounded-full bg-rose-100 px-4 text-meta text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
-          {SECTIONS.map((section) => (
+          {sections.map((section) => (
             <option key={section} value={section}>
               Mục {section}
             </option>
           ))}
           <option value={NO_SECTION}>Chưa gắn mục</option>
         </select>
+        </>)}
         {draft.source !== "both" && <span className="text-meta text-ink-soft">{SOURCE_NOTE[draft.source]}</span>}
       </div>
 
@@ -229,8 +235,8 @@ export function DraftCard(props: DraftCardProps) {
               type="button"
               variant="secondary"
               disabled={parts[0].trim() === "" || parts[1].trim() === ""}
-              onClick={() => {
-                dispatch({
+              onClick={async () => {
+                const done = await dispatch({
                   type: "split",
                   id: draft.id,
                   parts: [
@@ -238,6 +244,7 @@ export function DraftCard(props: DraftCardProps) {
                     { id: newId(), title: `${draft.title} (tiếp)`, summary: parts[1] },
                   ],
                 });
+                if (done === false) return;
                 setMode("idle");
                 say("Đã tách thành hai thẻ");
               }}

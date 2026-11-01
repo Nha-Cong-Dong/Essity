@@ -183,3 +183,31 @@ describe("roundReducer (US-02 AC4 scope refused, AC9-AC11 processing, AC14 Học
     expect(roundReducer(review, { type: "save-error" })).toMatchObject({ phase: "review", saveError: true });
   });
 });
+
+describe("drafts reducer, answers from core-api (T7.12)", () => {
+  // US-02b AC6, AC9. Red when: a card added here keeps its local id (Save would send a stranger)
+  // or the version after an edit is not kept (the next edit would be a 409).
+  it("synced gives a card its real id and version, keeping what was typed", () => {
+    const list = [draft("new-1", { summary: "đang gõ" })];
+    expect(draftsReducer(list, { type: "synced", id: "new-1", to: "u9", version: 4 })).toMatchObject([
+      { id: "u9", version: 4, summary: "đang gõ" },
+    ]);
+  });
+
+  // US-02b AC8. Red when: the merged card lands at the end instead of where the first card was.
+  it("replace puts core-api's cards where the first replaced card stood", () => {
+    const list = [draft("a"), draft("b"), draft("c"), draft("d")];
+    const out = draftsReducer(list, { type: "replace", ids: ["b", "d"], drafts: [draft("m")] });
+    expect(out.map((d) => d.id)).toEqual(["a", "m", "c"]);
+    expect(draftsReducer(list, { type: "replace", ids: ["zz"], drafts: [draft("m")] })).toBe(list);
+  });
+});
+
+describe("round reducer, a send that went wrong (T7.12)", () => {
+  // US-02 AC11. Red when: after a failed send the learner stays on "processing" (no way back).
+  it("back returns to the form and moves the focus there", () => {
+    const sent = roundReducer(initialRound, { type: "send" });
+    expect(sent.phase).toBe("processing");
+    expect(roundReducer(sent, { type: "back" })).toMatchObject({ phase: "compose", submission: null, focus: "compose" });
+  });
+});
