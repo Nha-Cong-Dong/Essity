@@ -1008,6 +1008,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Subject Suggestion */
+        get: operations["get_subject_suggestion_v1_subjects__subject_id__suggestion_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects/{subject_id}/textbook": {
         parameters: {
             query?: never;
@@ -1052,6 +1069,23 @@ export interface paths {
          *     `bad_note`, `size_mismatch`, `content_mismatch`; 429; 503 `storage_unavailable`.
          */
         post: operations["submit_v1_submissions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Suggestions */
+        get: operations["get_suggestions_v1_suggestions_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1355,6 +1389,18 @@ export interface components {
             /** Email */
             email: string;
         };
+        /** EmptyOut */
+        EmptyOut: {
+            /** Links */
+            links: ("review" | "practice")[];
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "no_subjects" | "nothing_open" | "no_syllabus" | "all_studied";
+            /** Text */
+            text: string;
+        };
         /** FileIn */
         FileIn: {
             /**
@@ -1607,6 +1653,19 @@ export interface components {
              * @enum {string}
              */
             verdict: "correct" | "incorrect";
+        };
+        /** PaceOut */
+        PaceOut: {
+            /** Days Left */
+            days_left: number | null;
+            /** Remaining Leaves */
+            remaining_leaves: number;
+            /** Remaining Weight */
+            remaining_weight: number;
+            /** Text */
+            text: string;
+            /** Unit */
+            unit: string | null;
         };
         /** PartIn */
         PartIn: {
@@ -2105,6 +2164,15 @@ export interface components {
             retention: number | null;
             syllabus: components["schemas"]["SyllabusOut"];
         };
+        /** SubjectSuggestionOut */
+        SubjectSuggestionOut: {
+            suggestion: components["schemas"]["SuggestionOut"];
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+        };
         /** SubmissionOut */
         SubmissionOut: {
             /** Mentions */
@@ -2158,6 +2226,47 @@ export interface components {
             session_id: string;
             /** Text */
             text?: string | null;
+        };
+        /** SuggestionOut */
+        SuggestionOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "next_leaf" | "review_practice" | "free_session";
+            pace: components["schemas"]["PaceOut"];
+            /** Partial */
+            partial: boolean;
+            /** Reason */
+            reason: string;
+            /** Remaining */
+            remaining: number | null;
+            /** Section Id */
+            section_id: string | null;
+            /** Section Title */
+            section_title: string | null;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /** Subject Name */
+            subject_name: string;
+            /** Unit */
+            unit: string | null;
+        };
+        /** SuggestionsOut */
+        SuggestionsOut: {
+            empty: components["schemas"]["EmptyOut"] | null;
+            /** Finished */
+            finished: components["schemas"]["SuggestionOut"][];
+            /** Suggestions */
+            suggestions: components["schemas"]["SuggestionOut"][];
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
         };
         /** SyllabusOut */
         SyllabusOut: {
@@ -4248,6 +4357,37 @@ export interface operations {
             };
         };
     };
+    get_subject_suggestion_v1_subjects__subject_id__suggestion_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubjectSuggestionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     put_textbook_v1_subjects__subject_id__textbook_put: {
         parameters: {
             query?: never;
@@ -4341,6 +4481,26 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_suggestions_v1_suggestions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionsOut"];
+                };
             };
         };
     };
