@@ -28,7 +28,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, Protocol
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import func, update
@@ -420,6 +420,17 @@ def fake_toc(request: LlmRequest) -> str:
     return json.dumps({"entries": []})
 
 
+class AskPrompt(Protocol):
+    """What an asker sends: the system and user text and the schema of the answer."""
+
+    @property
+    def system(self) -> str: ...
+    @property
+    def user(self) -> str: ...
+    @property
+    def output_schema(self) -> dict[str, Any]: ...
+
+
 class SyllabusAsker:
     """Binds `build_syllabus`'s `ask` to LlmClient. The `pipeline_run` row is written on the first
     call only, so a book that needs no model leaves no run; `finish` closes it. Never raises from
@@ -432,14 +443,19 @@ class SyllabusAsker:
         *,
         user_id: uuid.UUID,
         subject_id: uuid.UUID,
+        prompt_version: str | None = None,
+        prompt_sha256: str | None = None,
     ) -> None:
         self.llm, self.sessions = llm, sessions
         self.user_id, self.subject_id = user_id, subject_id
+        # Another prompt under the same task (T9.8b: PPTX titles) records its own version and sha.
+        self.prompt_version = prompt_version or PROMPT_VERSION
+        self.prompt_sha256 = prompt_sha256 or load_prompt().sha256
         self.calls = 0
         self._run_id: uuid.UUID | None = None
         self._error: str | None = None
 
-    def __call__(self, prompt: SyllabusPrompt) -> str:
+    def __call__(self, prompt: AskPrompt) -> str:
         if self._run_id is None:
             self._run_id = self._start_run()
         self.calls += 1
@@ -448,7 +464,7 @@ class SyllabusAsker:
             user_id=self.user_id,
             subject_id=self.subject_id,
             pipeline_run_id=self._run_id,
-            prompt_version=PROMPT_VERSION,
+            prompt_version=self.prompt_version,
             attempt=min(self.calls, 2),
             system=prompt.system,
             user=prompt.user,
@@ -460,14 +476,17 @@ class SyllabusAsker:
             self._error = type(error).__name__[:60]
             raise
 
+    @property
+    def failed(self) -> bool:
+        return self._error is not None
+
     def _start_run(self) -> uuid.UUID:
-        prompt = load_prompt()
         run = PipelineRun(
             user_id=self.user_id,
             subject_id=self.subject_id,
             task=TASK,
-            prompt_version=prompt.version,
-            prompt_sha256=prompt.sha256,
+            prompt_version=self.prompt_version,
+            prompt_sha256=self.prompt_sha256,
         )
         try:
             with self.sessions() as session:

@@ -17,6 +17,7 @@ import hashlib
 import json
 import logging
 import re
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import lru_cache
@@ -25,10 +26,13 @@ from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError
 
+from ai_service.db.session import SessionFactory
+from ai_service.llm.client import LlmClient
 from ai_service.llm.types import LlmRequest
-from ai_service.pptx import PptxContent
+from ai_service.pptx import PptxContent, read_pptx
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
 from ai_service.tasks.outline_nodes import MAX_NODES, OutlineNode, tiles
+from ai_service.tasks.syllabus import SyllabusAsker
 
 _log = logging.getLogger(__name__)
 
@@ -209,6 +213,67 @@ def build_pptx_outline(
 
 
 def fake_titles(request: LlmRequest | None = None) -> str:
-    """The fake provider's answer: one part for the whole deck is not a grouping worth keeping,
-    so it names none and the outline stays flat."""
-    return json.dumps({"groups": []})
+    """The fake provider's answer: two parts, split at the middle titled slide of the prompt, so
+    CI exercises the grouping path. With no request there is nothing to split: no groups."""
+    numbers = [int(n) for n in re.findall(r"^(\d+)\t", request.user, re.M)] if request else []
+    if len(numbers) < 2:
+        return json.dumps({"groups": []})
+    groups = [
+        {"title": "Part 1", "first_slide": 1},
+        {"title": "Part 2", "first_slide": numbers[len(numbers) // 2]},
+    ]
+    return json.dumps({"groups": groups})
+
+
+def outline_pptx_file(
+    data: bytes,
+    llm: LlmClient | None,
+    sessions: SessionFactory | None,
+    *,
+    user_id: uuid.UUID,
+    subject_id: uuid.UUID,
+) -> dict[str, Any]:
+    """The `outline.json` body of a PPTX (T9.8b, US-13 AC2-3). The titles call, when the deck
+    has no usable sections, is bound to LlmClient under the `syllabus_toc` task with this
+    prompt's own version and sha in the `pipeline_run` row. No model, or a model that fails
+    (cap, provider): a flat temporary outline, plus `note: "ai_unavailable"` when a call was
+    refused. Never raises for what the model does."""
+    asker: SyllabusAsker | None = None
+    if llm is not None and sessions is not None:
+        asker = SyllabusAsker(
+            llm,
+            sessions,
+            user_id=user_id,
+            subject_id=subject_id,
+            prompt_version=PROMPT_VERSION,
+            prompt_sha256=prompt_sha256(),
+        )
+    try:
+        nodes = build_pptx_outline(read_pptx(data), asker)
+    finally:
+        if asker is not None:
+            asker.finish()
+    outline: dict[str, Any] = {"unit": "slide", "nodes": _file_nodes(nodes)}
+    if asker is not None and asker.failed:
+        outline["note"] = "ai_unavailable"
+    return outline
+
+
+def _file_nodes(nodes: list[OutlineNode]) -> list[dict[str, Any]]:
+    parents: list[int | None] = []
+    stack: list[int] = []
+    for index, node in enumerate(nodes):
+        del stack[node.level :]
+        parents.append(stack[-1] if stack else None)
+        stack.append(index)
+    return [
+        {
+            "title": node.title,
+            "parent": parent,
+            "page_start": node.start,
+            "page_end": node.end,
+            "weight": node.weight,
+            "source": node.source,
+        }
+        for node, parent in zip(nodes, parents, strict=True)
+    ]
