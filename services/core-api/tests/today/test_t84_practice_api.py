@@ -29,6 +29,7 @@ from core_api.db.models import (
     ReviewLog,
 )
 from core_api.main import app
+from core_api.repositories.practice_attempt import DraftContendedError, PracticeAttemptRepository
 from core_api.services import practice_grading
 
 RUBRIC = ["Ba bước", "Nêu SYN, SYN-ACK, ACK"]
@@ -506,3 +507,19 @@ def test_limits_are_checked_in_core_without_a_call(
     )
     assert response.status_code == 422  # schema cap 4000
     assert count(db_session, Grade) == 0
+
+
+def test_open_answers_409_try_again_when_the_draft_stays_contended(
+    learner: Learner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Review F3. Red when: DraftContendedError escapes as a 500 or loses its "try_again" code.
+    question = learner.question()
+
+    def contended(self: object, question_id: uuid.UUID, now: object) -> None:
+        raise DraftContendedError(question_id)
+
+    monkeypatch.setattr(PracticeAttemptRepository, "open_draft", contended)
+    response = learner.client.post(
+        f"/v1/practice/questions/{question}/open", headers=learner.headers
+    )
+    assert (response.status_code, response.json()["detail"]) == (409, "try_again")

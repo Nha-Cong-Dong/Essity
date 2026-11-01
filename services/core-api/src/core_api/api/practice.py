@@ -67,7 +67,7 @@ class SubmitIn(DraftIn):
     hidden_ms: Annotated[int, Field(ge=0, le=MAX_HIDDEN_MS * 30)] = 0
 
 
-class OverrideIn(BaseModel):
+class PracticeOverrideIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     verdict: Literal["correct", "incorrect"]
 
@@ -263,7 +263,7 @@ def regrade_attempt(
 
 @router.post("/grades/{grade_id}/override")
 def override(
-    grade_id: uuid.UUID, body: OverrideIn, user: VerifiedUser, session: DbSession
+    grade_id: uuid.UUID, body: PracticeOverrideIn, user: VerifiedUser, session: DbSession
 ) -> PracticeView:
     """ "Chấm sai": append a user grade; the practice schedule is rebuilt from `practice_log`."""
     try:
