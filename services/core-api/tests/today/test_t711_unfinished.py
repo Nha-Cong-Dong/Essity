@@ -125,7 +125,11 @@ def _job(db: Session, user: object, unit: object, status: str, at: datetime) -> 
             " VALUES ('default', 'regenerate_review_question', CAST(:a AS jsonb), CAST(:s AS"
             " procrastinate_job_status), :at)"
         ),
-        {"a": f'{{"user_id": "{user}", "unit_id": "{unit}", "lazy": true}}', "s": status, "at": at},
+        {
+            "a": f'{{"payload": {{"user_id": "{user}", "unit_id": "{unit}", "lazy": true}}}}',
+            "s": status,
+            "at": at,
+        },
     )
     db.execute(
         text(

@@ -149,6 +149,7 @@ def test_us03_ac5_backlog_is_structured(client: TestClient, db_session: Session)
         "subject_name": "Mạng máy tính",
         "sessions": 6,
         "days": 5,
+        "units": 120,
     }
 
 

@@ -271,6 +271,21 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             )
         )
 
+    def saved_on(self, day: date) -> bool:
+        """Whether a card was saved on this learning day: it waits for the next one (AC12)."""
+        return bool(
+            self.session.scalar(
+                select(
+                    exists().where(
+                        KnowledgeUnit.user_id == self.user_id,
+                        KnowledgeUnit.saved_learning_day == day,
+                        KnowledgeUnit.status.in_(LIVE_STATUSES),
+                        self._visible_subject(KnowledgeUnit.subject_id),  # type: ignore[arg-type]
+                    )
+                )
+            )
+        )
+
     def unfinished_sessions(self) -> list[DraftSession]:
         """Study sessions of visible subjects with draft cards left or a submission waiting for
         the AI (`pending_ai`): one line each on Today, never a backlog count (US-03 AC1)."""
@@ -358,10 +373,10 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             return set()
         rows = self.session.execute(
             text(
-                "SELECT DISTINCT j.args->>'unit_id' FROM procrastinate_jobs j"
+                "SELECT DISTINCT j.args->'payload'->>'unit_id' FROM procrastinate_jobs j"
                 " WHERE j.task_name = 'regenerate_review_question'"
-                " AND j.args->>'user_id' = :user"
-                " AND j.args->>'unit_id' = ANY(:units)"
+                " AND j.args->'payload'->>'user_id' = :user"
+                " AND j.args->'payload'->>'unit_id' = ANY(:units)"
                 " AND (j.status IN ('todo', 'doing') OR EXISTS ("
                 "  SELECT 1 FROM procrastinate_events e"
                 "  WHERE e.job_id = j.id AND e.type = 'deferred' AND e.at >= :since))"
