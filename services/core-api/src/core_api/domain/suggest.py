@@ -160,7 +160,7 @@ def _rank_key(subject: SubjectInput, today: date) -> tuple[int, float, date, str
     return (0, -tightness, last, str(subject.id))
 
 
-def _eligible(
+def eligible_subjects(
     subjects: Sequence[SubjectInput], today: date, filters: SuggestFilter | None
 ) -> list[SubjectInput]:
     flt = filters or SuggestFilter()
@@ -179,7 +179,9 @@ def suggest_today(
     filters: SuggestFilter | None = None,
 ) -> list[Suggestion]:
     """At most `MAX_SUGGESTIONS` subjects with something left to study, tightest first."""
-    studying = [s for s in _eligible(subjects, today, filters) if _pace(s, today).remaining_leaves]
+    studying = [
+        s for s in eligible_subjects(subjects, today, filters) if _pace(s, today).remaining_leaves
+    ]
     ranked = sorted(studying, key=lambda s: _rank_key(s, today))
     return [suggest_for_subject(s, today) for s in ranked[:MAX_SUGGESTIONS]]
 
@@ -190,5 +192,51 @@ def suggest_finished(
     filters: SuggestFilter | None = None,
 ) -> list[Suggestion]:
     """Eligible subjects with nothing left to study (review_practice / free_session)."""
-    done = [s for s in _eligible(subjects, today, filters) if not _pace(s, today).remaining_leaves]
+    done = [
+        s
+        for s in eligible_subjects(subjects, today, filters)
+        if not _pace(s, today).remaining_leaves
+    ]
     return [suggest_for_subject(s, today) for s in sorted(done, key=lambda s: _rank_key(s, today))]
+
+
+UNIT_LABELS = {"page": "trang", "slide": "slide", "est_page": "trang ước tính"}
+
+EmptyReason = Literal["no_subjects", "nothing_open", "no_syllabus", "all_studied"]
+
+_EMPTY_TEXT: dict[EmptyReason, str] = {
+    "no_subjects": "Chưa có môn nào. Thêm một môn để bắt đầu.",
+    "nothing_open": "Hôm nay chưa có môn nào để gợi ý. Bạn có thể ôn thẻ hoặc luyện tập.",
+    "no_syllabus": "Các môn chưa có giáo trình. Bạn có thể học tự do, ôn thẻ hoặc luyện tập.",
+    "all_studied": "Các môn đã học hết đề cương. Bạn có thể ôn thẻ hoặc luyện tập.",
+}
+
+
+def reason_line(s: Suggestion) -> str:
+    """One neutral line saying why this item (US-15 §9 #4): numbers from the data only."""
+    if s.kind == "review_practice":
+        return "Đã học hết đề cương: ôn và luyện tập."
+    if s.kind == "free_session":
+        return "Môn chưa có giáo trình: học tự do."
+    if s.partial and s.remaining_weight is not None:
+        return f"Mục học dở, còn {s.remaining_weight:g} {s.unit}."
+    if s.pace.days_left is not None:
+        return f"Môn thi sau {s.pace.days_left} ngày, còn {s.pace.remaining_leaves} mục."
+    return "Mục chưa học đầu tiên trong đề cương."
+
+
+def empty_state(
+    subject_count: int, eligible: Sequence[SubjectInput], finished: Sequence[Suggestion]
+) -> EmptyReason:
+    """Why Today has no study suggestion (AC11): never blank, always a way to review/practice."""
+    if subject_count == 0:
+        return "no_subjects"
+    if not eligible:
+        return "nothing_open"
+    if all(s.kind == "free_session" for s in finished):
+        return "no_syllabus"
+    return "all_studied"
+
+
+def empty_text(reason: EmptyReason) -> str:
+    return _EMPTY_TEXT[reason]

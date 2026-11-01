@@ -222,3 +222,20 @@ def test_property_deterministic_max_two_no_banned_words(subjects: list[SubjectIn
 def test_banned_words_absent_from_sample(w: str):
     s = subject([leaf("a", 12)], exam=TODAY + timedelta(days=3))
     assert w not in suggest_for_subject(s, TODAY).pace.text
+
+
+# T7.10b AC5, AC11: reason lines and empty-state texts carry no pressure wording.
+def test_reason_lines_and_empty_texts_have_no_banned_words() -> None:
+    from core_api.domain.suggest import empty_state, empty_text, reason_line
+
+    s_open = suggest_for_subject(subject([leaf("a")], exam=TODAY + timedelta(days=3)), TODAY)
+    s_partial = suggest_for_subject(subject([leaf("a", covered_weight=4)]), TODAY)
+    s_none = suggest_for_subject(subject([leaf("a")], exam=None), TODAY)
+    s_done = suggest_for_subject(subject([leaf("a", excluded=True)]), TODAY)
+    s_free = suggest_for_subject(subject([]), TODAY)
+    texts = [reason_line(s) for s in (s_open, s_partial, s_none, s_done, s_free)]
+    for reason in ("no_subjects", "nothing_open", "no_syllabus", "all_studied"):
+        texts.append(empty_text(reason))  # pyright: ignore[reportArgumentType]
+    assert all(texts)
+    assert not [t for t in texts for w in BANNED if w in t.lower()]
+    assert empty_state(0, [], []) == "no_subjects"
