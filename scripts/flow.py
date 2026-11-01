@@ -220,7 +220,10 @@ def on_branch(repo: Path, sha: str, head: str) -> str:
     commits = _git(repo, "rev-list", f"{base}..{head}").stdout.split()
     if wanted and any(_patch_id(repo, c) == wanted for c in commits):
         return ""
-    return f"sha {sha} không thuộc nhánh và không có commit cùng patch-id trong {base[:7]}..{head[:7]}"
+    return (
+        f"sha {sha} không thuộc nhánh và không có commit cùng patch-id "
+        f"trong {base[:7]}..{head[:7]}"
+    )
 
 
 def folders(work: Path, task: str, card: dict[str, Any] | None = None) -> list[Path]:
