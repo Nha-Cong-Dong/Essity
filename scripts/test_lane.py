@@ -79,6 +79,61 @@ class UpDown(unittest.TestCase):
         down(self.repo, 1)
 
 
+class Leftover(UpDown):
+    def test_up_moves_a_folder_that_is_no_worktree_out_of_the_way(self) -> None:
+        left = lane_path(self.repo, 1)
+        (left / "node_modules").mkdir(parents=True)
+        (left / "keep.txt").write_text("old")
+        path = up(self.repo, 1, "t9.9-x", base="main", create_db=False)
+        self.assertEqual(git(path, "branch", "--show-current"), "t9.9-x")
+        moved = list(left.parent.glob("_stale-L1-*"))
+        self.assertEqual(len(moved), 1)
+        self.assertEqual((moved[0] / "keep.txt").read_text(), "old")
+        down(self.repo, 1)
+
+    def test_up_moves_a_second_leftover_to_a_fresh_name(self) -> None:
+        for _ in range(2):
+            left = lane_path(self.repo, 1)
+            left.mkdir(parents=True)
+            up(self.repo, 1, "t9.9-x", base="main", create_db=False)
+            down(self.repo, 1)
+        self.assertEqual(len(list(left.parent.glob("_stale-L1-*"))), 2)
+
+    def test_down_reports_a_folder_git_could_not_delete(self) -> None:
+        path = up(self.repo, 1, "t9.9-x", base="main", create_db=False)
+        real = lane._git
+
+        def fake(repo, *args):  # type: ignore[no-untyped-def]
+            if args[:2] == ("worktree", "remove"):  # unregisters, leaves files (Windows lock)
+                real(repo, "worktree", "remove", "--force", str(path))
+                path.mkdir()
+                (path / "locked.txt").write_text("x")
+                return subprocess.CompletedProcess(args, 1, "", "failed to delete")
+            return real(repo, *args)
+
+        with mock.patch.object(lane, "_git", fake):
+            down(self.repo, 1)
+        self.assertFalse(path.exists())  # swept after git gave up
+
+    def test_gc_sweeps_what_git_left_and_says_so_when_it_cannot(self) -> None:
+        git(self.repo, "branch", "t9.9-x")
+        path = up(self.repo, 1, "t9.9-x", base="main", create_db=False)
+        with mock.patch.object(lane, "sweep_leftover", return_value="locked by pid 1"):
+            real = lane._git
+
+            def fake(repo, *args):  # type: ignore[no-untyped-def]
+                if args[:2] == ("worktree", "remove"):
+                    real(repo, *args)
+                    path.mkdir()
+                    return subprocess.CompletedProcess(args, 0, "", "")
+                return real(repo, *args)
+
+            with mock.patch.object(lane, "_git", fake):
+                rows = lane.gc(self.repo, merged=lambda *_: True, scratch=[])
+        self.assertTrue(any("left on disk" in r and "locked by pid 1" in r for r in rows), rows)
+        path.rmdir()
+
+
 class Stale(UpDown):
     def report(self, branch: str, status: str, age_minutes: float) -> Path:
         folder = self.repo / ".work" / "T9"

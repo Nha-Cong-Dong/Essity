@@ -33,7 +33,7 @@ from typing import Any
 
 import flow
 from agent_env import DATABASE_URL, REDIS_URL, ensure_database
-from wt_remove import check_removable, unlink_links
+from wt_remove import check_removable, sweep_leftover, unlink_links
 
 LANES = range(1, 6)
 DOCKER_BIN = Path("E:/Docker/Docker/resources/bin")
@@ -114,6 +114,26 @@ def install_branch_guard(repo: Path) -> None:
         hook.chmod(0o755)
 
 
+def _is_worktree(repo: Path, path: Path) -> bool:
+    """True when git still lists `path` as a worktree or the folder holds a `.git` entry."""
+    if (path / ".git").exists():
+        return True
+    return any(Path(f["worktree"]).resolve() == path.resolve() for f in _worktrees(repo))
+
+
+def _move_leftover(path: Path, lane: int) -> Path:
+    """Rename a non-worktree lane folder to `_stale-L<n>-<date>[-k]` beside it."""
+    day = time.strftime("%m%d")
+    target = path.parent / f"_stale-L{lane}-{day}"
+    k = 1
+    while target.exists():
+        k += 1
+        target = path.parent / f"_stale-L{lane}-{day}-{k}"
+    path.rename(target)
+    print(f"lane: moved leftover folder {path} -> {target}", file=sys.stderr)
+    return target
+
+
 def up(
     repo: Path,
     lane: int,
@@ -123,6 +143,8 @@ def up(
     sync: Callable[[Path], list[str]] | None = uv_sync,
 ) -> Path:
     path = lane_path(repo, lane)
+    if path.exists() and not _is_worktree(repo, path):
+        _move_leftover(path, lane)  # gc/down lost the race with a Windows lock: keep it, move on
     if path.exists():
         current = _git(path, "branch", "--show-current").stdout.strip()
         raise RuntimeError(
@@ -297,7 +319,12 @@ def gc(
                 flow.bring_home(repo / ".work", card_file.parent.name)  # .work/ is gitignored
         unlink_links(path)  # pnpm junctions point into the main repo (R45)
         result = _git(repo, "worktree", "remove", "--force", str(path))
-        rows.append(f"{'removed' if result.returncode == 0 else 'FAILED '}  {path}  ({why})")
+        _git(repo, "worktree", "prune")
+        left = sweep_leftover(path, repo, scratch)  # git may unregister yet leave files behind
+        if left:
+            rows.append(f"left on disk: {path}  ({left}; `lane.py up` will move it aside)")
+        else:
+            rows.append(f"{'removed' if result.returncode == 0 or not path.exists() else 'FAILED '}  {path}  ({why})")
     _git(repo, "worktree", "prune")
     return rows or ["gc: no worktree besides the main checkout"]
 
@@ -306,6 +333,7 @@ def down(repo: Path, lane: int, force: bool = False) -> None:
     path = lane_path(repo, lane)
     if not path.exists():
         return
+    check_removable(path, repo, [])
     dirty = _git(path, "status", "--short").stdout.splitlines()
     if dirty and not force:
         # Removing the folder throws away what was never committed; the branch keeps the rest.
@@ -315,9 +343,12 @@ def down(repo: Path, lane: int, force: bool = False) -> None:
         )
     unlink_links(path)  # pnpm junctions point into the main repo (R45)
     result = _git(repo, "worktree", "remove", "--force", str(path))
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip())
     _git(repo, "worktree", "prune")
+    left = sweep_leftover(path, repo)  # git may unregister yet leave files behind
+    if left:
+        raise RuntimeError(f"left on disk: {path} ({left}); `lane.py up` will move it aside")
+    if result.returncode != 0 and path.exists():
+        raise RuntimeError(result.stderr.strip())
 
 
 def _age(minutes: float | None) -> str:
