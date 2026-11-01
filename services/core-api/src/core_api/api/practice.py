@@ -35,7 +35,11 @@ from core_api.repositories.practice_attempt import (
 from core_api.repositories.question import QuestionNotFoundError, QuestionRepository
 from core_api.repositories.review import GradeRepository
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
-from core_api.security.rate_limit import RateLimitedError, RateLimiterUnavailableError
+from core_api.security.rate_limit import (
+    RateLimit,
+    RateLimitedError,
+    RateLimiterUnavailableError,
+)
 from core_api.services.practice import remove
 from core_api.services.practice_grading import (
     MAX_ANSWER_CHARS,
@@ -55,6 +59,9 @@ router = APIRouter(prefix="/v1/practice", dependencies=[Depends(verified_user)])
 
 Ai = Annotated[AiServiceClient, Depends(get_ai_client)]
 MAX_HIDDEN_MS = 24 * 3600 * 1000
+# Serving a question that needs an AI-drafted answer has its own limit, so opening questions
+# never uses up the turns that grade answers (T8.4 review F5).
+DRAFTS_PER_USER = RateLimit("draft_user", 10, dt.timedelta(minutes=1))
 
 
 class DraftIn(BaseModel):
@@ -194,7 +201,7 @@ def open_question(
     session.commit()
     question = QuestionRepository(session, user.id).get(question_id)
     assert question is not None
-    if standard_answer(question) is None and _may_call(limiter, user.id):
+    if standard_answer(question) is None and _may_call(limiter, user.id, DRAFTS_PER_USER):
         ensure_reference(session, user.id, question, ai)
         session.commit()
     return _view(session, user.id, attempt, question)
@@ -300,9 +307,9 @@ def worthless(question_id: uuid.UUID, user: VerifiedUser, session: DbSession, no
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-def _may_call(limiter: Limiter, user_id: uuid.UUID) -> bool:
+def _may_call(limiter: Limiter, user_id: uuid.UUID, rule: RateLimit = GRADINGS_PER_USER) -> bool:
     try:
-        limiter.enforce(GRADINGS_PER_USER, str(user_id))
+        limiter.enforce(rule, str(user_id))
     except (RateLimitedError, RateLimiterUnavailableError):
         return False
     return True
