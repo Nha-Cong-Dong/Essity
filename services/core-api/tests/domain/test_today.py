@@ -165,3 +165,14 @@ def test_ac5_subjects_sharing_the_days_before_their_exams_add_up() -> None:
 def test_minutes_round_up() -> None:
     assert compose([due(MMT)]).minutes == 2
     assert compose([due(MMT) for _ in range(3)]).minutes == 5
+
+
+def test_exam_weight_is_public_and_falls_towards_the_exam() -> None:
+    """T7.11: the weight is shared by v1 and v2 composers (US-03 AC4 risk order)."""
+    from core_api.domain.today import NEAR_EXAM_WEIGHT, exam_weight
+
+    today = date(2026, 10, 30)
+    assert exam_weight(None, today) == 1.0
+    assert exam_weight(date(2026, 10, 29), today) == 1.0
+    assert exam_weight(today, today) == NEAR_EXAM_WEIGHT
+    assert exam_weight(date(2027, 10, 30), today) == 1.0

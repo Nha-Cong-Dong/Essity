@@ -36,7 +36,7 @@ from core_api.domain.today import (
     MAX_MINUTES,
     MAX_QUESTIONS,
     MINUTES_PER_QUESTION,
-    _exam_weight,  # pyright: ignore[reportPrivateUsage]
+    exam_weight,
 )
 
 _ONE_DAY = timedelta(days=1)
@@ -184,7 +184,7 @@ def _review(inputs: TodayInputs, today: date) -> Review:
             new_saved_today = True
         effective = max(due_day, saved + _ONE_DAY)
         if effective <= today:
-            risk = card.recall * _exam_weight(exams.get(card.subject_id), today)
+            risk = card.recall * exam_weight(exams.get(card.subject_id), today)
             due.append((risk, card.due, str(card.card_id), card))
         elif next_day is None or effective < next_day:
             next_day = effective
