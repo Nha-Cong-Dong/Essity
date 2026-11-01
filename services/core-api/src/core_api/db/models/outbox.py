@@ -31,6 +31,7 @@ OUTBOX_EVENT_TYPES = frozenset(
         "document.uploaded.v1",
         "session.confirmed.v1",
         "submission.created.v1",
+        "unit.saved.v1",
         "grade.requested.v1",
         "user.deleted.v1",
     }

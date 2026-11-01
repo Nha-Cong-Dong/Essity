@@ -41,7 +41,7 @@ def question_columns(engine: Engine) -> set[str]:
 def test_single_alembic_head(alembic_cfg: Config) -> None:
     # Red when: two migrations branch from the same parent.
     heads = ScriptDirectory.from_config(alembic_cfg).get_heads()
-    assert heads == ["0026"]
+    assert len(heads) == 1
 
 
 def test_0025_round_trip(engine: Engine, alembic_cfg: Config) -> None:

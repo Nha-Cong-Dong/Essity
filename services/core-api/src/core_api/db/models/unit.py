@@ -1,10 +1,11 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
     REAL,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKeyConstraint,
     Index,
@@ -55,6 +56,25 @@ class KnowledgeUnit(UserOwned, Base):
         UniqueConstraint("id", "user_id"),
         UniqueConstraint("id", "subject_id", "user_id"),
         Index(None, "subject_id", "status"),
+        # A session's draft cards (T7.8): the session may go, the card stays (review_log).
+        ForeignKeyConstraint(
+            ["session_id", "user_id"],
+            ["study_session.id", "study_session.user_id"],
+            ondelete="SET NULL (session_id)",
+        ),
+        CheckConstraint(
+            "retired_at IS NULL OR status = 'retired'", name="retired_at_only_when_retired"
+        ),
+        CheckConstraint(
+            "(saved_at IS NULL) = (saved_learning_day IS NULL)", name="saved_at_with_day"
+        ),
+        Index(
+            "uq_knowledge_unit_session_draft_key",
+            "session_id",
+            "draft_key",
+            unique=True,
+            postgresql_where=text("draft_key IS NOT NULL"),
+        ),
     )
 
     subject_id: Mapped[uuid.UUID]
@@ -71,6 +91,14 @@ class KnowledgeUnit(UserOwned, Base):
     section_id: Mapped[uuid.UUID | None]
     # The pipeline run that made it, in the ai database: a plain UUID, no foreign key (ADR-0008).
     run_id: Mapped[uuid.UUID]
+    # The session whose submission drafted it, and the key that makes a re-run of the same
+    # draft a no-op (T7.8). NULL for seeded and older cards.
+    session_id: Mapped[uuid.UUID | None]
+    draft_key: Mapped[str | None] = mapped_column(String(64))
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When Save made it a card, and the learner's day of it (ARCH §6.2).
+    saved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    saved_learning_day: Mapped[date | None] = mapped_column(Date)
 
 
 class Anchor(UserOwned, Base):
