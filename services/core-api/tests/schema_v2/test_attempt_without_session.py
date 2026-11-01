@@ -1,4 +1,4 @@
-"""T7.M4, migration 0027 (PLAN T8.4, ARCH §6.2; US-16): a practice attempt belongs to no review
+"""T7.M4, migration 0028 (PLAN T8.4, ARCH §6.2; US-16): a practice attempt belongs to no review
 session. `attempt.review_session_id` is nullable, `attempt_guard` compares keys with IS DISTINCT
 FROM (a plain `<>` against NULL is NULL and would let a key change through), and a review attempt
 keeps its one-per-session-and-question rule."""
@@ -161,8 +161,8 @@ def test_downgrade_refuses_while_a_practice_attempt_exists(
             {"u": user, "q": question},
         )
     try:
-        with pytest.raises(RuntimeError, match="0027 downgrade"):
-            command.downgrade(alembic_cfg, "0026")
+        with pytest.raises(RuntimeError, match="0028 downgrade"):
+            command.downgrade(alembic_cfg, "0027")
     finally:
         with engine.begin() as c:
             c.execute(text("ALTER TABLE attempt DISABLE TRIGGER USER"))
@@ -177,7 +177,7 @@ def test_downgrade_refuses_while_a_practice_attempt_exists(
 def test_downgrade_restores_not_null_and_the_old_guard(engine: Engine, alembic_cfg: Config) -> None:
     # Red when: the downgrade keeps review_session_id nullable or the IS DISTINCT FROM guard.
     try:
-        command.downgrade(alembic_cfg, "0026")
+        command.downgrade(alembic_cfg, "0027")
         with engine.connect() as c:
             nullable = c.execute(
                 text(
@@ -230,12 +230,12 @@ def test_tester_practice_attempt_submits_with_its_timing(world: World) -> None:
 def test_tester_downgraded_guard_still_refuses_delete_and_key_changes(
     engine: Engine, alembic_cfg: Config
 ) -> None:
-    # Red when: the guard put back by 0027's downgrade lost a rule of 0008. With `<>` a DELETE is
+    # Red when: the guard put back by 0028's downgrade lost a rule of 0008. With `<>` a DELETE is
     # only caught by its TG_OP branch (NEW is NULL), so a missing branch skips the row silently.
     # Rows are written inside one transaction and rolled back: nothing is left behind.
     ids = {k: uuid.uuid4() for k in ("u", "s", "q", "r", "a")}
     try:
-        command.downgrade(alembic_cfg, "0026")
+        command.downgrade(alembic_cfg, "0027")
         with engine.connect() as c:
             outer = c.begin()
             for sql in (

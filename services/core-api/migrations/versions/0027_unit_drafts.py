@@ -3,9 +3,8 @@
 Group 4 of the v2 data model (ARCH §6.2, ADR-0008: additions only), for T7.8: a session's draft
 cards (`knowledge_unit.session_id`, `draft_key`), `retired_at`, `saved_at` and
 `saved_learning_day`, the `study_ledger` table, `unit.saved.v1` in the outbox, and the retry
-columns of `submission`; and for T8.4, a practice attempt that belongs to no review session
-(`attempt.review_session_id` nullable, `attempt_guard` on IS DISTINCT FROM).
-Old rows keep their shape. The downgrade refuses rather than delete learner data or events.
+columns of `submission`. Old rows keep their shape. The downgrade refuses rather than delete
+learner data or events.
 
 Revision ID: 0027
 Revises: 0026
@@ -38,33 +37,9 @@ UNIT_CHECKS = {
     "saved_at_with_day": "(saved_at IS NULL) = (saved_learning_day IS NULL)",
 }
 
-# attempt_guard of 0008, then without the NOT NULL it relied on: `<>` against NULL is NULL, so a
-# key could change to or from NULL unseen. IS DISTINCT FROM sees it.
-GUARD_NEW = """
-CREATE OR REPLACE FUNCTION attempt_guard() RETURNS trigger LANGUAGE plpgsql
-  SET search_path = public, pg_temp AS $$
-BEGIN
-  IF TG_OP = 'DELETE' OR OLD.status <> 'draft'
-     OR NEW.id <> OLD.id OR NEW.created_at <> OLD.created_at
-     OR NEW.user_id <> OLD.user_id
-     OR NEW.review_session_id IS DISTINCT FROM OLD.review_session_id
-     OR NEW.question_id IS DISTINCT FROM OLD.question_id THEN
-    RAISE EXCEPTION '% on attempt is refused: only a draft changes, never its keys', TG_OP
-      USING ERRCODE = 'restrict_violation';
-  END IF;
-  RETURN NEW;
-END;
-$$;
-"""
-GUARD_OLD = GUARD_NEW.replace(" IS DISTINCT FROM ", " <> ")  # exactly the function of 0008
-
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # A practice attempt belongs to no review session (T8.4). UNIQUE(review_session_id,
-    # question_id) stays: NULLs are distinct, so a question can be practised again and again.
-    op.alter_column("attempt", "review_session_id", existing_type=sa.Uuid(), nullable=True)
-    op.execute(GUARD_NEW)
     op.add_column("knowledge_unit", sa.Column("session_id", sa.Uuid(), nullable=True))
     op.add_column("knowledge_unit", sa.Column("draft_key", sa.String(length=64), nullable=True))
     op.add_column(
@@ -186,13 +161,6 @@ def downgrade() -> None:
         "SELECT count(*) FROM outbox WHERE event_type = 'unit.saved.v1'",
         "unit.saved.v1 event(s) in the outbox",
     )
-    _refuse_if(
-        connection,
-        "SELECT count(*) FROM attempt WHERE review_session_id IS NULL",
-        "attempt(s) belong to no review session (practice)",
-    )
-    op.execute(GUARD_OLD)
-    op.alter_column("attempt", "review_session_id", existing_type=sa.Uuid(), nullable=False)
     op.drop_constraint(op.f("ck_submission_retry_count_not_negative"), "submission", type_="check")
     op.drop_column("submission", "next_attempt_at")
     op.drop_column("submission", "retry_count")
