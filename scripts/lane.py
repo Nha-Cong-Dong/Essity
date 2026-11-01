@@ -320,7 +320,7 @@ def gc(
         unlink_links(path)  # pnpm junctions point into the main repo (R45)
         result = _git(repo, "worktree", "remove", "--force", str(path))
         _git(repo, "worktree", "prune")
-        left = sweep_leftover(path)  # git may unregister yet leave files behind on Windows
+        left = sweep_leftover(path, repo, scratch)  # git may unregister yet leave files behind
         if left:
             rows.append(f"left on disk: {path}  ({left}; `lane.py up` will move it aside)")
         else:
@@ -333,6 +333,7 @@ def down(repo: Path, lane: int, force: bool = False) -> None:
     path = lane_path(repo, lane)
     if not path.exists():
         return
+    check_removable(path, repo, [])
     dirty = _git(path, "status", "--short").stdout.splitlines()
     if dirty and not force:
         # Removing the folder throws away what was never committed; the branch keeps the rest.
@@ -343,7 +344,7 @@ def down(repo: Path, lane: int, force: bool = False) -> None:
     unlink_links(path)  # pnpm junctions point into the main repo (R45)
     result = _git(repo, "worktree", "remove", "--force", str(path))
     _git(repo, "worktree", "prune")
-    left = sweep_leftover(path)  # git may unregister yet leave files behind on Windows
+    left = sweep_leftover(path, repo)  # git may unregister yet leave files behind
     if left:
         raise RuntimeError(f"left on disk: {path} ({left}); `lane.py up` will move it aside")
     if result.returncode != 0 and path.exists():

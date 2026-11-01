@@ -41,21 +41,51 @@ def unlink_links(root: Path) -> list[Path]:
     return removed
 
 
-def sweep_leftover(path: Path) -> str | None:
+def is_reparse(path: Path | str) -> bool:
+    """Symlink, junction or any other Windows reparse point (never follows it)."""
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return False
+    return (
+        stat.S_ISLNK(info.st_mode)
+        or os.path.isjunction(path)
+        or bool(getattr(info, "st_file_attributes", 0) & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
+    )
+
+
+def sweep_leftover(
+    path: Path, repo: Path | None = None, allowed_roots: list[Path] | None = None
+) -> str | None:
     """Delete what `git worktree remove` left behind (read-only files, junctions, long paths).
 
-    Returns None when the folder is gone, else the reason it stays. Refuses a folder that still
-    holds a `.git` entry: that is a live checkout, not a leftover.
+    Returns None when the folder is gone, else the reason it stays (nothing is deleted then).
+    Refuses: a folder with a `.git` entry (a live checkout), a path that is itself a link, a link
+    anywhere between the root and the path, and a path not strictly inside
+    `<repo>/.claude/worktrees` or an allowed root (paths are made absolute, never resolved).
     """
-    if not path.exists():
+    path = Path(os.path.abspath(path))
+    if not os.path.lexists(path):
         return None
+    if repo is not None:
+        roots = [Path(os.path.abspath(repo)) / ".claude" / "worktrees"]
+        roots += [Path(os.path.abspath(r)) for r in allowed_roots or []]
+        root = next((r for r in roots if path != r and r in path.parents), None)
+        if root is None:
+            return "refused: not strictly inside the worktrees root"
+        between = [path, *(p for p in path.parents if p != root and root in p.parents)]
+        if any(is_reparse(p) for p in between):
+            return "refused: path is or sits under a link"
+    elif is_reparse(path):
+        return "refused: path is a link"
     if (path / ".git").exists():
         return "has a .git entry"
     errors: list[str] = []
 
     def retry(func, target, exc) -> None:  # type: ignore[no-untyped-def]
         try:
-            os.chmod(target, stat.S_IWRITE)
+            if not is_reparse(target):
+                os.chmod(target, stat.S_IWRITE)
             func(target)
         except OSError as error:
             errors.append(str(error))
@@ -64,14 +94,14 @@ def sweep_leftover(path: Path) -> str | None:
         unlink_links(path)
         # the extended-length prefix lifts the 260-character limit of pnpm's nested node_modules
         prefix = (r"\\?" + "\\") if sys.platform == "win32" else ""
-        target = prefix + str(path.resolve())
+        target = prefix + str(path)
         if sys.version_info >= (3, 12):
             shutil.rmtree(target, onexc=retry)
         else:
             shutil.rmtree(target, onerror=lambda f, t, e: retry(f, t, e[1]))
     except OSError as error:
         errors.append(str(error))
-    if path.exists():
+    if os.path.lexists(path):
         return errors[0] if errors else "still exists"
     return None
 
@@ -82,6 +112,8 @@ def _inside(path: Path, parent: Path) -> bool:
 
 def check_removable(path: Path, repo: Path, allowed_roots: list[Path]) -> None:
     """Raise ValueError unless `path` is strictly inside .claude/worktrees or an allowed root."""
+    if is_reparse(path):
+        raise ValueError(f"{path} is a link, not a worktree folder")
     path, repo = path.resolve(), repo.resolve()
     worktrees = repo / ".claude" / "worktrees"
     roots = [worktrees, *(root.resolve() for root in allowed_roots)]
