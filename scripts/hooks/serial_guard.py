@@ -240,6 +240,78 @@ def blocked_reason(tool: str, tool_input: dict[str, object], cwd: Path, repo: Pa
     return None
 
 
+_TEST_PROGRAMS = {"pytest", "py.test", "vitest", "playwright"}
+_JS_RUNNERS = {"pnpm", "npm", "yarn", "npx", "bun"}
+_JS_TEST_WORD = re.compile(r"^(test|e2e)(:[\w:.-]+)?$")
+_PROSE = READERS - {"pytest"}
+
+
+def _runs_tests(words: list[str]) -> bool:
+    if any(Path(w).name == "with_lock.py" for w in words) and "--" in words:
+        words = words[words.index("--") + 1 :] or words
+    program = Path(words[0]).name
+    if program in _PROSE:
+        return False
+    if any(Path(w).name in _TEST_PROGRAMS for w in words):
+        return True
+    return program in _JS_RUNNERS and any(_JS_TEST_WORD.match(w) for w in words[1:])
+
+
+def _test_calls(command: str, cwd: Path) -> list[tuple[list[str], Path]]:
+    found: list[tuple[list[str], Path]] = []
+    here = cwd.resolve()
+    text, bodies = _substitutions(_drop_heredocs(command))
+    for body in bodies:
+        found.extend(_test_calls(body, here))
+    for words in _tokens(text):
+        while words and _ASSIGN.match(words[0]):
+            words = words[1:]
+        if not words:
+            continue
+        if Path(words[0]).name == "cd" and len(words) > 1:
+            here = _resolve(words[1], here)
+            continue
+        inner = _inner_command(words)
+        if inner:
+            words = inner
+            while words and _ASSIGN.match(words[0]):
+                words = words[1:]
+            if not words:
+                continue
+        if _runs_tests(words):
+            found.append((words, _lane_dir(words, here)))
+    return found
+
+
+def _is_lane_dir(path: Path) -> bool:
+    parts = path.parts
+    return (
+        "worktrees" in parts
+        and parts.index("worktrees") + 1 < len(parts)
+        and re.fullmatch(r"L\d+", parts[parts.index("worktrees") + 1]) is not None
+    )
+
+
+def background_test_reason(tool: str, tool_input: dict[str, object], cwd: Path) -> str | None:
+    """Deny a backgrounded test suite aimed at a lane worktree (retro 02/11: lanes idled on it)."""
+    if tool != "Bash" or tool_input.get("run_in_background") is not True:
+        return None
+    try:
+        command = tool_input.get("command")
+        if not isinstance(command, str):
+            return None
+        for _words, where in _test_calls(command, cwd):
+            if _is_lane_dir(where):
+                return (
+                    "Blocked: do not run test suites with run_in_background; no notice reaches "
+                    "a lane lead and it idles. Run it in the foreground with timeout up to "
+                    "600000 (split the suite if it needs longer)."
+                )
+    except Exception:  # fail open: a parse problem must never block work
+        return None
+    return None
+
+
 def _repo_of(cwd: Path) -> Path:
     common = subprocess.run(
         [
@@ -261,6 +333,10 @@ def main() -> int:
     call = json.load(sys.stdin)
     cwd = Path(call.get("cwd") or ".")
     tool, tool_input = call.get("tool_name", ""), call.get("tool_input") or {}
+    background = background_test_reason(tool, tool_input, cwd)
+    if background:
+        print(background, file=sys.stderr)
+        return 2
     if not serial_targets(tool, tool_input, cwd):
         return 0  # most calls: skip the git lookup below
     reason = blocked_reason(tool, tool_input, cwd, _repo_of(cwd))
