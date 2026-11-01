@@ -17,7 +17,9 @@ Pure: no database, no I/O. Rules:
   correct.
 """
 
+import re
 import statistics
+import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -188,12 +190,24 @@ def _per_question(seconds: float) -> str:
     return f"{_vi_number(round(seconds / 60, 1))} phút mỗi câu"
 
 
-def mastery_line(value: float | None, n: int | None = None) -> str:
-    """Neutral Vietnamese mastery line; `n` = attempts counted (default: the window)."""
+def has_banned_word(text: str) -> bool:
+    """True when the copy holds a banned word. NFC first, so a decomposed "yếu" is still caught.
+    Run it on the lines this module writes, never on a type name the learner typed."""
+    text = unicodedata.normalize("NFC", text)
+    return any(
+        re.search(rf"(?<![^\W\d_]){re.escape(w)}(?![^\W\d_])", text, re.IGNORECASE)
+        for w in BANNED_WORDS
+    )
+
+
+def mastery_line(value: float | None, n: int) -> str:
+    """Neutral Vietnamese mastery line. `n` = attempts counted (at most the window): the
+    denominator, so 2 of 3 reads "đúng 2 trên 3", never "trên 10" (US-16 AC4)."""
     if value is None:
         return "chưa đủ dữ liệu"
-    total = n if n is not None else DEFAULT_CONFIG.window
-    return f"đúng {round(value * total)} trên {total} lần gần nhất"
+    if n < 1:
+        raise ValueError("n must be the number of attempts counted")
+    return f"đúng {round(value * n)} trên {n} lần gần nhất"
 
 
 _SENSITIVITY_WORD = {

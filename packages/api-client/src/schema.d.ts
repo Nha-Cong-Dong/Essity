@@ -947,6 +947,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/practice-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Practice Types */
+        get: operations["list_practice_types_v1_subjects__subject_id__practice_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects/{subject_id}/sessions": {
         parameters: {
             query?: never;
@@ -1644,6 +1661,35 @@ export interface components {
             overall: "correct" | "partial" | "incorrect" | "forgot";
             /** Reference Answer */
             reference_answer: string | null;
+        };
+        /** PracticeTypeOut */
+        PracticeTypeOut: {
+            /** Attempts Counted */
+            attempts_counted: number;
+            /** Formula Version */
+            formula_version: string;
+            /** Mastery */
+            mastery: number | null;
+            /** Mastery Line */
+            mastery_line: string;
+            /** Name */
+            name: string;
+            /** Ref Origin */
+            ref_origin: string;
+            /** Reference Seconds */
+            reference_seconds: number;
+            /**
+             * Sensitivity
+             * @enum {string}
+             */
+            sensitivity: "not_enough_data" | "faster" | "near" | "slower";
+            /** Sensitivity Line */
+            sensitivity_line: string;
+            /**
+             * Type Id
+             * Format: uuid
+             */
+            type_id: string;
         };
         /** PracticeView */
         PracticeView: {
@@ -4085,6 +4131,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OutlineOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_practice_types_v1_subjects__subject_id__practice_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeTypeOut"][];
                 };
             };
             /** @description Validation Error */

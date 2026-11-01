@@ -1,0 +1,17 @@
+{
+  "current": "v1",
+  "versions": {
+    "v1": {
+      "window": 10,
+      "min_attempts": 3,
+      "seconds_per_idea": 60.0,
+      "min_timed_correct": 5,
+      "slow_factor": 3.0,
+      "easy_factor": 0.7,
+      "learned_retrievability": 0.9,
+      "sensitivity_min_timed": 3,
+      "faster_ratio": 0.8,
+      "slower_ratio": 1.25
+    }
+  }
+}

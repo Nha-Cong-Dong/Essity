@@ -1,6 +1,5 @@
 """T8.6a (v2 design §8.2, Q-C): mastery per question type and practice rating. Pure."""
 
-import re
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -8,7 +7,6 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from core_api.domain.mastery import (
-    BANNED_WORDS,
     DEFAULT_CONFIG,
     MasteryConfig,
     PracticeRating,
@@ -17,6 +15,7 @@ from core_api.domain.mastery import (
     Sensitivity,
     TypeAttempt,
     active_seconds,
+    has_banned_word,
     is_learned,
     is_timing_ok,
     mastery,
@@ -198,8 +197,8 @@ def test_sensitivity_uses_median_of_asymmetric_times():  # US-16 AC8
 
 
 def test_mastery_line_copy():  # US-16 AC4
-    assert mastery_line(None) == "chưa đủ dữ liệu"
-    assert mastery_line(0.7) == "đúng 7 trên 10 lần gần nhất"
+    assert mastery_line(None, 0) == "chưa đủ dữ liệu"
+    assert mastery_line(0.7, 10) == "đúng 7 trên 10 lần gần nhất"
     assert mastery_line(0.5, n=4) == "đúng 2 trên 4 lần gần nhất"
 
 
@@ -216,15 +215,11 @@ def test_sensitivity_line_copy(s: Sensitivity, ref: float, text: str):  # US-16 
     assert sensitivity_line(s, ref) == text
 
 
-def _has_banned(text: str) -> bool:
-    return any(
-        re.search(rf"(?<![^\W\d_]){re.escape(w)}(?![^\W\d_])", text, re.IGNORECASE)
-        for w in BANNED_WORDS
-    )
+_has_banned = has_banned_word
 
 
 def test_copy_has_no_banned_words():  # US-16 AC8
-    lines = [mastery_line(None), mastery_line(0.0), mastery_line(1.0)]
+    lines = [mastery_line(None, 0), mastery_line(0.0, 3), mastery_line(1.0, 10)]
     lines += [sensitivity_line(s, r) for s in Sensitivity for r in (30, 90, 600)]
     assert not any(_has_banned(x) for x in lines)
 
@@ -235,3 +230,23 @@ def test_banned_regex_is_unicode_safe():  # US-16 AC8
     assert not _has_banned("nhanh hơn mốc")
     assert not _has_banned("tệp")  # prefix of a longer word is fine
     assert _has_banned("quá yếu!")
+
+
+def test_mastery_line_denominator_is_attempt_count():  # US-16 AC4 (review T8.6b)
+    assert mastery_line(2 / 3, 3) == "đúng 2 trên 3 lần gần nhất"
+    assert "trên 10" not in mastery_line(2 / 3, 3)
+
+
+def test_mastery_line_requires_n():  # US-16 AC4
+    with pytest.raises(TypeError):
+        mastery_line(0.5)  # type: ignore[call-arg]
+    with pytest.raises(ValueError):
+        mastery_line(0.5, 0)
+
+
+def test_banned_check_normalizes_nfc():  # US-16 AC8
+    import unicodedata
+
+    decomposed = unicodedata.normalize("NFD", "quá yếu")
+    assert decomposed != "quá yếu"
+    assert has_banned_word(decomposed)
