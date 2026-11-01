@@ -1,0 +1,14 @@
+{
+  "event_id": "6e5d4c3b-2a19-4807-a6b5-c4d3e2f1c001",
+  "event_type": "unit.saved.v1",
+  "schema_version": 1,
+  "occurred_at": "2026-11-01T08:30:00.123456Z",
+  "user_id": "3f2b8c1e-5a4d-4e7b-9c10-2d6f8a9b0c11",
+  "trace_context": {
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+  },
+  "payload": {
+    "unit_id": "1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d",
+    "unit_rev": 1
+  }
+}
