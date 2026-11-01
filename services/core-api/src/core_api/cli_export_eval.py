@@ -75,7 +75,8 @@ def export_rows(session: Session) -> Iterator[dict[str, Any]]:
         select(Attempt, Question)
         .join(User, User.id == Attempt.user_id)
         .join(Question, Question.id == Attempt.question_id)
-        .where(*_consented(), Attempt.status == "submitted")
+        # A practice attempt has no units or anchors to label (T8.4); its eval set is separate.
+        .where(*_consented(), Attempt.status == "submitted", Attempt.review_session_id.is_not(None))
         .order_by(Attempt.submitted_at, Attempt.id)
     )
     for attempt, question in attempts:
