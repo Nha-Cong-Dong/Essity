@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { Suspense } from "react";
+import { type ReactNode, Suspense } from "react";
 
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { coreClient } from "@/lib/core-client";
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Buổi học · Essity" };
 // T7.12 (US-02 AC13): a new study session of the subject. Opens an empty draft session in core-api
 // and goes to its page; the address of that page is what "resume" uses. Reached by a link, never
 // prefetched (the page is dynamic), so one open makes one empty session at most.
-async function Start({ params }: { params: Promise<{ id: string }> }) {
+async function Start({ params }: { params: Promise<{ id: string }> }): Promise<ReactNode> {
   await connection();
   await requireVerifiedSession();
   const subject = await subjectForUpload((await params).id);
