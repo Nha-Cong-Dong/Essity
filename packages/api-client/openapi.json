@@ -109,7 +109,7 @@
           "result": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ResultOut"
+                "$ref": "#/components/schemas/core_api__api__attempts__ResultOut"
               },
               {
                 "type": "null"
@@ -517,6 +517,26 @@
           }
         },
         "title": "DoneOut",
+        "type": "object"
+      },
+      "DraftIn": {
+        "additionalProperties": false,
+        "properties": {
+          "answer_text": {
+            "maxLength": 4000,
+            "title": "Answer Text",
+            "type": "string"
+          },
+          "dont_remember": {
+            "default": false,
+            "title": "Dont Remember",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "answer_text"
+        ],
+        "title": "DraftIn",
         "type": "object"
       },
       "DraftOut": {
@@ -1126,25 +1146,6 @@
         "title": "OutlineOut",
         "type": "object"
       },
-      "OverrideIn": {
-        "additionalProperties": false,
-        "description": "\"Thực ra tôi đúng\" is `correct`, \"Thực ra tôi sai\" is `incorrect` (US-09 AC1).",
-        "properties": {
-          "verdict": {
-            "enum": [
-              "correct",
-              "incorrect"
-            ],
-            "title": "Verdict",
-            "type": "string"
-          }
-        },
-        "required": [
-          "verdict"
-        ],
-        "title": "OverrideIn",
-        "type": "object"
-      },
       "PingResponse": {
         "properties": {
           "ai_service": {
@@ -1169,6 +1170,116 @@
           "ai_service"
         ],
         "title": "PingResponse",
+        "type": "object"
+      },
+      "PracticeView": {
+        "properties": {
+          "answer_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer Text"
+          },
+          "attempt_id": {
+            "format": "uuid",
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "dont_remember": {
+            "title": "Dont Remember",
+            "type": "boolean"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          },
+          "grading": {
+            "anyOf": [
+              {
+                "enum": [
+                  "graded",
+                  "pending",
+                  "failed",
+                  "in_progress"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grading"
+          },
+          "question": {
+            "$ref": "#/components/schemas/QuestionRef"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/core_api__api__practice__ResultOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "submitted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "timing_ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timing Ok"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "status",
+          "grading",
+          "failure",
+          "result",
+          "answer_text",
+          "dont_remember",
+          "submitted_at",
+          "timing_ok",
+          "question"
+        ],
+        "title": "PracticeView",
         "type": "object"
       },
       "ProgressOut": {
@@ -1505,77 +1616,6 @@
           "password"
         ],
         "title": "ResetBody",
-        "type": "object"
-      },
-      "ResultOut": {
-        "properties": {
-          "grade_id": {
-            "format": "uuid",
-            "title": "Grade Id",
-            "type": "string"
-          },
-          "missing": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Missing",
-            "type": "array"
-          },
-          "overall": {
-            "enum": [
-              "correct",
-              "partial",
-              "incorrect",
-              "forgot"
-            ],
-            "title": "Overall",
-            "type": "string"
-          },
-          "practice": {
-            "title": "Practice",
-            "type": "boolean"
-          },
-          "reference_answer": {
-            "title": "Reference Answer",
-            "type": "string"
-          },
-          "sources": {
-            "items": {
-              "$ref": "#/components/schemas/Source"
-            },
-            "title": "Sources",
-            "type": "array"
-          },
-          "understanding": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Understanding"
-          },
-          "units": {
-            "items": {
-              "$ref": "#/components/schemas/UnitResult"
-            },
-            "title": "Units",
-            "type": "array"
-          }
-        },
-        "required": [
-          "grade_id",
-          "overall",
-          "understanding",
-          "missing",
-          "units",
-          "reference_answer",
-          "sources",
-          "practice"
-        ],
-        "title": "ResultOut",
         "type": "object"
       },
       "SectionOut": {
@@ -2228,6 +2268,33 @@
         "title": "SubmissionOut",
         "type": "object"
       },
+      "SubmitIn": {
+        "additionalProperties": false,
+        "properties": {
+          "answer_text": {
+            "maxLength": 4000,
+            "title": "Answer Text",
+            "type": "string"
+          },
+          "dont_remember": {
+            "default": false,
+            "title": "Dont Remember",
+            "type": "boolean"
+          },
+          "hidden_ms": {
+            "default": 0,
+            "maximum": 2592000000.0,
+            "minimum": 0.0,
+            "title": "Hidden Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "answer_text"
+        ],
+        "title": "SubmitIn",
+        "type": "object"
+      },
       "SubmitRequest": {
         "additionalProperties": false,
         "properties": {
@@ -2694,6 +2761,188 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "core_api__api__attempts__ResultOut": {
+        "properties": {
+          "grade_id": {
+            "format": "uuid",
+            "title": "Grade Id",
+            "type": "string"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "overall": {
+            "enum": [
+              "correct",
+              "partial",
+              "incorrect",
+              "forgot"
+            ],
+            "title": "Overall",
+            "type": "string"
+          },
+          "practice": {
+            "title": "Practice",
+            "type": "boolean"
+          },
+          "reference_answer": {
+            "title": "Reference Answer",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "understanding": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Understanding"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/UnitResult"
+            },
+            "title": "Units",
+            "type": "array"
+          }
+        },
+        "required": [
+          "grade_id",
+          "overall",
+          "understanding",
+          "missing",
+          "units",
+          "reference_answer",
+          "sources",
+          "practice"
+        ],
+        "title": "ResultOut",
+        "type": "object"
+      },
+      "core_api__api__grades__OverrideIn": {
+        "additionalProperties": false,
+        "description": "\"Thực ra tôi đúng\" is `correct`, \"Thực ra tôi sai\" is `incorrect` (US-09 AC1).",
+        "properties": {
+          "verdict": {
+            "enum": [
+              "correct",
+              "incorrect"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "OverrideIn",
+        "type": "object"
+      },
+      "core_api__api__practice__OverrideIn": {
+        "additionalProperties": false,
+        "properties": {
+          "verdict": {
+            "enum": [
+              "correct",
+              "incorrect"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "OverrideIn",
+        "type": "object"
+      },
+      "core_api__api__practice__ResultOut": {
+        "properties": {
+          "answer_origin": {
+            "anyOf": [
+              {
+                "enum": [
+                  "bank",
+                  "ai",
+                  "user"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer Origin"
+          },
+          "differs_from_card_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Differs From Card Id"
+          },
+          "grade_id": {
+            "format": "uuid",
+            "title": "Grade Id",
+            "type": "string"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "overall": {
+            "enum": [
+              "correct",
+              "partial",
+              "incorrect",
+              "forgot"
+            ],
+            "title": "Overall",
+            "type": "string"
+          },
+          "reference_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Answer"
+          }
+        },
+        "required": [
+          "grade_id",
+          "overall",
+          "missing",
+          "reference_answer",
+          "answer_origin"
+        ],
+        "title": "ResultOut",
         "type": "object"
       },
       "core_api__api__review_sessions__SessionOut": {
@@ -3488,7 +3737,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OverrideIn"
+                "$ref": "#/components/schemas/core_api__api__grades__OverrideIn"
               }
             }
           },
@@ -3553,6 +3802,308 @@
           }
         },
         "summary": "Ping"
+      }
+    },
+    "/v1/practice/attempts/{attempt_id}": {
+      "get": {
+        "description": "The attempt as the screen shows it (after a reload too). Never grades.",
+        "operationId": "read_attempt_v1_practice_attempts__attempt_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Attempt"
+      }
+    },
+    "/v1/practice/attempts/{attempt_id}/draft": {
+      "put": {
+        "operationId": "save_draft_v1_practice_attempts__attempt_id__draft_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Draft"
+      }
+    },
+    "/v1/practice/attempts/{attempt_id}/regrade": {
+      "post": {
+        "description": "\"Chấm lại\": grade a submitted answer that has no grade yet; a graded one is returned as it\nis, never paid for (or scheduled) twice.",
+        "operationId": "regrade_attempt_v1_practice_attempts__attempt_id__regrade_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Regrade Attempt"
+      }
+    },
+    "/v1/practice/attempts/{attempt_id}/submit": {
+      "post": {
+        "description": "Save the last text, submit with the timing, commit; then grade. Submitting again, or from\na second tab, grades what was submitted first and keeps its timing.",
+        "operationId": "submit_attempt_v1_practice_attempts__attempt_id__submit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Attempt"
+      }
+    },
+    "/v1/practice/grades/{grade_id}/override": {
+      "post": {
+        "description": "\"Chấm sai\": append a user grade; the practice schedule is rebuilt from `practice_log`.",
+        "operationId": "override_v1_practice_grades__grade_id__override_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grade_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grade Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/core_api__api__practice__OverrideIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Override"
+      }
+    },
+    "/v1/practice/questions/{question_id}/open": {
+      "post": {
+        "description": "Serve a question: its open draft (made if there is none, with the server's `served_at`).\nA bank question with no answer gets an AI-drafted one now, once, so it is ready (AC13).",
+        "operationId": "open_question_v1_practice_questions__question_id__open_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Open Question"
+      }
+    },
+    "/v1/practice/questions/{question_id}/worthless": {
+      "post": {
+        "description": "\"Câu này vô giá trị\": never asked again and its schedule stops; its log stays.",
+        "operationId": "worthless_v1_practice_questions__question_id__worthless_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Worthless"
       }
     },
     "/v1/questions/{question_id}/drop": {
