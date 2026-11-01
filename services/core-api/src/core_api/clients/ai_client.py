@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from core_api.clients.extract_contract import Clarify, ExtractAnswer, NoteOnly, Proposed
 from core_api.clients.grade_contract import GradeResponse
 from core_api.clients.practice_contract import DraftAnswerReply, PracticeGradeReply
+from core_api.clients.review_question_contract import ReviewQuestionReply
 from core_api.config import Settings
 from core_api.logging import REQUEST_ID_HEADER, request_id_var
 from core_api.security.service_token import SERVICE_TOKEN_HEADER
@@ -203,7 +204,11 @@ class AiServiceClient:
         """POST /v1/draft-answer, once (T8.4)."""
         return self._practice("/v1/draft-answer", payload, DraftAnswerReply)
 
-    def _practice[R: (PracticeGradeReply, DraftAnswerReply)](
+    def review_question(self, payload: Mapping[str, object]) -> ReviewQuestionReply | NotGraded:
+        """POST /v1/review-question, once (T7.9): the review question of one saved card."""
+        return self._practice("/v1/review-question", payload, ReviewQuestionReply)
+
+    def _practice[R: (PracticeGradeReply, DraftAnswerReply, ReviewQuestionReply)](
         self, path: str, payload: Mapping[str, object], reply: type[R]
     ) -> R | NotGraded:
         try:

@@ -24,6 +24,7 @@ from core_api.db.models import (
     UnitRevision,
 )
 from core_api.domain.learning_day import learning_day
+from core_api.jobs.regenerate_review_question import enqueue_review_question
 from core_api.messaging.envelope import UnitSaved
 from core_api.messaging.outbox import enqueue_event
 from core_api.repositories.study_session import StudySessionRepository
@@ -527,4 +528,6 @@ def _enqueue_unit_saved(
         user_id=user_id,
         now=now,
     )
+    # T7.9: the review question is made in the background (the job needs the saved card).
+    enqueue_review_question(session, user_id, unit.id, lazy=False)
     session.flush()
