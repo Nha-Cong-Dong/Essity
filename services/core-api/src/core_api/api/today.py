@@ -92,12 +92,12 @@ def get_today(user: VerifiedUser, session: DbSession, now: Now) -> TodayOut:
     reads = TodayRepository(session, user.id)
     plan = compose_today(
         reads.scheduled_units(),
-        reads.new_questions(),
+        reads.new_questions(day=day),
         exams,
         now=now,
         tz=tz,
         day_start_hour=user.day_start_hour,
-        unasked=reads.unasked_by_subject(),
+        unasked=reads.unasked_by_subject(day=day),
     )
 
     in_progress = None

@@ -155,7 +155,7 @@ def start_session(
             raise _error(status.HTTP_404_NOT_FOUND, "subject_not_found")
         reads = TodayRepository(session, user.id)
         units = [u for u in reads.scheduled_units() if body.subject_id in (None, u.subject_id)]
-        fresh = [q for q in reads.new_questions() if body.subject_id in (None, q.subject_id)]
+        fresh = [q for q in reads.new_questions(day=day) if body.subject_id in (None, q.subject_id)]
         plan = compose_today(
             units,
             fresh,
@@ -164,7 +164,9 @@ def start_session(
             tz=tz,
             day_start_hour=user.day_start_hour,
             unasked={
-                s: n for s, n in reads.unasked_by_subject().items() if body.subject_id in (None, s)
+                s: n
+                for s, n in reads.unasked_by_subject(day=day).items()
+                if body.subject_id in (None, s)
             },
         )
         if not plan.items:

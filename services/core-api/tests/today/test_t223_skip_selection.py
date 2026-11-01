@@ -4,7 +4,7 @@ and every unit is asked once before the exam. The session and the routes are in
 test_t223_skip_session.py and test_t223_skip_api.py."""
 
 import uuid
-from datetime import UTC, timedelta
+from datetime import UTC, date, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -25,6 +25,8 @@ from core_api.repositories.review import MemoryStateRepository
 from core_api.repositories.today import TodayRepository
 from core_api.repositories.unit import KnowledgeUnitRepository
 from isolation import assert_isolated
+
+DAY = date(2026, 11, 2)  # no card here is saved, so the day does not matter
 
 
 def two_unit_question(space: Space, subject: uuid.UUID, prompt: str, *units: uuid.UUID) -> Question:
@@ -57,10 +59,10 @@ def test_us06_ac6_a_skipped_unit_is_not_chosen_due_or_new(
     space.scheduled(due_unit, due_in_days=-1)
     reads = TodayRepository(db_session, space.user.id)
     assert ids(reads.scheduled_units()) == {due_question.id}
-    assert {q.question_id for q in reads.new_questions()} == {new_question.id}
+    assert {q.question_id for q in reads.new_questions(day=DAY)} == {new_question.id}
     skip(space, due_unit)
     skip(space, new_unit)
-    assert ids(reads.scheduled_units()) == set() and list(reads.new_questions()) == []
+    assert ids(reads.scheduled_units()) == set() and list(reads.new_questions(day=DAY)) == []
 
 
 # US-06 AC6, ADR-0008. Red when: skipping writes review_log, or moves the unit's memory_state,
@@ -88,7 +90,7 @@ def test_us06_ac6_a_unit_without_a_schedule_counts_as_due(
     _, question = space.question(space.subject(), "TCP")
     plan = compose_today(
         TodayRepository(db_session, space.user.id).scheduled_units(),
-        TodayRepository(db_session, space.user.id).new_questions(),
+        TodayRepository(db_session, space.user.id).new_questions(day=DAY),
         {},
         now=FROZEN_NOW,
         tz=ZoneInfo(space.user.timezone),
@@ -110,10 +112,10 @@ def test_us06_ac6_a_question_with_one_unreviewed_unit_is_still_new(
     space.scheduled(unit_a, due_in_days=5)
     space.scheduled(unit_b, due_in_days=5)
     reads = TodayRepository(db_session, space.user.id)
-    assert both.id not in {q.question_id for q in reads.new_questions()}  # both reviewed
+    assert both.id not in {q.question_id for q in reads.new_questions(day=DAY)}  # both reviewed
     MemoryStateRepository(db_session, space.user.id).delete_all()
     space.scheduled(unit_a, due_in_days=5)
-    assert both.id in {q.question_id for q in reads.new_questions()}  # B never reviewed
+    assert both.id in {q.question_id for q in reads.new_questions(day=DAY)}  # B never reviewed
 
 
 # US-04 AC5, PLAN ("câu có mảnh bị bỏ thì ngừng chọn"). Red when: a question of two units is
@@ -128,11 +130,11 @@ def test_us04_ac5_a_question_with_a_skipped_unit_is_not_chosen(
     both = two_unit_question(space, subject, "A và B?", unit_a, unit_b)
     skip(space, unit_a)
     reads = TodayRepository(db_session, space.user.id)
-    assert {q.question_id for q in reads.new_questions()} == {own_b.id}
+    assert {q.question_id for q in reads.new_questions(day=DAY)} == {own_b.id}
     space.scheduled(unit_b, due_in_days=-1)
     assert ids(reads.scheduled_units()) == {own_b.id}
     assert both.id not in ids(reads.scheduled_units()) | {
-        q.question_id for q in reads.new_questions()
+        q.question_id for q in reads.new_questions(day=DAY)
     }
     assert own_a.id != both.id
 
@@ -153,7 +155,7 @@ def test_us04_ac5_skip_and_undo_are_idempotent(
     assert db_session.get(KnowledgeUnit, unit).skipped_at == first  # type: ignore[union-attr]
     assert units.unskip(unit) is True
     assert db_session.get(KnowledgeUnit, unit).skipped_at is None  # type: ignore[union-attr]
-    assert len(TodayRepository(db_session, space.user.id).new_questions()) == 1
+    assert len(TodayRepository(db_session, space.user.id).new_questions(day=DAY)) == 1
 
 
 # US-04 AC5, T2.23 "cách ly". Red when: user B skips, undoes or reads user A's unit.
@@ -246,12 +248,12 @@ def _simulate(
         now = (start + timedelta(hours=8)).astimezone(UTC)
         plan = compose_today(
             reads.scheduled_units(),
-            reads.new_questions(),
+            reads.new_questions(day=DAY),
             {subject: exam_day},
             now=now,
             tz=tz,
             day_start_hour=user.day_start_hour,
-            unasked=reads.unasked_by_subject(),
+            unasked=reads.unasked_by_subject(day=DAY),
         )
         for item in plan.items:
             of_question = QuestionUnitRepository(session, user.id).units_of(item.question_id)

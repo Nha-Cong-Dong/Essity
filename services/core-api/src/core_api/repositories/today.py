@@ -4,14 +4,19 @@ questions only. One query each, whatever the number of units (US-03 AC2: under 3
 
 import uuid
 from collections.abc import Sequence
+from datetime import date
 
-from sqlalchemy import ColumnElement, and_, exists, func, select
+from sqlalchemy import ColumnElement, and_, exists, func, or_, select
 
 from core_api.db.models import KnowledgeUnit, MemoryState, Question, QuestionUnit, Subject
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
 from core_api.domain.scheduling.fsrs_adapter import Phase
 from core_api.domain.today import RECALL_LEVEL, DueUnit, NewQuestion
 from core_api.repositories.base import UserScopedRepository
+
+# Both while the status rename is in flight: a card saved by T7.8 is `canonical`, a legacy one is
+# `active` (T7.11 migration 0031 renames the second and this shrinks to one value).
+LIVE_STATUSES = ("active", "canonical")
 
 
 class TodayRepository(UserScopedRepository[MemoryState]):
@@ -47,7 +52,14 @@ class TodayRepository(UserScopedRepository[MemoryState]):
         skipped = self._questions_with_skipped_unit()
         return [Question.id.not_in(skipped)] if skipped else []
 
-    def unasked_by_subject(self) -> dict[uuid.UUID, int]:
+    def _not_saved_today(self, day: date) -> ColumnElement[bool]:
+        """A card saved today enters from the next learning day (US-02b AC12); one with no save
+        day (seed, pipeline) is always eligible."""
+        return or_(
+            KnowledgeUnit.saved_learning_day.is_(None), KnowledgeUnit.saved_learning_day < day
+        )
+
+    def unasked_by_subject(self, *, day: date) -> dict[uuid.UUID, int]:
         """Units never asked, by visible subject: what the exam quota counts (T2.23, b2)."""
         scheduled = select(MemoryState.unit_id).where(
             MemoryState.user_id == self.user_id, MemoryState.facet == "core"
@@ -56,9 +68,10 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             select(KnowledgeUnit.subject_id, func.count())
             .where(
                 KnowledgeUnit.user_id == self.user_id,
-                KnowledgeUnit.status == "active",
+                KnowledgeUnit.status.in_(LIVE_STATUSES),
                 KnowledgeUnit.skipped_at.is_(None),
                 KnowledgeUnit.id.not_in(scheduled),
+                self._not_saved_today(day),
                 self._visible_subject(KnowledgeUnit.subject_id),  # type: ignore[arg-type]
             )
             .group_by(KnowledgeUnit.subject_id)
@@ -81,7 +94,12 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                 Question.level == RECALL_LEVEL,
                 *self._not_skipped(),
             )
-            .order_by(QuestionUnit.unit_id, Question.created_at, Question.id)
+            .order_by(
+                QuestionUnit.unit_id,
+                func.coalesce(Question.unit_rev, 0).desc(),  # the question of the newest revision
+                Question.created_at,
+                Question.id,
+            )
             .distinct(QuestionUnit.unit_id)
             .subquery()
         )
@@ -98,7 +116,7 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             .where(
                 MemoryState.user_id == self.user_id,
                 MemoryState.facet == "core",
-                KnowledgeUnit.status == "active",
+                KnowledgeUnit.status.in_(LIVE_STATUSES),
                 KnowledgeUnit.skipped_at.is_(None),
                 self._visible_subject(KnowledgeUnit.subject_id),  # type: ignore[arg-type]
             )
@@ -143,7 +161,7 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                 MemoryState.user_id == self.user_id,
                 MemoryState.facet == "core",
                 QuestionUnit.question_id == question_id,
-                KnowledgeUnit.status == "active",
+                KnowledgeUnit.status.in_(LIVE_STATUSES),
                 KnowledgeUnit.skipped_at.is_(None),
             )
         ).all()
@@ -159,7 +177,7 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             for row in rows
         ]
 
-    def new_questions(self) -> Sequence[NewQuestion]:
+    def new_questions(self, *, day: date) -> Sequence[NewQuestion]:
         """Active questions with a unit never asked and none skipped (a question of several units
         stays new while one of them has no schedule: T2.23 fixes the old "none reviewed" rule,
         which left that unit never asked). A question linked to no unit counts as new."""
@@ -180,9 +198,10 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             )
             .where(
                 QuestionUnit.user_id == self.user_id,
-                KnowledgeUnit.status == "active",
+                KnowledgeUnit.status.in_(LIVE_STATUSES),
                 KnowledgeUnit.skipped_at.is_(None),
                 KnowledgeUnit.id.not_in(scheduled),
+                self._not_saved_today(day),
             )
         )
         with_unasked = select(unasked_pairs.subquery().c.question_id)
@@ -195,7 +214,12 @@ class TodayRepository(UserScopedRepository[MemoryState]):
         for question_id, unit_id in self.session.execute(unasked_pairs):
             unasked_units.setdefault(question_id, set()).add(unit_id)
         rows = self.session.execute(
-            select(Question.id, Question.subject_id, Question.created_at).where(
+            select(
+                Question.id,
+                Question.subject_id,
+                Question.created_at,
+                func.coalesce(Question.unit_rev, 0),
+            ).where(
                 Question.user_id == self.user_id,
                 Question.status == "active",
                 Question.level == RECALL_LEVEL,
@@ -204,6 +228,13 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                 self._visible_subject(Question.subject_id),  # type: ignore[arg-type]
             )
         ).all()
+        # A card with several review questions (the lazy one made after an edit does not retire
+        # the old) is asked by its newest revision only; equal revisions all stay (T7.9).
+        newest: dict[uuid.UUID, int] = {}
+        rev_of = {id: rev for id, _, _, rev in rows}
+        for id, units in unasked_units.items():
+            for unit_id in units:
+                newest[unit_id] = max(newest.get(unit_id, 0), rev_of.get(id, 0))
         return [
             NewQuestion(
                 question_id=id,
@@ -211,7 +242,8 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                 created_at=created_at,
                 unasked_units=frozenset(unasked_units.get(id, ())),
             )
-            for id, subject_id, created_at in rows
+            for id, subject_id, created_at, rev in rows
+            if not unasked_units.get(id) or any(rev >= newest[u] for u in unasked_units[id])
         ]
 
     def has_questions(self) -> bool:
