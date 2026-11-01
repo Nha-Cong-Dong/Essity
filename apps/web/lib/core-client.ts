@@ -32,6 +32,9 @@ export function coreClient({ token, clientIp, timeoutMs }: CoreAuth = {}): CoreC
       const headers = new Headers({ accept: "application/json" });
       const contentType = request.headers.get("content-type");
       if (contentType) headers.set("content-type", contentType);
+      // Set by a route from a checked integer (T7.12), never copied from the browser's request.
+      const ifMatch = request.headers.get("if-match");
+      if (ifMatch && /^\d{1,9}$/.test(ifMatch)) headers.set("if-match", ifMatch);
       if (token) headers.set("authorization", `Bearer ${token}`);
       if (serviceToken) {
         headers.set(SERVICE_TOKEN_HEADER, serviceToken);

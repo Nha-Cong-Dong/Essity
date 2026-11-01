@@ -18,9 +18,25 @@ const CODES = new Set([
   "bad_date",
   "bad_note",
   "bad_range",
+  "bad_split",
   "content_mismatch",
   "document_not_found",
   "file_too_large",
+  "mention_ambiguous",
+  "mention_not_found",
+  "merge_needs_two",
+  "nothing_submitted",
+  "not_a_draft",
+  "not_undoable",
+  "scope_ambiguous",
+  "scope_not_found",
+  "scope_out_of_range",
+  "scope_unsupported",
+  "text_too_long",
+  "too_many_mentions",
+  "undo_expired",
+  "unit_changed_elsewhere",
+  "unit_not_found",
   "not_indexed",
   "session_confirmed",
   "session_not_found",
@@ -56,6 +72,15 @@ export async function forwardSession(
   if (response.status === 429) return rateLimited(response);
   const detail = (error as { detail?: unknown } | undefined)?.detail;
   if (typeof detail === "string" && CODES.has(detail)) return errorResponse(detail, response.status);
+  // T7.12: T7.6 and T7.8 refuse with an object `{code, ...}`; only the code and the index of the
+  // mention (the part of the text, `part`, is never passed on) reach the browser.
+  if (typeof detail === "object" && detail !== null) {
+    const { code, mention } = detail as { code?: unknown; mention?: unknown };
+    if (typeof code === "string" && CODES.has(code)) {
+      const found = Number.isSafeInteger(mention) ? { mention } : {};
+      return Response.json({ error: code, ...found }, { status: response.status });
+    }
+  }
   if (response.status === 422) return errorResponse("invalid_request", 422);
   return unavailable("sessions");
 }
