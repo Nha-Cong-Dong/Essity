@@ -93,6 +93,27 @@ def uv_sync(path: Path) -> list[str]:
     return notes
 
 
+HOOK_TEMPLATE = """#!/bin/sh
+# installed by lane.py up: a lane worktree may only commit/push on its card's branch
+guard="{repo}/scripts/hooks/branch_guard.py"
+[ -f "$guard" ] || exit 0
+exec python "$guard" "{repo}"
+"""
+
+
+def install_branch_guard(repo: Path) -> None:
+    """pre-commit and pre-push in the shared hooks dir (all worktrees), see branch_guard.py."""
+    common = _git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip()
+    hooks = Path(common) / "hooks"
+    hooks.mkdir(parents=True, exist_ok=True)
+    for name in ("pre-commit", "pre-push"):
+        hook = hooks / name
+        if hook.exists() and "branch_guard.py" not in hook.read_text(encoding="utf-8"):
+            continue  # someone else's hook: leave it alone
+        hook.write_text(HOOK_TEMPLATE.format(repo=repo.as_posix()), encoding="utf-8", newline="\n")
+        hook.chmod(0o755)
+
+
 def up(
     repo: Path,
     lane: int,
@@ -116,6 +137,7 @@ def up(
     result = _git(repo, *args)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip())
+    install_branch_guard(repo)
     if create_db:
         # the superuser creates them (`core` has no CREATEDB), see agent_env.ensure_database
         ensure_database(f"core_test_l{lane}")

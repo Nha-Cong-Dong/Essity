@@ -24,7 +24,8 @@ class FastPath(unittest.TestCase):
         self.assertEqual(serial_target("Bash", {"command": "just gen-api"}, cwd), cwd.resolve())
         migration = cwd / "services" / "core-api" / "migrations" / "versions" / "0012_x.py"
         self.assertEqual(
-            serial_target("Write", {"file_path": str(migration)}, cwd), migration.resolve()
+            serial_target("Write", {"file_path": str(migration)}, cwd),
+            migration.resolve(),
         )
 
 
@@ -90,6 +91,66 @@ class Guard(unittest.TestCase):
 
     def test_writing_ordinary_files_passes(self) -> None:
         self.assertIsNone(self.edit(self.l2 / "apps" / "web" / "page.tsx", self.l2))
+
+    # RETRO-FIX1: decide from what the command runs and where it acts, not from its text.
+    def test_commands_that_only_mention_a_protected_one_pass(self) -> None:
+        for command in [
+            'echo "run just gen-api later"',
+            "grep -rn 'alembic revision' docs",
+            "cat <<'EOF' > .work/T1/card.yaml\nscope: just gen-api, alembic revision\nEOF",
+            'git commit -m "document alembic revision rules"',
+            "ls packages/api-client/src",
+        ]:
+            self.assertIsNone(self.bash(command, self.repo), command)
+
+    def test_writes_under_dot_work_are_never_blocked(self) -> None:
+        target = self.repo / ".work" / "T1" / "services" / "core-api" / "migrations" / "versions"
+        self.assertIsNone(self.edit(target / "x.md", self.l2))
+        self.assertIsNone(self.bash("echo hi > .work/T1/notes.md", self.l2))
+
+    def test_the_worktree_comes_from_the_command_not_the_process_cwd(self) -> None:
+        # agents run from the main checkout
+        self.assertIsNone(
+            self.bash(
+                f"git -C {self.l1} status && cd {self.l1} && alembic revision -m x",
+                self.repo,
+            )
+        )
+        self.assertIsNotNone(self.bash(f"cd {self.l2} && uv run alembic revision -m x", self.l1))
+        self.assertIsNotNone(self.bash(f"git -C {self.l2} rev-parse && just gen-api", self.l2))
+        self.assertIsNotNone(self.bash(f"cd {self.l2} && uv run alembic revision -m x", self.repo))
+
+    def test_redirect_into_a_protected_path_is_blocked(self) -> None:
+        self.assertIsNotNone(
+            self.bash("echo x > services/core-api/migrations/versions/0099_x.py", self.l2)
+        )
+
+    def test_chained_real_command_after_a_harmless_one_is_blocked(self) -> None:
+        self.assertIsNotNone(self.bash("echo hi && uv run alembic revision -m x", self.l2))
+
+    def test_readers_cannot_hide_a_protected_command(self) -> None:
+        for command in [
+            "echo $(alembic revision -m x)",
+            "echo `alembic revision -m x`",
+            "cat <(alembic revision -m x)",
+            "find . -exec alembic revision {} +",
+            "git -c alias.x='!alembic revision' x",
+            'bash -c "alembic revision -m x"',
+        ]:
+            self.assertIsNotNone(self.bash(command, self.l2), command)
+
+    def test_readers_with_substitutions_of_harmless_commands_pass(self) -> None:
+        self.assertIsNone(self.bash("echo $(git rev-parse HEAD) `date`", self.l2))
+
+    def test_writers_and_glued_redirects_into_protected_paths_are_blocked(self) -> None:
+        versions = "services/core-api/migrations/versions/0030_a.py"
+        for command in [
+            f"echo x>{versions}",
+            f"echo x | tee {versions}",
+            f"cp /tmp/a.py {versions}",
+            f"sed -i s/a/b/ {versions}",
+        ]:
+            self.assertIsNotNone(self.bash(command, self.l2), command)
 
     def test_the_orchestrator_can_hand_the_lock_to_another_checkout(self) -> None:
         # PR D lives in the main checkout: the orchestrator writes .work/serial-owner to let it
