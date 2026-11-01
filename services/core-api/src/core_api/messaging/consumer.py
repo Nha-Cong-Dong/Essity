@@ -50,6 +50,7 @@ from sqlalchemy.orm import Session
 
 from core_api.handlers.document_indexed import on_document_failed, on_document_indexed
 from core_api.handlers.session_progress import on_session_failed, on_session_progress
+from core_api.handlers.session_result_v2 import on_submission_failed
 from core_api.logging import user_id_var
 from core_api.messaging.dead_letter import (
     DEAD_STREAM,
@@ -86,6 +87,7 @@ HANDLERS: dict[str, Handler] = {
     "document.failed.v1": on_document_failed,
     "session.progress.v1": on_session_progress,
     "session.failed.v1": on_session_failed,
+    "submission.failed.v1": on_submission_failed,
 }
 
 
@@ -96,6 +98,7 @@ def build_handlers() -> dict[str, Handler]:
     from core_api.handlers.document_indexed import OnDocumentIndexed
     from core_api.handlers.grade_completed import OnGradeCompleted
     from core_api.handlers.session_processed import OnSessionProcessed
+    from core_api.handlers.session_result_v2 import OnSubmissionProcessed
 
     settings = get_settings()
     storage = S3Storage.from_settings(settings)
@@ -103,6 +106,7 @@ def build_handlers() -> dict[str, Handler]:
         "document.indexed.v1": OnDocumentIndexed(storage),
         "grade.completed.v1": OnGradeCompleted(storage, environment=settings.environment),
         "session.processed.v1": OnSessionProcessed(storage),
+        "submission.processed.v1": OnSubmissionProcessed(storage),
     }
 
 

@@ -150,7 +150,7 @@ _FAILED = frozenset({"retry", "unavailable", "dead"})
 
 @dataclass(frozen=True)
 class _Result:
-    outcome: str  # processed | duplicate | deferred | unavailable | retry | dead
+    outcome: str  # processed | duplicate | skipped | deferred | unavailable | retry | dead
     reason: str | None = None  # dead letter reason
     error_type: str | None = None  # exception class name
 

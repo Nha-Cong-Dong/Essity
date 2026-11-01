@@ -33,6 +33,7 @@ EVENTS_IN_ARCH = [
     "submission.created.v1",
     "submission.processed.v1",
     "submission.failed.v1",
+    "unit.saved.v1",
 ]
 
 # ADR-0013 and ADR-0006: an event carries identifiers and object keys, never what a person wrote,

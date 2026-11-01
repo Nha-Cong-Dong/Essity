@@ -26,7 +26,7 @@ every consumer has moved.
 
 | Stream | Written by | Read by (consumer group) | Events |
 |---|---|---|---|
-| `events.core` | `core-relay` (from the `outbox` table) | `ai-service` | `document.uploaded`, `session.confirmed`, `submission.created`, `grade.requested`, `user.deleted` |
+| `events.core` | `core-relay` (from the `outbox` table) | `ai-service` | `document.uploaded`, `session.confirmed`, `submission.created`, `unit.saved`, `grade.requested`, `user.deleted` |
 | `events.ai` | `ai-service` | `core-api` | `document.indexed`, `document.failed`, `session.progress`, `session.processed`, `session.failed`, `submission.processed`, `submission.failed`, `grade.completed` |
 | `events.dead` | consumers, after the last failed delivery | people, by hand | any |
 

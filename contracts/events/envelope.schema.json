@@ -32,7 +32,8 @@
         "user.deleted.v1",
         "submission.created.v1",
         "submission.processed.v1",
-        "submission.failed.v1"
+        "submission.failed.v1",
+        "unit.saved.v1"
       ]
     },
     "schema_version": {

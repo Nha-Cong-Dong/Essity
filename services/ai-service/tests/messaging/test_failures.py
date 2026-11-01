@@ -5,16 +5,18 @@ dead letter; at once for an event that can never succeed (poison, unknown, anoth
 import json
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from redis import Redis
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session, sessionmaker
 
+from ai_service.handlers import build_handlers
 from ai_service.messaging.consumer import backoff_ms, keys_belong_to_user
 from ai_service.messaging.envelope import parse_event
 from ai_service.messaging.idempotency import claim
+from ai_service.tasks.unit_saved import OnUnitSaved
 from tests.messaging.conftest import Names
 from tests.messaging.helpers import (
     DOCUMENT_UPLOADED,
@@ -163,6 +165,39 @@ def test_t43_entry_that_is_not_utf8_goes_to_dead_letter(
     assert consumer.run_once() == ["dead", "processed"]
     assert [d["reason"] for d in dead_entries(redis_client, names)] == ["invalid_envelope"]
     assert len(recorder.calls) == 1
+
+
+def test_t78_unit_saved_is_handled_not_dead_lettered(
+    redis_client: Redis, names: Names, session_factory: sessionmaker[Session]
+) -> None:
+    # T7.8b/Y7. Red when: core's unit.saved.v1 reaches events.dead (no model or handler here).
+    user = uuid.uuid4()
+    publish(
+        redis_client,
+        names.stream,
+        {
+            **uploaded(user),
+            "event_type": "unit.saved.v1",
+            "payload": {
+                "unit_id": str(uuid.uuid4()),
+                "unit_rev": 1,
+                "subject_id": str(uuid.uuid4()),
+            },
+        },
+    )
+    consumer = make_consumer(redis_client, names, session_factory, {"unit.saved.v1": OnUnitSaved()})
+    consumer.ensure_group()
+    assert consumer.run_once() == ["processed"]
+    assert dead_entries(redis_client, names) == []
+    assert redis_client.xpending(names.stream, names.group)["pending"] == 0
+
+
+def test_t78_the_real_handler_table_has_unit_saved() -> None:
+    # Red when: build_handlers forgets unit.saved.v1 and every Save event goes to no_handler.
+    handlers = build_handlers(
+        redis=cast(Redis, None), storage=cast(Any, None), llm=None, sessions=cast(Any, None)
+    )
+    assert isinstance(handlers["unit.saved.v1"], OnUnitSaved)
 
 
 def test_t43_unknown_event_type_dead_lettered(

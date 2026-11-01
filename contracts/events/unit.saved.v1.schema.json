@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://essity.invalid/contracts/events/unit.saved.v1.schema.json",
+  "title": "unit.saved.v1",
+  "description": "core → ai: a card was saved (draft to canonical) in the transaction that wrote this row. Ids and the revision only: the card is read by id. Starts the background work after Save (review questions T7.9, edge proposals T9.9).",
+  "$ref": "envelope.schema.json",
+  "unevaluatedProperties": false,
+  "properties": {
+    "event_type": {
+      "const": "unit.saved.v1"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit_id",
+        "unit_rev",
+        "subject_id"
+      ],
+      "properties": {
+        "unit_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        },
+        "unit_rev": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "subject_id": {
+          "$ref": "envelope.schema.json#/$defs/uuid"
+        }
+      }
+    }
+  }
+}

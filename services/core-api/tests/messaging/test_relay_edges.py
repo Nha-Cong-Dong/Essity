@@ -30,6 +30,7 @@ CORE_TO_AI = {
     "session.confirmed.v1",
     "submission.created.v1",
     "grade.requested.v1",
+    "unit.saved.v1",
     "user.deleted.v1",
 }
 
