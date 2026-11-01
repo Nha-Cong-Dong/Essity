@@ -47,12 +47,14 @@ def committed(
         yield world, [first, {"Authorization": f"Bearer {token}"}], ids
     finally:
         with engine.begin() as connection:
+            connection.execute(text("SET LOCAL lock_timeout = '5s'"))
             connection.execute(text("DELETE FROM outbox WHERE user_id = :u"), {"u": world.user.id})
             connection.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": world.user.id})
 
 
 @pytest.fixture
-def own_sessions(engine: Engine) -> Iterator[None]:
+def own_sessions(engine: Engine, client: TestClient) -> Iterator[None]:
+    # Depends on `client` so this override lands after the shared-session one.
     def real_session() -> Iterator[Session]:
         with Session(engine, expire_on_commit=False) as own:
             try:
