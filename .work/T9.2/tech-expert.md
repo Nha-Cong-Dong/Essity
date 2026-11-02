@@ -1,0 +1,9 @@
+# tech-expert T9.2 (relayed by orchestrator, 02/11)
+Phát hiện: practice.remove (services/practice.py:79-83) trả False khi câu chưa làm (chưa có practice_state) → removed_at sai tầng (ADR-0008:32), không lưu được "đã gỡ" cho câu chưa làm; Question.in_practice của Snapshot chưa có nguồn.
+(1) Chọn C: bảng chỉ-thêm practice_removal_log(id, user_id, question_id, action removed|readded, at, command_id NULL); practice_state.removed_at = cache dẫn xuất từ sự kiện mới nhất; in_practice cùng nguồn; nút và lệnh cùng gọi practice.remove/readd; hoàn tác ghi readded. rebuild (repositories/practice.py:168-209) lấy từ sự kiện mới nhất. 0032: INSERT-only, trigger chặn UPDATE/DELETE, index (user_id, question_id, at DESC). Bỏ A (nút không qua command_log; rebuild phải diễn giải undo), bỏ B (không lưu câu chưa làm).
+(2) Bảng study_filter(user_id, subject_id, mode, until, rev int NOT NULL DEFAULT 1, updated_at), PK (user_id, subject_id); không dẫn xuất từ command_log; rev cho expected_rev; hoàn tác lần đầu = xóa dòng.
+(3) Phiên màn = screen_session_id do web gửi (không theo thời gian); latest_open lọc user_id + screen_session_id; cột có từ 0025.
+(4) command_id uuid NOT NULL + UNIQUE(user_id, command_id) (backfill gen_random_uuid() nếu 0025 có dòng); undo_revs_json jsonb NULL, sửa trigger command_log_guard (0025:44-62) chỉ cho đặt cột trong UPDATE applied->undone khi OLD NULL; kiểm UNIQUE(user_id, screen_session_id, seq) trong 0025, thiếu thì thêm; downgrade khôi phục trigger cũ.
+0032 gồm: command_log (+command_id, +undo_revs_json, sửa trigger), practice_removal_log, study_filter. Một Alembic head, L1 làm.
+Test: test_removed_question_stays_removed_after_cache_rebuild (xóa cả practice_state, gồm câu chưa làm); nút và lệnh gỡ ghi cùng một dòng; hoàn tác lệnh gỡ ghi readded; study_filter hoàn tác kiểm rev + cách ly hai user.
+ADR: không ADR mới; thêm đoạn "gỡ câu" vào ADR-0029; sửa PLAN dòng 736 và 831; 3 quyết định vào bảng Quyết định của plan.

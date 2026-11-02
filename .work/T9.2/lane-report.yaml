@@ -1,0 +1,10 @@
+task: T9.2
+lane: L2
+status: done
+head_sha: PENDING
+step: planning phase (planner, tech-expert, security-reviewer plan round 1; 6 orange folded in)
+tests: {cmd: "n/a (planning only)", passed: 0, failed: 0}
+blockers: []
+decisions: ["F2 removed_at -> C: append-only practice_removal_log, cache derived (tech-expert)", "study_filter table with rev, no DELETE on undo (tech-expert + reviewer Y3)", "undo scoped by command_id + screen_session_id from stored row (reviewer P3)"]
+understanding: "T9.2 = DB apply/undo/API over T9.2a pure core; split 4 sub-tasks <=3h; migration 0032 needs L1"
+next: "propose cards: T9.2b (L1, migration 0032: command_log cols, practice_removal_log, study_filter, version cols) -> T9.2c apply -> T9.2d undo -> T9.2e API (+api-client regen by L1); tech-expert maps studied/question links before T9.2c"
