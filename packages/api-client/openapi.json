@@ -493,7 +493,7 @@
             "type": "integer"
           },
           "question": {
-            "$ref": "#/components/schemas/QuestionOut"
+            "$ref": "#/components/schemas/core_api__api__review_sessions__QuestionOut"
           },
           "total": {
             "title": "Total",
@@ -2073,40 +2073,38 @@
         "title": "ProgressOut",
         "type": "object"
       },
-      "QuestionOut": {
+      "QuestionListOut": {
         "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "prompt": {
-            "title": "Prompt",
-            "type": "string"
-          },
-          "reason": {
-            "$ref": "#/components/schemas/ReasonOut"
-          },
-          "subject": {
-            "$ref": "#/components/schemas/SubjectRef"
-          },
-          "unit_ids": {
+          "questions": {
             "items": {
-              "format": "uuid",
-              "type": "string"
+              "$ref": "#/components/schemas/core_api__api__question_banks__QuestionOut"
             },
-            "title": "Unit Ids",
+            "title": "Questions",
+            "type": "array"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "types": {
+            "items": {
+              "$ref": "#/components/schemas/TypeCountOut"
+            },
+            "title": "Types",
             "type": "array"
           }
         },
         "required": [
-          "id",
-          "prompt",
-          "subject",
-          "unit_ids",
-          "reason"
+          "total",
+          "ready",
+          "types",
+          "questions"
         ],
-        "title": "QuestionOut",
+        "title": "QuestionListOut",
         "type": "object"
       },
       "QuestionRef": {
@@ -3685,6 +3683,24 @@
         "title": "TokenBody",
         "type": "object"
       },
+      "TypeCountOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "count"
+        ],
+        "title": "TypeCountOut",
+        "type": "object"
+      },
       "TypeCountsOut": {
         "properties": {
           "mastered": {
@@ -3919,6 +3935,30 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WaitingSectionOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "title"
+        ],
+        "title": "WaitingSectionOut",
+        "type": "object"
+      },
       "core_api__api__drafts__DraftOut": {
         "properties": {
           "anchors": {
@@ -3994,6 +4034,119 @@
           "revisions"
         ],
         "title": "DraftOut",
+        "type": "object"
+      },
+      "core_api__api__question_banks__QuestionOut": {
+        "properties": {
+          "answer_source": {
+            "enum": [
+              "bank",
+              "ai"
+            ],
+            "title": "Answer Source",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "line": {
+            "title": "Line",
+            "type": "string"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "origin": {
+            "enum": [
+              "bank",
+              "generated"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "waiting",
+              "unlinked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "type_name": {
+            "title": "Type Name",
+            "type": "string"
+          },
+          "waiting_sections": {
+            "items": {
+              "$ref": "#/components/schemas/WaitingSectionOut"
+            },
+            "title": "Waiting Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "prompt",
+          "type_name",
+          "origin",
+          "answer_source",
+          "status",
+          "line",
+          "waiting_sections"
+        ],
+        "title": "QuestionOut",
+        "type": "object"
+      },
+      "core_api__api__review_sessions__QuestionOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReasonOut"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/SubjectRef"
+          },
+          "unit_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Unit Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "prompt",
+          "subject",
+          "unit_ids",
+          "reason"
+        ],
+        "title": "QuestionOut",
         "type": "object"
       },
       "core_api__api__review_sessions__SessionOut": {
@@ -6591,6 +6744,47 @@
           }
         },
         "summary": "Import Bank"
+      }
+    },
+    "/v1/subjects/{subject_id}/questions": {
+      "get": {
+        "description": "The subject's bank questions with readiness (T8.2, US-14 AC3-AC6).",
+        "operationId": "list_questions_v1_subjects__subject_id__questions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Questions"
       }
     },
     "/v1/subjects/{subject_id}/sessions": {

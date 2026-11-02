@@ -1041,6 +1041,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Questions
+         * @description The subject's bank questions with readiness (T8.2, US-14 AC3-AC6).
+         */
+        get: operations["list_questions_v1_subjects__subject_id__questions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects/{subject_id}/sessions": {
         parameters: {
             query?: never;
@@ -1378,7 +1398,7 @@ export interface components {
             done: false;
             /** Position */
             position: number;
-            question: components["schemas"]["QuestionOut"];
+            question: components["schemas"]["core_api__api__review_sessions__QuestionOut"];
             /** Total */
             total: number;
             /**
@@ -1942,19 +1962,16 @@ export interface components {
             /** Step */
             step: ("reading_notes" | "splitting_units" | "anchoring" | "writing_questions") | null;
         };
-        /** QuestionOut */
-        QuestionOut: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Prompt */
-            prompt: string;
-            reason: components["schemas"]["ReasonOut"];
-            subject: components["schemas"]["SubjectRef"];
-            /** Unit Ids */
-            unit_ids: string[];
+        /** QuestionListOut */
+        QuestionListOut: {
+            /** Questions */
+            questions: components["schemas"]["core_api__api__question_banks__QuestionOut"][];
+            /** Ready */
+            ready: number;
+            /** Total */
+            total: number;
+            /** Types */
+            types: components["schemas"]["TypeCountOut"][];
         };
         /** QuestionRef */
         QuestionRef: {
@@ -2523,6 +2540,13 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** TypeCountOut */
+        TypeCountOut: {
+            /** Count */
+            count: number;
+            /** Name */
+            name: string;
+        };
         /** TypeCountsOut */
         TypeCountsOut: {
             /** Mastered */
@@ -2622,6 +2646,18 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** WaitingSectionOut */
+        WaitingSectionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: string;
+            /** Title */
+            title: string;
+        };
         /** DraftOut */
         core_api__api__drafts__DraftOut: {
             /** Anchors */
@@ -2647,6 +2683,53 @@ export interface components {
             title: string;
             /** Version */
             version: number;
+        };
+        /** QuestionOut */
+        core_api__api__question_banks__QuestionOut: {
+            /**
+             * Answer Source
+             * @enum {string}
+             */
+            answer_source: "bank" | "ai";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Line */
+            line: string;
+            /** Number */
+            number: number | null;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "bank" | "generated";
+            /** Prompt */
+            prompt: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "waiting" | "unlinked";
+            /** Type Name */
+            type_name: string;
+            /** Waiting Sections */
+            waiting_sections: components["schemas"]["WaitingSectionOut"][];
+        };
+        /** QuestionOut */
+        core_api__api__review_sessions__QuestionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Prompt */
+            prompt: string;
+            reason: components["schemas"]["ReasonOut"];
+            subject: components["schemas"]["SubjectRef"];
+            /** Unit Ids */
+            unit_ids: string[];
         };
         /** SessionOut */
         core_api__api__review_sessions__SessionOut: {
@@ -4621,6 +4704,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_questions_v1_subjects__subject_id__questions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionListOut"];
                 };
             };
             /** @description Validation Error */
