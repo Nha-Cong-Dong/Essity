@@ -22,7 +22,8 @@ NO_ANSWER_LINE = "Bộ câu hỏi không có đáp án cho câu này."
 MAX_TYPE_NAME = 100
 
 MSG_PENDING_AI = (
-    "Chưa tách được bộ câu lúc này. Bạn nhập lại sau nhé, câu nào đã có sẽ không bị trùng."
+    "Chưa tách được bộ câu lúc này. Việc nhập đã được xếp hàng và sẽ tự chạy khi có lượt, "
+    "câu nào đã có sẽ không bị trùng."
 )
 MSG_FAILED = "Không đọc được bộ câu hỏi này. Thử tải lại file hoặc đổi sang file khác."
 MSG_NOTHING = "Không tìm thấy câu hỏi nào trong file này."

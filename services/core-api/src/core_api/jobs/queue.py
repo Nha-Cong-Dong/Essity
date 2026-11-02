@@ -4,6 +4,7 @@ import json
 import logging
 from typing import Any
 
+from procrastinate.exceptions import AlreadyEnqueued
 from sqlalchemy.orm import Session
 
 from core_api.jobs.app import deferrer
@@ -12,13 +13,24 @@ from core_api.jobs.handler import check_kind
 _log = logging.getLogger("core_api.jobs")
 
 
-def enqueue_job(session: Session, kind: str, payload: dict[str, Any]) -> None:
+def enqueue_job(
+    session: Session,
+    kind: str,
+    payload: dict[str, Any],
+    *,
+    queueing_lock: str | None = None,
+    schedule_in: dict[str, int] | None = None,
+) -> bool:
     """Add a job of `kind`, written in `session`'s transaction.
 
     The job exists only if that transaction commits: a route that fails after enqueueing
     leaves no job behind, and workers see the job once the route has committed. No second
     connection is opened. Raises `UnknownJobKind` for a kind without a handler and `TypeError`
     for a payload that is not JSON-serialisable, before anything is written.
+
+    `queueing_lock`: at most one waiting job per lock (a second adds nothing and
+    this returns False; it runs in a savepoint, so the caller's transaction is not
+    poisoned). `schedule_in`: not before this delay, e.g. `{"minutes": 10}`.
     """
     # Imported here, not at the top: handler modules import this one to offer helpers such as
     # `enqueue_email`, so a top-level import would make a cycle (tests/jobs/test_boundary.py).
@@ -26,7 +38,17 @@ def enqueue_job(session: Session, kind: str, payload: dict[str, Any]) -> None:
 
     check_kind(kind)
     json.dumps(payload)
-    # The psycopg connection under the session, in the transaction the session has begun.
-    connection = session.connection().connection.driver_connection
-    job_id = deferrer.configure_task(name=kind, connection=connection).defer(payload=payload)
+    try:
+        with session.begin_nested():
+            # The psycopg connection under the session, in the transaction the session has begun.
+            connection = session.connection().connection.driver_connection
+            job_id = deferrer.configure_task(
+                name=kind,
+                connection=connection,
+                queueing_lock=queueing_lock,
+                schedule_in=schedule_in,
+            ).defer(payload=payload)
+    except AlreadyEnqueued:
+        return False
     _log.info("job enqueued", extra={"job_kind": kind, "job_id": job_id})
+    return True

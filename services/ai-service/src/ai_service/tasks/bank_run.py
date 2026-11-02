@@ -70,7 +70,7 @@ class ParseBankBody(_Strict):
         list[Annotated[str, Field(max_length=200)]], Field(max_length=100)
     ] = []
     sections: Annotated[list[SectionIn], Field(max_length=bank.MAX_SECTIONS)] = []
-    known: Annotated[list[KnownIn], Field(max_length=bank.MAX_QUESTIONS)] = []
+    known: Annotated[list[KnownIn], Field(max_length=5000)] = []
 
 
 class QuestionOut(_Strict):

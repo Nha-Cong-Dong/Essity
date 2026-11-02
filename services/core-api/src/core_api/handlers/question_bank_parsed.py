@@ -12,6 +12,8 @@ here logs a question, answer or type name (ADR-0013).
   shows the "chưa gắn mục" line later (AC3).
 - A question already stored (same `content_hash`, active) is skipped (AC8). The insert itself
   ignores the unique index, so two imports racing add each question once.
+- A question stored earlier without a type or without sections gets them from the reply (T8.1c);
+  a type or section it already has is never replaced, and its words and answer never change.
 """
 
 import logging
@@ -25,13 +27,16 @@ from sqlalchemy.orm import Session
 from core_api.clients.bank_contract import BankReply
 from core_api.db.models import Document, Question, QuestionSection, QuestionType
 from core_api.domain.question_bank import (
-    NewQuestion,
     default_ref_time_s,
     new_questions,
     reference_answer_of,
+    type_name_of,
 )
+from core_api.domain.question_hash import content_hash
 
 _log = logging.getLogger("core_api.handlers")
+
+MAX_KNOWN = 5000  # what one request tells ai-service; a longer bank is not sent in full
 
 BANK_LEVEL = (
     1  # `question.level` is NOT NULL and being retired (T5.R): bank questions do not use it
@@ -46,9 +51,96 @@ class Imported:
     types_added: int
 
 
-def _section_ids(item: NewQuestion, sent: set[uuid.UUID]) -> list[uuid.UUID]:
+def known_payload(
+    session: Session, user_id: uuid.UUID, subject_id: uuid.UUID, *, with_sections: bool
+) -> list[dict[str, object]]:
+    """What ai-service is told about the stored questions: hash, and what each still lacks. A
+    subject with no sections to offer never lacks one (nothing could fill it)."""
+    linked = select(QuestionSection.question_id).where(
+        QuestionSection.user_id == user_id, QuestionSection.subject_id == subject_id
+    )
+    rows = session.execute(
+        select(Question.content_hash, Question.type_id.is_(None), Question.id.not_in(linked))
+        .where(
+            Question.user_id == user_id,
+            Question.subject_id == subject_id,
+            Question.status == "active",
+        )
+        .order_by(Question.created_at)
+        .limit(MAX_KNOWN)
+    ).all()
+    return [
+        {"hash": h, "needs_type": bool(t), "needs_section": with_sections and bool(n)}
+        for h, t, n in rows
+    ]
+
+
+def _fill_missing(
+    session: Session,
+    user_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    reply: BankReply,
+    sent_sections: set[uuid.UUID],
+    types: dict[str, QuestionType],
+) -> None:
+    """Give a stored question the type and sections it lacks, from the reply (T8.1c)."""
+    by_hash = {content_hash(q.prompt): q for q in reply.questions}
+    if not by_hash:
+        return
+    stored = session.scalars(
+        select(Question).where(
+            Question.user_id == user_id,
+            Question.subject_id == subject_id,
+            Question.status == "active",
+            Question.content_hash.in_(by_hash),
+        )
+    ).all()
+    for row in stored:
+        item = by_hash[row.content_hash]
+        if row.type_id is None and (name := type_name_of(item.type_name)) is not None:
+            row.type_id = _type_for(session, user_id, subject_id, name, types).id
+        has_link = session.scalar(
+            select(QuestionSection.id)
+            .where(QuestionSection.user_id == user_id, QuestionSection.question_id == row.id)
+            .limit(1)
+        )
+        if has_link is None:
+            for section_id in _section_ids(item.section_ids, sent_sections):
+                session.add(
+                    QuestionSection(
+                        user_id=user_id,
+                        subject_id=subject_id,
+                        question_id=row.id,
+                        section_id=section_id,
+                    )
+                )
+
+
+def _type_for(
+    session: Session,
+    user_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    name: str,
+    types: dict[str, QuestionType],
+) -> QuestionType:
+    kind = types.get(name)
+    if kind is None:
+        kind = QuestionType(
+            user_id=user_id,
+            subject_id=subject_id,
+            name=name,
+            ref_time_s=default_ref_time_s(),
+            ref_origin="default",
+        )
+        session.add(kind)
+        session.flush()
+        types[name] = kind
+    return kind
+
+
+def _section_ids(raw_ids: list[str], sent: set[uuid.UUID]) -> list[uuid.UUID]:
     picked: list[uuid.UUID] = []
-    for raw in item.section_ids:
+    for raw in raw_ids:
         try:
             section_id = uuid.UUID(raw)
         except ValueError:
@@ -89,19 +181,9 @@ def store_parsed(
     for item in fresh:
         kind = None
         if item.type_name is not None:
-            kind = types.get(item.type_name)
-            if kind is None:
-                kind = QuestionType(
-                    user_id=user_id,
-                    subject_id=subject_id,
-                    name=item.type_name,
-                    ref_time_s=default_ref_time_s(),
-                    ref_origin="default",
-                )
-                session.add(kind)
-                session.flush()
-                types[item.type_name] = kind
-                types_added += 1
+            before = len(types)
+            kind = _type_for(session, user_id, subject_id, item.type_name, types)
+            types_added += len(types) - before
         question_id = uuid.uuid4()
         inserted = session.execute(
             insert(Question)
@@ -135,7 +217,7 @@ def store_parsed(
             duplicates += 1
             continue
         added += 1
-        linked = _section_ids(item, sent_sections)
+        linked = _section_ids(item.section_ids, sent_sections)
         if not linked:
             unmapped += 1
         for section_id in linked:
@@ -147,6 +229,7 @@ def store_parsed(
                     section_id=section_id,
                 )
             )
+    _fill_missing(session, user_id, subject_id, reply, sent_sections, types)
     session.flush()
     _log.info(
         "question bank stored",
