@@ -12,6 +12,7 @@ from ai_service.api import (
     parse_command,
     ping,
     practice,
+    question_bank,
     review_question,
 )
 from ai_service.config import get_settings
@@ -24,6 +25,8 @@ from ai_service.tasks import extract_session as extract_task
 from ai_service.tasks import generate_like as generate_like_task
 from ai_service.tasks import grade_practice as grade_practice_task
 from ai_service.tasks import parse_command as parse_task
+from ai_service.tasks import question_bank as question_bank_task
+from ai_service.tasks.bank_run import fake_parse_question_bank
 from ai_service.tasks.grade import fake_grade, load_prompt
 from ai_service.tasks.like_run import fake_generate_like, fake_judge_questions
 from ai_service.tasks.practice_run import fake_draft_answer, fake_grade_practice
@@ -43,6 +46,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     grade_practice_task.load_prompt()
     generate_like_task.load_prompt(generate_like_task.GENERATE_TASK)
     generate_like_task.load_prompt(generate_like_task.JUDGE_TASK)
+    for name in ("bank_split", "bank_types", "bank_sections"):
+        question_bank_task.load_prompt(name)
     adapter = build_adapter(
         settings,
         {
@@ -54,6 +59,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             "generate_like": fake_generate_like,
             "judge_questions": fake_judge_questions,
             "generate_questions": fake_questions,
+            "parse_question_bank": fake_parse_question_bank,
         },
     )
     sessions = get_session_factory()
@@ -97,6 +103,7 @@ def create_app() -> FastAPI:
     app.include_router(generate_like.router)
     generate_like.add_error_handlers(app)
     app.include_router(review_question.router)
+    app.include_router(question_bank.router)
     # Outermost middleware: continues the trace started by core-api (W3C traceparent).
     FastAPIInstrumentor.instrument_app(
         app, excluded_urls="healthz", exclude_spans=["receive", "send"]

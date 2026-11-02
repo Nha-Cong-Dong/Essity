@@ -9,6 +9,7 @@ import httpx2
 from opentelemetry.instrumentation.httpx import HTTPX2ClientInstrumentor
 from pydantic import ValidationError
 
+from core_api.clients.bank_contract import BankReply
 from core_api.clients.extract_contract import Clarify, ExtractAnswer, NoteOnly, Proposed
 from core_api.clients.grade_contract import GradeResponse
 from core_api.clients.like_contract import LikeReply
@@ -38,6 +39,8 @@ GRADE_MIN_RETRY_SECONDS = 3.0
 GRADE_CONNECT_SECONDS = 2.0
 # Generate then judge, two model calls inside ai-service (its own deadline is 20 s): one try.
 LIKE_CALL_SECONDS = 25.0
+# ai-service stops a bank run at 120 s (T8.1b); wait a little longer for its answer.
+BANK_CALL_SECONDS = 130.0
 
 # The /v1/extract-session leg (T4.12): one try, connecting capped at 1 s, no retry.
 EXTRACT_CONNECT_SECONDS = 1.0
@@ -216,7 +219,16 @@ class AiServiceClient:
         Never raises for ai-service's answers and never retries (US-17 AC6)."""
         return self._practice("/v1/generate-like", payload, LikeReply, seconds=LIKE_CALL_SECONDS)
 
-    def _practice[R: (PracticeGradeReply, DraftAnswerReply, ReviewQuestionReply, LikeReply)](
+    def parse_question_bank(self, payload: Mapping[str, object]) -> BankReply | NotGraded:
+        """POST /v1/parse-question-bank, once (T8.1b): split, type and section steps all happen
+        inside ai-service. Never raises for its answers; never logs a body (ADR-0013)."""
+        return self._practice(
+            "/v1/parse-question-bank", payload, BankReply, seconds=BANK_CALL_SECONDS
+        )
+
+    def _practice[
+        R: (PracticeGradeReply, DraftAnswerReply, ReviewQuestionReply, LikeReply, BankReply)
+    ](
         self,
         path: str,
         payload: Mapping[str, object],

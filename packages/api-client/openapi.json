@@ -1030,6 +1030,53 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "ImportOut": {
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "duplicates": {
+            "title": "Duplicates",
+            "type": "integer"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "partial",
+              "pending_ai",
+              "failed",
+              "empty"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "unmapped": {
+            "title": "Unmapped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "added",
+          "duplicates",
+          "unmapped"
+        ],
+        "title": "ImportOut",
+        "type": "object"
+      },
       "InProgressOut": {
         "properties": {
           "position": {
@@ -6494,6 +6541,56 @@
           }
         },
         "summary": "List Practice Types"
+      }
+    },
+    "/v1/subjects/{subject_id}/question-banks/{document_id}/import": {
+      "post": {
+        "operationId": "import_bank_v1_subjects__subject_id__question_banks__document_id__import_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Bank"
       }
     },
     "/v1/subjects/{subject_id}/sessions": {
