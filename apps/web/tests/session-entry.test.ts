@@ -15,3 +15,7 @@ it("no ?session= goes to the study session start", () => {
 it("a saved v1 session id keeps the v1 saved view", () => {
   expect(newSessionTarget(SUBJECT, SESSION)).toBeNull();
 });
+
+it("v1=1 (submissions off) shows v1, no loop", () => {
+  expect(newSessionTarget(SUBJECT, undefined, "1")).toBeNull();
+});
