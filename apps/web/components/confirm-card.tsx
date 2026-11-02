@@ -31,12 +31,14 @@ export type ConfirmCardProps = {
   saving: boolean;
   /** Notes are still on their way to storage: Lưu waits for them. */
   waiting?: boolean;
+  /** A photo is attached: only then does the card say it is read after Lưu. */
+  hasPhotos?: boolean;
   onSave: () => void;
   onSentence: () => void;
   onRanges: () => void;
 };
 
-export function ConfirmCard({ card, saving, waiting = false, onSave, onSentence, onRanges }: ConfirmCardProps) {
+export function ConfirmCard({ card, saving, waiting = false, hasPhotos = false, onSave, onSentence, onRanges }: ConfirmCardProps) {
   const noteOnly = card.card === "note_only";
   return (
     <section aria-labelledby="confirm-lead" className="mt-6">
@@ -49,9 +51,11 @@ export function ConfirmCard({ card, saving, waiting = false, onSave, onSentence,
             <p className="m-0 text-read" data-copy="tam">
               Buổi này không gắn với trang tài liệu nào.
             </p>
-            <p className="m-0 mt-2 text-small text-ink-soft">
-              Ảnh vở đính kèm sẽ được đọc sau khi bạn bấm Lưu.
-            </p>
+            {hasPhotos && (
+              <p className="m-0 mt-2 text-small text-ink-soft">
+                Ảnh vở đính kèm sẽ được đọc sau khi bạn bấm Lưu.
+              </p>
+            )}
           </div>
         ) : (
           card.ranges.map((range) => (
