@@ -50,6 +50,11 @@ PRACTICE_GRADE_RETRY = "practice_grade_retry"
 BATCH = 20
 # A grading that has waited this long is given up: the screen offers "Chấm lại".
 MAX_AGE = timedelta(days=7)
+# A row that raises this many times is given up, whatever its age: each run may have called the AI
+# before it raised, and the budget is small. Counted in the worker process (a restart starts over;
+# the age limit above still ends it).
+MAX_ERRORS = 3
+_ERRORS: dict[uuid.UUID, int] = {}
 
 _log = logging.getLogger("core_api.jobs")
 
@@ -163,9 +168,11 @@ def retry_pending(
     now: datetime,
     *,
     batch: int = BATCH,
+    errors: dict[uuid.UUID, int] | None = None,
 ) -> RetryReport:
     """Grade up to `batch` queued practice answers; see the module docstring."""
     report = RetryReport()
+    errors = _ERRORS if errors is None else errors
     limited: set[uuid.UUID] = set()
     for job_id, user_id, attempt_id in _due(session, batch):
         if user_id in limited:
@@ -179,9 +186,16 @@ def retry_pending(
                 "practice grade retry failed",
                 extra={"attempt_id": str(attempt_id), "error_type": type(error).__name__},
             )
+            errors[attempt_id] = errors.get(attempt_id, 0) + 1
+            if errors[attempt_id] >= MAX_ERRORS and _give_up(session, user_id, attempt_id, now):
+                errors.pop(attempt_id, None)
+                report.failed += 1
+                continue
             _push_back(session, user_id, attempt_id, now)
             report.skipped += 1
             continue
+        if step in ("graded", "failed"):
+            errors.pop(attempt_id, None)
         if step == "graded":
             report.graded += 1
         elif step == "failed":
@@ -195,6 +209,17 @@ def retry_pending(
         else:
             report.skipped += 1
     return report
+
+
+def _give_up(session: Session, user_id: uuid.UUID, attempt_id: uuid.UUID, now: datetime) -> bool:
+    """A row that keeps raising ends as failed (the screen offers "Chấm lại"). Best effort."""
+    try:
+        GradeJobRepository(session, user_id).fail(attempt_id, "unavailable", now)
+        session.commit()
+    except Exception:  # noqa: BLE001
+        session.rollback()
+        return False
+    return True
 
 
 def _push_back(session: Session, user_id: uuid.UUID, attempt_id: uuid.UUID, now: datetime) -> None:

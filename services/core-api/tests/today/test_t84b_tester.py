@@ -326,3 +326,41 @@ def test_the_worker_entry_runs_with_an_aware_clock_and_closes_the_client(
     assert seen["ai"] is client and client.closed
     assert isinstance(seen["limiter"], RateLimiter)
     assert seen["at"].tzinfo is not None
+
+
+def test_a_row_that_keeps_raising_is_given_up_after_a_few_runs(
+    learner: Learner, db_session: Session, boom: Boom
+) -> None:
+    # Final review F3. Red when: a row that raises keeps costing a call to the AI every run for the
+    # whole 7 days (the call is spent before the raise, nothing is saved).
+    from core_api.jobs.practice_grade_retry import MAX_ERRORS
+
+    attempt = queued(learner, boom, "boom")
+    boom.armed = True
+    calls = 0
+    original = boom.grade_practice
+
+    def counting(payload: dict[str, object]) -> PracticeGradeReply | NotGraded:
+        nonlocal calls
+        calls += 1
+        return original(payload)
+
+    boom.grade_practice = counting  # type: ignore[method-assign]
+    errors: dict[uuid.UUID, int] = {}
+    trail: list[object] = []
+    for _ in range(MAX_ERRORS + 3):
+        rep = retry_pending(db_session, boom, Limiter(), now(), errors=errors)
+        trail.append((calls, list(errors.values()), rep.failed, rep.skipped))
+    row = job_of(db_session, attempt)
+    assert row is not None and row.status == "failed" and row.failure == "unavailable", trail
+    assert calls == MAX_ERRORS, trail
+
+
+def test_the_summary_log_line_keeps_its_counters(
+    learner: Learner, db_session: Session, ai: FakeAi, log_output: Callable[[], str]
+) -> None:
+    # Final review F2. Red when: the counter names are not allowed log fields and are dropped.
+    from core_api.jobs.practice_grade_retry import practice_grade_retry_job  # noqa: F401
+    from core_api.logging import ALLOWED_FIELDS
+
+    assert {"graded_count", "failed_count", "skipped_count", "halted"} <= ALLOWED_FIELDS
