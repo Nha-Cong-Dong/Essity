@@ -20,6 +20,9 @@ const BASE: Today = {
   backlog: null,
   next_day: null,
   subjects: SUBJECTS,
+  next_study: { items: [], empty_reason: null, links: [] },
+  review: { items: [], minutes: 0, new_saved_today: false, next_due_day: null },
+  unfinished: [],
 };
 
 const draw = (today: Partial<Today>) => renderToStaticMarkup(<TodayScreen today={{ ...BASE, ...today }} />);
@@ -65,7 +68,7 @@ describe("/today screen (T2.14)", () => {
   it("backlog: a neutral sentence and Ôn thêm as a secondary button", () => {
     const markup = draw({
       session: { question_count: 20, minutes: 30, subjects: [{ id: MMT, name: "Mạng máy tính" }] },
-      backlog: { subject_id: MMT, subject_name: "Mạng máy tính", sessions: 16, days: 10 },
+      backlog: { subject_id: MMT, subject_name: "Mạng máy tính", sessions: 16, days: 10, units: 0 },
     });
     expect(markup).toContain("Để kịp thi Mạng máy tính cần thêm khoảng 6 phiên trong 10 ngày.");
     expect(markup).toContain("Ôn thêm");

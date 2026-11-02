@@ -30,8 +30,12 @@ const TODAY: Today = {
     subject_name: "Mạng máy tính",
     sessions: 16,
     days: 10,
+    units: 0,
   },
   next_day: null,
+  next_study: { items: [], empty_reason: null, links: [] },
+  review: { items: [], minutes: 0, new_saved_today: false, next_due_day: null },
+  unfinished: [],
   subjects: [
     { id: "0b8f1d2e-0000-4000-8000-000000000001", name: "Mạng máy tính", exam_date: "2026-12-04", days_until_exam: 40 },
     { id: "0b8f1d2e-0000-4000-8000-000000000002", name: LONG_WORD, exam_date: "2027-01-15", days_until_exam: 82 },
