@@ -54,6 +54,11 @@ def retry_delay(attempts: int) -> timedelta:
     return min(timedelta(seconds=2 ** min(attempts, 5)), MAX_DELAY)
 
 
+def outage_delay(failures: int, poll_seconds: float = POLL_SECONDS) -> float:
+    """Seconds to wait after `failures` failed rounds in a row: 2x the poll each time, 30 s cap."""
+    return min(poll_seconds * 2 ** min(failures, 10), MAX_DELAY.total_seconds())
+
+
 def envelope_of(row: Outbox) -> str:
     """The event of `row`, as it travels, validated against the contract again."""
     event = _EVENT.validate_python(
@@ -142,13 +147,23 @@ def run(
     poll_seconds: float = POLL_SECONDS,
 ) -> None:
     """Relay until `stop` is set: at once while full batches keep coming, else every poll."""
+    failures = 0
     while not stop.is_set():
         try:
             sent = relay_once(engine, redis, stream=stream)
-        except Exception as error:  # the database is down, say: log it and try again next round
-            # The class name only: a traceback would carry the error's message (ADR-0013).
-            _log.error("outbox relay round failed", extra={"error_type": type(error).__name__})
-            sent = 0
+        except Exception as error:  # the database is down, say: back off and try again
+            if failures == 0:
+                # The class name only: a traceback would carry the error's message (ADR-0013).
+                # One line per outage: the rounds that follow stay quiet until it recovers.
+                _log.warning(
+                    "outbox relay round failed", extra={"error_type": type(error).__name__}
+                )
+            failures += 1
+            stop.wait(outage_delay(failures, poll_seconds))
+            continue
+        if failures:
+            _log.info("outbox relay recovered", extra={"failed_rounds": failures})
+            failures = 0
         if sent < BATCH:
             stop.wait(poll_seconds)
 
