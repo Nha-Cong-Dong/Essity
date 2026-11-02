@@ -3,6 +3,7 @@ row on one object, an object gone since, two users with one command id, two ops 
 undo_revs written once, practice removal undone twice."""
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from cmd_world import CmdWorld
@@ -248,3 +249,17 @@ def test_ac5_undo_merge_gives_back_the_sections_taken_in(cw: CmdWorld) -> None: 
 
 def exclude_ops(section: object) -> list[dict[str, object]]:
     return [{"kind": "section_exclude", "sections": [str(section.id)]}]  # type: ignore[attr-defined]
+
+
+def test_ac5_undo_in_turn_on_one_clock_tick(cw: CmdWorld) -> None:  # AC5 (tester round 2)
+    # Red when: two undos with the same undone_at are not ordered newest-first-undone-first
+    # (tie broken by seq ascending or not at all): the oldest undo reads a stale rev.
+    q = cw.questions[0]
+    ids = [uuid.uuid4() for _ in range(4)]
+    for cid, text in zip(ids, ("một", "hai", "ba", "bốn"), strict=True):
+        cw.run([answer(q, text)], command_id=cid)
+    tick = datetime(2030, 1, 1, tzinfo=UTC)
+    for cid in reversed(ids):
+        cw.service.undo(cid, now=tick)
+    cw.db.refresh(q)
+    assert q.answer_text is None
