@@ -175,7 +175,7 @@ def _merge(
     done = 0
     for merge in merges:
         unit = units.get(merge.existing_unit_id)
-        if unit is None or unit.subject_id != subject_id or unit.status != "active":
+        if unit is None or unit.subject_id != subject_id or unit.status != "canonical":
             continue
         for found in merge.anchors:
             if not anchors.has_quote(unit.id, found.source, found.quote_text):

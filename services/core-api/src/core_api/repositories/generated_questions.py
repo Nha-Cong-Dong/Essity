@@ -24,7 +24,7 @@ from core_api.domain.question_hash import content_hash
 from core_api.repositories.base import UserScopedRepository
 
 # unit.status values that count as a card the learner owns (not a draft, not retired).
-LIVE_CARD = ("active", "canonical")
+LIVE_CARD = ("canonical",)
 MAX_CARDS = 40
 MAX_SAMPLES = 3
 MAX_CARD_CHARS = 1500

@@ -26,7 +26,7 @@ from core_api.repositories.base import UserScopedRepository
 
 # Both while the status rename is in flight: a card saved by T7.8 is `canonical`, a legacy one is
 # `active` (T7.11 migration 0031 renames the second and this shrinks to one value).
-LIVE_STATUSES = ("active", "canonical")
+LIVE_STATUSES = ("canonical",)
 
 
 class TodayRepository(UserScopedRepository[MemoryState]):

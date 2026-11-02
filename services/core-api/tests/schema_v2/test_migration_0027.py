@@ -169,7 +169,7 @@ def test_retired_at_only_on_retired_units(world: World) -> None:
     make_unit(world.session, world.alice, world.subject, status="retired")
     make_unit(world.session, world.alice, world.subject, status="retired", retired_at=NOW)
     with pytest.raises(IntegrityError), world.session.begin_nested():
-        make_unit(world.session, world.alice, world.subject, status="active", retired_at=NOW)
+        make_unit(world.session, world.alice, world.subject, status="canonical", retired_at=NOW)
 
 
 @pytest.mark.parametrize("values", [{"saved_at": NOW}, {"saved_learning_day": DAY}])
@@ -358,7 +358,7 @@ def test_tester_downgrade_refuses_while_new_learner_data_exists(
         c.execute(
             text(
                 "INSERT INTO knowledge_unit (id, user_id, subject_id, title, summary, kind,"
-                " status, run_id) VALUES (:k, :u, :s, 't', 's', 'concept', 'active', :k)"
+                " status, run_id) VALUES (:k, :u, :s, 't', 's', 'concept', 'canonical', :k)"
             ),
             ids,
         )

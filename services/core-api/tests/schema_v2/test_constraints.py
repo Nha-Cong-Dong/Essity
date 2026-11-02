@@ -168,8 +168,8 @@ def test_section_order_may_repeat_while_reordering(world: World) -> None:
 # --- knowledge_unit ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("status", ["draft", "canonical", "active", "retired", "merged"])
-def test_unit_status_accepts_old_and_new_values(world: World, status: str) -> None:
+@pytest.mark.parametrize("status", ["draft", "canonical", "retired", "merged"])
+def test_unit_status_accepts_the_four_values(world: World, status: str) -> None:
     make_unit(world.session, world.alice, world.subject, status=status)
 
 
@@ -178,11 +178,11 @@ def test_unit_status_rejects_unknown(world: World) -> None:
         make_unit(world.session, world.alice, world.subject, status="deleted")
 
 
-def test_new_unit_defaults_active_version1(world: World) -> None:
-    # Red when: the default flips before the code that filters 'active' does (review F1).
+def test_new_unit_defaults_canonical_version1(world: World) -> None:
+    # Red when: the default is not canonical (0031).
     unit = make_unit(world.session, world.alice, world.subject)
     world.session.refresh(unit)
-    assert (unit.status, unit.version) == ("active", 1)
+    assert (unit.status, unit.version) == ("canonical", 1)
 
 
 def test_unit_version_from_one(world: World) -> None:

@@ -29,7 +29,7 @@ def tables(engine: Engine) -> set[str]:
         )
 
 
-def seed_old_rows(engine: Engine) -> uuid.UUID:
+def seed_old_rows(engine: Engine, unit_status: str = "active") -> uuid.UUID:
     """One user with an old-shape document, unit and question; returns the user id."""
     user, subject, document, unit, question = (uuid.uuid4() for _ in range(5))
     sha = "ab" * 32
@@ -54,9 +54,9 @@ def seed_old_rows(engine: Engine) -> uuid.UUID:
         connection.execute(
             text(
                 "INSERT INTO knowledge_unit (id, user_id, subject_id, title, summary, kind,"
-                " status, run_id) VALUES (:id, :u, :s, 't', 's', 'concept', 'active', :run)"
+                " status, run_id) VALUES (:id, :u, :s, 't', 's', 'concept', :us, :run)"
             ),
-            {"id": unit, "u": user, "s": subject, "run": RUN},
+            {"id": unit, "u": user, "s": subject, "run": RUN, "us": unit_status},
         )
         connection.execute(
             text(
@@ -95,8 +95,8 @@ def test_upgrade_gives_old_rows_the_v2_values(engine: Engine, alembic_cfg: Confi
                 {"u": user},
             ).one()
         assert tuple(document) == ("auxiliary", "pdf")
-        # Old 'active' rows stay 'active' until the flip after T5.R (plan, review F1).
-        assert tuple(unit) == ("active", 1)
+        # Old 'active' rows became canonical in 0031 (T7.11).
+        assert tuple(unit) == ("canonical", 1)
         assert tuple(question) == ("review_auto", "ok", None, None)
     finally:
         command.upgrade(alembic_cfg, "head")
@@ -162,7 +162,7 @@ def test_downgrade_refuses_when_it_would_lose_data(
     engine: Engine, alembic_cfg: Config, kind: str
 ) -> None:
     # Red when: the downgrade deletes rows or turns drafts into 'active' to get its way (F5).
-    user = seed_old_rows(engine)
+    user = seed_old_rows(engine, "canonical")
     with engine.begin() as connection:
         if kind.endswith("unit"):
             # Red when (canonical, tester): the guard checks only one of the two new statuses.

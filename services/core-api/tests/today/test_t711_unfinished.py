@@ -101,7 +101,7 @@ def test_us02b_ac11_a_card_without_revision_or_not_canonical_is_never_stale(
     subject = make_subject(db_session, alice)
     _no_rev, q1 = _card_with_question(db_session, alice, subject, 1)
     old, q2 = _card_with_question(db_session, alice, subject, 1)
-    old.status = "active"
+    old.status = "merged"
     db_session.add(UnitRevision(user_id=alice.id, unit_id=old.id, rev=3, origin="ai", content={}))
     db_session.flush()
     assert TodayRepository(db_session, alice.id).stale_rev_units([q1.id, q2.id]) == []

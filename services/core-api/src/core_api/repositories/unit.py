@@ -47,7 +47,7 @@ class KnowledgeUnitRepository(UserScopedRepository[KnowledgeUnit]):
                 self._select()
                 .where(
                     KnowledgeUnit.subject_id == subject_id,
-                    KnowledgeUnit.status == "active",
+                    KnowledgeUnit.status == "canonical",
                     KnowledgeUnit.skipped_at.is_(None),
                 )
                 .order_by(KnowledgeUnit.created_at.desc(), KnowledgeUnit.id)
@@ -62,7 +62,7 @@ class KnowledgeUnitRepository(UserScopedRepository[KnowledgeUnit]):
             .where(
                 KnowledgeUnit.subject_id == subject_id,
                 KnowledgeUnit.title == title,
-                KnowledgeUnit.status == "active",
+                KnowledgeUnit.status == "canonical",
             )
             .order_by(KnowledgeUnit.created_at, KnowledgeUnit.id)
         )

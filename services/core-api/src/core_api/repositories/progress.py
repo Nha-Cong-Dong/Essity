@@ -103,7 +103,7 @@ class ProgressRepository(UserScopedRepository[MemoryState]):
                 ),
                 isouter=True,
             )
-            .where(KnowledgeUnit.user_id == self.user_id, KnowledgeUnit.status == "active")
+            .where(KnowledgeUnit.user_id == self.user_id, KnowledgeUnit.status == "canonical")
         ).all()
         units: dict[uuid.UUID, list[UnitProgress]] = {}
         skipped: dict[uuid.UUID, int] = {}

@@ -22,10 +22,9 @@ from core_api.db.base import Base, UserOwned, not_blank, one_of
 
 # PRD US-02b: the five kinds of knowledge unit (plan D4).
 UNIT_KINDS = frozenset({"concept", "mechanism", "comparison", "formula", "example"})
-# v2 (T7.1): draft and canonical join the old values. `active` stays the default and what the code
-# filters on until a later task turns the old rows and the default to canonical (after T5.R);
-# `split` goes with it then.
-UNIT_STATUSES = frozenset({"draft", "canonical", "active", "split", "merged", "retired"})
+# v2: a card is a draft until saved, then canonical (migration 0031 turned `active` into canonical
+# and `split` into retired).
+UNIT_STATUSES = frozenset({"draft", "canonical", "merged", "retired"})
 # Who wrote a revision: the AI (rev 0) or the learner (rev 1 on; the AI never overwrites these).
 REVISION_ORIGINS = frozenset({"ai", "user"})
 # v2 (T9.9): how two cards relate, who proposed the edge and where it stands.
@@ -81,7 +80,7 @@ class KnowledgeUnit(UserOwned, Base):
     title: Mapped[str] = mapped_column(String(200))
     summary: Mapped[str] = mapped_column(Text)
     kind: Mapped[str] = mapped_column(String(20))
-    status: Mapped[str] = mapped_column(String(10), default="active")
+    status: Mapped[str] = mapped_column(String(10), default="canonical")
     # Optimistic lock of a draft edited in place (If-Match); a conflict is a 409 (spec v2 §16.2).
     version: Mapped[int] = mapped_column(Integer, server_default="1")
     # "Không cần ôn phần này" (T2.23): never asked while set; schedule and history stay as they are.

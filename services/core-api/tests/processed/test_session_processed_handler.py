@@ -185,7 +185,7 @@ def test_lineage_rows_only_for_own_units(world: World, db_session: Session) -> N
     )
     rows = db_session.scalars(select(UnitLineage)).all()
     assert [r.old_unit_id for r in rows] == [older.id]
-    assert db_session.get(KnowledgeUnit, older.id).status == "active"  # type: ignore[union-attr]
+    assert db_session.get(KnowledgeUnit, older.id).status == "canonical"  # type: ignore[union-attr]
 
 
 def test_redelivered_event_adds_no_duplicate_questions(world: World) -> None:
