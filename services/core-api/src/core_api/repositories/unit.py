@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from core_api.db.models import (
     Anchor,
+    DocSection,
     KnowledgeUnit,
     StudyLedger,
     StudySession,
@@ -274,6 +275,43 @@ class DraftRepository(KnowledgeUnitRepository):
                 )
             )
         self.session.flush()
+
+    def by_section(
+        self, subject_id: uuid.UUID
+    ) -> tuple[list[DocSection], list[KnowledgeUnit], list[tuple[uuid.UUID, uuid.UUID]]]:
+        """The subject's draft and canonical cards, the sections that hold any of them (outline
+        order) and the (unit, section) links, all of this user's (T7.12d, us-02b AC14)."""
+        units = list(
+            self.session.scalars(
+                self._select()
+                .where(
+                    KnowledgeUnit.subject_id == subject_id,
+                    KnowledgeUnit.status.in_(("draft", "canonical")),
+                )
+                .order_by(KnowledgeUnit.created_at, KnowledgeUnit.id)
+            )
+        )
+        links = [
+            (u, s)
+            for u, s in self.session.execute(
+                select(UnitSection.unit_id, UnitSection.section_id).where(
+                    UnitSection.user_id == self.user_id,
+                    UnitSection.subject_id == subject_id,
+                    UnitSection.unit_id.in_([u.id for u in units]),
+                )
+            )
+        ]
+        sections = list(
+            self.session.scalars(
+                select(DocSection)
+                .where(
+                    DocSection.user_id == self.user_id,
+                    DocSection.id.in_({s for _, s in links}),
+                )
+                .order_by(DocSection.document_id, DocSection.ord, DocSection.id)
+            )
+        )
+        return sections, units, links
 
     def sections_of(self, unit_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, list[uuid.UUID]]:
         """Section ids per unit in the order they were written (the primary first)."""

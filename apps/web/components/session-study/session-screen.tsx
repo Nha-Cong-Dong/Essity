@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useReducer, useRef, useState } from "react";
+import { type ReactNode, useEffect, useReducer, useRef, useState } from "react";
 
 import { FieldHint } from "@/components/field-error";
 import { FocusShell } from "@/components/shells";
@@ -54,6 +54,8 @@ export type SessionScreenProps = {
   serverDraft?: Draft;
   /** T7.12: core-api behind the screen. Without it (the preview) the screen runs on its own. */
   api?: SessionApi;
+  /** T7.12d: shown under the areas of the round (the subject's cards by section). */
+  footer?: ReactNode;
 };
 
 /** T7.12: how long the reading is asked about while it runs (a retry after a hiccup is the same). */
@@ -96,7 +98,7 @@ function Suggest({ suggestion, id }: { suggestion: Suggestion; id: string }) {
 }
 
 export function SessionScreen(props: SessionScreenProps) {
-  const { subject, stopHref, docs, initial, api } = props;
+  const { subject, stopHref, docs, initial, api, footer } = props;
   const [round, send] = useReducer(roundReducer, initial.round);
   const [drafts, dispatch] = useReducer(draftsReducer, initial.drafts);
   const [text, setText] = useState(initial.text);
@@ -435,6 +437,7 @@ export function SessionScreen(props: SessionScreenProps) {
             </Region>
           </>
         )}
+        {footer}
       </div>
     </FocusShell>
   );

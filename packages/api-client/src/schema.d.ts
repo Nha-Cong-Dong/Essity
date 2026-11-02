@@ -1148,6 +1148,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/units/by-section": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Units By Section
+         * @description The subject's draft and canonical cards grouped by outline section (T7.12d, US-02b AC14);
+         *     a card in several sections is listed in each, the cards in none come last.
+         */
+        get: operations["units_by_section_v1_subjects__subject_id__units_by_section_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/submissions": {
         parameters: {
             query?: never;
@@ -2219,6 +2240,15 @@ export interface components {
             /** Saved */
             saved: string[];
         };
+        /** SectionGroupOut */
+        SectionGroupOut: {
+            /** Section Id */
+            section_id: string | null;
+            /** Section Title */
+            section_title: string | null;
+            /** Units */
+            units: components["schemas"]["SectionUnitOut"][];
+        };
         /** SectionOut */
         SectionOut: {
             /** Children */
@@ -2267,6 +2297,22 @@ export interface components {
             last_page?: number | null;
             /** Studied */
             studied?: boolean | null;
+        };
+        /** SectionUnitOut */
+        SectionUnitOut: {
+            /** Content */
+            content: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
         };
         /** SessionCard */
         SessionCard: {
@@ -2675,6 +2721,11 @@ export interface components {
             total: number;
             /** Unit */
             unit: string;
+        };
+        /** UnitsBySectionOut */
+        UnitsBySectionOut: {
+            /** Groups */
+            groups: components["schemas"]["SectionGroupOut"][];
         };
         /** UploadOut */
         UploadOut: {
@@ -4921,6 +4972,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    units_by_section_v1_subjects__subject_id__units_by_section_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnitsBySectionOut"];
+                };
             };
             /** @description Validation Error */
             422: {

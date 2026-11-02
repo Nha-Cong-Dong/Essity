@@ -29,7 +29,7 @@ async function Study({ params }: { params: Promise<{ id: string; sid: string }> 
     }
     throw error;
   }
-  return <SessionLive sessionId={sid} subject={subject.name} stopHref="/today" docs={loaded.docs} initial={loaded.initial} />;
+  return <SessionLive sessionId={sid} subjectId={subject.id} subject={subject.name} stopHref="/today" docs={loaded.docs} initial={loaded.initial} />;
 }
 
 export default function StudySessionPage({ params }: { params: Promise<{ id: string; sid: string }> }) {
