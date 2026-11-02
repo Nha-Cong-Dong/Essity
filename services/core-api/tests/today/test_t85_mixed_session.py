@@ -4,8 +4,8 @@ schedule); grading a card never moves `practice_state`, grading a practice quest
 `memory_state`."""
 
 import uuid
-from collections.abc import Iterator
-from datetime import timedelta
+from collections.abc import Callable, Iterator
+from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
@@ -311,3 +311,22 @@ def test_unverified_account_is_refused_everywhere(
     ]
     assert [c.status_code for c in calls] == [403] * 5
     assert user.id is not None
+
+
+def test_practice_answered_before_the_session_started_is_not_answered(
+    world: World, ai: Both, set_now: Callable[[datetime], None]
+) -> None:
+    p = world.practice()
+    set_now(FROZEN_NOW - timedelta(hours=1))
+    world.answer_practice(str(p.id))
+    world.session.expire_all()
+    state = world.session.scalars(
+        select(PracticeState).where(PracticeState.question_id == p.id)
+    ).one()
+    state.due = OVERDUE  # due again today (a schedule rebuilt or the question put back)
+    world.session.flush()
+    set_now(FROZEN_NOW)
+    started = world.start()
+    assert (started["answered"], started["total"]) == (0, 1)
+    now = world.current(started["id"])
+    assert now["question"]["id"] == str(p.id) and now["position"] == 1

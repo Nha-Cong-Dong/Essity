@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import pytest
 from sqlalchemy.orm import Session
 from test_t28_today_api import Space
 
@@ -157,8 +158,21 @@ def test_new_card_floor_survives_practice_cut(db_session: Session) -> None:
     assert len(result.entries) <= MAX_QUESTIONS
 
 
-def test_due_boundary_is_the_learning_day_end(db_session: Session) -> None:
+@pytest.mark.parametrize(
+    ("zone", "start_hour"),
+    [
+        ("Asia/Ho_Chi_Minh", 4),
+        ("America/New_York", 4),
+        ("Europe/Berlin", 0),
+        ("Asia/Ho_Chi_Minh", 6),
+    ],
+)
+def test_due_boundary_is_the_learning_day_end(
+    db_session: Session, zone: str, start_hour: int
+) -> None:
     user = user_of(db_session)
+    user.timezone, user.day_start_hour = zone, start_hour
+    db_session.flush()
     tz = ZoneInfo(user.timezone)
     end = day_bounds(learning_day(FROZEN_NOW, tz, user.day_start_hour), tz, user.day_start_hour)[1]
     bench = Bench(db_session, user)

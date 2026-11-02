@@ -281,6 +281,8 @@ def _practice_part(
             ready_questions=len(rows),
             question_types=len({c.type_id for c in rows}),
         )
-        for subject_id, rows in by_subject.items()
+        for subject_id, rows in sorted(
+            by_subject.items(), key=lambda kv: (names.get(kv[0], ""), str(kv[0]))
+        )
     ]
     return PracticePartOut(lines=lines) if lines else None
