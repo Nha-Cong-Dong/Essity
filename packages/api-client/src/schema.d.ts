@@ -1024,6 +1024,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/question-banks/{document_id}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Bank */
+        post: operations["import_bank_v1_subjects__subject_id__question_banks__document_id__import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects/{subject_id}/sessions": {
         parameters: {
             query?: never;
@@ -1547,6 +1564,22 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ImportOut */
+        ImportOut: {
+            /** Added */
+            added: number;
+            /** Duplicates */
+            duplicates: number;
+            /** Message */
+            message: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "partial" | "pending_ai" | "failed" | "empty";
+            /** Unmapped */
+            unmapped: number;
         };
         /** InProgressOut */
         InProgressOut: {
@@ -4556,6 +4589,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PracticeTypeOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_bank_v1_subjects__subject_id__question_banks__document_id__import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportOut"];
                 };
             };
             /** @description Validation Error */
