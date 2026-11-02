@@ -7,6 +7,8 @@ import pytest
 from core_api.domain.documents import (
     InvalidFilenameError,
     UnsupportedFileTypeError,
+    file_format,
+    looks_like_office,
     looks_like_pdf,
     raw_key,
     short_name,
@@ -88,7 +90,9 @@ def test_a_name_that_is_nothing_once_cleaned_is_refused(filename: str) -> None:
     [
         "scan.png",  # PLAN T4.5: a PDF renamed .png is refused
         "notes.pdf.png",
-        "slides.pptx",
+        "slides.ppt",
+        "notes.doc",
+        "deck.pptx.pdf.exe",
         "pdf",
         "slides.pdf.",
     ],
@@ -96,3 +100,30 @@ def test_a_name_that_is_nothing_once_cleaned_is_refused(filename: str) -> None:
 def test_only_pdf_names_are_accepted(filename: str) -> None:
     with pytest.raises(UnsupportedFileTypeError):
         short_name(filename)
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected"),
+    [("a.pdf", "pdf"), ("A.DOCX", "docx"), ("deck.PPTX", "pptx"), ("a.b.docx", "docx")],
+)
+def test_the_format_is_named_by_the_extension(filename: str, expected: str) -> None:
+    assert file_format(filename) == expected
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected"), [("Bài giảng.docx", "Bài giảng"), ("x.PPTX", "x")]
+)
+def test_short_name_drops_any_accepted_extension(filename: str, expected: str) -> None:
+    assert short_name(filename) == expected
+
+
+@pytest.mark.parametrize("filename", ["a.ppt", "docx", "a.docx.", "a.zip"])
+def test_other_formats_have_none(filename: str) -> None:
+    with pytest.raises(UnsupportedFileTypeError):
+        file_format(filename)
+
+
+def test_zip_magic_at_the_start_is_an_office_file() -> None:
+    assert looks_like_office(b"PKrest")
+    for start in (b"%PDF-1.7", b"PK", b" PK", b"PK", b""):
+        assert not looks_like_office(start)

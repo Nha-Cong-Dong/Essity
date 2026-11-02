@@ -98,6 +98,8 @@ class DocumentUploaded(_Closed):
     document_id: Id
     subject_id: Id
     object_key: ObjectKey
+    # Absent on events sent before T9.11: a PDF.
+    format: Literal["pdf", "docx", "pptx"] = "pdf"
 
 
 class DocumentIndexed(_Closed):
@@ -109,6 +111,7 @@ class DocumentIndexed(_Closed):
     page_text_key: ObjectKey
     thumbnails_prefix: ObjectKey
     unreadable_pages: Annotated[list[Page], Field(max_length=5000)]
+    format: Literal["pdf", "docx", "pptx"] = "pdf"
 
 
 class DocumentFailed(_Closed):

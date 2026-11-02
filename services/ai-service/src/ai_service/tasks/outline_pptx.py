@@ -31,7 +31,7 @@ from ai_service.llm.client import LlmClient
 from ai_service.llm.types import LlmRequest
 from ai_service.pptx import PptxContent, read_pptx
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
-from ai_service.tasks.outline_nodes import MAX_NODES, OutlineNode, tiles
+from ai_service.tasks.outline_nodes import MAX_NODES, OutlineNode, outline_body, tiles
 from ai_service.tasks.syllabus import SyllabusAsker
 
 _log = logging.getLogger(__name__)
@@ -253,27 +253,7 @@ def outline_pptx_file(
     finally:
         if asker is not None:
             asker.finish()
-    outline: dict[str, Any] = {"unit": "slide", "nodes": _file_nodes(nodes)}
+    outline = outline_body(nodes)
     if asker is not None and asker.failed:
         outline["note"] = "ai_unavailable"
     return outline
-
-
-def _file_nodes(nodes: list[OutlineNode]) -> list[dict[str, Any]]:
-    parents: list[int | None] = []
-    stack: list[int] = []
-    for index, node in enumerate(nodes):
-        del stack[node.level :]
-        parents.append(stack[-1] if stack else None)
-        stack.append(index)
-    return [
-        {
-            "title": node.title,
-            "parent": parent,
-            "page_start": node.start,
-            "page_end": node.end,
-            "weight": node.weight,
-            "source": node.source,
-        }
-        for node, parent in zip(nodes, parents, strict=True)
-    ]

@@ -283,3 +283,36 @@ def test_the_consumer_uses_the_outline_handler(monkeypatch: pytest.MonkeyPatch) 
 
     monkeypatch.setattr("core_api.clients.storage.S3Storage.from_settings", from_settings)
     assert isinstance(consumer.build_handlers()["document.indexed.v1"], OnDocumentIndexed)
+
+
+def test_us13_ac2_docx_outline_in_est_pages_is_stored(
+    db_session: Session, fake_storage: FakeStorage
+) -> None:
+    user = signed_in(db_session)[0]
+    document = uploaded(db_session, user)
+    body = {
+        "unit": "est_page",
+        "nodes": [node("Intro", None, 1, 3, "heading"), node("Methods", None, 4, 9, "heading")],
+    }
+    run(db_session, fake_storage, answer(fake_storage, document, body))
+    assert titles(db_session, user, document) == [
+        ("Intro", 1, "heading"),
+        ("Methods", 4, "heading"),
+    ]
+    rows = DocSectionRepository(db_session, user.id).of_document(document.id)
+    assert {r.unit for r in rows} == {"est_page"}
+
+
+def test_us13_ac2_pptx_outline_in_slides_is_stored_as_a_temporary_flat_list(
+    db_session: Session, fake_storage: FakeStorage
+) -> None:
+    user = signed_in(db_session)[0]
+    document = uploaded(db_session, user)
+    body = {
+        "unit": "slide",
+        "nodes": [node(f"Slide {i}", None, i, i, "chunk10") for i in range(1, 61)],
+    }
+    run(db_session, fake_storage, answer(fake_storage, document, body))
+    rows = DocSectionRepository(db_session, user.id).of_document(document.id)
+    assert len(rows) == 60
+    assert {(r.unit, r.source) for r in rows} == {("slide", "chunk10")}

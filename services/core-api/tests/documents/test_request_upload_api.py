@@ -342,3 +342,47 @@ def test_no_file_name_key_or_url_in_the_logs(
     assert SHA not in logged
     assert "X-Amz-Signature" not in logged
     assert out["upload"]["url"] not in logged
+
+
+@pytest.mark.parametrize(
+    ("filename", "content_type"),
+    [
+        ("Slide.PPTX", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+        ("Bài.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+    ],
+)
+def test_us13_docx_and_pptx_names_get_a_url_typed_for_them(
+    client: TestClient,
+    db_session: Session,
+    fake_storage: FakeStorage,
+    filename: str,
+    content_type: str,
+) -> None:
+    user, headers = signed_in(db_session)
+    status, out = ask(client, headers, subject_of(db_session, user).id, filename=filename)
+    assert status == 201, out
+    assert fake_storage.presigned[-1].content_type == content_type
+    document = db_session.get_one(Document, uuid.UUID(out["document"]["id"]))
+    assert document.format == filename.rsplit(".", 1)[1].lower()
+    assert document.short_name == filename.rsplit(".", 1)[0]
+
+
+@pytest.mark.parametrize("filename", ["a.ppt", "a.doc", "a.xlsx", "a.docx.zip"])
+def test_us13_other_office_names_stay_refused(
+    client: TestClient, db_session: Session, fake_storage: FakeStorage, filename: str
+) -> None:
+    user, headers = signed_in(db_session)
+    status, out = ask(client, headers, subject_of(db_session, user).id, filename=filename)
+    assert (status, out) == (422, {"detail": "unsupported_file_type"})
+    assert fake_storage.presigned == []
+
+
+def test_us13_an_office_file_over_the_size_limit_is_refused(
+    client: TestClient, db_session: Session
+) -> None:
+    user, headers = signed_in(db_session)
+    too_big = get_settings().document_max_bytes + 1
+    status, out = ask(
+        client, headers, subject_of(db_session, user).id, filename="a.docx", size_bytes=too_big
+    )
+    assert (status, out) == (422, {"detail": "file_too_large"})

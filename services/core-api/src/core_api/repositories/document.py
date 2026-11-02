@@ -79,6 +79,7 @@ class DocumentRepository(UserScopedRepository[Document]):
         sha256: str,
         size_bytes: int,
         short_name: str,
+        file_format: str = "pdf",
         now: datetime,
         quota_bytes: int,
         global_quota_bytes: int,
@@ -127,6 +128,7 @@ class DocumentRepository(UserScopedRepository[Document]):
             Document(
                 subject_id=subject_id,
                 short_name=short_name,
+                format=file_format,
                 sha256=sha256,
                 size_bytes=size_bytes,
                 object_key=raw_key(self.user_id, subject_id, sha256),

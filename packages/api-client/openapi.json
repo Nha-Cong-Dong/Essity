@@ -4939,7 +4939,7 @@
             "description": "Successful Response"
           },
           "422": {
-            "description": "The file stored is not the PDF declared"
+            "description": "The file stored is not the PDF, DOCX or PPTX declared"
           }
         },
         "summary": "Confirm Upload"
@@ -6529,7 +6529,7 @@
         "summary": "List Documents"
       },
       "post": {
-        "description": "A URL to upload one PDF to the subject (201), or the document it already is (200).\n\nThe same file (SHA-256) again: uploaded → `duplicate: true` and no URL; still uploading →\na fresh URL for the same document. Errors: 404 `subject_not_found`; 422\n`unsupported_file_type`, `invalid_filename`, `file_too_large`, `size_mismatch` (the same\nfile asked with another size), `content_mismatch` (the same file was refused before); 409\n`storage_quota_exceeded`; 429 with Retry-After; 503 `storage_full` or when a dependency is\ndown.",
+        "description": "A URL to upload one PDF, DOCX or PPTX to the subject (201), or the document it already is\n(200).\n\nThe same file (SHA-256) again: uploaded → `duplicate: true` and no URL; still uploading →\na fresh URL for the same document. Errors: 404 `subject_not_found`; 422\n`unsupported_file_type`, `invalid_filename`, `file_too_large`, `size_mismatch` (the same\nfile asked with another size), `content_mismatch` (the same file was refused before); 409\n`storage_quota_exceeded`; 429 with Retry-After; 503 `storage_full` or when a dependency is\ndown.",
         "operationId": "request_upload_v1_subjects__subject_id__documents_post",
         "parameters": [
           {

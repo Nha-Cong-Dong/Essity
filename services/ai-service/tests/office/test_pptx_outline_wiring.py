@@ -106,7 +106,7 @@ def test_us13_ac2_deck_with_sections_makes_zero_calls(
         make_pptx(SLIDES, [("Part A", [1, 2]), ("Part B", [3, 4])]),
     )
     assert responder.requests == [] and _count(engine) == before
-    assert {n["source"] for n in outline["nodes"]} == {"sections"}
+    assert {n["source"] for n in outline["nodes"]} == {"heading"}
 
 
 def test_us13_ac3_cap_reached_gives_flat_outline_and_neutral_note(
@@ -122,7 +122,7 @@ def test_us13_ac3_cap_reached_gives_flat_outline_and_neutral_note(
     responder = Responder()
     outline, _, _ = _run(sessions, _llm(sessions, responder, Capped()), make_pptx(SLIDES))
     assert responder.requests == []
-    assert {n["source"] for n in outline["nodes"]} == {"slides"}
+    assert {n["source"] for n in outline["nodes"]} == {"chunk10"}
     assert [n["parent"] for n in outline["nodes"]] == [None] * 4
     assert outline["note"] == "ai_unavailable"
     json.dumps(outline)
@@ -131,7 +131,7 @@ def test_us13_ac3_cap_reached_gives_flat_outline_and_neutral_note(
 def test_us13_ac3_no_model_gives_flat_without_note(sessions: sessionmaker[Session]) -> None:
     user, subject = uuid.uuid4(), uuid.uuid4()
     outline = outline_pptx_file(make_pptx(SLIDES), None, sessions, user_id=user, subject_id=subject)
-    assert {n["source"] for n in outline["nodes"]} == {"slides"}
+    assert {n["source"] for n in outline["nodes"]} == {"chunk10"}
 
 
 def _count(engine: Engine) -> int:

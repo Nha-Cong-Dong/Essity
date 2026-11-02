@@ -26,6 +26,11 @@
         },
         "object_key": {
           "$ref": "envelope.schema.json#/$defs/object_key"
+        },
+        "format": {
+          "description": "What the raw file is; absent means pdf.",
+          "enum": ["pdf", "docx", "pptx"],
+          "default": "pdf"
         }
       }
     }

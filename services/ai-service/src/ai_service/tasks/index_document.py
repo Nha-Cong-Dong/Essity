@@ -34,6 +34,7 @@ from ai_service.clients.storage import (
     StorageUnavailable,
 )
 from ai_service.db.session import SessionFactory
+from ai_service.docx import DocxError, read_docx
 from ai_service.llm.client import LlmClient
 from ai_service.messaging.consumer import Deferred, keys_belong_to_user
 from ai_service.messaging.dead_letter import STREAM_MAXLEN
@@ -47,6 +48,9 @@ from ai_service.messaging.envelope import (
     dump_event,
 )
 from ai_service.pdf import OutlineEntry, PageText, PdfError, PdfErrorCode, PdfLimits, open_pdf
+from ai_service.pptx import PptxError
+from ai_service.tasks.outline_docx import outline_docx_file
+from ai_service.tasks.outline_pptx import outline_pptx_file
 from ai_service.tasks.syllabus import SyllabusAsker, SyllabusPrompt, build_syllabus, outline_file
 
 OUT_STREAM = "events.ai"
@@ -168,6 +172,14 @@ _FAILURE: dict[PdfErrorCode, str] = {
 
 OUTLINE_NAME = "outline.json"
 
+# What an Office reader refuses with (OfficeError.code) → the reason sent in document.failed.
+_OFFICE_FAILURE = {
+    "too_large": "too_large",
+    "zip_bomb": "unsupported",
+    "macros": "unsupported",
+    "malformed": "unreadable",
+}
+
 
 def _no_model(prompt: SyllabusPrompt) -> str:
     raise RuntimeError("no model")
@@ -228,7 +240,7 @@ class IndexDocument:
         if not keys_belong_to_user(event):
             return fail("unsupported")
         named = _RAW_KEY.search(payload.object_key)
-        if named is None or named.group(2) != "pdf":
+        if named is None or named.group(2) not in ("pdf", "docx", "pptx"):
             return fail("unsupported")
         try:
             data = self.storage.get(payload.object_key, max_bytes=self.limits.max_bytes)
@@ -241,6 +253,8 @@ class IndexDocument:
         # The storage may not check the checksum the uploader promised (PLAN T4.5 risk).
         if hashlib.sha256(data).hexdigest() != named.group(1):
             return fail("unreadable")
+        if payload.format != "pdf":
+            return self._index_office(event, payload.format, data, named.start(), fail)
         try:
             analysis = self.analyze(data, self.limits)
         except PdfError as error:
@@ -267,6 +281,63 @@ class IndexDocument:
             )
         except StorageUnavailable:
             raise Deferred from None
+        self._send_indexed(event, keys)
+
+    def _index_office(
+        self,
+        event: DocumentUploadedEvent,
+        fmt: str,
+        data: bytes,
+        name_start: int,
+        fail: Callable[[str], None],
+    ) -> None:
+        """A DOCX or PPTX (T9.11, US-13 AC2): no pages to render or read, so the derived files
+        are empty stand-ins and the outline is the whole answer. `page_count` is the units of the
+        outline (estimated pages or slides)."""
+        payload = event.payload
+        run_id = run_id_for(event.event_id)
+        try:
+            if fmt == "docx":
+                outline = outline_docx_file(read_docx(data))
+            else:
+                outline = outline_pptx_file(
+                    data,
+                    self.llm,
+                    self.sessions,
+                    user_id=event.user_id,
+                    subject_id=payload.subject_id,
+                )
+        except (DocxError, PptxError) as error:
+            return fail(_OFFICE_FAILURE.get(error.code, "unreadable"))
+        units = sum(n["weight"] for n in outline["nodes"] if n["parent"] is None)
+        if not outline["nodes"] or units < 1:
+            return fail("unreadable")
+        subject_prefix = payload.object_key[:name_start]
+        prefix = f"{subject_prefix}/derived/{run_id}"
+        keys = DocumentIndexed(
+            document_id=payload.document_id,
+            run_id=run_id,
+            page_count=min(int(units), 5000),
+            toc_key=f"{prefix}/toc.json",
+            page_labels_key=f"{prefix}/page_labels.json",
+            page_text_key=f"{prefix}/page_text.json",
+            thumbnails_prefix=f"{prefix}/thumbnails",
+            unreadable_pages=[],
+            format=fmt,  # pyright: ignore[reportArgumentType]
+        )
+        try:
+            self._write(
+                keys,
+                Analysis(keys.page_count, [], None, [], []),
+                subject_prefix,
+                payload.document_id,
+                outline,
+            )
+        except StorageUnavailable:
+            raise Deferred from None
+        self._send_indexed(event, keys)
+
+    def _send_indexed(self, event: Event, keys: DocumentIndexed) -> None:
         self._send(
             DocumentIndexedEvent(
                 event_id=indexed_event_id(event.event_id),

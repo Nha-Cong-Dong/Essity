@@ -55,6 +55,11 @@
             "minimum": 1,
             "maximum": 5000
           }
+        },
+        "format": {
+          "description": "What the raw file is; absent means pdf.",
+          "enum": ["pdf", "docx", "pptx"],
+          "default": "pdf"
         }
       }
     }

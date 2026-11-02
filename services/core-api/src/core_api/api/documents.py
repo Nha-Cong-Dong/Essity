@@ -1,8 +1,9 @@
 """Reference documents of a subject (US-01, T4.5, ADR-0012).
 
-The browser uploads straight to object storage: core-api signs a PUT for one PDF of a declared
-size and SHA-256, at `users/{user}/subjects/{subject}/raw/{sha256}.pdf`, valid for a few minutes
-and only to create (`If-None-Match: *`). The URL's headers must be sent as given; a PUT
+The browser uploads straight to object storage: core-api signs a PUT for one PDF, DOCX or PPTX
+of a declared size and SHA-256, at `users/{user}/subjects/{subject}/raw/{sha256}.pdf` (the suffix
+is the raw key's, whatever the format: `document.format` says what it is), valid for a few
+minutes and only to create (`If-None-Match: *`). The URL's headers must be sent as given; a PUT
 answered 412 means the file is already there: confirm it.
 
 Nothing about the file is logged, not its name, key or SHA-256, and never the URL (ADR-0013).
@@ -26,8 +27,11 @@ from core_api.db.models.document import UNCONFIRMED
 from core_api.db.session import DbSession
 from core_api.domain.documents import (
     PDF_MAGIC,
+    ZIP_MAGIC,
     InvalidFilenameError,
     UnsupportedFileTypeError,
+    file_format,
+    looks_like_office,
     looks_like_pdf,
     short_name,
 )
@@ -53,7 +57,11 @@ from core_api.services.outline import (
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
-PDF = "application/pdf"
+CONTENT_TYPES = {
+    "pdf": "application/pdf",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
 FILENAME_MAX = 255
 
 Filename = Annotated[
@@ -133,7 +141,8 @@ def request_upload(
     now: Now,
     response: Response,
 ) -> UploadOut:
-    """A URL to upload one PDF to the subject (201), or the document it already is (200).
+    """A URL to upload one PDF, DOCX or PPTX to the subject (201), or the document it already is
+    (200).
 
     The same file (SHA-256) again: uploaded → `duplicate: true` and no URL; still uploading →
     a fresh URL for the same document. Errors: 404 `subject_not_found`; 422
@@ -151,6 +160,7 @@ def request_upload(
     )
     try:
         name = short_name(body.filename)
+        fmt = file_format(body.filename)
     except UnsupportedFileTypeError:
         raise _error(422, "unsupported_file_type") from None
     except InvalidFilenameError:
@@ -164,6 +174,7 @@ def request_upload(
             sha256=body.sha256,
             size_bytes=body.size_bytes,
             short_name=name,
+            file_format=fmt,
             now=now,
             quota_bytes=settings.document_quota_bytes,
             global_quota_bytes=settings.storage_global_quota_bytes,
@@ -187,7 +198,7 @@ def request_upload(
         document.object_key,
         size=document.size_bytes,
         sha256=document.sha256,
-        content_type=PDF,
+        content_type=CONTENT_TYPES[document.format],
         expires_in=settings.s3_presign_seconds,
     )
     return UploadOut(
@@ -202,7 +213,7 @@ def request_upload(
 
 
 def _check(storage: ObjectStorage, document: Document) -> str | None:
-    """Why the stored file is not the PDF declared, or None when it is. HTTPException 409 when
+    """Why the stored file is not the type declared, or None when it is. HTTPException 409 when
     nothing is stored yet; StorageUnavailableError when the store does not answer."""
     stored = storage.head(document.object_key)
     if stored is None:
@@ -212,7 +223,8 @@ def _check(storage: ObjectStorage, document: Document) -> str | None:
     # None: the store keeps no SHA-256 for it; ai-service recomputes it (T4.7, plan P11).
     if stored.sha256 is not None and stored.sha256 != document.sha256:
         return "content_mismatch"
-    if not looks_like_pdf(storage.read_start(document.object_key, len(PDF_MAGIC))):
+    start = storage.read_start(document.object_key, max(len(PDF_MAGIC), len(ZIP_MAGIC)))
+    if not (looks_like_pdf(start) if document.format == "pdf" else looks_like_office(start)):
         return "content_mismatch"
     return None
 
@@ -220,7 +232,7 @@ def _check(storage: ObjectStorage, document: Document) -> str | None:
 @router.post(
     "/documents/{document_id}/confirm",
     response_model=DocumentOut,
-    responses={422: {"description": "The file stored is not the PDF declared"}},
+    responses={422: {"description": "The file stored is not the PDF, DOCX or PPTX declared"}},
 )
 def confirm_upload(
     document_id: uuid.UUID,
@@ -283,6 +295,7 @@ def confirm_upload(
             document_id=document.id,
             subject_id=document.subject_id,
             object_key=document.object_key,
+            format=document.format,  # pyright: ignore[reportArgumentType]
         ),
         user_id=user.id,
         now=now,

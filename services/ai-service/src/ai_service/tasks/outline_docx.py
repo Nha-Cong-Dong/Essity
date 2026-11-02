@@ -11,6 +11,7 @@ file holds: the worst case is the `chunk10` tree.
 """
 
 from dataclasses import dataclass
+from typing import Any
 
 from ai_service.docx import DocxContent
 from ai_service.tasks.outline_nodes import (
@@ -19,6 +20,7 @@ from ai_service.tasks.outline_nodes import (
     MAX_NODES,
     OutlineNode,
     est_pages,
+    outline_body,
     tiles,
 )
 
@@ -120,3 +122,9 @@ def build_docx_outline(content: DocxContent) -> list[OutlineNode]:
         if len(nodes) <= MAX_NODES and tiles(nodes, total):
             return nodes
     return chunk10_est_pages(content.char_count)
+
+
+def outline_docx_file(content: DocxContent) -> dict[str, Any]:
+    """The `outline.json` body of a DOCX (T9.11, US-13 AC2): the headings tree, or blocks of 10
+    estimated pages. No model is asked."""
+    return outline_body(build_docx_outline(content))
