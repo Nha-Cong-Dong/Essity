@@ -1,0 +1,10 @@
+task: T7.18
+lane: L1
+status: done
+head_sha: PENDING
+step: "plan: POST submission-drafts reuses subject's open draft (status draft, placeholder description, no submission) -> 200, else 201; no new route/migration; web StartStudy already redirects to returned id; dev compose SUBMISSIONS_ENABLED default true"
+tests: {cmd: "uv run pytest tests/sessions (core lock)", passed: 195, failed: 0}
+blockers: []
+decisions: ["new route vs reuse POST -> reuse POST, 200 reopen / 201 create, reopen skips rate limit (Coder)", "web change -> none needed beyond comment; StartStudy follows data.session_id (Coder)", "compose env SUBMISSIONS_ENABLED default true, code default unchanged (Coder)"]
+understanding: "US-02 AC1 tests: 3 new tests in tests/sessions/test_submissions.py; e2e not added (no web behaviour change)"
+next: "orchestrator: PR"

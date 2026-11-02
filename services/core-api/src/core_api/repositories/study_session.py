@@ -4,7 +4,7 @@ import uuid
 
 from sqlalchemy import func, select
 
-from core_api.db.models import NoteFile, SessionRange, StudySession
+from core_api.db.models import NoteFile, SessionRange, StudySession, Submission
 from core_api.repositories.base import UserScopedRepository
 from core_api.repositories.subject import SubjectRepository
 
@@ -22,6 +22,21 @@ class StudySessionRepository(UserScopedRepository[StudySession]):
         )
         self.session.flush()
         return draft
+
+    def open_draft(self, subject_id: uuid.UUID, description: str) -> StudySession | None:
+        """The newest draft of the subject that still holds `description` (the empty-draft
+        placeholder) and has no submission yet: the one "Ghi buổi học" continues (US-02 AC1)."""
+        return self.session.scalars(
+            self._select()
+            .where(
+                StudySession.subject_id == subject_id,
+                StudySession.status == "draft",
+                StudySession.description_raw == description,
+                ~select(Submission.id).where(Submission.session_id == StudySession.id).exists(),
+            )
+            .order_by(StudySession.created_at.desc(), StudySession.id)
+            .limit(1)
+        ).first()
 
     def last_end_pages(self, subject_id: uuid.UUID) -> dict[uuid.UUID, int]:
         """The last FILE page of confirmed sessions, by document, for "học tiếp"."""

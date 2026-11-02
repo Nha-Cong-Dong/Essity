@@ -436,6 +436,8 @@ def test_submission_on_confirmed_session_409(client: TestClient, world: World) -
 
 @pytest.mark.usefixtures("enabled")
 def test_draft_route_makes_a_draft_session_of_the_subject(client: TestClient, world: World) -> None:
+    world.db.delete(world.draft)
+    world.db.flush()
     response = client.post(
         f"/v1/subjects/{world.subject.id}/submission-drafts", headers=world.headers
     )
@@ -521,3 +523,44 @@ def test_upload_url_refuses_docx_while_the_flag_is_off(client: TestClient, world
         headers=world.headers,
     )
     assert response.status_code == 422
+
+
+@pytest.mark.usefixtures("enabled")
+def test_us02_ac1_reopening_continues_the_open_draft(client: TestClient, world: World) -> None:
+    # Red when: "Ghi buổi học" makes a new draft while the subject has one not handed in.
+    url = f"/v1/subjects/{world.subject.id}/submission-drafts"
+    again = client.post(url, headers=world.headers)
+    assert again.status_code == 200 and again.json()["session_id"] == str(world.draft.id)
+    assert client.post(url, headers=world.headers).json()["session_id"] == str(world.draft.id)
+    count = world.db.scalar(
+        select(func.count()).select_from(StudySession).where(StudySession.user_id == world.user.id)
+    )
+    assert count == 1
+
+
+@pytest.mark.usefixtures("enabled")
+def test_us02_ac1_a_handed_in_draft_is_not_reopened(client: TestClient, world: World) -> None:
+    # Red when: a draft that already has a submission is offered again.
+    assert submit(client, world, files=[world.pdf()]).status_code == 201
+    response = client.post(
+        f"/v1/subjects/{world.subject.id}/submission-drafts", headers=world.headers
+    )
+    assert response.status_code == 201
+    assert response.json()["session_id"] != str(world.draft.id)
+
+
+@pytest.mark.usefixtures("enabled")
+def test_us02_ac1_open_draft_is_per_subject_and_per_user(client: TestClient, world: World) -> None:
+    # Red when: another subject's or another user's draft is returned.
+    other_subject = subject_of(world.db, world.user)
+    response = client.post(
+        f"/v1/subjects/{other_subject.id}/submission-drafts", headers=world.headers
+    )
+    assert response.status_code == 201 and response.json()["session_id"] != str(world.draft.id)
+    _, headers = signed_in(world.db)
+    assert (
+        client.post(
+            f"/v1/subjects/{world.subject.id}/submission-drafts", headers=headers
+        ).status_code
+        == 404
+    )

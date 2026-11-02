@@ -4,6 +4,7 @@ scope context, AC4 clear errors, P4 input ceilings): each one fails under a muta
 
 import hashlib
 import json
+import uuid
 from collections.abc import Iterator
 from datetime import timedelta
 from typing import Any
@@ -16,7 +17,7 @@ from test_submissions import World, nothing_written, sha, submit
 
 from core_api.clients.storage import StorageUnavailableError
 from core_api.config import get_settings
-from core_api.db.models import NoteFile, NoteUpload, Outbox, Submission, UnitSection
+from core_api.db.models import NoteFile, NoteUpload, Outbox, StudySession, Submission, UnitSection
 from core_api.jobs.note_cleanup import delete_abandoned_notes
 from fake_storage import FakeStorage
 from v2_rows import make_unit
@@ -139,8 +140,16 @@ def test_making_drafts_too_often_is_a_429(
     # Red when: the draft route has no per-user rate limit (review Y4).
     monkeypatch.setenv("CORE_SESSION_CREATES_PER_HOUR", "1")
     get_settings.cache_clear()
+    world.db.delete(world.draft)
+    world.db.flush()
     url = f"/v1/subjects/{world.subject.id}/submission-drafts"
-    assert client.post(url, headers=world.headers).status_code == 201
+    first = client.post(url, headers=world.headers)
+    assert first.status_code == 201
+    # The first draft is no longer open (it holds the learner's words), so the next is a new one.
+    made = world.db.get(StudySession, uuid.UUID(first.json()["session_id"]))
+    assert made is not None
+    made.description_raw = "đã viết"
+    world.db.flush()
     assert client.post(url, headers=world.headers).status_code == 429
 
 

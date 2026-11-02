@@ -1,6 +1,7 @@
 """Handing in a study session, v2 (T7.6, US-02 AC2, AC3, AC4, AC11, AC13; spec v2 §16.3).
 
-`POST /v1/subjects/{id}/submission-drafts` makes an empty draft session to upload files to (the
+`POST /v1/subjects/{id}/submission-drafts` makes an empty draft session to upload files to, or
+returns the open one not yet handed in, 200 (T7.18, AC1) (the
 note upload route is the one v1 uses). `POST /v1/submissions` then takes the learner's
 description, typed text and the files uploaded, in one transaction and in this order: everything
 that can refuse (the `@mentions` against the documents' outlines, the files in the store), the
@@ -141,7 +142,10 @@ def _mention_error(error: MentionError) -> HTTPException:
     response_model=DraftOut,
     status_code=201,
     dependencies=[Depends(_enabled)],
-    responses={404: {"description": "subject_not_found, or the feature is off"}},
+    responses={
+        200: {"description": "the subject's open draft, reopened (US-02 AC1)"},
+        404: {"description": "subject_not_found, or the feature is off"},
+    },
 )
 def create_submission_draft(
     subject_id: uuid.UUID,
@@ -150,16 +154,20 @@ def create_submission_draft(
     limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
     response: Response,
 ) -> DraftOut:
-    """An empty draft session to upload this submission's files to. Calls no AI."""
+    """An empty draft session to upload this submission's files to (201), or the subject's open
+    one not yet handed in (200, US-02 AC1: reopening continues it). Calls no AI."""
     response.headers["Cache-Control"] = "no-store"
+    drafts = StudySessionRepository(session, user.id)
+    open_draft = drafts.open_draft(subject_id, PLACEHOLDER_DESCRIPTION)
+    if open_draft is not None:
+        response.status_code = 200
+        return DraftOut(session_id=open_draft.id)
     limiter.enforce(
         RateLimit("submission_draft", get_settings().session_creates_per_hour, timedelta(hours=1)),
         str(user.id),
     )
     try:
-        draft = StudySessionRepository(session, user.id).create_draft(
-            subject_id, PLACEHOLDER_DESCRIPTION
-        )
+        draft = drafts.create_draft(subject_id, PLACEHOLDER_DESCRIPTION)
     except SubjectNotFoundError:
         raise _error(404, "subject_not_found") from None
     return DraftOut(session_id=draft.id)
