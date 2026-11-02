@@ -205,3 +205,44 @@ def test_us03_ac1_a_session_with_only_saved_or_retired_cards_is_not_unfinished(
     make_unit(db_session, alice, subject, status="canonical", session_id=saved.id)
     make_unit(db_session, alice, subject, status="retired", session_id=saved.id)
     assert TodayRepository(db_session, alice.id).unfinished_sessions() == []
+
+
+# US-02b AC11, plan D10 (model budget). Red when: the "one job per card per learning day" window
+# starts at `now` instead of the learning day's start, so a lazy job that failed earlier today is
+# deferred again by every refetch of Today.
+def test_us02b_ac11_a_job_that_failed_earlier_today_is_not_deferred_again(
+    client: TestClient, db_session: Session
+) -> None:
+    user, headers = signed_in(db_session)
+    space = Space(db_session, user)
+    unit = _stale_card(db_session, space)
+    start = day_bounds(space.today, ZoneInfo(user.timezone), user.day_start_hour)[0]
+    _job(db_session, user.id, unit, "failed", "regenerate_review_question")
+    last = "(SELECT max(id) FROM procrastinate_jobs)"
+    db_session.execute(text(f"DELETE FROM procrastinate_events WHERE job_id = {last}"))
+    db_session.execute(
+        text(f"INSERT INTO procrastinate_events (job_id, type, at) SELECT {last}, 'deferred', :at"),
+        {"at": start + timedelta(minutes=1)},  # deferred at 04:01, failed since; now is later
+    )
+    db_session.flush()
+    today(client, headers)
+    assert len(_jobs(db_session, unit)) == 1  # only the failed one
+
+
+# US-03 AC5 + AC8. Red when: "Ôn riêng môn này" keeps the backlog note of another subject (the
+# never-asked counts are not narrowed like the due units and new questions).
+def test_us03_ac8_subject_filter_narrows_the_backlog_note(
+    client: TestClient, db_session: Session
+) -> None:
+    user, headers = signed_in(db_session)
+    space = Space(db_session, user)
+    calm = space.subject("A", exam_in_days=60)
+    unit, _ = space.question(calm, "TCP")
+    space.scheduled(unit, due_in_days=-1)
+    busy = space.subject("B", exam_in_days=3)
+    for n in range(80):
+        space.question(busy, f"b{n}")  # never asked: 80 units, 3 days
+    assert today(client, headers)["backlog"]["subject_id"] == str(busy)
+    shown = client.get(f"/v1/today?subject_id={calm}", headers=headers)
+    assert shown.status_code == 200, shown.text
+    assert shown.json()["backlog"] is None

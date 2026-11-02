@@ -64,18 +64,39 @@ def test_0031_up_down_data(engine: Engine, alembic_cfg: Config) -> None:
             c.execute(
                 text("UPDATE knowledge_unit SET status = 'split' WHERE id = :a"), {"a": split_id}
             )
-            c.execute(text("DELETE FROM unit_section"))
+            c.execute(text("DELETE FROM unit_section WHERE user_id = :u"), {"u": user})
         command.upgrade(alembic_cfg, "0031")
         with engine.connect() as c:
-            got = dict(c.execute(text("SELECT id, status FROM knowledge_unit")).tuples().all())
-            links = c.execute(text("SELECT unit_id, section_id FROM unit_section")).tuples().all()
+            got = dict(
+                c.execute(
+                    text("SELECT id, status FROM knowledge_unit WHERE user_id = :u"), {"u": user}
+                )
+                .tuples()
+                .all()
+            )
+            links = (
+                c.execute(
+                    text("SELECT unit_id, section_id FROM unit_section WHERE user_id = :u"),
+                    {"u": user},
+                )
+                .tuples()
+                .all()
+            )
         assert got == {ok_id: "canonical", split_id: "retired", orphan_id: "canonical"}
         assert links == [(ok_id, section_id)]
         command.downgrade(alembic_cfg, "0030")
         with engine.connect() as c:
-            after = dict(c.execute(text("SELECT id, status FROM knowledge_unit")).tuples().all())
+            after = dict(
+                c.execute(
+                    text("SELECT id, status FROM knowledge_unit WHERE user_id = :u"), {"u": user}
+                )
+                .tuples()
+                .all()
+            )
         assert after == got
     finally:
-        command.upgrade(alembic_cfg, "head")
-        with engine.begin() as c:
-            c.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": user})
+        try:
+            command.upgrade(alembic_cfg, "head")
+        finally:
+            with engine.begin() as c:
+                c.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": user})
