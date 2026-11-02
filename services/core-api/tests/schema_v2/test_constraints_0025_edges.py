@@ -36,6 +36,7 @@ def command(world: World, **kw: Any) -> CommandLog:
         "inverse_json": [{"op": "split"}],
         "status": "applied",
         "affected_count": 2,
+        "payload_hash": "a" * 64,
     }
     values.update(kw)
     return CommandLog(**values)

@@ -3,8 +3,8 @@ never changed) and `practice_state` (layer 4, a cache rebuilt from the log, like
 
 `practice_log` keeps the rating only, so the rebuild reads the *effective* log: the rows of each
 attempt's latest grade (a regrade adds a row, it never changes an old one), oldest first. The
-state's last verdict comes from the last effective rating. `removed_at` is not in the log: the
-rebuild keeps the old row's.
+state's last verdict comes from the last effective rating. `removed_at` is a cache of the newest
+row of `practice_removal_log` (T9.2b); a question with no row there keeps the old row's value.
 """
 
 import uuid
@@ -23,6 +23,7 @@ from core_api.domain.mastery import PracticeRating
 from core_api.domain.scheduling.fsrs_adapter import MemoryState, Phase
 from core_api.domain.scheduling.practice import PracticeState, replay_ratings, verdict_of
 from core_api.repositories.base import AppendOnlyRepository, UserScopedRepository
+from core_api.repositories.practice_removal import PracticeRemovalRepository
 from core_api.repositories.question import QuestionNotFoundError
 
 REBUILD_BATCH = 1000
@@ -187,6 +188,12 @@ class PracticeStateRepository(UserScopedRepository[PracticeStateRow]):
                 drop.returning(PracticeStateRow.question_id, PracticeStateRow.removed_at)
             )
         }
+        # The removal log is the truth: its newest event says whether the question is out, and
+        # since when; only a question it never saw keeps the dropped row's value.
+        for question_id, event in (
+            PracticeRemovalRepository(self.session, self.user_id).latest(question_ids).items()
+        ):
+            removed[question_id] = event.at if event.removed else None
         by_question: dict[uuid.UUID, list[LoggedReview]] = {}
         for review in PracticeLogRepository(self.session, self.user_id).effective(question_ids):
             by_question.setdefault(review.question_id, []).append(review)

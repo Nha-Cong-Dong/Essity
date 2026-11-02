@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    CHAR,
     BigInteger,
     CheckConstraint,
     DateTime,
@@ -12,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -39,10 +41,25 @@ class CommandLog(UserOwned, Base):
         CheckConstraint(one_of("status", COMMAND_STATUSES), name="status_known"),
         CheckConstraint("affected_count >= 0", name="affected_not_negative"),
         CheckConstraint("(status = 'undone') = (undone_at IS NOT NULL)", name="undone_has_time"),
+        CheckConstraint("payload_hash ~ '^[0-9a-f]{64}$'", name="payload_hash_hex"),
+        CheckConstraint(
+            "undo_revs_json IS NULL OR jsonb_typeof(undo_revs_json) = 'object'",
+            name="undo_revs_is_object",
+        ),
+        # The client's id of one command: a retry finds its row instead of applying twice, and
+        # the same id from another user is another row.
+        UniqueConstraint("user_id", "command_id"),
         Index(
             "ix_command_log_user_id_subject_id_seq",
             "user_id",
             "subject_id",
+            text("seq DESC"),
+        ),
+        # What "undo" reads: the commands of one screen session, newest first.
+        Index(
+            "ix_command_log_user_id_screen_session_id_seq",
+            "user_id",
+            "screen_session_id",
             text("seq DESC"),
         ),
     )
@@ -58,3 +75,10 @@ class CommandLog(UserOwned, Base):
     undone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     run_id: Mapped[uuid.UUID | None]  # pipeline run in the ai database: no foreign key
     seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
+    command_id: Mapped[uuid.UUID] = mapped_column(default=uuid.uuid4)
+    # SHA-256 (hex) of the request as received, without command_id: the same id with another
+    # payload is refused, not answered with the old diff.
+    payload_hash: Mapped[str] = mapped_column(CHAR(64))
+    # What each object's revision was right after the command, read back (not computed): the
+    # undo applies only while they still hold. Set at insert, or once by the undo.
+    undo_revs_json: Mapped[Any | None] = mapped_column(JSONB)
