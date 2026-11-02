@@ -325,6 +325,24 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             for question_id, type_id, ref_time, row in rows
         ]
 
+    def has_practice(self) -> bool:
+        """Whether a ready practice question is kept in practice (attempted, not removed): the
+        user has material even when none is due today (T8.5 F2)."""
+        ready = QuestionListRepository(self.session, self.user_id).ready_ids()
+        if not ready:
+            return False
+        return bool(
+            self.session.scalar(
+                select(
+                    exists().where(
+                        PracticeStateRow.user_id == self.user_id,
+                        PracticeStateRow.question_id.in_(list(ready)),
+                        PracticeStateRow.removed_at.is_(None),
+                    )
+                )
+            )
+        )
+
     def has_questions(self) -> bool:
         """Whether a visible subject has an active question at all."""
         return bool(

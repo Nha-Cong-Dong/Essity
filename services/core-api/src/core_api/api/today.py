@@ -171,7 +171,7 @@ def get_today(
         state = "no_subjects"
     elif mixed.entries:
         state = "ready"
-    elif not reads.has_questions() and not mixed.fresh:
+    elif not reads.has_questions() and not mixed.fresh and not reads.has_practice():
         state = "no_questions"
     elif all(exam_day < day for exam_day in exams.values()):
         state = "all_exams_over"
