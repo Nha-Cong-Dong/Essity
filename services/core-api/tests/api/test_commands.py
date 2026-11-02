@@ -265,6 +265,8 @@ def test_the_request_has_exactly_one_of_text_or_ops(
         {"text": "   ", "subject_id": sid},
         {"ops": []},
         {"text": "x" * 501, "subject_id": sid},
+        {"text": "a\x00b", "subject_id": sid},  # NUL: Postgres text cannot hold it
+        {"ops": [{"kind": "card_edit", "card": str(cw.cards[0].id), "text": "a\x00b"}]},
     ]
     for body in bodies:
         assert post(client, h, body).status_code == 422, body

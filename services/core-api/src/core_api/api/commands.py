@@ -21,14 +21,22 @@ Answers (the `detail` is a stable code, never text of the command):
 
 import uuid
 from collections.abc import Mapping, Sequence
-from typing import Annotated, Any, Literal, NoReturn
+from typing import Annotated, Any, Literal, NoReturn, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    model_validator,
+)
 
 from core_api.api.deps import Now, VerifiedUser, verified_user
 from core_api.api.ping import get_ai_client
+from core_api.api.text import storable_answer, storable_text
 from core_api.clients.ai_client import AiServiceClient, NotGraded
 from core_api.db.session import DbSession
 from core_api.domain.commands.registry import CommandRejected
@@ -63,6 +71,25 @@ _UNCLEAR_REASONS = ("ambiguous", "unknown_target", "unsupported", "missing_info"
 type UnclearReason = Literal["ambiguous", "unknown_target", "unsupported", "missing_info"]
 
 
+def storable_ops(ops: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Every string in the ops (keys too) is text Postgres can keep: the ops go into the log's
+    jsonb and, as card or answer text, into the tables. The text of a card keeps its lines."""
+
+    def walk(value: object) -> None:
+        if isinstance(value, str):
+            storable_answer(value)
+        elif isinstance(value, dict):
+            for key, item in cast(dict[object, object], value).items():
+                walk(key)
+                walk(item)
+        elif isinstance(value, list):
+            for item in cast(list[object], value):
+                walk(item)
+
+    walk(ops)
+    return ops
+
+
 class CommandIn(BaseModel):
     """One of `text` (the parser reads it, in `subject_id`'s context) or `ops` (already parsed)."""
 
@@ -71,12 +98,22 @@ class CommandIn(BaseModel):
     command_id: uuid.UUID
     screen_session_id: uuid.UUID
     subject_id: uuid.UUID | None = None
-    text: Annotated[str, StringConstraints(min_length=1, max_length=MAX_COMMAND_CHARS)] | None = (
-        None
-    )
-    ops: Annotated[list[dict[str, Any]], Field(min_length=1, max_length=MAX_CLIENT_OPS)] | None = (
-        None
-    )
+    text: (
+        Annotated[
+            str,
+            StringConstraints(min_length=1, max_length=MAX_COMMAND_CHARS),
+            AfterValidator(storable_text),
+        ]
+        | None
+    ) = None
+    ops: (
+        Annotated[
+            list[dict[str, Any]],
+            Field(min_length=1, max_length=MAX_CLIENT_OPS),
+            AfterValidator(storable_ops),
+        ]
+        | None
+    ) = None
 
     @model_validator(mode="after")
     def _one_source(self) -> "CommandIn":
