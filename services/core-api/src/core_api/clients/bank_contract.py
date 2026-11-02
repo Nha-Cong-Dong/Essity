@@ -33,6 +33,8 @@ class BankReply(_Strict):
     status: Literal["ok", "partial", "pending_ai"]
     questions: Annotated[list[BankQuestion], Field(max_length=MAX_QUESTIONS)] = []
     unmapped: list[int] = []
+    # Questions core already holds in full: ai-service left them out (T8.1c).
+    skipped: Annotated[int, Field(ge=0, le=MAX_QUESTIONS)] = 0
     reasons: list[str] = []
     provider: str | None = None
     model: str | None = None

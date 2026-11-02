@@ -8,25 +8,20 @@ answers. A quota or model stop stores nothing (AC9) and says so with a neutral l
 imports again later, and what was stored never doubles.
 """
 
-import json
 import logging
 import uuid
-from typing import Annotated, Any, Literal, cast
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select
 
 from core_api.api.attempts import GRADINGS_PER_USER, Limiter
 from core_api.api.deps import Storage, VerifiedUser, verified_user
 from core_api.api.ping import get_ai_client
-from core_api.clients.ai_client import AiServiceClient, NotGraded
-from core_api.clients.storage import StorageUnavailableError
-from core_api.db.models import DocSection, Document, QuestionType
+from core_api.clients.ai_client import AiServiceClient
 from core_api.db.session import DbSession
-from core_api.domain.question_bank import MSG_FAILED, MSG_NOTHING, MSG_PENDING_AI
 from core_api.domain.readiness import Ready, Waiting, display_line
-from core_api.handlers.question_bank_parsed import store_parsed
+from core_api.handlers.question_bank_import import BankPagesError, enqueue_import, run_import
 from core_api.repositories.document import DocumentRepository
 from core_api.repositories.question_list import QuestionListRepository
 from core_api.repositories.subject import SubjectRepository
@@ -37,12 +32,6 @@ router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 _log = logging.getLogger(__name__)
 
 Ai = Annotated[AiServiceClient, Depends(get_ai_client)]
-
-# ai-service takes at most this much text and this many pages and sections (T8.1b).
-MAX_PAGES_FILE_BYTES = 6 * 1024 * 1024
-MAX_PAGES = 400
-MAX_SECTIONS = 500
-MAX_EXISTING_TYPES = 100
 
 
 class ImportOut(BaseModel):
@@ -65,62 +54,6 @@ def _may_call(limiter: Limiter, user_id: uuid.UUID) -> bool:
     return True
 
 
-def _pages(storage: Storage, document: Document) -> list[dict[str, Any]]:
-    """The page text ai-service wrote when it indexed the file. Raises 409 when there is none,
-    413 when the bank is longer than one request can carry."""
-    if document.page_text_key is None:
-        raise _error(status.HTTP_409_CONFLICT, "document_not_ready")
-    try:
-        raw = storage.read_start(document.page_text_key, MAX_PAGES_FILE_BYTES + 1)
-    except StorageUnavailableError as error:
-        raise _error(status.HTTP_503_SERVICE_UNAVAILABLE, "storage_unavailable") from error
-    if len(raw) > MAX_PAGES_FILE_BYTES:
-        raise _error(413, "bank_too_large")
-    try:
-        data = json.loads(raw)
-    except ValueError as error:
-        raise _error(status.HTTP_409_CONFLICT, "document_not_ready") from error
-    items: object = cast("dict[str, Any]", data).get("pages") if isinstance(data, dict) else None
-    if not isinstance(items, list):
-        raise _error(status.HTTP_409_CONFLICT, "document_not_ready")
-    pages: list[dict[str, Any]] = []
-    for item in cast("list[Any]", items):
-        entry = cast("dict[str, Any]", item) if isinstance(item, dict) else {}
-        text = entry.get("text")
-        pages.append(
-            {
-                "text": text[:200_000] if isinstance(text, str) else "",
-                "needs_vision": entry.get("needs_vision") is True,
-            }
-        )
-    if len(pages) > MAX_PAGES:
-        raise _error(413, "bank_too_large")
-    return pages
-
-
-def _sections(session: DbSession, user_id: uuid.UUID, subject_id: uuid.UUID) -> list[DocSection]:
-    """Leaf sections of the subject's textbook that count (not excluded), in outline order. A
-    subject with no outline gives none: every question is then "chưa gắn mục" (AC5)."""
-    parents = select(DocSection.parent_id).where(
-        DocSection.user_id == user_id, DocSection.parent_id.is_not(None)
-    )
-    return list(
-        session.scalars(
-            select(DocSection)
-            .join(Document, Document.id == DocSection.document_id)
-            .where(
-                DocSection.user_id == user_id,
-                DocSection.subject_id == subject_id,
-                Document.role == "textbook",
-                DocSection.excluded.is_(False),
-                DocSection.id.not_in(parents),
-            )
-            .order_by(DocSection.document_id, DocSection.ord, DocSection.id)
-            .limit(MAX_SECTIONS)
-        )
-    )
-
-
 @router.post("/subjects/{subject_id}/question-banks/{document_id}/import")
 def import_bank(
     subject_id: uuid.UUID,
@@ -140,48 +73,22 @@ def import_bank(
         raise _error(status.HTTP_409_CONFLICT, "not_a_question_bank")
     if document.status != "indexed":
         raise _error(status.HTTP_409_CONFLICT, "document_not_ready")
-    pages = _pages(storage, document)
-    if not _may_call(limiter, user.id):
-        return ImportOut(
-            status="pending_ai", message=MSG_PENDING_AI, added=0, duplicates=0, unmapped=0
-        )
-    sections = _sections(session, user.id, subject_id)
-    names = list(
-        session.scalars(
-            select(QuestionType.name)
-            .where(QuestionType.user_id == user.id, QuestionType.subject_id == subject_id)
-            .order_by(QuestionType.created_at)
-            .limit(MAX_EXISTING_TYPES)
-        )
-    )
-    reply = ai.parse_question_bank(
-        {
-            "user_id": str(user.id),
-            "subject_id": str(subject_id),
-            "pages": pages,
-            "existing_types": names,
-            "sections": [{"id": str(s.id), "title": s.title[:300]} for s in sections],
-        }
-    )
-    if isinstance(reply, NotGraded):
-        if reply.failure == "invalid":
-            return ImportOut(status="failed", message=MSG_FAILED, added=0, duplicates=0, unmapped=0)
-        return ImportOut(
-            status="pending_ai", message=MSG_PENDING_AI, added=0, duplicates=0, unmapped=0
-        )
-    if reply.status == "pending_ai":
-        return ImportOut(
-            status="pending_ai", message=MSG_PENDING_AI, added=0, duplicates=0, unmapped=0
-        )
-    if not reply.questions:
-        return ImportOut(status="empty", message=MSG_NOTHING, added=0, duplicates=0, unmapped=0)
-    stored = store_parsed(session, user.id, document, reply, {s.id for s in sections})
+
+    def may_call() -> bool:
+        return _may_call(limiter, user.id)
+
+    try:
+        result = run_import(session, user.id, document, ai, storage, may_call)
+    except BankPagesError as error:
+        raise _error(error.http, error.code) from error
+    if result.status == "pending_ai":
+        enqueue_import(session, user.id, document)  # AC9: runs by itself when a turn is back
     return ImportOut(
-        status=reply.status,
-        message=None,
-        added=stored.added,
-        duplicates=stored.duplicates,
-        unmapped=stored.unmapped,
+        status=result.status,
+        message=result.message,
+        added=result.added,
+        duplicates=result.duplicates,
+        unmapped=result.unmapped,
     )
 
 
