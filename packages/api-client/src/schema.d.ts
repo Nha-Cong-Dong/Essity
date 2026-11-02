@@ -1096,7 +1096,8 @@ export interface paths {
         put?: never;
         /**
          * Create Submission Draft
-         * @description An empty draft session to upload this submission's files to. Calls no AI.
+         * @description An empty draft session to upload this submission's files to (201), or the subject's open
+         *     one not yet handed in (200, US-02 AC1: reopening continues it). Calls no AI.
          */
         post: operations["create_submission_draft_v1_subjects__subject_id__submission_drafts_post"];
         delete?: never;
@@ -4824,6 +4825,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description the subject's open draft, reopened (US-02 AC1) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Successful Response */
             201: {
                 headers: {

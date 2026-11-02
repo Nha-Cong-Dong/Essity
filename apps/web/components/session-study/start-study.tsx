@@ -9,7 +9,8 @@ import { requireVerifiedSession, SESSION_COOKIE } from "@/lib/session";
 import { v1Fallback } from "@/lib/session-study/entry";
 
 // T7.12 (US-02 AC13): a new study session of the subject. Opens an empty draft session in core-api
-// and goes to its page; the address of that page is what "resume" uses. Reached by a link, never
+// and goes to its page (T7.18: core-api answers the open draft again when there is one, so
+// reopening continues it, US-02 AC1). Reached by a link, never
 // prefetched (the page is dynamic), so one open makes one empty session at most.
 export async function StartStudy({ params }: { params: Promise<{ id: string }> }): Promise<ReactNode> {
   await connection();

@@ -6909,7 +6909,7 @@
     },
     "/v1/subjects/{subject_id}/submission-drafts": {
       "post": {
-        "description": "An empty draft session to upload this submission's files to. Calls no AI.",
+        "description": "An empty draft session to upload this submission's files to (201), or the subject's open\none not yet handed in (200, US-02 AC1: reopening continues it). Calls no AI.",
         "operationId": "create_submission_draft_v1_subjects__subject_id__submission_drafts_post",
         "parameters": [
           {
@@ -6924,6 +6924,9 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "the subject's open draft, reopened (US-02 AC1)"
+          },
           "201": {
             "content": {
               "application/json": {
