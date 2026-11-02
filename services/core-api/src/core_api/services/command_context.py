@@ -5,11 +5,13 @@ cards by the section that holds them (outline order, then oldest first), the one
 last. Each list is cut at the parser's limits; a title is cut to the parser's length."""
 
 import uuid
+from collections.abc import Sequence
 from datetime import date
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from core_api.db.models import DocSection, KnowledgeUnit
 from core_api.repositories.doc_section import DocSectionRepository
 from core_api.repositories.document import DocumentRepository
 from core_api.repositories.practice_types import PracticeTypeRepository
@@ -30,20 +32,50 @@ def _title(text: str, fallback: str) -> str:
     return cleaned or fallback
 
 
+def group_by_section(
+    sections: Sequence[DocSection],
+    units: Sequence[KnowledgeUnit],
+    links: Sequence[tuple[uuid.UUID, uuid.UUID]],
+) -> list[tuple[DocSection | None, list[KnowledgeUnit]]]:
+    """The cards as the by-section screen shows them (T7.12d): one group per section that holds
+    a card (the order `DraftRepository.by_section` gives), a card in several sections in each,
+    the cards in none last under `None`. The screen and the command bar both read this, so "the
+    second card" is the same card to the learner and to the parser."""
+    members: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for unit_id, section_id in links:
+        members.setdefault(section_id, set()).add(unit_id)
+    groups: list[tuple[DocSection | None, list[KnowledgeUnit]]] = [
+        (sec, [u for u in units if u.id in members.get(sec.id, set())]) for sec in sections
+    ]
+    placed = {unit_id for unit_id, _ in links}
+    loose = [u for u in units if u.id not in placed]
+    if loose:
+        groups.append((None, loose))
+    return groups
+
+
+def cards_in_display_order(
+    groups: Sequence[tuple[DocSection | None, list[KnowledgeUnit]]],
+) -> list[KnowledgeUnit]:
+    """The screen's cards read top to bottom, each once (at its first place)."""
+    seen: set[uuid.UUID] = set()
+    flat: list[KnowledgeUnit] = []
+    for _, units in groups:
+        for unit in units:
+            if unit.id not in seen:
+                seen.add(unit.id)
+                flat.append(unit)
+    return flat
+
+
 def build_parse_payload(
     session: Session, user_id: uuid.UUID, subject_id: uuid.UUID, command: str, today: date
 ) -> dict[str, Any]:
     """The request body for ai-service. The subject must be this user's (the caller checks)."""
     drafts = DraftRepository(session, user_id)
-    _, units, links = drafts.by_section(subject_id)
+    by_section, units, links = drafts.by_section(subject_id)
     sections = _outline(session, user_id, subject_id)
-    rank = {s["id"]: i for i, s in enumerate(sections)}
-    first: dict[uuid.UUID, int] = {}
-    for unit_id, section_id in links:
-        if section_id in rank:
-            first[unit_id] = min(first.get(unit_id, len(rank)), rank[section_id])
-    # Python's sort is stable: within one section the oldest card stays first.
-    ordered = sorted(units, key=lambda u: first.get(u.id, len(rank) + 1))
+    ordered = cards_in_display_order(group_by_section(by_section, units, links))
     cards = [{"id": u.id, "title": _title(u.title, "Thẻ")} for u in ordered]
     subjects = [
         {"id": s.id, "title": _title(s.name, "Môn học")}

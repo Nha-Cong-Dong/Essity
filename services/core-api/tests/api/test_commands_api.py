@@ -394,3 +394,93 @@ def test_command_rejected_codes_map_to_4xx_never_500(code: str, status: int) -> 
 
     error = refusal(CommandRejected(code, "an id"))
     assert (error.status_code, error.detail) == (status, code)
+
+
+def _flat_cards(client: TestClient, h: dict[str, str], subject: Any) -> list[str]:
+    body = client.get(f"/v1/subjects/{subject.id}/units/by-section", headers=h).json()
+    flat: list[str] = []
+    for group in body["groups"]:
+        for unit in group["units"]:
+            if unit["id"] not in flat:
+                flat.append(unit["id"])
+    return flat
+
+
+def _two_chapters_two_documents(cw: CmdWorld) -> None:
+    """Ch1 > 1.1, 1.2 (CmdWorld) plus Ch2 > 2.1, and a second document with Ch > leaf, one card
+    each in 1.2, 2.1 and the second document's leaf: the screen's order is not the tree's."""
+    from v2_rows import make_document, make_section
+
+    db, user = cw.db, cw.user
+    ch2 = make_section(db, user, cw.document, ord=1, title="Ch 2", weight=0)
+    s21 = make_section(db, user, cw.document, ord=0, title="2.1", parent_id=ch2.id, weight=2)
+    doc2 = make_document(db, user, cw.subject, sha="cd" * 32)
+    d2 = make_section(db, user, doc2, ord=0, title="D2", weight=0)
+    d2leaf = make_section(db, user, doc2, ord=0, title="D2.1", parent_id=d2.id, weight=2)
+    for card, section in zip(cw.cards, (cw.leaf2, s21, d2leaf), strict=True):
+        db.add(
+            UnitSection(
+                user_id=user.id, subject_id=cw.subject.id, unit_id=card.id, section_id=section.id
+            )
+        )
+    db.flush()
+
+
+def test_y1_parser_card_order_is_the_by_section_screens_order(
+    client: TestClient, ai: FakeAi, world: World
+) -> None:  # T9.1 Y1, final review F2
+    cw, h = world
+    _two_chapters_two_documents(cw)
+    post(client, h, {"text": "x", "subject_id": str(cw.subject.id)})
+    sent = [c["id"] for c in ai.payloads[0]["cards"]]
+    assert sent == _flat_cards(client, h, cw.subject) and len(sent) == 3
+
+
+def test_y1_the_second_card_is_the_one_the_learner_sees_second(
+    client: TestClient, ai: FakeAi, world: World
+) -> None:  # T9.1 Y1, final review F2
+    cw, h = world
+    _two_chapters_two_documents(cw)
+    seen = _flat_cards(client, h, cw.subject)
+    ai.result = {"kind": "card_discard_draft", "card": "placeholder"}
+    # the parser reads "the second card" off the labels it was given: C2 is `payload.cards[1]`
+    post(client, h, {"text": "x", "subject_id": str(cw.subject.id)})
+    second = ai.payloads[0]["cards"][1]["id"]
+    assert second == seen[1]
+    ai.result = {"kind": "card_discard_draft", "card": second}
+    done = post(client, h, {"text": "bỏ thẻ thứ hai", "subject_id": str(cw.subject.id)})
+    assert done.status_code == 200, done.text
+    states = {str(c.id): c for c in cw.cards}
+    cw.db.refresh(states[second])
+    assert states[second].status == "retired"
+    assert [c.status for k, c in states.items() if k != second] == ["draft", "draft"]
+
+
+def test_the_parse_leg_holds_no_transaction_open(
+    client: TestClient, ai: FakeAi, world: World, db_session: Session
+) -> None:
+    cw, h = world
+    seen: list[bool] = []
+    original = ai.parse_command
+
+    def spy(payload: dict[str, Any]) -> Any:
+        seen.append(db_session.in_transaction() and bool(db_session.new or db_session.dirty))
+        return original(payload)
+
+    ai.parse_command = spy  # type: ignore[method-assign]
+    post(client, h, {"text": "x", "subject_id": str(cw.subject.id)})
+    assert seen == [False]
+
+
+def test_a_filter_on_a_deleted_subject_hides_nothing(
+    client: TestClient, db_session: Session, two_users: tuple[User, User]
+) -> None:
+    from core_api.repositories.study_filter import StudyFilterRepository
+
+    alice = two_users[0]
+    h = headers_of(db_session, alice)
+    _, _, c = three_subjects(db_session, alice)
+    StudyFilterRepository(db_session, alice.id).set(c.id, "only", TODAY + timedelta(days=3))
+    c.deleted_at = FROZEN_NOW
+    db_session.flush()
+    assert shown(client, h) == ["A", "B"]

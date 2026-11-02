@@ -27,6 +27,7 @@ from core_api.repositories.review import (
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
 from core_api.repositories.today import TodayRepository
 from core_api.repositories.unit import DraftRepository, KnowledgeUnitRepository
+from core_api.services.command_context import group_by_section
 from core_api.services.today import session_steps
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
@@ -173,19 +174,12 @@ def units_by_section(
         )
         for u in units
     }
-    members: dict[uuid.UUID, set[uuid.UUID]] = {}
-    for unit_id, section_id in links:
-        members.setdefault(section_id, set()).add(unit_id)
-    placed = {unit_id for unit_id, _ in links}
     groups = [
         SectionGroupOut(
-            section_id=sec.id,
-            section_title=sec.title,
-            units=[o for uid, o in out.items() if uid in members[sec.id]],
+            section_id=None if sec is None else sec.id,
+            section_title=None if sec is None else sec.title,
+            units=[out[u.id] for u in members],
         )
-        for sec in sections
+        for sec, members in group_by_section(sections, units, links)
     ]
-    loose = [o for uid, o in out.items() if uid not in placed]
-    if loose:
-        groups.append(SectionGroupOut(section_id=None, section_title=None, units=loose))
     return UnitsBySectionOut(groups=groups)

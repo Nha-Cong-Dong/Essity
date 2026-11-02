@@ -207,6 +207,7 @@ def apply_command(
         if SubjectRepository(session, user.id).get(subject_id) is None:
             _fail(404, "subject_not_found")
         payload = build_parse_payload(session, user.id, subject_id, text, learning_today(user, now))
+        session.commit()  # the reads above end here: no transaction stays open for 8 s of AI
         reply = ai.parse_command(jsonable_encoder(payload))
         if isinstance(reply, NotGraded):
             _parse_failed(reply)

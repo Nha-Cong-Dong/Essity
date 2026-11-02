@@ -52,13 +52,17 @@ def learning_today(user: User, now: datetime) -> date:
     return ledger_day(now, ZoneInfo(user.timezone), user.day_start_hour)
 
 
-def command_filters(session: Session, user: User, today: date) -> SuggestFilter | None:
+def command_filters(
+    session: Session, user: User, today: date, live: set[uuid.UUID]
+) -> SuggestFilter | None:
     """The filters of "only subject A until D" and "subject B after D" that still hold on `today`
     (US-15 AC9: they end with the period). They are applied before the ranking, so a hidden
     subject never takes a place from one that is shown."""
     only: set[uuid.UUID] = set()
     hidden: dict[uuid.UUID, date] = {}
     for subject_id, mode, until in StudyFilterRepository(session, user.id).active():
+        if subject_id not in live:  # a deleted subject's filter must not hide the others
+            continue
         if mode == "only" and today <= until:
             only.add(subject_id)
         elif mode == "defer" and today < until:
@@ -75,7 +79,7 @@ def build_suggestions(
     today = ledger_day(now, ZoneInfo(user.timezone), user.day_start_hour)
     inputs, names = subject_inputs(session, user)
     if filters is None:
-        filters = command_filters(session, user, today)
+        filters = command_filters(session, user, today, {i.id for i in inputs})
     suggestions = suggest_today(inputs, today, filters)
     finished = suggest_finished(inputs, today, filters)
     empty = (
