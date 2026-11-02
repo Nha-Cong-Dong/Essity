@@ -4,6 +4,7 @@ questions only. One query each, whatever the number of units (US-03 AC2: under 3
 
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date, datetime
 
 from sqlalchemy import ColumnElement, and_, exists, func, or_, select, text
@@ -12,21 +13,41 @@ from core_api.db.models import (
     KnowledgeUnit,
     MemoryState,
     Question,
+    QuestionType,
     QuestionUnit,
     StudySession,
     Subject,
     Submission,
     UnitRevision,
 )
+from core_api.db.models import PracticeState as PracticeStateRow
+from core_api.domain.question_bank import default_ref_time_s
+from core_api.domain.readiness import Ready
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
 from core_api.domain.scheduling.fsrs_adapter import Phase
 from core_api.domain.today import RECALL_LEVEL, DueUnit, NewQuestion
 from core_api.domain.today_v2 import DraftSession
 from core_api.repositories.base import UserScopedRepository
+from core_api.repositories.question_list import QuestionListRepository
 
 # Both while the status rename is in flight: a card saved by T7.8 is `canonical`, a legacy one is
 # `active` (T7.11 migration 0031 renames the second and this shrinks to one value).
 LIVE_STATUSES = ("canonical",)
+# Only the review question of a card is asked as a card; bank and generated questions are
+# practice (T8.5, US-06 AC8) and follow their own schedule.
+CARD_SOURCE = "review_auto"
+
+
+@dataclass(frozen=True)
+class PracticeCandidate:
+    """A ready practice question with what the schedule needs: its practice state (None: never
+    attempted), whether it was taken out of practice, and its type's reference time."""
+
+    question_id: uuid.UUID
+    subject_id: uuid.UUID
+    ref_time_s: float
+    state: State | None
+    removed: bool
 
 
 class TodayRepository(UserScopedRepository[MemoryState]):
@@ -102,6 +123,7 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                 QuestionUnit.user_id == self.user_id,
                 Question.status == "active",
                 Question.level == RECALL_LEVEL,
+                Question.source == CARD_SOURCE,
                 *self._not_skipped(),
             )
             .order_by(
@@ -233,6 +255,7 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                 Question.user_id == self.user_id,
                 Question.status == "active",
                 Question.level == RECALL_LEVEL,
+                Question.source == CARD_SOURCE,
                 Question.id.in_(select(candidates.c.question_id)),
                 *self._not_skipped(),
                 self._visible_subject(Question.subject_id),  # type: ignore[arg-type]
@@ -256,6 +279,64 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             if not unasked_units.get(id) or any(rev >= newest[u] for u in unasked_units[id])
         ]
 
+    def practice_candidates(self) -> list[PracticeCandidate]:
+        """Every ready practice question of a visible subject (T8.5, US-06 AC8): bank and kept
+        generated questions that pass `domain.readiness` (as the question list, T8.2), with their
+        practice state if any. Not-ready, unlinked and retired questions are not here, so they are
+        in neither Ôn hôm nay nor Luyện tập."""
+        subjects = list(
+            self.session.scalars(
+                select(Subject.id).where(
+                    Subject.user_id == self.user_id, Subject.deleted_at.is_(None)
+                )
+            )
+        )
+        lister = QuestionListRepository(self.session, self.user_id)
+        ready = {
+            q.id: subject_id
+            for subject_id in subjects
+            for q in lister.list_for_subject(subject_id)
+            if isinstance(q.state, Ready)
+        }
+        if not ready:
+            return []
+        rows = self.session.execute(
+            select(Question.id, QuestionType.ref_time_s, PracticeStateRow)
+            .join(
+                QuestionType,
+                and_(QuestionType.id == Question.type_id, QuestionType.user_id == self.user_id),
+                isouter=True,
+            )
+            .join(
+                PracticeStateRow,
+                and_(
+                    PracticeStateRow.question_id == Question.id,
+                    PracticeStateRow.user_id == self.user_id,
+                ),
+                isouter=True,
+            )
+            .where(Question.user_id == self.user_id, Question.id.in_(list(ready)))
+        ).all()
+        return [
+            PracticeCandidate(
+                question_id=question_id,
+                subject_id=ready[question_id],
+                ref_time_s=float(ref_time if ref_time is not None else default_ref_time_s()),
+                state=None
+                if row is None
+                else State(
+                    phase=Phase(row.phase),
+                    step=row.step,
+                    stability=row.stability,
+                    difficulty=row.difficulty,
+                    due=row.due,
+                    last_review=row.last_review,
+                ),
+                removed=row is not None and row.removed_at is not None,
+            )
+            for question_id, ref_time, row in rows
+        ]
+
     def has_questions(self) -> bool:
         """Whether a visible subject has an active question at all."""
         return bool(
@@ -265,6 +346,7 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                         Question.user_id == self.user_id,
                         Question.status == "active",
                         Question.level == RECALL_LEVEL,
+                        Question.source == CARD_SOURCE,
                         self._visible_subject(Question.subject_id),  # type: ignore[arg-type]
                     )
                 )
