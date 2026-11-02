@@ -163,6 +163,14 @@ describe("note upload URL route (T4.13b)", () => {
     expect(await response.json()).toEqual(signed);
   });
 
+  // US-02 AC13 (T7.12c). Red when: Word or PowerPoint of a v2 submission is refused before core-api.
+  it("passes Word and PowerPoint on for a submission's file", async () => {
+    const calls = fakeCoreApi(() => Response.json(signed, { status: 201 }));
+    const docx = { ...NOTE, mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" };
+    expect((await noteUrl(browserPost("/api/n", docx, SIGNED_IN), params())).status).toBe(201);
+    expect(calls[0].body).toEqual(docx);
+  });
+
   it.each([
     ["another field", { ...NOTE, object_key: "k" }],
     ["a type not allowed", { ...NOTE, mime: "text/html" }],

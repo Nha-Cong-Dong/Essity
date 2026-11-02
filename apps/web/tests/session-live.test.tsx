@@ -35,6 +35,7 @@ function fakeApi(over: Partial<SessionApi> = {}): Fake {
   const api = {
     sessionId: "s1",
     submit: vi.fn(() => ok({ status: "queued" as Phase })),
+    upload: vi.fn(async () => undefined),
     load: vi.fn(() => ok({ phase: "processing" as Phase, drafts: [] as Draft[] })),
     get: vi.fn((id: string) => ok(card(id, { version: 5, summary: "Bản mới trên máy chủ" }))),
     edit: vi.fn((id: string, version: number) => ok(card(id, { version: version + 1 }))),
@@ -102,7 +103,7 @@ describe("study session on core-api", () => {
     show(api);
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "Tối nay học mục 3.2" } });
     fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
-    expect(api.submit).toHaveBeenCalledWith("Tối nay học mục 3.2", []);
+    expect(api.submit).toHaveBeenCalledWith("Tối nay học mục 3.2", [], []);
     await tick(2600);
     expect(await screen.findByText("Thẻ u1")).toBeTruthy();
 
@@ -332,5 +333,84 @@ describe("study session on core-api", () => {
     fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
     expect(api.submit).not.toHaveBeenCalled();
     expect(screen.getByText("Viết vài dòng mô tả buổi học rồi gửi.")).toBeTruthy();
+  });
+});
+
+describe("files on the study session (T7.12c)", () => {
+  const REF = { sha256: "a".repeat(64), mime: "image/png" as const, size_bytes: 3 };
+  type Report = (state: unknown) => void;
+  const pick = (files: File[]) => fireEvent.change(screen.getByLabelText("Chọn file bài nộp"), { target: { files } });
+  const ready = async (_file: File, report: Report) => report({ kind: "ready", ref: REF });
+
+  // US-02 AC1, AC13. Red when: a picked file is not uploaded, the send leaves out what was uploaded,
+  // or a send with files and no sentence is refused.
+  it("uploads a picked photo and sends it with the submission, no sentence needed", async () => {
+    const api = fakeApi({
+      upload: vi.fn(async (_file: File, report: Report) => {
+        report({ kind: "uploading", percent: 40 });
+        report({ kind: "ready", ref: REF });
+      }),
+    });
+    show(api);
+    pick([new File(["abc"], "trang-1.png", { type: "image/png" })]);
+    await tick(10);
+    expect(api.upload).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Đã tải")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
+    await tick(10);
+    expect(api.submit).toHaveBeenCalledWith("", [], [REF]);
+  });
+
+  // US-02 AC13. Red when: a failed file is handed in, or its failure is silent.
+  it("a file that failed is told in words and never handed in", async () => {
+    const api = fakeApi({ upload: vi.fn(async (_file: File, report: Report) => report({ kind: "failed", code: "offline" })) });
+    show(api, { text: "học bài" });
+    pick([new File(["abc"], "trang-1.png", { type: "image/png" })]);
+    expect(await screen.findByText(/Chưa tải được/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
+    await tick(10);
+    expect(api.submit).toHaveBeenCalledWith("học bài", [], []);
+  });
+
+  // US-02 AC13. Red when: "Thử lại" does not upload the same file again.
+  it("Thử lại uploads the same file again", async () => {
+    let attempt = 0;
+    const api = fakeApi({
+      upload: vi.fn(async (_file: File, report: Report) => {
+        attempt += 1;
+        report(attempt === 1 ? { kind: "failed", code: "offline" } : { kind: "ready", ref: REF });
+      }),
+    });
+    show(api);
+    pick([new File(["abc"], "trang-1.png", { type: "image/png" })]);
+    fireEvent.click(await screen.findByRole("button", { name: "Thử lại trang-1.png" }));
+    expect(await screen.findByText("Đã tải")).toBeTruthy();
+    expect(api.upload).toHaveBeenCalledTimes(2);
+  });
+
+  // US-02 AC13 (neutral copy). Red when: a wrong type is silent, or it blocks the rest.
+  it("a wrong type shows the neutral line and the other file still goes", async () => {
+    const api = fakeApi({
+      upload: vi.fn(async (file: File, report: Report) =>
+        report(file.name.endsWith(".exe") ? { kind: "failed", code: "unsupported" } : { kind: "ready", ref: REF }),
+      ),
+    });
+    show(api);
+    pick([new File(["x"], "a.exe"), new File(["abc"], "b.png", { type: "image/png" })]);
+    expect(await screen.findByText(/Định dạng này chưa dùng được/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
+    await tick(10);
+    expect(api.submit).toHaveBeenCalledWith("", [], [REF]);
+  });
+
+  // US-02 AC13. Red when: the same file picked twice is sent twice.
+  it("the same file twice is handed in once", async () => {
+    const api = fakeApi({ upload: vi.fn(ready) });
+    show(api);
+    pick([new File(["abc"], "a.png", { type: "image/png" }), new File(["abc"], "b.png", { type: "image/png" })]);
+    await tick(10);
+    fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
+    await tick(10);
+    expect(api.submit).toHaveBeenCalledWith("", [], [REF]);
   });
 });

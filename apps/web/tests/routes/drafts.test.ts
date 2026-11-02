@@ -53,6 +53,27 @@ describe("draft routes (T7.12)", () => {
     expect(calls).toHaveLength(1);
   });
 
+  // US-02 AC1, AC13. Red when: the uploaded files are not handed in with the sentence, a file key is
+  // passed on unchecked, or more than 20 files go through.
+  it("submissions pass the uploaded files on as hash, type and size only", async () => {
+    const calls = fakeCoreApi(() => Response.json({ submission_id: OTHER, session_id: ID, status: "queued", mentions: [] }, { status: 201 }));
+    const file = { sha256: "ab".repeat(32), mime: "image/png", size_bytes: 12 };
+    const docx = { sha256: "cd".repeat(32), mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size_bytes: 9 };
+    const body = { session_id: ID, description: "", mentions: [], files: [file, docx] };
+    expect((await submit(browserPost("/x", body, SIGNED_IN))).status).toBe(201);
+    expect(calls[0].body).toEqual(body);
+    const bad = [
+      { ...body, files: [{ ...file, object_key: "k" }] },
+      { ...body, files: [{ ...file, mime: "text/html" }] },
+      { ...body, files: [{ ...file, sha256: "zz" }] },
+      { ...body, files: [{ ...file, size_bytes: 0 }] },
+      { ...body, files: Array.from({ length: 21 }, () => file) },
+      { ...body, files: "x" },
+    ];
+    for (const item of bad) expect((await submit(browserPost("/x", item, SIGNED_IN))).status).toBe(400);
+    expect(calls).toHaveLength(1);
+  });
+
   // US-02 AC4. Red when: the index of the mention that did not resolve is not passed on, or the
   // text core-api quotes back (`part`) reaches the browser.
   it("submissions turn a mention refusal into its code and index, without the text", async () => {

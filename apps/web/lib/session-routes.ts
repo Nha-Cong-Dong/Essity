@@ -124,6 +124,24 @@ function readRange(value: unknown): Range | null {
   return range;
 }
 
+const UPLOAD_MIMES = [
+  ...NOTE_MIMES,
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+] as const;
+export type UploadFile = { sha256: string; mime: (typeof UPLOAD_MIMES)[number]; size_bytes: number };
+
+/** T7.12c: a file of a v2 submission, which may also be Word or PowerPoint; rebuilt, else null. */
+export function readUploadFile(value: unknown): UploadFile | null {
+  if (!isObject(value)) return null;
+  if (!Object.keys(value).every((key) => key === "sha256" || key === "mime" || key === "size_bytes")) return null;
+  const { sha256, mime, size_bytes } = value;
+  if (typeof sha256 !== "string" || !/^[0-9a-f]{64}$/.test(sha256)) return null;
+  if (typeof mime !== "string" || !(UPLOAD_MIMES as readonly string[]).includes(mime)) return null;
+  if (!Number.isSafeInteger(size_bytes) || (size_bytes as number) <= 0) return null;
+  return { sha256, mime: mime as UploadFile["mime"], size_bytes: size_bytes as number };
+}
+
 /** One note as core-api takes it (a hash, a type from the list, a size), rebuilt; else null. */
 export function readNote(value: unknown): Note | null {
   if (!isObject(value)) return null;
