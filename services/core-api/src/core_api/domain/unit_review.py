@@ -24,6 +24,7 @@ from core_api.db.models import (
     UnitRevision,
 )
 from core_api.domain.learning_day import learning_day
+from core_api.jobs.propose_unit_edges import enqueue_edge_proposal
 from core_api.jobs.regenerate_review_question import enqueue_review_question
 from core_api.messaging.envelope import UnitSaved
 from core_api.messaging.outbox import enqueue_event
@@ -530,4 +531,6 @@ def _enqueue_unit_saved(
     )
     # T7.9: the review question is made in the background (the job needs the saved card).
     enqueue_review_question(session, user_id, unit.id, lazy=False)
+    # T9.9: the edges to other cards, also in the background (the job needs the saved card).
+    enqueue_edge_proposal(session, user_id, unit.id)
     session.flush()
