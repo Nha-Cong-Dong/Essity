@@ -11,7 +11,7 @@ from test_t28_today_api import Space, today
 from accounts import signed_in
 from clock import FROZEN_NOW
 from practice_bench import Bench, schedule
-from v2_rows import make_type
+from v2_rows import make_subject, make_type
 
 V1_KEYS = {
     "learning_day",
@@ -97,9 +97,29 @@ def test_no_backlog_total_in_payload(client: TestClient, db_session: Session) ->
     body = today(client, headers)
     assert len(body["review"]["items"]) <= 20
     assert body["backlog"] is None  # practice questions cut by the cap are not counted anywhere
-    assert "40" not in str(body["session"]) and "backlog" not in body["review"]
+    assert set(body["session"]) == {"question_count", "minutes", "subjects"}
+    assert body["session"]["question_count"] <= 20 and "backlog" not in body["review"]
 
 
 def test_unverified_account_is_refused(client: TestClient, db_session: Session) -> None:
     _, headers = signed_in(db_session, verified=False)
     assert client.get("/v1/today", headers=headers).status_code == 403
+
+
+def test_today_runs_the_same_queries_for_few_or_many_practice_questions(
+    client: TestClient, db_session: Session
+) -> None:
+    from test_t28_timing import statements_per_request
+
+    small_user, small = signed_in(db_session)
+    one = Bench(db_session, small_user)
+    schedule(db_session, small_user, one.ready(), OVERDUE)
+    large_user, large = signed_in(db_session)
+    for _ in range(3):  # three subjects, many questions: still the same statements
+        bench = Bench(db_session, large_user, make_subject(db_session, large_user, f"M{_}"))
+        for _ in range(15):
+            schedule(db_session, large_user, bench.ready(), OVERDUE)
+        bench.ready()
+    assert statements_per_request(client, db_session, small) == statements_per_request(
+        client, db_session, large
+    )

@@ -12,7 +12,7 @@ from test_t28_today_api import Space
 
 from accounts import signed_in
 from clock import FROZEN_NOW
-from core_api.db.models import Question, User
+from core_api.db.models import Question, Subject, User
 from core_api.domain.learning_day import day_bounds, learning_day
 from core_api.domain.practice_mix import KIND_FLOOR
 from core_api.domain.today import MAX_MINUTES, MAX_QUESTIONS
@@ -202,3 +202,16 @@ def test_next_day_counts_practice_schedule(db_session: Session) -> None:
     schedule(db_session, user, q, FROZEN_NOW + timedelta(days=3))
     result = mixed(db_session, user)
     assert result.entries == [] and result.next_day is not None
+
+
+def test_a_near_exam_subject_ranks_its_practice_question_first(db_session: Session) -> None:
+    user = user_of(db_session)
+    space = Space(db_session, user)
+    far = Bench(db_session, user, db_session.get(Subject, space.subject("Xa", exam_in_days=60)))
+    near = Bench(db_session, user, db_session.get(Subject, space.subject("Gần", exam_in_days=2)))
+    states = {"last_review": FROZEN_NOW - timedelta(days=10)}
+    q_far, q_near = far.ready(), near.ready()  # far is created (and ordered) first
+    for q in (q_far, q_near):
+        schedule(db_session, user, q, FROZEN_NOW - timedelta(hours=1), **states)
+    order = [e.question_id for e in mixed(db_session, user).entries]
+    assert order == [q_near.id, q_far.id]
