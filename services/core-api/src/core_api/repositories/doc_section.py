@@ -51,6 +51,32 @@ class DocSectionRepository(UserScopedRepository[DocSection]):
         walk(None)
         return ordered
 
+    def by_ids(self, ids: Sequence[uuid.UUID]) -> list[DocSection]:
+        """This user's sections among `ids`, in id order (an id of another user is just absent)."""
+        return list(
+            self.session.scalars(
+                self._select()
+                .where(DocSection.id.in_(ids))
+                .order_by(DocSection.id)
+                .execution_options(populate_existing=True)
+            )
+        )
+
+    def lock_of_documents(self, document_ids: Sequence[uuid.UUID]) -> list[DocSection]:
+        """Every section of these documents FOR NO KEY UPDATE in id order, read afresh. That mode
+        lets a card insert's KEY SHARE on a sibling pass (the review screen holds its session,
+        then inserts under a section). A command writes sections only after this; take the
+        documents' own locks first (the outline service's order: document, then sections)."""
+        return list(
+            self.session.scalars(
+                self._select()
+                .where(DocSection.document_id.in_(document_ids))
+                .order_by(DocSection.id)
+                .with_for_update(key_share=True)
+                .execution_options(populate_existing=True)
+            )
+        )
+
     def touched(self, document_id: uuid.UUID) -> bool:
         """Whether the learner's work hangs on these sections: an edit of theirs, covered
         pages, or cards linked to them. Such an outline is never replaced by a new reading."""

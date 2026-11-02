@@ -60,12 +60,14 @@ class StudyFilterRepository(UserScopedRepository[StudyFilter]):  # pyright: igno
         return self._state(self._row(subject_id))
 
     def set(self, subject_id: uuid.UUID, mode: str, until: date) -> FilterState:
-        """Put a filter on the subject; the revision goes up by one (1 for a new row). Call `lock`
-        first: without it two writers of a new row race on the key."""
+        """Put a filter on the subject; the revision goes up by one (1 for a new row). The lock
+        is taken here (a no-op when the caller holds it): two writers of a new row must not race."""
+        self.lock(subject_id)
         return self._write(subject_id, mode, until)
 
     def clear(self, subject_id: uuid.UUID) -> FilterState:
         """No filter on the subject: `mode` and `until` empty, the row and a higher `rev` stay."""
+        self.lock(subject_id)
         return self._write(subject_id, None, None)
 
     def _write(self, subject_id: uuid.UUID, mode: str | None, until: date | None) -> FilterState:
