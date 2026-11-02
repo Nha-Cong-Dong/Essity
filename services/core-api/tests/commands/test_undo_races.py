@@ -2,9 +2,12 @@
 two undos of one command flip it once, and an undo and an apply do not deadlock."""
 
 import uuid
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 
-from cmd_world import SESSION, Parser
+import pytest
+from cmd_world import SESSION, CmdWorld, Parser
 from sqlalchemy import Engine, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
@@ -12,6 +15,9 @@ from test_apply_races import committed as committed  # noqa: F401  (fixture)
 
 from core_api.db.models import CommandLog, DocSection, Question
 from core_api.domain.commands.registry import CommandRejected
+from core_api.repositories.practice_removal import PracticeRemovalRepository
+from core_api.repositories.user import UserRepository
+from core_api.services import practice
 from core_api.services.commands import CommandRequest, CommandService, UndoOutcome
 from core_api.services.outline import OutlineService
 from races import finished, in_thread, wait_for_lock
@@ -128,3 +134,67 @@ def test_apply_vs_undo_lock_order_no_deadlock(engine: Engine, committed: Committ
     assert not [r for r in results if isinstance(r, OperationalError)], results
     for r in results:
         assert not isinstance(r, BaseException) or isinstance(r, CommandRejected), r
+
+
+@pytest.fixture
+def committed_practice(engine: Engine) -> Iterator[Committed]:
+    """`committed`, whose cleanup also lets the append-only practice log go."""
+    with Session(engine, expire_on_commit=False) as setup:
+        user = UserRepository(setup).create(f"race-{uuid.uuid4().hex[:8]}@example.com")
+        setup.flush()
+        world = CmdWorld(setup, user)
+        ids = (user.id, world.leaf1.id, world.cards[0].id)
+        setup.commit()
+    try:
+        yield ids
+    finally:
+        with engine.begin() as connection:
+            for table in ("command_log", "practice_removal_log"):
+                connection.execute(text(f"ALTER TABLE {table} DISABLE TRIGGER USER"))
+            connection.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": ids[0]})
+            for table in ("command_log", "practice_removal_log"):
+                connection.execute(text(f"ALTER TABLE {table} ENABLE TRIGGER USER"))
+
+
+def test_ac5_undo_practice_waits_for_screen_and_sees_its_rev(
+    engine: Engine, committed_practice: Committed
+) -> None:  # F2, AC5 (tester T9.2d)
+    # Red when: the undo reads the practice rev before it holds the question row (lock set
+    # without the question of a practice_removal revert, or no lock at all): the screen's
+    # readd + remove commit while the undo waits inside readd, and the undo puts the question back
+    # over the user's own removal.
+    user_id, _, _ = committed_practice
+    with Session(engine) as lookup:
+        question = lookup.scalars(select(Question.id).where(Question.user_id == user_id)).first()
+    assert question is not None
+    cid = apply_committed(
+        engine,
+        user_id,
+        [{"kind": "question_remove_from_practice", "question": str(question)}],
+        SESSION,
+    )
+    with Session(engine, expire_on_commit=False) as screen:
+        practice.readd(screen, user_id, question)  # holds the question row
+        practice.remove(screen, user_id, question, at=datetime.now(UTC))
+        pids: list[int] = []
+
+        def undo() -> object:
+            with Session(engine, expire_on_commit=False) as own:
+                pids.append(own.execute(text("SELECT pg_backend_pid()")).scalar_one())
+                try:
+                    out = CommandService(own, user_id).undo(cid)
+                    own.commit()
+                    return out
+                except BaseException as error:  # noqa: BLE001 - handed back to the test
+                    own.rollback()
+                    return error
+
+        thread, outcome = in_thread(undo)
+        while not pids:
+            thread.join(0.05)
+        wait_for_lock(engine, pids[0], outcome)
+        screen.commit()
+    result = finished(thread, outcome)
+    assert isinstance(result, CommandRejected) and result.code == "changed_after", result
+    with Session(engine) as check:
+        assert not PracticeRemovalRepository(check, user_id).in_practice(question)

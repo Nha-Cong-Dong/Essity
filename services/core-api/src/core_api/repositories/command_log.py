@@ -84,12 +84,14 @@ class CommandLogRepository(UserScopedRepository[CommandLog]):
         ).one_or_none()
 
     def after(self, screen_session_id: uuid.UUID, seq: int) -> list[CommandLog]:
-        """The commands of the session logged after `seq`, oldest first."""
+        """The commands of the session logged after `seq`, in the order they were undone: the
+        last one to touch an object left its newest revision (not seq order: an undo takes the
+        newest command first, and ties go to the higher seq)."""
         return list(
             self.session.scalars(
                 self._select()
                 .where(CommandLog.screen_session_id == screen_session_id, CommandLog.seq > seq)
-                .order_by(CommandLog.seq)
+                .order_by(CommandLog.undone_at, CommandLog.seq.desc())
             )
         )
 
