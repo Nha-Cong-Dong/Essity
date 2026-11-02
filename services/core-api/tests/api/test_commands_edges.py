@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from test_commands import (
+from test_commands_api import (
     FakeAi,
     World,
     exclude,
