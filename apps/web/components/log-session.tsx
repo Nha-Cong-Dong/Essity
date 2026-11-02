@@ -306,6 +306,7 @@ export function LogSession({
                 card={phase.card}
                 saving={saving}
                 waiting={notes.busy}
+                hasPhotos={notes.rows.length > 0}
                 onSave={() => void save(phase.card, cardToRanges(phase.card))}
                 onSentence={editSentence}
                 onRanges={() => setPhase({ kind: "form", card: phase.card, rows: startingRows(phase.card) })}

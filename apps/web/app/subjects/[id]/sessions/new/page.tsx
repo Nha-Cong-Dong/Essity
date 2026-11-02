@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
@@ -9,10 +10,13 @@ import { AppShell } from "@/components/shells";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { Sheet } from "@/components/ui/sheet";
 import { requireVerifiedSession } from "@/lib/session";
+import { newSessionTarget } from "@/lib/session-study/entry";
 import { isSubjectId } from "@/lib/subject-id";
 
 export const metadata: Metadata = { title: "Ghi buổi học · Essity" };
 
+// T7.17: without ?session= this opens the v2 study session (/sessions/study). The v1 page below
+// stays for old ?session= addresses until T7.6.
 // T4.13a (US-02 AC1, DESIGN.md §6.10): one page, a sentence and what the app understood. Someone
 // else's subject, or an id that is not one, shows the not-found page (same check as the upload
 // step); a session that ended goes to /login.
@@ -27,6 +31,8 @@ async function Log({
   await requireVerifiedSession();
   const subject = await subjectForUpload((await params).id);
   const { session } = await searchParams;
+  const target = newSessionTarget(subject.id, (await searchParams).session);
+  if (target) redirect(target);
   const saved = typeof session === "string" && isSubjectId(session) ? session : undefined;
   return (
     <div className="mx-auto w-full max-w-220">
