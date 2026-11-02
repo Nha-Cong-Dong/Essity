@@ -3,7 +3,6 @@ exam quota counts (`unasked_by_subject`), a question linked to no unit, a skip w
 whose unit is outside the session or in two of its questions, and an override of a stale grade."""
 
 import uuid
-from datetime import date
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -26,7 +25,9 @@ from core_api.repositories.unit import KnowledgeUnitRepository
 # US-06 AC6, plan b2 ("chưa_hỏi = mảnh active, chưa skipped, chưa có memory_state, môn hiện").
 # Red when: a skipped unit, or a unit of a deleted subject, still counts in the exam quota and
 # the backlog note.
-DAY = date(2026, 11, 2)  # no card here is saved, so the day does not matter
+# No card here is saved, so the day does not matter; it comes from the frozen clock, never from
+# the real date (which once equalled a hard-coded 2026-11-02).
+DAY = FROZEN_NOW.date()
 
 
 def test_t223_units_never_asked_leave_out_skipped_units_and_deleted_subjects(
