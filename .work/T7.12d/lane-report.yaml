@@ -1,8 +1,8 @@
 task: T7.12d
 lane: L1
 status: done
-head_sha: 77ca63a
-step: core + web done, pushed; core batches 1-6 ok; vitest 1684 ok; e2e session+session-live 77 ok
+head_sha: d1d9ccf
+step: core + web done, pushed; core batches 1-6 ok; vitest 1684 ok; e2e session+session-live+units-by-section ok
 tests: {cmd: "core_batches 1-6; vitest run", passed: 3394, failed: 0}
 blockers: []
 decisions: ["Where to show groups -> footer under the session areas via SessionLive subjectId (Coder)", "Card in several sections -> listed in each; retired/merged left out (Coder)"]
