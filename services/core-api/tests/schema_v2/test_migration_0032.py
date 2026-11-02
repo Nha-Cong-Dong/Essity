@@ -35,9 +35,9 @@ def practice(db_session: Session, two_users: tuple[User, User]) -> Practice:
     return Practice(db_session, two_users[0])
 
 
-def test_single_alembic_head_is_0032(alembic_cfg: Config) -> None:
-    # Red when: another migration branches from 0031, or 0032 is not the head.
-    assert ScriptDirectory.from_config(alembic_cfg).get_heads() == ["0032"]
+def test_single_alembic_head_after_0032(alembic_cfg: Config) -> None:
+    # Red when: a migration branches from 0031, or 0033 is not the head.
+    assert ScriptDirectory.from_config(alembic_cfg).get_heads() == ["0033"]
 
 
 def refused_sql(world: World, sql: str, **params: Any) -> None:

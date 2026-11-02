@@ -36,6 +36,7 @@ TASKS = frozenset(
         "parse_question_bank",
         "generate_like",
         "judge_questions",
+        "propose_edges",
     }
 )
 PROVIDERS = frozenset({"anthropic", "fake"})

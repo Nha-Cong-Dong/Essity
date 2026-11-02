@@ -222,3 +222,16 @@ def test_ac11_another_users_card_is_skipped(saved: Saved, db_session: Session) -
     assert ensure_review_question(db_session, stranger, saved.ids[0], ai, lazy=False) == "skipped"
     assert ai.payloads == []
     assert db_session.scalar(select(func.count()).select_from(Question)) == 0
+
+
+def test_t99_save_enqueues_one_edge_job_per_card(saved: Saved) -> None:
+    # Red when: Save does not ask for the edges of the cards it saves (US-19 AC2).
+    from core_api.jobs.propose_unit_edges import PROPOSE_UNIT_EDGES
+
+    assert saved.save().status_code == 200
+    rows = saved.db.execute(
+        text("SELECT args FROM procrastinate_jobs WHERE task_name = :k"),
+        {"k": PROPOSE_UNIT_EDGES},
+    )
+    payloads = [r[0]["payload"] for r in rows if r[0]["payload"]["user_id"] == str(saved.user.id)]
+    assert sorted(p["unit_id"] for p in payloads) == sorted(str(i) for i in saved.ids)

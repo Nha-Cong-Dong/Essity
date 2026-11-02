@@ -231,6 +231,7 @@ def test_t210_settings_give_the_task_table_a_priced_model(monkeypatch: pytest.Mo
         "parse_question_bank": MODEL,
         "generate_like": MODEL,
         "judge_questions": MODEL,
+        "propose_edges": MODEL,
     }
 
 

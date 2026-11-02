@@ -11,6 +11,7 @@ from core_api.jobs import (
     note_cleanup,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     outbox_cleanup,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     practice_grade_retry,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    propose_unit_edges,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     purge_unverified,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     question_bank_import,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     regenerate_review_question,  # noqa: F401  # pyright: ignore[reportUnusedImport]

@@ -69,6 +69,7 @@ class Settings(DatabaseSettings):
             "parse_question_bank": "claude-haiku-5-5",
             "generate_like": "claude-haiku-5-5",
             "judge_questions": "claude-haiku-5-5",
+            "propose_edges": "claude-haiku-5-5",
         },
         validate_default=True,
     )

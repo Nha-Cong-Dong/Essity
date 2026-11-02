@@ -12,6 +12,7 @@ from ai_service.api import (
     parse_command,
     ping,
     practice,
+    propose_edges,
     question_bank,
     review_question,
 )
@@ -32,6 +33,7 @@ from ai_service.tasks.grade import fake_grade, load_prompt
 from ai_service.tasks.like_run import fake_generate_like, fake_judge_questions
 from ai_service.tasks.practice_run import fake_draft_answer, fake_grade_practice
 from ai_service.tasks.process_session import fake_questions
+from ai_service.tasks.propose_edges import fake_propose_edges
 from ai_service.telemetry import configure_tracing
 
 # What AI_LLM_PROVIDER=fake answers with, by task (local and test only). The review question
@@ -44,6 +46,7 @@ FAKE_RESPONDERS: dict[str, Responder] = {
     "draft_answer": fake_draft_answer,
     "generate_like": fake_generate_like,
     "judge_questions": fake_judge_questions,
+    "propose_edges": fake_propose_edges,
     "generate_questions": fake_questions,
     "parse_question_bank": fake_parse_question_bank,
 }
@@ -105,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(generate_like.router)
     generate_like.add_error_handlers(app)
     app.include_router(review_question.router)
+    app.include_router(propose_edges.router)
     app.include_router(question_bank.router)
     # Outermost middleware: continues the trace started by core-api (W3C traceparent).
     FastAPIInstrumentor.instrument_app(

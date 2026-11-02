@@ -14,6 +14,7 @@ from core_api.clients.extract_contract import Clarify, ExtractAnswer, NoteOnly, 
 from core_api.clients.grade_contract import GradeResponse
 from core_api.clients.like_contract import LikeReply
 from core_api.clients.practice_contract import DraftAnswerReply, PracticeGradeReply
+from core_api.clients.propose_edges_contract import ProposeEdgesReply
 from core_api.clients.review_question_contract import ReviewQuestionReply
 from core_api.config import Settings
 from core_api.logging import REQUEST_ID_HEADER, request_id_var
@@ -214,6 +215,10 @@ class AiServiceClient:
         """POST /v1/review-question, once (T7.9): the review question of one saved card."""
         return self._practice("/v1/review-question", payload, ReviewQuestionReply)
 
+    def propose_edges(self, payload: Mapping[str, object]) -> ProposeEdgesReply | NotGraded:
+        """POST /v1/propose-edges, once (T9.9): one model call inside ai-service."""
+        return self._practice("/v1/propose-edges", payload, ProposeEdgesReply)
+
     def generate_like(self, payload: Mapping[str, object]) -> LikeReply | NotGraded:
         """POST /v1/generate-like, once (T9.6b): generate and judge happen inside ai-service.
         Never raises for ai-service's answers and never retries (US-17 AC6)."""
@@ -227,7 +232,14 @@ class AiServiceClient:
         )
 
     def _practice[
-        R: (PracticeGradeReply, DraftAnswerReply, ReviewQuestionReply, LikeReply, BankReply)
+        R: (
+            PracticeGradeReply,
+            DraftAnswerReply,
+            ReviewQuestionReply,
+            ProposeEdgesReply,
+            LikeReply,
+            BankReply,
+        )
     ](
         self,
         path: str,
