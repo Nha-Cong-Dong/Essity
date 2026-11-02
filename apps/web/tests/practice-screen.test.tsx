@@ -39,7 +39,17 @@ describe("every state", () => {
     const { container } = render(<PracticeScreen state={state} />);
     expect(container.querySelectorAll(PRIMARY).length).toBe(NONE.includes(state) ? 0 : 1);
     expect(container.querySelector("details:not([open]) " + PRIMARY)).toBeNull();
-    expect(appCopy(container)).not.toMatch(FORBIDDEN);
+    // The result state holds the rubric and the reference answer, which are the user's material or
+    // GradeResult's own (it has its own banned-word tests): it has the domain term "độ trễ" (T8.7).
+    // So only what this screen writes is scanned there: [data-practice-extras] and "Câu tiếp".
+    if (state === "result") {
+      const own = [...container.querySelectorAll("[data-practice-extras]"), screen.getByRole("button", { name: "Câu tiếp" })];
+      expect(own.length).toBe(2);
+      for (const el of own) expect(el.textContent ?? "").not.toMatch(FORBIDDEN);
+      expect(container.textContent).toContain("độ trễ");
+    } else {
+      expect(appCopy(container)).not.toMatch(FORBIDDEN);
+    }
     expect(container.querySelector("time")).toBeNull();
     expect(container.querySelectorAll("[role=status]").length).toBeLessThanOrEqual(1);
   });

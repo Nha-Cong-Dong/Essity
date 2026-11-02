@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { Marker } from "@/components/notebook";
 import { GradeResult } from "@/components/review/grade-result";
+import { Pen, PracticeResultExtras } from "@/components/practice/practice-extras";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,8 @@ import { masteryText, orderedRows, type PracticeQuestion, summaryLine, timingLin
 // screen from typed fixtures, no API. Exactly one primary button per state (none while loading or
 // importing). The first ready row, or the first undecided candidate, owns it. A removed row turns
 // into "Đã gỡ khỏi luyện tập. Hoàn tác" in place: one tap, no dialog, no timer.
+
+export { PracticeResultExtras };
 
 const FULL = "max-sm:w-full";
 const COPY = {
@@ -79,10 +82,6 @@ function Skeleton() {
       ))}
     </div>
   );
-}
-
-function Pen({ children }: { children: ReactNode }) {
-  return <span className="font-hand text-body text-pencil">{children}</span>;
 }
 
 function CandidateReview({
@@ -229,41 +228,6 @@ function RemovedRow({ q, onUndo }: { q: PracticeQuestion; onUndo: () => void }) 
         {q.summary}
       </span>
     </li>
-  );
-}
-
-/** What a practice result adds to GradeResult (which already shows the rubric per idea). */
-export function PracticeResultExtras({
-  timing,
-  differsFromCard,
-  answerSource,
-}: {
-  /** Only when the grade says the time is usable (timing_ok). */
-  timing?: { seconds: number; refMinutes: number };
-  differsFromCard?: { label: string; href: string };
-  answerSource: "bank" | "ai";
-}) {
-  const minutes = timing ? Math.floor(timing.seconds / 60) : 0;
-  const seconds = timing ? timing.seconds % 60 : 0;
-  return (
-    <div data-practice-extras className="mt-6.5 flex flex-col gap-3">
-      {answerSource === "ai" && <Pen>đáp án do AI soạn</Pen>}
-      {differsFromCard && (
-        <p className="m-0 wrap-anywhere">
-          Đáp án này khác với thẻ{" "}
-          <a href={differsFromCard.href} className="underline">
-            {differsFromCard.label}
-          </a>
-          .
-        </p>
-      )}
-      {timing && (
-        <p className="m-0 text-ink-soft">
-          Bạn trả lời trong {minutes} phút{seconds ? ` ${seconds} giây` : ""}. Dạng này thường mất khoảng{" "}
-          {timing.refMinutes} phút.
-        </p>
-      )}
-    </div>
   );
 }
 
