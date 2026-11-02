@@ -26,9 +26,13 @@ CHANGED = VALID.replace("Bắt tay ba bước.", "Bắt tay ba bước, SYN rồ
 
 
 def questions_of(session: Session, user: User) -> list[Question]:
+    # created_at is now() = the test transaction's start, so every row ties on it; without the
+    # level tiebreak the order (and `[0]` below) follows heap order and flakes.
     return list(
         session.scalars(
-            select(Question).where(Question.user_id == user.id).order_by(Question.created_at)
+            select(Question)
+            .where(Question.user_id == user.id)
+            .order_by(Question.created_at, Question.level)
         )
     )
 
