@@ -27,6 +27,7 @@ from core_api.repositories.review import (
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
 from core_api.repositories.today import TodayRepository
 from core_api.repositories.unit import KnowledgeUnitRepository
+from core_api.services.today import session_steps
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
@@ -77,14 +78,13 @@ def skip_unit(
         SubjectRepository(session, user.id).hold_for_share(subject_id)
     except SubjectNotFoundError as error:
         raise _error(status.HTTP_404_NOT_FOUND, "unit_not_found") from error
-    items = ReviewSessionItemRepository(session, user.id)
-    before = session_counts(items.progress(held.id))[1]
+    before = session_counts(session_steps(session, user.id, held.id))[1]
     if units.skip(unit_id, now):
-        after = session_counts(items.progress(held.id))[1]
+        after = session_counts(session_steps(session, user.id, held.id))[1]
         missing = max(0, before - after)
         if missing:
             _replace(session, user, held.subject_id, held.id, missing, now)
-    steps = items.progress(held.id)
+    steps = session_steps(session, user.id, held.id)
     return SkipOut(session_id=held.id, next=current_out(False, steps, user.id, session, now))
 
 

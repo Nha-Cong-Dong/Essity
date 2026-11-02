@@ -15,12 +15,14 @@ from core_api.db.models import (
     Question,
     QuestionSection,
     QuestionType,
+    Subject,
     UnitSection,
 )
 from core_api.domain.readiness import (
     Card,
     OutlineNode,
     Readiness,
+    Ready,
     Section,
     Waiting,
     outline_numbers,
@@ -46,14 +48,12 @@ class ListedQuestion:
 class QuestionListRepository(UserScopedRepository[Question]):
     model = Question
 
-    def _sections(self, subject_id: uuid.UUID) -> dict[uuid.UUID, Section]:
-        rows = list(
-            self.session.scalars(
-                select(DocSection).where(
-                    DocSection.user_id == self.user_id, DocSection.subject_id == subject_id
-                )
-            )
-        )
+    def _sections(self, subject_id: uuid.UUID | None = None) -> dict[uuid.UUID, Section]:
+        """The user's sections, of one subject or (None) of every subject."""
+        query = select(DocSection).where(DocSection.user_id == self.user_id)
+        if subject_id is not None:
+            query = query.where(DocSection.subject_id == subject_id)
+        rows = list(self.session.scalars(query))
         by_id = {r.id: r for r in rows}
 
         def excluded(row: DocSection) -> bool:
@@ -154,3 +154,46 @@ class QuestionListRepository(UserScopedRepository[Question]):
                 )
             )
         return out
+
+    def ready_ids(self) -> dict[uuid.UUID, uuid.UUID]:
+        """Ready practice questions of every visible subject, as question id -> subject id, in a
+        fixed number of queries whatever the number of subjects (T8.5; the same rules as
+        `list_for_subject`: bank or kept generated, active, quality ok, `readiness` Ready)."""
+        sections = self._sections()
+        links: dict[uuid.UUID, list[uuid.UUID]] = {}
+        for qid, sid in self.session.execute(
+            select(QuestionSection.question_id, QuestionSection.section_id).where(
+                QuestionSection.user_id == self.user_id
+            )
+        ):
+            links.setdefault(qid, []).append(sid)
+        cards = [
+            Card(sid, True)
+            for (sid,) in self.session.execute(
+                select(UnitSection.section_id)
+                .join(KnowledgeUnit, KnowledgeUnit.id == UnitSection.unit_id)
+                .where(UnitSection.user_id == self.user_id, KnowledgeUnit.status == "canonical")
+                .distinct()
+            )
+        ]
+        rows = self.session.execute(
+            select(Question.id, Question.subject_id)
+            .join(
+                Subject,
+                (Subject.id == Question.subject_id)
+                & (Subject.user_id == self.user_id)
+                & Subject.deleted_at.is_(None),
+            )
+            .where(
+                Question.user_id == self.user_id,
+                Question.status == "active",
+                Question.quality_status == "ok",
+                Question.source.in_(_BANK_SOURCES),
+                (Question.source != "generated") | Question.kept_at.is_not(None),
+            )
+        ).all()
+        return {
+            qid: subject_id
+            for qid, subject_id in rows
+            if isinstance(readiness(links.get(qid, []), sections, cards), Ready)
+        }

@@ -15,9 +15,11 @@ from datetime import date, datetime
 from typing import Literal
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core_api.db.models import User
+from core_api.db.models import Attempt, Question, User
+from core_api.db.models import PracticeState as PracticeStateRow
 from core_api.domain.explain import Reason, explain
 from core_api.domain.learning_day import day_bounds, learning_day
 from core_api.domain.practice_mix import (
@@ -28,12 +30,17 @@ from core_api.domain.practice_mix import (
     practice_seconds,
     split_practice,
 )
-from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler, MemoryState
+from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler, MemoryState, Phase
 from core_api.domain.today import DueUnit, PlannedQuestion, TodayPlan, compose_today, exam_weight
 from core_api.domain.today_v2 import TodayInputs, TodayV2, compose, review_from_plan
 from core_api.jobs.regenerate_review_question import enqueue_review_question
+from core_api.repositories.review import (
+    ReviewSessionItemRepository,
+    ReviewSessionRepository,
+    SessionStep,
+)
 from core_api.repositories.subject import SubjectRepository
-from core_api.repositories.today import PracticeCandidate, TodayRepository
+from core_api.repositories.today import CARD_SOURCE, PracticeCandidate, TodayRepository
 from core_api.services.suggestions import subject_inputs
 
 _log = logging.getLogger("core_api.today")
@@ -253,3 +260,74 @@ def enqueue_lazy_questions(
         except Exception:  # noqa: BLE001 - a read must not fail for a background job
             _log.warning("lazy review question not enqueued", extra={"unit_id": str(unit_id)})
     return added
+
+
+def is_practice(question: Question) -> bool:
+    """Bank and generated questions are practice; only a review question is a card."""
+    return question.source != CARD_SOURCE
+
+
+def session_steps(
+    session: Session, user_id: uuid.UUID, review_session_id: uuid.UUID
+) -> list[SessionStep]:
+    """The one reader of a session's steps (T8.5): `progress` plus the practice steps. A practice
+    question is answered by a practice attempt (no session, `/v1/practice`) submitted after the
+    session began; one taken out of practice can no longer be asked. Every route that counts or
+    shows steps comes through here, so position, total and "done" agree."""
+    items = ReviewSessionItemRepository(session, user_id)
+    steps = items.progress(review_session_id)
+    practice_ids = [s.question.id for s in steps if is_practice(s.question)]
+    if not practice_ids:
+        return steps
+    found = ReviewSessionRepository(session, user_id).get(review_session_id)
+    if found is None:
+        return steps
+    answered: dict[uuid.UUID, Attempt] = {}
+    for attempt in session.scalars(
+        select(Attempt)
+        .where(
+            Attempt.user_id == user_id,
+            Attempt.review_session_id.is_(None),
+            Attempt.status == "submitted",
+            Attempt.question_id.in_(practice_ids),
+            Attempt.submitted_at >= found.started_at,
+        )
+        .order_by(Attempt.submitted_at, Attempt.id)
+    ):
+        answered[attempt.question_id] = attempt
+    closed = set(
+        session.scalars(
+            select(PracticeStateRow.question_id).where(
+                PracticeStateRow.user_id == user_id,
+                PracticeStateRow.question_id.in_(practice_ids),
+                PracticeStateRow.removed_at.is_not(None),
+            )
+        )
+    )
+    return items.progress(review_session_id, practice_attempts=answered, closed=closed)
+
+
+def practice_reason(
+    session: Session, user_id: uuid.UUID, question_id: uuid.UUID, now: datetime
+) -> Reason:
+    """Why a practice question comes up: the recall chance of its own schedule, never a card's."""
+    row = session.scalars(
+        select(PracticeStateRow).where(
+            PracticeStateRow.user_id == user_id, PracticeStateRow.question_id == question_id
+        )
+    ).one_or_none()
+    if row is None:
+        return Reason(kind="new", retrievability=None, days_since_last=None)
+    state = MemoryState(
+        phase=Phase(row.phase),
+        step=row.step,
+        stability=row.stability,
+        difficulty=row.difficulty,
+        due=row.due,
+        last_review=row.last_review,
+    )
+    return Reason(
+        kind="review",
+        retrievability=_SCHEDULER.retrievability(state, now),
+        days_since_last=max(0, (now - row.last_review).days),
+    )

@@ -6,8 +6,10 @@ with a reason for each question, the unfinished work). Starting the session is
 The backlog note comes back structured (subject, sessions, days, units): the screen words it, so
 the sentence stays copy the user approves (T2.8 plan C5).
 
-Contract for T8.5: fields are only ever added. `practice` is null until T8.5 fills it.
-`?subject_id=` is "Ôn riêng môn này": it narrows `review`, `session` and `backlog` the way
+Contract (T8.5): fields are only ever added. `review` holds the cards and the practice questions
+due together (`item_kind`, one cap); `practice` has one line per subject with ready questions never
+attempted, null when there are none (a due question is in `review` only, US-06 AC8).
+`?subject_id=` is "Ôn riêng môn này": it narrows `review`, `session`, `practice`, `backlog` the way
 `POST /v1/review-sessions {"subject_id"}` narrows the session it starts (same inputs, so the
 same questions); `next_study` and `unfinished` never depend on it."""
 
@@ -25,15 +27,17 @@ from core_api.api.suggestions import SuggestionOut, suggestion_out
 from core_api.db.session import DbSession
 from core_api.domain.learning_day import learning_day
 from core_api.domain.subjects import days_until_exam
-from core_api.domain.today import compose_today
-from core_api.repositories.review import (
-    ReviewSessionItemRepository,
-    ReviewSessionRepository,
-    session_counts,
-)
+from core_api.domain.today_v2 import ReviewItem
+from core_api.repositories.review import ReviewSessionRepository, session_counts
 from core_api.repositories.subject import SubjectRepository
-from core_api.repositories.today import TodayRepository
-from core_api.services.today import build_v2, enqueue_lazy_questions
+from core_api.repositories.today import PracticeCandidate, TodayRepository
+from core_api.services.today import (
+    MixedEntry,
+    build_v2,
+    compose_mixed,
+    enqueue_lazy_questions,
+    session_steps,
+)
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
@@ -91,6 +95,7 @@ class ReviewItemOut(BaseModel):
     subject_id: uuid.UUID
     why: str
     reason: ReasonOut
+    item_kind: Literal["card", "practice"] = "card"  # T8.5: a practice question is not a card
 
 
 class ReviewOut(BaseModel):
@@ -98,6 +103,17 @@ class ReviewOut(BaseModel):
     minutes: int
     next_due_day: date | None  # only when nothing is due today
     new_saved_today: bool  # a card saved today waits for the next learning day
+
+
+class PracticeLineOut(BaseModel):
+    subject_id: uuid.UUID
+    subject_name: str
+    ready_questions: int  # ready and never attempted
+    question_types: int
+
+
+class PracticePartOut(BaseModel):
+    lines: list[PracticeLineOut]
 
 
 class TodayOut(BaseModel):
@@ -111,7 +127,7 @@ class TodayOut(BaseModel):
     unfinished: list[UnfinishedOut]
     next_study: NextStudyOut
     review: ReviewOut
-    practice: None = None  # T8.5 adds the practice part here and changes nothing above
+    practice: PracticePartOut | None = None  # T8.5; None when nothing is ready and new
 
 
 @router.get("/today")
@@ -135,25 +151,13 @@ def get_today(
     if subject_id is not None and subject_id not in exams:  # as the session start: 404
         raise HTTPException(status.HTTP_404_NOT_FOUND, "subject_not_found")
     reads = TodayRepository(session, user.id)
-    # The same three filters as `POST /v1/review-sessions`, before composing.
-    units = [u for u in reads.scheduled_units() if subject_id in (None, u.subject_id)]
-    fresh = [q for q in reads.new_questions(day=day) if subject_id in (None, q.subject_id)]
-    plan = compose_today(
-        units,
-        fresh,
-        exams,
-        now=now,
-        tz=tz,
-        day_start_hour=user.day_start_hour,
-        unasked={
-            s: n for s, n in reads.unasked_by_subject(day=day).items() if subject_id in (None, s)
-        },
-    )
+    mixed = compose_mixed(session, user, now, reads, subject_id=subject_id)
+    plan, units = mixed.plan, mixed.units
 
     in_progress = None
     open_session = ReviewSessionRepository(session, user.id).open_on(day)
     if open_session is not None:
-        steps = ReviewSessionItemRepository(session, user.id).progress(open_session.id)
+        steps = session_steps(session, user.id, open_session.id)
         answered, total = session_counts(steps)
         if answered < total:
             in_progress = InProgressOut(
@@ -165,9 +169,9 @@ def get_today(
         state = "in_progress"
     elif not listed:
         state = "no_subjects"
-    elif plan.items:
+    elif mixed.entries:
         state = "ready"
-    elif not reads.has_questions():
+    elif not reads.has_questions() and not mixed.fresh:
         state = "no_questions"
     elif all(exam_day < day for exam_day in exams.values()):
         state = "all_exams_over"
@@ -175,11 +179,11 @@ def get_today(
         state = "rested"
 
     session_out = None
-    if plan.items:
-        in_session = list(dict.fromkeys(item.subject_id for item in plan.items))
+    if mixed.entries:
+        in_session = list(dict.fromkeys(item.subject_id for item in mixed.entries))
         session_out = SessionOut(
-            question_count=len(plan.items),
-            minutes=plan.minutes,
+            question_count=len(mixed.entries),
+            minutes=mixed.minutes,
             subjects=[SubjectRef(id=s, name=names[s]) for s in in_session],
         )
     backlog = None
@@ -192,14 +196,16 @@ def get_today(
             units=plan.backlog.units,
         )
     parts = build_v2(session, user, now, plan, units, reads)
-    enqueue_lazy_questions(session, user, now, reads, [i.question_id for i in plan.items])
+    enqueue_lazy_questions(
+        session, user, now, reads, [i.question_id for i in plan.items]
+    )  # cards only
     return TodayOut(
         learning_day=day,
         state=state,
         session=session_out,
         in_progress=in_progress,
         backlog=backlog,
-        next_day=plan.next_day,
+        next_day=mixed.next_day,
         subjects=subjects,
         unfinished=[
             UnfinishedOut(session_id=u.session_id, subject_id=u.subject_id, line=u.line)
@@ -211,22 +217,70 @@ def get_today(
             links=list(parts.next_study.links),
         ),
         review=ReviewOut(
-            items=[
-                ReviewItemOut(
-                    question_id=i.question_id,
-                    subject_id=i.subject_id,
-                    why=i.why,
-                    reason=ReasonOut(
-                        kind=i.kind,
-                        retrievability=i.retrievability,
-                        days_since_last=i.days_since_last,
-                    ),
-                )
-                for i in parts.review.items
-                if i.question_id is not None
-            ],
-            minutes=parts.review.minutes,
-            next_due_day=parts.review.next_due_day,
+            items=_review_items(mixed.entries, {i.question_id: i for i in parts.review.items}),
+            minutes=mixed.minutes,
+            next_due_day=None if mixed.entries else mixed.next_day,
             new_saved_today=parts.review.new_saved_today,
         ),
+        practice=_practice_part(mixed.fresh, names),
     )
+
+
+def _practice_why(entry: MixedEntry) -> str:
+    return (
+        f"Câu luyện tập đến hạn; khả năng nhớ khoảng {round((entry.retrievability or 0) * 100)}%."
+    )
+
+
+def _review_items(
+    entries: list[MixedEntry], cards: dict[uuid.UUID | None, ReviewItem]
+) -> list[ReviewItemOut]:
+    out: list[ReviewItemOut] = []
+    for entry in entries:
+        if entry.kind == "practice":
+            out.append(
+                ReviewItemOut(
+                    question_id=entry.question_id,
+                    subject_id=entry.subject_id,
+                    why=_practice_why(entry),
+                    reason=ReasonOut(
+                        kind="review",
+                        retrievability=entry.retrievability,
+                        days_since_last=entry.days_since_last,
+                    ),
+                    item_kind="practice",
+                )
+            )
+            continue
+        card = cards[entry.question_id]
+        out.append(
+            ReviewItemOut(
+                question_id=entry.question_id,
+                subject_id=card.subject_id,
+                why=card.why,
+                reason=ReasonOut(
+                    kind=card.kind,
+                    retrievability=card.retrievability,
+                    days_since_last=card.days_since_last,
+                ),
+            )
+        )
+    return out
+
+
+def _practice_part(
+    fresh: list[PracticeCandidate], names: dict[uuid.UUID, str]
+) -> PracticePartOut | None:
+    by_subject: dict[uuid.UUID, list[PracticeCandidate]] = {}
+    for candidate in fresh:
+        by_subject.setdefault(candidate.subject_id, []).append(candidate)
+    lines = [
+        PracticeLineOut(
+            subject_id=subject_id,
+            subject_name=names.get(subject_id, ""),
+            ready_questions=len(rows),
+            question_types=len({c.type_id for c in rows}),
+        )
+        for subject_id, rows in by_subject.items()
+    ]
+    return PracticePartOut(lines=lines) if lines else None

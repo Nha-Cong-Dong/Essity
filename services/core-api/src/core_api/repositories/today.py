@@ -22,7 +22,6 @@ from core_api.db.models import (
 )
 from core_api.db.models import PracticeState as PracticeStateRow
 from core_api.domain.question_bank import default_ref_time_s
-from core_api.domain.readiness import Ready
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
 from core_api.domain.scheduling.fsrs_adapter import Phase
 from core_api.domain.today import RECALL_LEVEL, DueUnit, NewQuestion
@@ -48,6 +47,7 @@ class PracticeCandidate:
     ref_time_s: float
     state: State | None
     removed: bool
+    type_id: uuid.UUID | None = None
 
 
 class TodayRepository(UserScopedRepository[MemoryState]):
@@ -284,24 +284,11 @@ class TodayRepository(UserScopedRepository[MemoryState]):
         generated questions that pass `domain.readiness` (as the question list, T8.2), with their
         practice state if any. Not-ready, unlinked and retired questions are not here, so they are
         in neither Ôn hôm nay nor Luyện tập."""
-        subjects = list(
-            self.session.scalars(
-                select(Subject.id).where(
-                    Subject.user_id == self.user_id, Subject.deleted_at.is_(None)
-                )
-            )
-        )
-        lister = QuestionListRepository(self.session, self.user_id)
-        ready = {
-            q.id: subject_id
-            for subject_id in subjects
-            for q in lister.list_for_subject(subject_id)
-            if isinstance(q.state, Ready)
-        }
+        ready = QuestionListRepository(self.session, self.user_id).ready_ids()
         if not ready:
             return []
         rows = self.session.execute(
-            select(Question.id, QuestionType.ref_time_s, PracticeStateRow)
+            select(Question.id, Question.type_id, QuestionType.ref_time_s, PracticeStateRow)
             .join(
                 QuestionType,
                 and_(QuestionType.id == Question.type_id, QuestionType.user_id == self.user_id),
@@ -333,8 +320,9 @@ class TodayRepository(UserScopedRepository[MemoryState]):
                     last_review=row.last_review,
                 ),
                 removed=row is not None and row.removed_at is not None,
+                type_id=type_id,
             )
-            for question_id, ref_time, row in rows
+            for question_id, type_id, ref_time, row in rows
         ]
 
     def has_questions(self) -> bool:
