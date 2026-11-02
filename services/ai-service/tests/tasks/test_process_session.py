@@ -2,6 +2,7 @@
 notes in, units and questions in a result file, `session.processed.v1` out. Fake model on the
 real test database; storage and Redis as in T4.7 and T4.19."""
 
+import io
 import json
 import logging
 import uuid
@@ -11,6 +12,7 @@ from typing import Any, cast
 
 import pytest
 from jsonschema import Draft202012Validator
+from PIL import Image
 from redis import Redis
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -28,6 +30,7 @@ from ai_service.messaging.envelope import (
     SessionProgressEvent,
     parse_event,
 )
+from ai_service.tasks import read_notes_image as read_task
 from ai_service.tasks.process_session import (
     ProcessSession,
     fake_chunk,
@@ -263,18 +266,16 @@ def test_t416b_inverted_range_is_failed_before_anything_is_read(
     assert storage.puts == []
 
 
-def test_t416b_image_and_pdf_notes_are_skipped_with_a_reason(
+def test_t416b_pdf_notes_are_skipped_with_a_reason(
     redis_client: Redis, stream: str, sessions: sessionmaker[Session]
 ) -> None:
     storage = FakeStorage()
     index(storage)
-    notes = [note(storage, mime="image/png"), note(storage, mime="application/pdf")]
-    event = confirmed(notes=notes)
+    event = confirmed(notes=[note(storage, mime="application/pdf")])
     run(handler(storage, redis_client, stream, sessions), event)
     skipped = result(storage, event)["skipped"]
     assert [s for s in skipped if s["kind"] == "note"] == [
         {"kind": "note", "ref": 1, "reason": "needs_ocr"},
-        {"kind": "note", "ref": 2, "reason": "needs_ocr"},
     ]
     assert isinstance(sent(redis_client, stream)[-1], SessionProcessedEvent)
 
@@ -611,3 +612,112 @@ def test_t5r_a_failed_session_leaves_nothing_in_the_cache(
     run(handler(storage, redis_client, stream, sessions, adapter), event)
     assert isinstance(sent(redis_client, stream)[-1], SessionFailedEvent)
     assert cast(Any, redis_client).keys(f"ai:session:*:{event.event_id}") == []
+
+
+# --- T7.15: photo notes are read by vision, then split like text -------------------------
+
+
+def _png(n: int = 0, size: int = 80) -> bytes:
+    out = io.BytesIO()
+    Image.new("RGB", (size, size), (n % 256, n // 256, 9)).save(out, format="PNG")
+    return out.getvalue()
+
+
+def _photo(storage: FakeStorage, data: bytes, mime: str = "image/png") -> dict[str, str]:
+    key = f"{prefix()}/notes/{uuid.uuid4()}.bin"
+    storage.objects[key] = data
+    return {"object_key": key, "mime": mime}
+
+
+def _vision_handler(
+    storage: FakeStorage,
+    redis: Redis,
+    stream: str,
+    sessions: sessionmaker[Session],
+    read: Any,
+) -> tuple[ProcessSession, list[Any]]:
+    seen: list[Any] = []
+
+    def reader(request: Any) -> str:
+        seen.append(request)
+        return cast(str, read(request))
+
+    llm = LlmClient(
+        FakeAdapter(
+            {"chunk_units": fake_chunk, "generate_questions": fake_questions, "read_notes": reader}
+        ),
+        sessions,
+        models={
+            "chunk_units": "claude-haiku-5-5",
+            "generate_questions": "claude-haiku-5-5",
+            "read_notes": "claude-haiku-5-5",
+        },
+        quota_guard=NoQuota(),
+    )
+    h = ProcessSession(storage=storage, redis=redis, llm=llm, sessions=sessions, stream=stream)
+    return h, seen
+
+
+def _legible(request: Any) -> str:
+    return json.dumps({"text": "photo: mitochondria make ATP", "legible": True})
+
+
+def test_t715_photo_only_session_yields_units(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    event = confirmed(ranges=[], notes=[_photo(storage, _png())])
+    h, seen = _vision_handler(storage, redis_client, stream, sessions, _legible)
+    run(h, event)
+    body = result(storage, event)
+    assert [a["source"] for u in body["units"] for a in u["anchors"]] == ["notes"]
+    assert len(seen) == 1 and len(seen[0].images) == 1
+    assert isinstance(sent(redis_client, stream)[-1], SessionProcessedEvent)
+    with sessions() as s:
+        reads = s.scalars(
+            select(LlmCall).where(LlmCall.user_id == USER, LlmCall.task == "read_notes")
+        )
+        assert len(list(reads)) == 1
+
+
+def test_t715_unreadable_photo_is_skipped_and_the_rest_goes_on(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+
+    def blurred(request: Any) -> str:
+        return json.dumps({"text": "", "legible": False})
+
+    event = confirmed(notes=[_photo(storage, _png())])
+    h, _ = _vision_handler(storage, redis_client, stream, sessions, blurred)
+    run(h, event)
+    skipped = result(storage, event)["skipped"]
+    assert {"kind": "note", "ref": 1, "reason": "unreadable"} in skipped
+    assert isinstance(sent(redis_client, stream)[-1], SessionProcessedEvent)
+
+
+def test_t715_only_unreadable_photo_is_a_neutral_failure(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    event = confirmed(ranges=[], notes=[_photo(storage, b"not an image")])
+    h, seen = _vision_handler(storage, redis_client, stream, sessions, _legible)
+    run(h, event)
+    (out,) = sent(redis_client, stream)
+    assert isinstance(out, SessionFailedEvent)
+    assert out.payload.reason == "unreadable"
+    assert seen == []  # bad bytes never reach the model
+
+
+def test_t715_twenty_photos_are_all_read_one_call_each(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    # the event itself holds at most 20 notes: the cap of the reader (20 images) is never hit
+    storage = FakeStorage()
+    n = read_task.MAX_IMAGES
+    event = confirmed(ranges=[], notes=[_photo(storage, _png(i)) for i in range(n)])
+    h, seen = _vision_handler(storage, redis_client, stream, sessions, _legible)
+    run(h, event)
+    assert len(seen) == n
+    assert isinstance(sent(redis_client, stream)[-1], SessionProcessedEvent)

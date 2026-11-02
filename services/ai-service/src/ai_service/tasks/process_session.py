@@ -19,6 +19,7 @@ exception): the model unavailable or over quota (`llm_unavailable`), nothing rea
 (`internal_error`).
 """
 
+import hashlib
 import json
 import logging
 import time
@@ -39,6 +40,7 @@ from ai_service.clients.storage import (
 )
 from ai_service.db.models import PipelineRun
 from ai_service.db.session import SessionFactory
+from ai_service.llm import vision
 from ai_service.llm.client import AuditUnavailableError, LlmClient, LlmUnavailableError
 from ai_service.llm.quota import QuotaExceededError
 from ai_service.llm.types import LlmRequest, Task
@@ -57,6 +59,7 @@ from ai_service.messaging.envelope import (
 )
 from ai_service.tasks import chunk_units as chunk_task
 from ai_service.tasks import generate_questions as question_task
+from ai_service.tasks import read_notes_image as read_task
 from ai_service.tasks.chunk_models import (
     MAX_UNITS_OUT,
     Anchor,
@@ -72,6 +75,7 @@ from ai_service.tasks.generate_questions import (
     QuestionPrompt,
     QuestionsInvalidError,
 )
+from ai_service.tasks.process_submission import StorageVisionCache
 from ai_service.tasks.question_models import (
     MAX_QUOTE_CHARS,
     MAX_QUOTES_PER_UNIT,
@@ -81,6 +85,7 @@ from ai_service.tasks.question_models import (
     QuestionRequest,
     QuestionUnit,
 )
+from ai_service.tasks.read_notes_image import ImageSource, ReadPrompt, read_images
 
 OUT_STREAM = "events.ai"
 _NAMESPACE = uuid.UUID("0d3c6b52-4e0a-4d0b-8a8e-3f1d7c1c9a55")
@@ -96,6 +101,7 @@ CALL_SECONDS = 90.0
 CACHE_PREFIX = "ai:session:"
 CACHE_SECONDS = 86_400
 TEXT_NOTES = frozenset({"text/plain", "text/markdown"})
+IMAGE_NOTES = frozenset({"image/jpeg", "image/png"})
 
 _log = logging.getLogger(__name__)
 
@@ -116,6 +122,16 @@ def result_key_for(event: SessionConfirmedEvent) -> str:
 
 def subject_prefix(event: SessionConfirmedEvent) -> str:
     return f"users/{event.user_id}/subjects/{event.payload.subject_id}"
+
+
+class _ReadingPrompt:
+    """The audit row of the vision reading: the notes-reading prompt, by version and hash."""
+
+    version = read_task.PROMPT_VERSION
+
+    @property
+    def sha256(self) -> str:
+        return hashlib.sha256(read_task.system_prompt().encode()).hexdigest()
 
 
 class _Fail(Exception):
@@ -173,19 +189,22 @@ class _Asker:
         self.event, self.run_id, self.payload = event, pipeline_run_id, payload
         self.calls = 0
 
-    def __call__(self, prompt: ChunkPrompt | QuestionPrompt) -> str:
+    def __call__(self, prompt: ChunkPrompt | QuestionPrompt | ReadPrompt) -> str:
         self.calls += 1
+        images = (prompt.image,) if isinstance(prompt, ReadPrompt) else ()
         request = LlmRequest(
             task=self.task,
             user_id=self.event.user_id,
             subject_id=self.event.payload.subject_id,
             pipeline_run_id=self.run_id,
             prompt_version=self.version,
-            attempt=min(self.calls, 2),
+            # a reading has no retry of its own: every call is a first attempt
+            attempt=1 if images else min(self.calls, 2),
             system=prompt.system,
             user=prompt.user,
             output_schema=prompt.output_schema,
             payload=self.payload,
+            images=images,
         )
         return self.llm.call(request, deadline=time.monotonic() + CALL_SECONDS).text
 
@@ -238,7 +257,7 @@ class ProcessSession:
         if work is None:
             work = _Work()
             pages = self._read_pages(event, work)
-            notes = self._read_notes(event, work)
+            notes = self._read_notes(event, self.llm, work)
             if not pages and not notes:
                 raise _Fail("unreadable", "nothing_readable")
             self._progress(event, "reading_notes", 10)
@@ -370,9 +389,20 @@ class ProcessSession:
                 out.append((r.document_id, number, text.replace("\x00", "")))
         return out
 
-    def _read_notes(self, event: SessionConfirmedEvent, work: _Work) -> str | None:
+    def _read_notes(self, event: SessionConfirmedEvent, llm: LlmClient, work: _Work) -> str | None:
+        """Text notes as they are; photo notes read by vision (T7.15), after the text ones."""
         parts: list[str] = []
+        images: list[ImageSource] = []
+        note_of: dict[int, int] = {}  # image ordinal -> index of its note, for `skipped`
         for index, note in enumerate(event.payload.notes, 1):
+            if note.mime in IMAGE_NOTES:
+                raw = self._get(note.object_key, vision.MAX_BYTES)
+                if raw is None:
+                    work.skipped.append({"kind": "note", "ref": index, "reason": "unreadable"})
+                    continue
+                images.append(ImageSource(len(images) + 1, raw))
+                note_of[len(images)] = index
+                continue
             if note.mime not in TEXT_NOTES:
                 work.skipped.append({"kind": "note", "ref": index, "reason": "needs_ocr"})
                 continue
@@ -381,11 +411,45 @@ class ProcessSession:
                 work.skipped.append({"kind": "note", "ref": index, "reason": "unreadable"})
                 continue
             parts.append(raw.decode("utf-8", errors="replace").replace("\x00", ""))
+        if images:
+            parts.extend(self._read_images(event, llm, images, note_of, work))
         text = "\n\n".join(p for p in parts if p.strip())
         if len(text) > chunk_task.MAX_NOTES_CHARS:
             text = text[: chunk_task.MAX_NOTES_CHARS]
             work.skipped.append({"kind": "note", "ref": 0, "reason": "truncated"})
         return text or None
+
+    def _read_images(
+        self,
+        event: SessionConfirmedEvent,
+        llm: LlmClient,
+        images: list[ImageSource],
+        note_of: dict[int, int],
+        work: _Work,
+    ) -> list[str]:
+        run_id = self._start_run(event, read_task.TASK, _ReadingPrompt())
+        asker = _Asker(
+            llm,
+            task="read_notes",
+            version=read_task.PROMPT_VERSION,
+            event=event,
+            pipeline_run_id=run_id,
+            payload={"kind": "read_notes"},
+        )
+        try:
+            result = read_images(images, asker, StorageVisionCache(self.storage, event.user_id))
+        except (LlmUnavailableError, QuotaExceededError):
+            self._finish_run(run_id, "llm_unavailable")
+            raise _Fail("llm_unavailable", "llm_unavailable") from None
+        except BaseException as error:
+            self._finish_run(run_id, _code(error))
+            raise
+        self._finish_run(run_id, None)
+        for skip in result.skipped:
+            work.skipped.append(
+                {"kind": "note", "ref": note_of.get(skip.ref, skip.ref), "reason": skip.reason}
+            )
+        return [part.text.replace("\x00", "") for part in result.parts]
 
     def _batches(
         self, pages: list[tuple[uuid.UUID, int, str]]
