@@ -987,6 +987,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Graph */
+        get: operations["get_graph_v1_subjects__subject_id__graph_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects/{subject_id}/outline": {
         parameters: {
             query?: never;
@@ -1609,6 +1626,98 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "empty" | "pending_ai" | "failed" | "running";
+        };
+        /** GraphAnchorOut */
+        GraphAnchorOut: {
+            /** Document Name */
+            document_name: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Page No */
+            page_no: number | null;
+            /** Quote */
+            quote: string;
+        };
+        /** GraphCardOut */
+        GraphCardOut: {
+            /** Anchors */
+            anchors: components["schemas"]["GraphAnchorOut"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Needed By */
+            needed_by: string[];
+            /** Section Id */
+            section_id: string | null;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+        };
+        /** GraphEdgeOut */
+        GraphEdgeOut: {
+            /** Evidence */
+            evidence: components["schemas"]["GraphEvidenceOut"][];
+            /**
+             * From Id
+             * Format: uuid
+             */
+            from_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "prerequisite" | "part_of" | "example_of" | "contrast" | "applies_to";
+            /**
+             * To Id
+             * Format: uuid
+             */
+            to_id: string;
+        };
+        /** GraphEvidenceOut */
+        GraphEvidenceOut: {
+            /** Quote */
+            quote: string;
+            /**
+             * Unit Id
+             * Format: uuid
+             */
+            unit_id: string;
+        };
+        /** GraphOut */
+        GraphOut: {
+            /** Cards */
+            cards: components["schemas"]["GraphCardOut"][];
+            /** Edges */
+            edges: components["schemas"]["GraphEdgeOut"][];
+            /** Hidden */
+            hidden: number;
+            /** Sections */
+            sections: components["schemas"]["GraphSectionOut"][];
+            /** Truncated */
+            truncated: boolean;
+        };
+        /** GraphSectionOut */
+        GraphSectionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Title */
+            title: string;
         };
         /** GridCellOut */
         GridCellOut: {
@@ -4693,6 +4802,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GeneratedSetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_graph_v1_subjects__subject_id__graph_get: {
+        parameters: {
+            query?: {
+                section_id?: string | null;
+            };
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphOut"];
                 };
             };
             /** @description Validation Error */

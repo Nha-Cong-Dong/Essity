@@ -19,6 +19,7 @@ Logs hold ids and rule names, never card or model text (ADR-0013).
 
 import logging
 import uuid
+from dataclasses import dataclass
 from typing import Literal, Protocol
 
 from sqlalchemy.orm import Session
@@ -181,3 +182,111 @@ def add_user_edge(
     repo.add(edge)
     session.flush()
     return edge
+
+
+MAX_GRAPH_CARDS = 300  # US-19 AC3; more is cut here and the screen says so, neutrally
+
+
+class UnknownSectionError(LookupError):
+    pass
+
+
+@dataclass(frozen=True)
+class GraphSectionRow:
+    id: uuid.UUID
+    parent_id: uuid.UUID | None
+    title: str
+
+
+@dataclass(frozen=True)
+class GraphCardRow:
+    id: uuid.UUID
+    title: str
+    summary: str
+    section_id: uuid.UUID | None
+    anchors: list[tuple[uuid.UUID, str | None, int | None, str]]
+    needed_by: list[str]
+
+
+@dataclass(frozen=True)
+class GraphEdgeRow:
+    id: uuid.UUID
+    kind: str
+    src: uuid.UUID
+    dst: uuid.UUID
+    evidence: list[dict[str, str]]
+
+
+@dataclass(frozen=True)
+class SubjectGraph:
+    sections: list[GraphSectionRow]
+    cards: list[GraphCardRow]
+    edges: list[GraphEdgeRow]
+    hidden: int
+
+
+def subject_graph(
+    session: Session,
+    user_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    section_id: uuid.UUID | None = None,
+    limit: int = MAX_GRAPH_CARDS,
+) -> SubjectGraph:
+    """What the graph screen draws (T9.10, US-19 AC3-AC4): canonical cards, the active edges
+    between two of them (an edge that touches a draft, retired or hidden card is not returned,
+    T9.9 review F1), and the sections that hold a card or lead to one. `section_id` keeps the cards
+    of that section and its subsections. More than `limit` cards: the first ones in outline order
+    and the count left out. The caller has already checked the subject is the user's."""
+    repo = UnitEdgeRepository(session, user_id)
+    sections = repo.graph_sections(subject_id)
+    by_id = {s.id: s for s in sections}
+    scope: set[uuid.UUID] | None = None
+    if section_id is not None:
+        if section_id not in by_id:
+            raise UnknownSectionError(section_id)
+        scope = {section_id}
+        grew = True
+        while grew:
+            grew = False
+            for s in sections:
+                if s.parent_id in scope and s.id not in scope:
+                    scope.add(s.id)
+                    grew = True
+    units = repo.graph_units(subject_id)
+    placed = repo.graph_unit_sections([u.id for u in units])
+    order = {s.id: i for i, s in enumerate(sections)}
+    chosen = [u for u in units if scope is None or scope.intersection(placed.get(u.id, ()))]
+    # Outline order, the cards in no section last; then the order the cards were made.
+    chosen.sort(key=lambda u: order[placed[u.id][0]] if u.id in placed else len(order))
+    shown = chosen[:limit]
+    ids = [u.id for u in shown]
+    anchors, needed = repo.graph_anchors(ids), repo.graph_questions(ids)
+    cards = [
+        GraphCardRow(
+            id=u.id,
+            title=u.title,
+            summary=u.summary,
+            section_id=placed[u.id][0] if u.id in placed else None,
+            anchors=anchors.get(u.id, []),
+            needed_by=needed.get(u.id, []),
+        )
+        for u in shown
+    ]
+    edges = [
+        GraphEdgeRow(
+            id=e.id,
+            kind=e.kind,
+            src=e.src_unit_id,
+            dst=e.dst_unit_id,
+            evidence=[dict(q) for q in e.evidence],
+        )
+        for e in repo.graph_edges(ids)
+    ]
+    keep: set[uuid.UUID] = set()
+    for card in cards:
+        parent = card.section_id
+        while parent is not None and parent not in keep:
+            keep.add(parent)
+            parent = by_id[parent].parent_id
+    rows = [GraphSectionRow(s.id, s.parent_id, s.title) for s in sections if s.id in keep]
+    return SubjectGraph(rows, cards, edges, len(chosen) - len(shown))

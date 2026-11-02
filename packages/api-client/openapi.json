@@ -1029,6 +1029,241 @@
         "title": "GeneratedSetOut",
         "type": "object"
       },
+      "GraphAnchorOut": {
+        "properties": {
+          "document_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "page_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page No"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "document_name",
+          "page_no",
+          "quote"
+        ],
+        "title": "GraphAnchorOut",
+        "type": "object"
+      },
+      "GraphCardOut": {
+        "properties": {
+          "anchors": {
+            "items": {
+              "$ref": "#/components/schemas/GraphAnchorOut"
+            },
+            "title": "Anchors",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "needed_by": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Needed By",
+            "type": "array"
+          },
+          "section_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Id"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "section_id",
+          "anchors",
+          "needed_by"
+        ],
+        "title": "GraphCardOut",
+        "type": "object"
+      },
+      "GraphEdgeOut": {
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEvidenceOut"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "from_id": {
+            "format": "uuid",
+            "title": "From Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "prerequisite",
+              "part_of",
+              "example_of",
+              "contrast",
+              "applies_to"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "to_id": {
+            "format": "uuid",
+            "title": "To Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "from_id",
+          "to_id",
+          "evidence"
+        ],
+        "title": "GraphEdgeOut",
+        "type": "object"
+      },
+      "GraphEvidenceOut": {
+        "properties": {
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "unit_id": {
+            "format": "uuid",
+            "title": "Unit Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id",
+          "quote"
+        ],
+        "title": "GraphEvidenceOut",
+        "type": "object"
+      },
+      "GraphOut": {
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/GraphCardOut"
+            },
+            "title": "Cards",
+            "type": "array"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdgeOut"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "hidden": {
+            "title": "Hidden",
+            "type": "integer"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/GraphSectionOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sections",
+          "cards",
+          "edges",
+          "hidden",
+          "truncated"
+        ],
+        "title": "GraphOut",
+        "type": "object"
+      },
+      "GraphSectionOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parent_id",
+          "title"
+        ],
+        "title": "GraphSectionOut",
+        "type": "object"
+      },
       "GridCellOut": {
         "properties": {
           "cards_saved": {
@@ -6769,6 +7004,63 @@
           }
         },
         "summary": "Generate Questions"
+      }
+    },
+    "/v1/subjects/{subject_id}/graph": {
+      "get": {
+        "operationId": "get_graph_v1_subjects__subject_id__graph_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "section_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Section Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Graph"
       }
     },
     "/v1/subjects/{subject_id}/outline": {
