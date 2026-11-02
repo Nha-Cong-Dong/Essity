@@ -149,3 +149,46 @@ def test_ac5_undo_races_a_newer_command_on_the_same_card(
     else:  # the newer command landed first: the undo is refused, nothing of it is written
         assert undone[0] == 409 and undone[1]["detail"] in {"not_latest", "changed_after"}, undone
         assert ("applied", "cũ") in log_rows(engine, user)
+
+
+def card_version(engine: Engine, card: uuid.UUID) -> int:
+    with engine.connect() as connection:
+        return connection.execute(
+            text("SELECT version FROM knowledge_unit WHERE id = :c"), {"c": card}
+        ).scalar_one()
+
+
+def test_ac5_undo_races_an_edit_on_the_review_screen(
+    engine: Engine, committed: Committed, http: Callable[[], TestClient]
+) -> None:
+    """T9.2d final review: the undo of a command and the review screen's own edit of the same
+    card (PATCH with the version it read) never both win, and never leave a mix."""
+    user, card, h = committed
+    first = uuid.uuid4()
+    body = {"command_id": str(first), "screen_session_id": SESSION, **edit(card, "lệnh")}
+    assert send(http, h, "/v1/commands", body)[0] == 200
+    seen = card_version(engine, card)  # what the screen read after the command
+    gate = threading.Barrier(2)
+
+    def undo() -> tuple[int, Any]:
+        gate.wait(timeout=5)
+        return send(http, h, f"/v1/commands/{first}/undo", None)
+
+    def screen() -> tuple[int, Any]:
+        gate.wait(timeout=5)
+        response = http().patch(
+            f"/v1/drafts/{card}", json={"content": "màn"}, headers={**h, "If-Match": str(seen)}
+        )
+        return response.status_code, response.json()
+
+    with ThreadPoolExecutor(2) as pool:
+        undone, edited = (f.result() for f in [pool.submit(undo), pool.submit(screen)])
+    assert {undone[0], edited[0]} <= {200, 409}, (undone, edited)
+    assert (undone[0], edited[0]) in {(200, 409), (409, 200)}, (undone, edited)
+    final = card_text(engine, card)
+    if undone[0] == 200:  # the undo won: the screen's edit was refused as stale
+        assert final != "màn" and final != "lệnh"
+        assert ("undone", "lệnh") in log_rows(engine, user)
+    else:  # the screen won: the undo is refused, the screen's text stays
+        assert undone[1]["detail"] == "changed_after" and final.startswith("màn")
+        assert ("applied", "lệnh") in log_rows(engine, user)
