@@ -15,6 +15,7 @@ import hashlib
 import json
 import re
 import time
+import unicodedata
 import uuid
 from contextlib import suppress
 from typing import Annotated, Any, Literal
@@ -53,6 +54,14 @@ class SectionIn(_Strict):
     title: Annotated[str, Field(max_length=300)]
 
 
+class KnownIn(_Strict):
+    """A question core already stores (T8.1c): its content hash, and what it still lacks."""
+
+    hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    needs_type: bool = False
+    needs_section: bool = False
+
+
 class ParseBankBody(_Strict):
     user_id: uuid.UUID
     subject_id: uuid.UUID
@@ -61,6 +70,7 @@ class ParseBankBody(_Strict):
         list[Annotated[str, Field(max_length=200)]], Field(max_length=100)
     ] = []
     sections: Annotated[list[SectionIn], Field(max_length=bank.MAX_SECTIONS)] = []
+    known: Annotated[list[KnownIn], Field(max_length=bank.MAX_QUESTIONS)] = []
 
 
 class QuestionOut(_Strict):
@@ -78,6 +88,8 @@ class ParseBankResult(_Strict):
     questions: list[QuestionOut]
     unmapped: list[int]
     reasons: list[str]  # rule names only
+    # Questions core already holds and that lack nothing: not sent to the model, not returned.
+    skipped: int = 0
 
 
 class ParseBankResponse(ParseBankResult, RunInfo):
@@ -123,12 +135,36 @@ class _BankAsker:
         return self.last.text
 
 
+def question_hash(prompt: str) -> str:
+    """The same digest as core's `content_hash` (the services cannot import each other)."""
+    normalised = " ".join(unicodedata.normalize("NFC", prompt).split())
+    return hashlib.sha256(f"v1\n{normalised}".encode()).hexdigest()
+
+
 def parse_bank(body: ParseBankBody, ask: bank.Ask) -> ParseBankResult:
     pages = [PageText(text=p.text, needs_vision=p.needs_vision) for p in body.pages]
     split = bank.split_bank(pages, ask)
-    types = bank.suggest_types(split.questions, body.existing_types, ask)
+    known = {k.hash: k for k in body.known}
+    wants_type: list[bank.Question] = []
+    wants_section: list[bank.Question] = []
+    keep: list[bank.Question] = []
+    for q in split.questions:
+        entry = known.get(question_hash(q.prompt))
+        if entry is None:
+            wants_type.append(q)
+            wants_section.append(q)
+        else:
+            if entry.needs_type:
+                wants_type.append(q)
+            if entry.needs_section:
+                wants_section.append(q)
+            if not (entry.needs_type or entry.needs_section):
+                continue
+        keep.append(q)
+    skipped = len(split.questions) - len(keep)
+    types = bank.suggest_types(wants_type, body.existing_types, ask)
     sections = bank.map_sections(
-        split.questions, [bank.Section(s.id, s.title) for s in body.sections], ask
+        wants_section, [bank.Section(s.id, s.title) for s in body.sections], ask
     )
     results = (split, types, sections)
     reasons = list(dict.fromkeys(r.code for result in results for r in result.reasons))
@@ -146,10 +182,14 @@ def parse_bank(body: ParseBankBody, ask: bank.Ask) -> ParseBankResult:
             type_name=types.assignment.get(q.ord),
             section_ids=sections.mapping.get(q.ord, []),
         )
-        for q in split.questions
+        for q in keep
     ]
     return ParseBankResult(
-        status=status, questions=questions, unmapped=sections.unmapped, reasons=reasons
+        status=status,
+        questions=questions,
+        unmapped=sections.unmapped,
+        reasons=reasons,
+        skipped=skipped,
     )
 
 
