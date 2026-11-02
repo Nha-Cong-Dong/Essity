@@ -2733,6 +2733,47 @@
         "title": "SaveOut",
         "type": "object"
       },
+      "SectionGroupOut": {
+        "properties": {
+          "section_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Id"
+          },
+          "section_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Title"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/SectionUnitOut"
+            },
+            "title": "Units",
+            "type": "array"
+          }
+        },
+        "required": [
+          "section_id",
+          "section_title",
+          "units"
+        ],
+        "title": "SectionGroupOut",
+        "type": "object"
+      },
       "SectionOut": {
         "properties": {
           "children": {
@@ -2893,6 +2934,40 @@
           }
         },
         "title": "SectionPatch",
+        "type": "object"
+      },
+      "SectionUnitOut": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "content",
+          "kind",
+          "status"
+        ],
+        "title": "SectionUnitOut",
         "type": "object"
       },
       "SessionCard": {
@@ -3986,6 +4061,22 @@
           "total"
         ],
         "title": "UnitWeightOut",
+        "type": "object"
+      },
+      "UnitsBySectionOut": {
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/SectionGroupOut"
+            },
+            "title": "Groups",
+            "type": "array"
+          }
+        },
+        "required": [
+          "groups"
+        ],
+        "title": "UnitsBySectionOut",
         "type": "object"
       },
       "UploadOut": {
@@ -7046,6 +7137,47 @@
           }
         },
         "summary": "Put Textbook"
+      }
+    },
+    "/v1/subjects/{subject_id}/units/by-section": {
+      "get": {
+        "description": "The subject's draft and canonical cards grouped by outline section (T7.12d, US-02b AC14);\na card in several sections is listed in each, the cards in none come last.",
+        "operationId": "units_by_section_v1_subjects__subject_id__units_by_section_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitsBySectionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Units By Section"
       }
     },
     "/v1/submissions": {
