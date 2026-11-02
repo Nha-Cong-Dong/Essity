@@ -303,6 +303,83 @@
         "title": "BacklogOut",
         "type": "object"
       },
+      "BankQuestionOut": {
+        "properties": {
+          "answer_source": {
+            "enum": [
+              "bank",
+              "ai"
+            ],
+            "title": "Answer Source",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "line": {
+            "title": "Line",
+            "type": "string"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "origin": {
+            "enum": [
+              "bank",
+              "generated"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "waiting",
+              "unlinked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "type_name": {
+            "title": "Type Name",
+            "type": "string"
+          },
+          "waiting_sections": {
+            "items": {
+              "$ref": "#/components/schemas/WaitingSectionOut"
+            },
+            "title": "Waiting Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "prompt",
+          "type_name",
+          "origin",
+          "answer_source",
+          "status",
+          "line",
+          "waiting_sections"
+        ],
+        "title": "BankQuestionOut",
+        "type": "object"
+      },
       "CandidateOut": {
         "properties": {
           "id": {
@@ -493,7 +570,7 @@
             "type": "integer"
           },
           "question": {
-            "$ref": "#/components/schemas/core_api__api__review_sessions__QuestionOut"
+            "$ref": "#/components/schemas/QuestionOut"
           },
           "total": {
             "title": "Total",
@@ -2077,7 +2154,7 @@
         "properties": {
           "questions": {
             "items": {
-              "$ref": "#/components/schemas/core_api__api__question_banks__QuestionOut"
+              "$ref": "#/components/schemas/BankQuestionOut"
             },
             "title": "Questions",
             "type": "array"
@@ -2105,6 +2182,42 @@
           "questions"
         ],
         "title": "QuestionListOut",
+        "type": "object"
+      },
+      "QuestionOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReasonOut"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/SubjectRef"
+          },
+          "unit_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Unit Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "prompt",
+          "subject",
+          "unit_ids",
+          "reason"
+        ],
+        "title": "QuestionOut",
         "type": "object"
       },
       "QuestionRef": {
@@ -4034,119 +4147,6 @@
           "revisions"
         ],
         "title": "DraftOut",
-        "type": "object"
-      },
-      "core_api__api__question_banks__QuestionOut": {
-        "properties": {
-          "answer_source": {
-            "enum": [
-              "bank",
-              "ai"
-            ],
-            "title": "Answer Source",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "line": {
-            "title": "Line",
-            "type": "string"
-          },
-          "number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Number"
-          },
-          "origin": {
-            "enum": [
-              "bank",
-              "generated"
-            ],
-            "title": "Origin",
-            "type": "string"
-          },
-          "prompt": {
-            "title": "Prompt",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "ready",
-              "waiting",
-              "unlinked"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "type_name": {
-            "title": "Type Name",
-            "type": "string"
-          },
-          "waiting_sections": {
-            "items": {
-              "$ref": "#/components/schemas/WaitingSectionOut"
-            },
-            "title": "Waiting Sections",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "number",
-          "prompt",
-          "type_name",
-          "origin",
-          "answer_source",
-          "status",
-          "line",
-          "waiting_sections"
-        ],
-        "title": "QuestionOut",
-        "type": "object"
-      },
-      "core_api__api__review_sessions__QuestionOut": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "prompt": {
-            "title": "Prompt",
-            "type": "string"
-          },
-          "reason": {
-            "$ref": "#/components/schemas/ReasonOut"
-          },
-          "subject": {
-            "$ref": "#/components/schemas/SubjectRef"
-          },
-          "unit_ids": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "title": "Unit Ids",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "prompt",
-          "subject",
-          "unit_ids",
-          "reason"
-        ],
-        "title": "QuestionOut",
         "type": "object"
       },
       "core_api__api__review_sessions__SessionOut": {

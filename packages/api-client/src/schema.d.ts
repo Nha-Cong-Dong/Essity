@@ -1322,6 +1322,39 @@ export interface components {
             /** Units */
             units: number;
         };
+        /** BankQuestionOut */
+        BankQuestionOut: {
+            /**
+             * Answer Source
+             * @enum {string}
+             */
+            answer_source: "bank" | "ai";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Line */
+            line: string;
+            /** Number */
+            number: number | null;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "bank" | "generated";
+            /** Prompt */
+            prompt: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "waiting" | "unlinked";
+            /** Type Name */
+            type_name: string;
+            /** Waiting Sections */
+            waiting_sections: components["schemas"]["WaitingSectionOut"][];
+        };
         /** CandidateOut */
         CandidateOut: {
             /**
@@ -1398,7 +1431,7 @@ export interface components {
             done: false;
             /** Position */
             position: number;
-            question: components["schemas"]["core_api__api__review_sessions__QuestionOut"];
+            question: components["schemas"]["QuestionOut"];
             /** Total */
             total: number;
             /**
@@ -1965,13 +1998,27 @@ export interface components {
         /** QuestionListOut */
         QuestionListOut: {
             /** Questions */
-            questions: components["schemas"]["core_api__api__question_banks__QuestionOut"][];
+            questions: components["schemas"]["BankQuestionOut"][];
             /** Ready */
             ready: number;
             /** Total */
             total: number;
             /** Types */
             types: components["schemas"]["TypeCountOut"][];
+        };
+        /** QuestionOut */
+        QuestionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Prompt */
+            prompt: string;
+            reason: components["schemas"]["ReasonOut"];
+            subject: components["schemas"]["SubjectRef"];
+            /** Unit Ids */
+            unit_ids: string[];
         };
         /** QuestionRef */
         QuestionRef: {
@@ -2683,53 +2730,6 @@ export interface components {
             title: string;
             /** Version */
             version: number;
-        };
-        /** QuestionOut */
-        core_api__api__question_banks__QuestionOut: {
-            /**
-             * Answer Source
-             * @enum {string}
-             */
-            answer_source: "bank" | "ai";
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Line */
-            line: string;
-            /** Number */
-            number: number | null;
-            /**
-             * Origin
-             * @enum {string}
-             */
-            origin: "bank" | "generated";
-            /** Prompt */
-            prompt: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "ready" | "waiting" | "unlinked";
-            /** Type Name */
-            type_name: string;
-            /** Waiting Sections */
-            waiting_sections: components["schemas"]["WaitingSectionOut"][];
-        };
-        /** QuestionOut */
-        core_api__api__review_sessions__QuestionOut: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Prompt */
-            prompt: string;
-            reason: components["schemas"]["ReasonOut"];
-            subject: components["schemas"]["SubjectRef"];
-            /** Unit Ids */
-            unit_ids: string[];
         };
         /** SessionOut */
         core_api__api__review_sessions__SessionOut: {
