@@ -1,7 +1,7 @@
 "use client";
 
 import { FileUp } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { DocRole } from "@/components/syllabus/doc-role";
@@ -19,6 +19,50 @@ type Row = { key: number; name: string; state: UploadState; role?: Role };
 
 const STATUS = "text-small font-semibold text-ink-soft";
 
+const POLL_MS = 3000;
+const MAX_POLLS = 100; // 5 minutes of 3 s
+
+// The file is stored; ai-service reads it in the background. Ask until the document reaches a
+// terminal status, so the row does not stay on "Đang đọc tài liệu…" until a reload (REALFIX).
+function ReadStatus({ documentId }: { documentId: string }) {
+  const [phase, setPhase] = useState<"reading" | "ready" | "failed">("reading");
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let tries = 0;
+    const look = async () => {
+      let status: string | null = null;
+      try {
+        const response = await fetch(`/api/documents/${documentId}`);
+        if (response.ok) status = ((await response.json()) as { status?: string }).status ?? null;
+      } catch {
+        // offline: try again
+      }
+      if (!alive) return;
+      if (status === "indexed") return setPhase("ready");
+      if (status === "failed" || status === "rejected") return setPhase("failed");
+      if (++tries < MAX_POLLS) timer = setTimeout(() => void look(), POLL_MS);
+    };
+    timer = setTimeout(() => void look(), POLL_MS);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [documentId]);
+  if (phase === "failed") {
+    return (
+      <p role="alert" className="m-0 text-small text-pencil">
+        Chưa đọc được tài liệu này. Thử tải lại file.
+      </p>
+    );
+  }
+  return (
+    <span className={STATUS} role="status">
+      {phase === "ready" ? "Đã đọc xong" : "Đang đọc tài liệu…"}
+    </span>
+  );
+}
+
 function Status({ state }: { state: UploadState }) {
   if (state.kind === "hashing") return <span className={STATUS} role="status">Đang chuẩn bị…</span>;
   if (state.kind === "uploading") {
@@ -28,6 +72,7 @@ function Status({ state }: { state: UploadState }) {
       </span>
     );
   }
+  if (state.kind === "done" && state.documentId) return <ReadStatus documentId={state.documentId} />;
   if (state.kind === "checking" || state.kind === "done") {
     return (
       <span className={STATUS} role="status">
