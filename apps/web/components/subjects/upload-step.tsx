@@ -14,7 +14,7 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
         <Marker>Tải tài liệu cho {name}</Marker>
       </h1>
       <p className="mt-3 mb-0 max-w-[56ch] text-read text-ink-soft">
-        Giáo trình, slide hoặc ảnh vở. Câu hỏi sẽ dựa trên đúng những trang này.
+        Giáo trình hoặc slide dạng PDF. Câu hỏi sẽ dựa trên đúng những trang này.
       </p>
       <Uploader subjectId={subjectId} hasMain={hasMain} />
       <p className="mt-6 mb-0">

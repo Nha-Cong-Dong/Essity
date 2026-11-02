@@ -49,6 +49,9 @@ export function ConfirmCard({ card, saving, waiting = false, onSave, onSentence,
             <p className="m-0 text-read" data-copy="tam">
               Buổi này không gắn với trang tài liệu nào.
             </p>
+            <p className="m-0 mt-2 text-small text-ink-soft">
+              Ảnh vở đính kèm sẽ được đọc sau khi bạn bấm Lưu.
+            </p>
           </div>
         ) : (
           card.ranges.map((range) => (

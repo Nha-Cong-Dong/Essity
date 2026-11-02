@@ -75,4 +75,26 @@ describe("Uploader (US-01 AC7)", () => {
     expect(screen.getByRole("alert").textContent).toContain("Chưa tải được");
     expect(screen.getByText("Đang đọc tài liệu…")).toBeTruthy();
   });
+
+  // Red when: the row stays on "Đang đọc tài liệu…" after the document is indexed (REALFIX 1).
+  it("flips from reading to read once the document is indexed", async () => {
+    vi.useFakeTimers();
+    try {
+      let status = "uploaded";
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify({ status }), { status: 200 }));
+      vi.stubGlobal("fetch", fetchMock);
+      upload.mockImplementation(async (_s, _f, cb) => cb({ kind: "done", documentId: "d1" }));
+      render(<Uploader subjectId={SUBJECT} />);
+      await act(async () => choose(new File(["%PDF"], "a.pdf", { type: "application/pdf" })));
+      expect(screen.getByText("Đang đọc tài liệu…")).toBeTruthy();
+      await act(async () => void (await vi.advanceTimersByTimeAsync(3100)));
+      expect(screen.getByText("Đang đọc tài liệu…")).toBeTruthy();
+      status = "indexed";
+      await act(async () => void (await vi.advanceTimersByTimeAsync(3100)));
+      expect(screen.getByText("Đã đọc xong")).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
 });
