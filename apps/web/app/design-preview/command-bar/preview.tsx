@@ -1,6 +1,9 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
 import { CommandBar } from "@/components/command-bar";
+import { liveCommands } from "@/lib/command-client";
 import {
   type CommandState,
   EXAMPLE,
@@ -32,6 +35,31 @@ export function CommandPreview({ state }: { state: CommandState }) {
       <section aria-label="Nội dung màn" className="rounded-sheet bg-sheet p-6 ring-1 ring-line">
         <p className="text-body text-ink-soft">Nội dung của màn môn nằm ở đây.</p>
       </section>
+    </div>
+  );
+}
+
+// T9.3: the same bar on the live adapter (web's routes). `refreshed` counts what `router.refresh()`
+// does on a real subject screen, so a test can see that the screen would read its data again.
+export function LivePreview() {
+  const [refreshed, setRefreshed] = useState(0);
+  const live = useMemo(
+    () =>
+      liveCommands({
+        subjectId: SUBJECT.id,
+        screenSessionId: crypto.randomUUID(),
+        changed: () => setRefreshed((n) => n + 1),
+        signedOut: () => undefined,
+      }),
+    [],
+  );
+  return (
+    <div className="mx-auto w-full max-w-280">
+      <h1 className="m-0 font-display text-title [overflow-wrap:anywhere]">{SUBJECT.name}</h1>
+      <CommandBar example={EXAMPLE} run={live.run} undo={live.undo} />
+      <p data-refreshed={refreshed} className="text-meta text-ink-soft">
+        Đã đọc lại màn {refreshed} lần
+      </p>
     </div>
   );
 }

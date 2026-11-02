@@ -49,7 +49,11 @@ export function AppShell({
           </div>
         </div>
       </header>
-      <main className={cn(CONTAINER, "flex flex-1 flex-col pt-10 pb-24")}>{children}</main>
+      <main className={cn(CONTAINER, "flex flex-1 flex-col pt-10 pb-24")}>
+        {/* T9.3: the subject's command bar is drawn here (components/command-live.tsx). */}
+        <div data-command-slot className="empty:hidden" />
+        {children}
+      </main>
     </div>
   );
 }
