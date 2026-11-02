@@ -191,7 +191,7 @@ class WaitingSectionOut(BaseModel):
     title: str
 
 
-class QuestionOut(BaseModel):
+class BankQuestionOut(BaseModel):
     id: uuid.UUID
     number: int | None  # place in the bank: "Câu 7"
     prompt: str
@@ -212,7 +212,7 @@ class QuestionListOut(BaseModel):
     total: int
     ready: int
     types: list[TypeCountOut]
-    questions: list[QuestionOut]
+    questions: list[BankQuestionOut]
 
 
 @router.get("/subjects/{subject_id}/questions")
@@ -223,7 +223,7 @@ def list_questions(
     if SubjectRepository(session, user.id).get(subject_id) is None:
         raise _error(status.HTTP_404_NOT_FOUND, "subject_not_found")
     listed = QuestionListRepository(session, user.id).list(subject_id)
-    out: list[QuestionOut] = []
+    out: list[BankQuestionOut] = []
     counts: dict[str, int] = {}
     for q in listed:
         counts[q.type_name] = counts.get(q.type_name, 0) + 1
@@ -237,7 +237,7 @@ def list_questions(
             else []
         )
         out.append(
-            QuestionOut(
+            BankQuestionOut(
                 id=q.id,
                 number=q.number,
                 prompt=q.prompt,
