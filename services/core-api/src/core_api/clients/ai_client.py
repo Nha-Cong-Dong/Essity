@@ -13,6 +13,7 @@ from core_api.clients.bank_contract import BankReply
 from core_api.clients.extract_contract import Clarify, ExtractAnswer, NoteOnly, Proposed
 from core_api.clients.grade_contract import GradeResponse
 from core_api.clients.like_contract import LikeReply
+from core_api.clients.parse_command_contract import ParseCommandReply
 from core_api.clients.practice_contract import DraftAnswerReply, PracticeGradeReply
 from core_api.clients.propose_edges_contract import ProposeEdgesReply
 from core_api.clients.review_question_contract import ReviewQuestionReply
@@ -42,6 +43,8 @@ GRADE_CONNECT_SECONDS = 2.0
 LIKE_CALL_SECONDS = 25.0
 # ai-service stops a bank run at 120 s (T8.1b); wait a little longer for its answer.
 BANK_CALL_SECONDS = 130.0
+# The command bar is synchronous (ADR-0030, US-18 AC8): core cuts the parse at 8 s, one try.
+PARSE_COMMAND_SECONDS = 8.0
 
 # The /v1/extract-session leg (T4.12): one try, connecting capped at 1 s, no retry.
 EXTRACT_CONNECT_SECONDS = 1.0
@@ -68,6 +71,7 @@ class NotGraded:
 _CODES: dict[str, tuple[Failure, bool]] = {
     "llm_unavailable": ("unavailable", True),
     "grade_invalid": ("invalid", False),
+    "parse_command_invalid": ("invalid", False),
     "request_too_large": ("invalid", False),
     "invalid_request": ("invalid", False),
     "grading_disabled": ("disabled", False),
@@ -231,6 +235,16 @@ class AiServiceClient:
             "/v1/parse-question-bank", payload, BankReply, seconds=BANK_CALL_SECONDS
         )
 
+    def parse_command(self, payload: Mapping[str, object]) -> ParseCommandReply | NotGraded:
+        """POST /v1/parse-command, once, cut at 8 s (T9.2e). Never raises for ai-service's
+        answers; never logs a body, which holds the command (ADR-0013)."""
+        return self._practice(
+            "/v1/parse-command",
+            payload,
+            ParseCommandReply,
+            seconds=PARSE_COMMAND_SECONDS,
+        )
+
     def _practice[
         R: (
             PracticeGradeReply,
@@ -239,6 +253,7 @@ class AiServiceClient:
             ProposeEdgesReply,
             LikeReply,
             BankReply,
+            ParseCommandReply,
         )
     ](
         self,

@@ -494,6 +494,119 @@
         "title": "CardRange",
         "type": "object"
       },
+      "CommandIn": {
+        "additionalProperties": false,
+        "description": "One of `text` (the parser reads it, in `subject_id`'s context) or `ops` (already parsed).",
+        "properties": {
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "ops": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "maxItems": 50,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ops"
+          },
+          "screen_session_id": {
+            "format": "uuid",
+            "title": "Screen Session Id",
+            "type": "string"
+          },
+          "subject_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Id"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "command_id",
+          "screen_session_id"
+        ],
+        "title": "CommandIn",
+        "type": "object"
+      },
+      "CommandOut": {
+        "properties": {
+          "affected": {
+            "title": "Affected",
+            "type": "integer"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "diff": {
+            "items": {
+              "$ref": "#/components/schemas/DiffItemOut"
+            },
+            "title": "Diff",
+            "type": "array"
+          },
+          "op_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Op Kinds",
+            "type": "array"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "applied",
+              "undone"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "status",
+          "diff",
+          "affected",
+          "op_kinds",
+          "replayed"
+        ],
+        "title": "CommandOut",
+        "type": "object"
+      },
       "ConfirmRequest": {
         "additionalProperties": false,
         "properties": {
@@ -593,6 +706,44 @@
           "attempt"
         ],
         "title": "CurrentOut",
+        "type": "object"
+      },
+      "DiffItemOut": {
+        "properties": {
+          "after": {
+            "title": "After"
+          },
+          "before": {
+            "title": "Before"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "verb": {
+            "title": "Verb",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "verb",
+          "before",
+          "after"
+        ],
+        "title": "DiffItemOut",
         "type": "object"
       },
       "DocumentChoice": {
@@ -4221,6 +4372,72 @@
         "title": "TypeCountsOut",
         "type": "object"
       },
+      "UnclearOut": {
+        "description": "The parser did not understand: nothing ran and nothing was logged (AC3).",
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/UnclearReason"
+          },
+          "status": {
+            "const": "unclear",
+            "default": "unclear",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "UnclearOut",
+        "type": "object"
+      },
+      "UnclearReason": {
+        "enum": [
+          "ambiguous",
+          "unknown_target",
+          "unsupported",
+          "missing_info"
+        ],
+        "type": "string"
+      },
+      "UndoOut": {
+        "properties": {
+          "affected": {
+            "title": "Affected",
+            "type": "integer"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "diff": {
+            "items": {
+              "$ref": "#/components/schemas/DiffItemOut"
+            },
+            "title": "Diff",
+            "type": "array"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "status": {
+            "const": "undone",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "status",
+          "diff",
+          "affected",
+          "replayed"
+        ],
+        "title": "UndoOut",
+        "type": "object"
+      },
       "UnfinishedOut": {
         "properties": {
           "line": {
@@ -5145,6 +5362,93 @@
           }
         },
         "summary": "Resend Verification"
+      }
+    },
+    "/v1/commands": {
+      "post": {
+        "description": "Apply a command, once per `command_id`. The service commits a read-only transaction before\nit parses, so nothing of the command is written before this call (the sliding of the sign-in\nsession is the only write that can precede it, and that commit keeps it).",
+        "operationId": "apply_command_v1_commands_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommandIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CommandOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UnclearOut"
+                    }
+                  ],
+                  "title": "Response Apply Command V1 Commands Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apply Command"
+      }
+    },
+    "/v1/commands/{command_id}/undo": {
+      "post": {
+        "operationId": "undo_command_v1_commands__command_id__undo_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "command_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Command Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UndoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Undo Command"
       }
     },
     "/v1/documents/{document_id}": {

@@ -246,6 +246,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Command
+         * @description Apply a command, once per `command_id`. The service commits a read-only transaction before
+         *     it parses, so nothing of the command is written before this call (the sliding of the sign-in
+         *     session is the only write that can precede it, and that commit keeps it).
+         */
+        post: operations["apply_command_v1_commands_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/commands/{command_id}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Undo Command */
+        post: operations["undo_command_v1_commands__command_id__undo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/documents/{document_id}": {
         parameters: {
             query?: never;
@@ -1440,6 +1479,51 @@ export interface components {
             /** Start Page */
             start_page: number;
         };
+        /**
+         * CommandIn
+         * @description One of `text` (the parser reads it, in `subject_id`'s context) or `ops` (already parsed).
+         */
+        CommandIn: {
+            /**
+             * Command Id
+             * Format: uuid
+             */
+            command_id: string;
+            /** Ops */
+            ops?: {
+                [key: string]: unknown;
+            }[] | null;
+            /**
+             * Screen Session Id
+             * Format: uuid
+             */
+            screen_session_id: string;
+            /** Subject Id */
+            subject_id?: string | null;
+            /** Text */
+            text?: string | null;
+        };
+        /** CommandOut */
+        CommandOut: {
+            /** Affected */
+            affected: number;
+            /**
+             * Command Id
+             * Format: uuid
+             */
+            command_id: string;
+            /** Diff */
+            diff: components["schemas"]["DiffItemOut"][];
+            /** Op Kinds */
+            op_kinds: string[];
+            /** Replayed */
+            replayed: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "applied" | "undone";
+        };
         /** ConfirmRequest */
         ConfirmRequest: {
             /**
@@ -1479,6 +1563,19 @@ export interface components {
              * @default []
              */
             ungraded: string[];
+        };
+        /** DiffItemOut */
+        DiffItemOut: {
+            /** After */
+            after: unknown;
+            /** Before */
+            before: unknown;
+            /** Id */
+            id: string | null;
+            /** Kind */
+            kind: string;
+            /** Verb */
+            verb: string;
         };
         /** DocumentChoice */
         DocumentChoice: {
@@ -2792,6 +2889,40 @@ export interface components {
             /** Ready */
             ready: number;
         };
+        /**
+         * UnclearOut
+         * @description The parser did not understand: nothing ran and nothing was logged (AC3).
+         */
+        UnclearOut: {
+            reason: components["schemas"]["UnclearReason"];
+            /**
+             * Status
+             * @default unclear
+             * @constant
+             */
+            status: "unclear";
+        };
+        /** @enum {string} */
+        UnclearReason: "ambiguous" | "unknown_target" | "unsupported" | "missing_info";
+        /** UndoOut */
+        UndoOut: {
+            /** Affected */
+            affected: number;
+            /**
+             * Command Id
+             * Format: uuid
+             */
+            command_id: string;
+            /** Diff */
+            diff: components["schemas"]["DiffItemOut"][];
+            /** Replayed */
+            replayed: boolean;
+            /**
+             * Status
+             * @constant
+             */
+            status: "undone";
+        };
         /** UnfinishedOut */
         UnfinishedOut: {
             /** Line */
@@ -3382,6 +3513,70 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_command_v1_commands_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommandIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommandOut"] | components["schemas"]["UnclearOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_command_v1_commands__command_id__undo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                command_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UndoOut"];
                 };
             };
             /** @description Validation Error */

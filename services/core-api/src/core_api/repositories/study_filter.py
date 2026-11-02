@@ -59,6 +59,11 @@ class StudyFilterRepository(UserScopedRepository[StudyFilter]):  # pyright: igno
     def state(self, subject_id: uuid.UUID) -> FilterState:
         return self._state(self._row(subject_id))
 
+    def active(self) -> list[tuple[uuid.UUID, str, date]]:
+        """Every filter this user has on (subject, mode, until); cleared rows are left out."""
+        rows = self.session.scalars(self._select().where(StudyFilter.mode.is_not(None)))
+        return [(r.subject_id, str(r.mode), r.until) for r in rows if r.until is not None]
+
     def set(self, subject_id: uuid.UUID, mode: str | None, until: date | None) -> FilterState:
         """Put a filter on the subject; the revision goes up by one (1 for a new row). The lock
         is taken here (a no-op when the caller holds it): two writers of a new row must not race.

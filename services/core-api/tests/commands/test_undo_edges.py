@@ -6,9 +6,9 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from cmd_world import CmdWorld
 from sqlalchemy import select
 
+from cmd_world import CmdWorld
 from core_api.db.models import CommandLog, PracticeRemovalLog, UnitSection, User
 from core_api.domain.commands.registry import CommandRejected
 from core_api.domain.unit_review import UnitChangedElsewhere, UnitReviewService

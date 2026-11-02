@@ -5,10 +5,10 @@ from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from cmd_world import SESSION, CmdWorld, Parser
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
+from cmd_world import SESSION, CmdWorld, Parser
 from core_api.db.models import User
 from core_api.repositories.user import UserRepository
 from core_api.services.commands import CommandRequest, CommandService

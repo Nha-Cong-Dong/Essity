@@ -7,6 +7,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from core_api.api import (
     attempts,
     auth,
+    commands,
     documents,
     drafts,
     export,
@@ -90,6 +91,7 @@ app.include_router(submissions.router)
 app.include_router(drafts.router)
 app.include_router(stats.router)
 app.include_router(suggestions.router)
+app.include_router(commands.router)
 app.include_router(export.router)
 # Outermost middleware: the request span is open while log_requests writes its line.
 FastAPIInstrumentor.instrument_app(app, excluded_urls="healthz", exclude_spans=["receive", "send"])

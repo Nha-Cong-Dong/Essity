@@ -7,12 +7,12 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
 import pytest
-from cmd_world import SESSION, CmdWorld, Parser
 from sqlalchemy import Engine, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 from test_apply_races import committed as committed  # noqa: F401  (fixture)
 
+from cmd_world import SESSION, CmdWorld, Parser
 from core_api.db.models import CommandLog, DocSection, Question
 from core_api.domain.commands.registry import CommandRejected
 from core_api.repositories.practice_removal import PracticeRemovalRepository
