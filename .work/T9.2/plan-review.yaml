@@ -1,118 +1,78 @@
-step: plan-review
-verdict: fail  # 6 orange folded into plan.md "Sửa theo plan-review"; round 2 not required (one round per card)
-sha: 9fff3d2
+step: plan
+task: T9.2
+round: 2
+sha: b0ae1f525188d3ec9a0693bcc2b6e5a51249fd30
+verdict: fail
+open_orange: 3
 by: reviewer
 at: 2026-11-02
-round: 1
-open_orange: 6
+round1_ref: "git show b0ae1f5:.work/T9.2/plan-review.yaml (vòng 1 đã commit; reviewer chỉ được ghi một file nên không tạo plan-review-r1.yaml)"
 tokens: null
 summary: |
-  Bảng Quyết định (F2, study_filter, command_id, phiên màn) đi đúng hướng, nhưng còn 6 điểm 🟠.
-  Hai điểm có thể làm mất dữ liệu khi hoàn tác: rev của Snapshot không khớp DB, và hoàn tác không khóa dòng.
-  Một điểm hoàn tác nhầm lệnh: undo theo phiên chứ không theo command_id.
-  Một điểm tốn lượt LLM khi gửi lại lệnh, một điểm thiếu test cách ly, một điểm ghi lệnh thô vào log.
+  P2, P3, P5, P6 đã đóng về nội dung (plan.md:74,75,77,78). P1 mới đóng một nửa. P4 tạo ra một lỗ mới.
+  Phần sửa chỉ được nối thêm ở plan.md:72-80. "Xong khi" (plan.md:25-28), bảng test (plan.md:33-48) và bảng Quyết định (plan.md:55,64-66) vẫn để chữ cũ, mâu thuẫn với phần sửa.
+  Migration 0032 (Y1 thêm cột có default, trigger chỉ cho đặt undo_revs_json khi OLD NULL, append_only_refuse ở 0008:35) không có lỗ mới.
+  Ghi chú: "upgrade/downgrade không mất dữ liệu" (plan.md:25) không thể đúng, vì downgrade bỏ cột và bảng mới. Nên ghi "downgrade khôi phục trigger 0025, bỏ cột/bảng mới". Mức 🟡.
+closed:
+  P1: partial  # xem R2-1
+  P2: "đóng: plan.md:74 khóa đối tượng trong inverse theo thứ tự cố định + UPDATE … WHERE version = expected, có test barrier"
+  P3: "đóng: plan.md:75 nạp theo (user_id, command_id), lấy phiên từ dòng, undone → 200 trả kết quả cũ, 409 not_latest"
+  P4: partial  # thứ tự gọi LLM ngoài transaction đã đóng (plan.md:76); payload_hash sai đầu vào, xem R2-2
+  P5: "đóng về nội dung (plan.md:77); chưa có trong bảng test, xem R2-3"
+  P6: "đóng: plan.md:78 thay quy tắc log, có test caplog BIMAT-xyz"
 findings:
-  - id: P1
+  - id: R2-1
     sev: orange
-    where: "plan.md:13,26; core: domain/commands/state.py:20-58; db/models/document.py:129-180; db/models/question.py:65,103-117; db/models/unit.py:85"
+    where: "plan.md:73,20,24; core: services/outline.py:195-205, services/practice_grading.py:139-143, repositories/question.py:37,131"
     issue: >
-      Kế hoạch mới thấy thiếu chỗ lưu cho StudyFilter và in_practice, nhưng còn bỏ sót ba chỗ khác.
-      (a) Section và Question trong Snapshot có `rev`, còn doc_section và question không có cột version.
-      (b) Section.studied không có cột; doc_section chỉ có `studied_weight`.
-      (c) Question.card_id và section_id là một giá trị, còn DB nối nhiều-nhiều qua question_unit và question_section.
-      (d) DB sửa đáp án bằng cách "retire và thay" (tạo id mới), còn Snapshot sửa tại chỗ.
-      Hệ quả: kiểm `expected_rev` khi hoàn tác không có nguồn cho mục và câu. Nếu tự bịa rev lúc nạp, hoàn tác sẽ đè lên thay đổi tay → mất dữ liệu (AC5).
-      Với thẻ, rev dự đoán (rev+1 mỗi lần đổi) có thể lệch unit.version thật mà service ADR-0028 ghi. Khi đó mọi hoàn tác trả changed_after, hoặc tệ hơn là khớp sai.
+      P1 thêm cột version cho doc_section và question, với ý "service tay và lệnh cùng tăng".
+      Nhưng touches của T9.2c ghi "repositories/{unit,doc_section,question}.py (chỉ thêm hàm nạp/ghi)", và không sub-task nào chạm services/outline.py hay services/practice_grading.py.
+      Các đường ghi tay hiện có không tăng version, gồm: outline.py:195-205 (studied_weight, sửa mục), practice_grading.py:139 (điền đáp án) và question.py retire/replace.
+      Kịch bản: lệnh sửa mục 3.4 → người học sửa tay qua OutlineService (version giữ nguyên 1) → undo thấy rev khớp → before-image đè mất bản sửa tay. Đây là đúng lỗi AC5 mà P1 nêu.
+      Thêm nữa, việc ánh xạ studied, quan hệ nhiều-nhiều và retire/replace bị dời "trước khi code T9.2c". Nhưng chính ánh xạ này quyết định 0032 cần cột nào, mà 0032 thuộc T9.2b (cổng L1, một Alembic head). Chốt muộn thì phải có migration thứ hai.
     fix: >
-      T9.2b: thêm `version int NOT NULL DEFAULT 1` cho doc_section và question (service tay và lệnh cùng tăng), hoặc ghi rõ thao tác nào không hoàn tác được.
-      Chốt cách ánh xạ studied, gắn lại câu (nhiều-nhiều) và sửa đáp án (retire/replace) vào Snapshot; bàn tech-expert, ghi bảng Quyết định.
-      T9.2c: lấy `expected_rev` trong inverse_json từ rev đọc lại trong DB sau khi ghi (hoặc assert bằng rev lõi dự đoán), không tin lõi thuần.
-    repro: "test: áp lệnh sửa khoảng trang mục 3.4, sửa tay mục đó qua OutlineService.edit_section, rồi undo → phải 409 changed_after; với thẻ chuẩn: assert inverse_json.expected_rev == knowledge_unit.version sau khi áp"
-  - id: P2
+      (a) Chốt ánh xạ P1 với tech-expert TRƯỚC khi giao T9.2b, rồi ghi vào bảng Quyết định.
+      (b) Trong 0032, tăng version bằng trigger BEFORE UPDATE trên doc_section và question (NEW.version := OLD.version + 1 khi cột nội dung đổi). Cách này phủ mọi đường ghi, kể cả handler. Nếu không dùng trigger thì liệt kê từng đường ghi vào touches của T9.2c.
+      (c) Thêm vào "Xong khi" của T9.2b: "mọi UPDATE doc_section/question làm tăng version".
+    repro: "test schema: UPDATE doc_section SET studied_weight=… qua OutlineService rồi assert version tăng; test của P1: sửa tay mục rồi undo → 409 changed_after"
+  - id: R2-2
     sev: orange
-    where: "plan.md:25,27,51"
+    where: "plan.md:76,28"
     issue: >
-      Mục "Xong khi" của T9.2d chỉ khóa dòng command_log (`mark_undone FOR UPDATE`), không khóa các đối tượng trong inverse trước khi kiểm rev.
-      Kịch bản: undo đọc thẻ X ở rev 2 (khớp); một lần sửa tay commit rev 3; undo ghi before-image với rev current+1 → đè mất bản sửa tay.
-    fix: >
-      Trong undo: khóa FOR UPDATE command_log của phiên, rồi khóa các đối tượng trong inverse theo thứ tự id cố định (cùng thứ tự với apply), rồi mới nạp Snapshot và kiểm rev.
-      Hoặc ghi bằng UPDATE … WHERE version = expected; rowcount 0 → changed_after, rollback.
-    repro: "tests/races.py: barrier giữa bước kiểm rev và bước ghi của undo; luồng kia sửa thẻ qua service tay; mong đợi một bên 409 và bản sửa tay còn nguyên"
-  - id: P3
+      payload_hash = SHA-256(raw_text, ops). Với đường dòng lệnh, ops là đầu ra của LLM nên chỉ có sau khi parse.
+      Kịch bản: gửi lại cùng command_id với cùng raw_text (retry mạng, đúng ca AC4) → by_command_id thấy dòng cũ → so hash.
+      Phía server không thể tính hash(raw_text, ops_LLM) khi chưa gọi LLM, nên chỉ còn hai khả năng.
+      Một: so hash(raw_text, null) với hash đã lưu → lệch → 409 command_id_reused cho một lần retry hợp lệ (vỡ AC4).
+      Hai: gọi LLM lại để tính → vỡ AC8 và mất chính lợi ích của P4.
+    fix: "Hash đúng thân yêu cầu nhận được (raw_text hoặc ops client, dạng chuẩn hóa) trước khi parse. Lưu thêm ops sau parse vào ops_json như hiện có."
+    repro: "test: POST raw_text 'gộp thẻ 1 và 2' với command_id X hai lần (fake ai client) → lần 2 trả 200 cùng diff, đếm lời gọi parse = 1, không 409"
+  - id: R2-3
     sev: orange
-    where: "plan.md:25,27,28; domain/commands/undo.py:27-36"
+    where: "plan.md:25,27,33-48,55,64-66"
     issue: >
-      API là `POST /v1/commands/{command_id}/undo`, nhưng repo `latest_open(session)` và `undo_latest` lấy lệnh mới nhất của phiên, bỏ qua command_id.
-      Kịch bản: bấm Hoàn tác C2 hai lần (double-submit hoặc gửi lại sau timeout). Lần 1 hoàn tác C2; lần 2 hoàn tác C1, lệnh người học không hề yêu cầu.
-      Câu "hoàn tác hai lần trùng → không hoàn tác thêm" không làm được nếu không khóa theo command_id.
-    fix: >
-      Undo nhận command_id. Nạp dòng đó theo (user_id, command_id), lấy screen_session_id từ dòng đó chứ không từ client.
-      Nếu status đã là undone thì trả lại kết quả cũ (idempotent, 200). Nếu không phải lệnh mở mới nhất của phiên thì 409 not_latest.
-    repro: "test_undo_same_command_twice_does_not_undo_older: áp C1, C2; undo C2 hai lần; assert C1 vẫn applied và dữ liệu C1 còn"
-  - id: P4
-    sev: orange
-    where: "plan.md:26,28"
-    issue: >
-      Kế hoạch không nói kiểm trùng command_id xảy ra trước hay sau khi gọi parse-command, cũng không nói có giữ transaction trong lúc gọi.
-      Gửi lại cùng command_id (retry mạng) → gọi LLM lần hai: trái AC8 và tốn ngân sách $2.
-      Nếu mở transaction hoặc khóa trước khi gọi LLM (8 s) thì giữ khóa thẻ/command_log suốt 8 s, các yêu cầu khác cùng thẻ phải chờ.
-    fix: >
-      Thứ tự: by_command_id(user) → có rồi thì trả bản ghi cũ; chưa có thì gọi parse ngoài transaction; sau đó mới mở transaction (khóa, nạp, áp, INSERT … ON CONFLICT (user_id, command_id) DO NOTHING; 0 dòng → rollback, đọc lại).
-      Lưu thêm SHA-256 của (raw_text, ops); cùng command_id mà khác payload → 409 command_id_reused, không trả diff cũ.
-    repro: "test đếm lời gọi parse-command (fake ai client): gửi cùng command_id hai lần → đúng 1 lời gọi"
-  - id: P5
-    sev: orange
-    where: "plan.md:33-48"
-    issue: >
-      Thiếu test cho cách ly và chưa xác minh:
-      (a) người B gửi đúng command_id của A → B phải được áp lệnh của mình. Nếu by_command_id quên lọc user_id, B nhận diff của A, gồm cả văn bản thẻ của A.
-      (b) endpoint undo: command_id của người khác → 404, không đổi dữ liệu; chưa xác minh → 403.
-      (c) study_filter và practice_removal_log với hai người dùng (tech-expert đã nêu, bảng test chưa có).
-    fix: "Thêm test_command_id_collision_across_users, test_undo_other_users_command_404, test_undo_unverified_rejected và test hai người dùng cho study_filter/practice_removal_log; dùng tests/isolation.py"
-    repro: "cài lỗi bỏ điều kiện user_id trong by_command_id → bảng test hiện tại vẫn xanh"
-  - id: P6
-    sev: orange
-    where: "plan.md:55; ADR-0013:28,41"
-    issue: >
-      Câu "ghi nhật ký không chứa nội dung tài liệu ngoài text người dùng đã nhập" ngầm cho phép ghi raw_text vào log.
-      raw_text chứa nội dung thẻ người học gõ ("sửa thẻ 2 thành …"), là nội dung ghi chú theo ADR-0013.
-      Tương tự với diff/ops trong message exception, trace và CommandRejected.detail.
-    fix: >
-      Log và trace chỉ ghi command_id, số ops, tên loại op, affected, mã lỗi. raw_text, text trong ops và diff chỉ nằm trong bảng command_log và response cho chủ sở hữu.
-      Sửa lại câu ở plan.md:55.
-    repro: "test caplog: áp lệnh có văn bản 'BIMAT-xyz' và một lệnh lỗi → chuỗi không xuất hiện trong log hay trong body lỗi"
-  - id: Y1
+      Phần sửa vòng 1 chỉ nằm ở plan.md:72-80. Các chỗ khác vẫn để chữ cũ, mâu thuẫn với nó:
+      "Xong khi" T9.2b (plan.md:25) thiếu version, payload_hash, index (user_id, screen_session_id, seq DESC), và vẫn ghi mark_undone chỉ khóa dòng log.
+      "Xong khi" T9.2d (plan.md:27) vẫn là "hoàn tác lệnh applied mới nhất của screen_session_id": không theo command_id, không not_latest, không khóa đối tượng.
+      Bảng Quyết định vẫn ghi "xóa dòng" (plan.md:65), UNIQUE thừa (plan.md:66), index theo at (plan.md:64) và câu log cũ (plan.md:55).
+      Bảng test thiếu các test của P1, P2, P3, P4, P5, P6.
+      Kịch bản: Coder hoặc tester kiểm theo "Xong khi" của T9.2d → cài undo_latest(session) như cũ vẫn đạt "Xong khi" → lỗi P3 (hoàn tác nhầm C1) lọt qua.
+    fix: "Gộp phần sửa vào từng 'Xong khi' và bảng Quyết định (sửa tại chỗ, không nối thêm), thêm 10 test vào bảng 'Test viết trước' kèm cột 'Đỏ khi'."
+    repro: "đọc plan.md:27 so với plan.md:75; grep 'xóa dòng' plan.md"
+  - id: R2-Y1
     sev: yellow
-    where: "plan.md:67; migrations 0025 command_log_guard"
-    issue: "Backfill command_id bằng UPDATE sẽ bị trigger command_log_guard chặn (chỉ cho applied→undone) nếu bảng đã có dòng."
-    fix: "ADD COLUMN command_id uuid NOT NULL DEFAULT gen_random_uuid() (không bắn trigger UPDATE), rồi DROP DEFAULT. Test migration với một dòng có sẵn."
-  - id: Y2
-    sev: yellow
-    where: "plan.md:64"
+    where: "plan.md:64,74"
     issue: >
-      Trigger của practice_removal_log nên dùng chung append_only_refuse() (0008) để T2.22 core_eraser thay một lần là xóa được tài khoản.
-      FK question theo NO ACTION như practice_log; command_id không có FK (command_log bị xóa cascade theo môn).
-      Sự kiện mới nhất nên xếp theo seq identity, không theo `at` (trùng thời điểm thì mơ hồ).
-    fix: "Dùng EXECUTE FUNCTION append_only_refuse(); thêm seq; index (user_id, question_id, seq DESC)."
-  - id: Y3
+      Question.in_practice lấy nguồn từ practice_removal_log, nhưng plan không nói expected_rev của nó lấy từ đâu.
+      Kịch bản: lệnh gỡ Q → người học bấm nút thêm lại rồi gỡ lại → undo ghi readded, ghi đè lần gỡ tay mới nhất. Không mất dữ liệu học, nhưng lệch AC5.
+    fix: "Lấy seq của sự kiện mới nhất trong practice_removal_log làm rev cho in_practice, kiểm trong cùng transaction."
+  - id: R2-Y2
     sev: yellow
-    where: "plan.md:65"
-    issue: >
-      Hoàn tác "xóa dòng" study_filter làm rev quay về 1 khi dòng được tạo lại → lỗi ABA.
-      Một lệnh cũ có expected_rev 1 có thể khớp nhầm và xóa bộ lọc mới.
-    fix: "Giữ dòng (mode NULL hoặc cờ cleared) và tăng rev, không DELETE; hoặc lấy rev từ một sequence."
-  - id: Y4
-    sev: yellow
-    where: "plan.md:66; domain/commands/undo.py:37-43"
-    issue: >
-      latest_open lọc theo phiên thì undo_revs của lệnh đã hoàn tác ở phiên khác không được nạp → báo changed_after giả (fail closed, không mất dữ liệu).
-      UNIQUE(user_id, screen_session_id, seq) thừa vì seq là identity toàn cục.
-      Nên có index (user_id, screen_session_id, seq DESC).
-    fix: "Bỏ việc thêm UNIQUE; thêm index; ghi rõ changed_after giả là chấp nhận được, hoặc nạp undo_revs theo đối tượng chứ không theo phiên."
-  - id: Y5
-    sev: yellow
-    where: "plan.md:28"
-    issue: >
-      Nhận "ops đã parse" từ client: phải đi qua op_from_json và danh sách cố định (AC6) y như đường LLM.
-      raw_text NOT BLANK (ràng buộc 0025) cần một giá trị khi client không gửi dòng lệnh.
-    fix: "Một hàm validate chung cho cả hai đường; test op ngoài danh sách gửi thẳng → 422."
+    where: "plan.md:26,74"
+    issue: "Thứ tự khóa cố định cần áp trên nhiều loại đối tượng (unit, doc_section, question, study_filter), không chỉ theo id."
+    fix: "Ghi rõ thứ tự (loại, id), dùng chung cho apply và undo."
+subtasks_check:
+  T9.2b: "2.5 h, touches có. Thiếu: trigger/version, payload_hash, index trong 'Xong khi' (R2-1, R2-3)"
+  T9.2c: "3 h ở trần; touches thiếu các đường ghi tay nếu không dùng trigger (R2-1)"
+  T9.2d: "2.5 h; 'Xong khi' còn chữ cũ (R2-3)"
+  T9.2e: "2.5 h, touches và 'Xong khi' kiểm được"
+next: "Coder sửa R2-1..3 trong plan.md (chốt ánh xạ P1 với tech-expert trước T9.2b). Hết 2 vòng plan: phiên chính hoặc tech-expert xác nhận phần sửa, không cần reviewer vòng 3."
