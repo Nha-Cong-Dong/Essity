@@ -1282,6 +1282,8 @@ export interface components {
             subject_id: string;
             /** Subject Name */
             subject_name: string;
+            /** Units */
+            units: number;
         };
         /** CandidateOut */
         CandidateOut: {
@@ -1663,6 +1665,15 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** NextStudyOut */
+        NextStudyOut: {
+            /** Empty Reason */
+            empty_reason: string | null;
+            /** Items */
+            items: components["schemas"]["SuggestionOut"][];
+            /** Links */
+            links: ("review" | "practice" | "subjects")[];
+        };
         /** NoteIn */
         NoteIn: {
             /**
@@ -2019,6 +2030,33 @@ export interface components {
             understanding: number | null;
             /** Units */
             units: components["schemas"]["UnitResult"][];
+        };
+        /** ReviewItemOut */
+        ReviewItemOut: {
+            /**
+             * Question Id
+             * Format: uuid
+             */
+            question_id: string;
+            reason: components["schemas"]["ReasonOut"];
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /** Why */
+            why: string;
+        };
+        /** ReviewOut */
+        ReviewOut: {
+            /** Items */
+            items: components["schemas"]["ReviewItemOut"][];
+            /** Minutes */
+            minutes: number;
+            /** New Saved Today */
+            new_saved_today: boolean;
+            /** Next Due Day */
+            next_due_day: string | null;
         };
         /** RevisionOut */
         RevisionOut: {
@@ -2415,6 +2453,10 @@ export interface components {
             learning_day: string;
             /** Next Day */
             next_day: string | null;
+            next_study: components["schemas"]["NextStudyOut"];
+            /** Practice */
+            practice?: null;
+            review: components["schemas"]["ReviewOut"];
             session: components["schemas"]["core_api__api__today__SessionOut"] | null;
             /**
              * State
@@ -2423,6 +2465,8 @@ export interface components {
             state: "ready" | "in_progress" | "rested" | "no_questions" | "no_subjects" | "all_exams_over";
             /** Subjects */
             subjects: components["schemas"]["TodaySubject"][];
+            /** Unfinished */
+            unfinished: components["schemas"]["UnfinishedOut"][];
         };
         /** TodaySubject */
         TodaySubject: {
@@ -2456,6 +2500,21 @@ export interface components {
             question_type: string;
             /** Ready */
             ready: number;
+        };
+        /** UnfinishedOut */
+        UnfinishedOut: {
+            /** Line */
+            line: string;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
         };
         /** UnitResult */
         UnitResult: {
@@ -4732,7 +4791,9 @@ export interface operations {
     };
     get_today_v1_today_get: {
         parameters: {
-            query?: never;
+            query?: {
+                subject_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4746,6 +4807,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

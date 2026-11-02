@@ -287,13 +287,18 @@
           "subject_name": {
             "title": "Subject Name",
             "type": "string"
+          },
+          "units": {
+            "title": "Units",
+            "type": "integer"
           }
         },
         "required": [
           "subject_id",
           "subject_name",
           "sessions",
-          "days"
+          "days",
+          "units"
         ],
         "title": "BacklogOut",
         "type": "object"
@@ -1292,6 +1297,47 @@
           "name"
         ],
         "title": "NamedOut",
+        "type": "object"
+      },
+      "NextStudyOut": {
+        "properties": {
+          "empty_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty Reason"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "links": {
+            "items": {
+              "enum": [
+                "review",
+                "practice",
+                "subjects"
+              ],
+              "type": "string"
+            },
+            "title": "Links",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "empty_reason",
+          "links"
+        ],
+        "title": "NextStudyOut",
         "type": "object"
       },
       "NoteIn": {
@@ -2313,6 +2359,74 @@
           "practice"
         ],
         "title": "ResultOut",
+        "type": "object"
+      },
+      "ReviewItemOut": {
+        "properties": {
+          "question_id": {
+            "format": "uuid",
+            "title": "Question Id",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReasonOut"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "subject_id",
+          "why",
+          "reason"
+        ],
+        "title": "ReviewItemOut",
+        "type": "object"
+      },
+      "ReviewOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "minutes": {
+            "title": "Minutes",
+            "type": "integer"
+          },
+          "new_saved_today": {
+            "title": "New Saved Today",
+            "type": "boolean"
+          },
+          "next_due_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Due Day"
+          }
+        },
+        "required": [
+          "items",
+          "minutes",
+          "next_due_day",
+          "new_saved_today"
+        ],
+        "title": "ReviewOut",
         "type": "object"
       },
       "RevisionOut": {
@@ -3416,6 +3530,16 @@
             ],
             "title": "Next Day"
           },
+          "next_study": {
+            "$ref": "#/components/schemas/NextStudyOut"
+          },
+          "practice": {
+            "title": "Practice",
+            "type": "null"
+          },
+          "review": {
+            "$ref": "#/components/schemas/ReviewOut"
+          },
           "session": {
             "anyOf": [
               {
@@ -3444,6 +3568,13 @@
             },
             "title": "Subjects",
             "type": "array"
+          },
+          "unfinished": {
+            "items": {
+              "$ref": "#/components/schemas/UnfinishedOut"
+            },
+            "title": "Unfinished",
+            "type": "array"
           }
         },
         "required": [
@@ -3453,7 +3584,10 @@
           "in_progress",
           "backlog",
           "next_day",
-          "subjects"
+          "subjects",
+          "unfinished",
+          "next_study",
+          "review"
         ],
         "title": "TodayOut",
         "type": "object"
@@ -3530,6 +3664,31 @@
           "mastered"
         ],
         "title": "TypeCountsOut",
+        "type": "object"
+      },
+      "UnfinishedOut": {
+        "properties": {
+          "line": {
+            "title": "Line",
+            "type": "string"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "subject_id",
+          "line"
+        ],
+        "title": "UnfinishedOut",
         "type": "object"
       },
       "UnitResult": {
@@ -6595,6 +6754,25 @@
     "/v1/today": {
       "get": {
         "operationId": "get_today_v1_today_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "subject_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -6605,6 +6783,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Get Today"
