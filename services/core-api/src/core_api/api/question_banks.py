@@ -25,8 +25,10 @@ from core_api.clients.storage import StorageUnavailableError
 from core_api.db.models import DocSection, Document, QuestionType
 from core_api.db.session import DbSession
 from core_api.domain.question_bank import MSG_FAILED, MSG_NOTHING, MSG_PENDING_AI
+from core_api.domain.readiness import Ready, Waiting, display_line
 from core_api.handlers.question_bank_parsed import store_parsed
 from core_api.repositories.document import DocumentRepository
+from core_api.repositories.question_list import QuestionListRepository
 from core_api.repositories.subject import SubjectRepository
 from core_api.security.rate_limit import RateLimitedError, RateLimiterUnavailableError
 
@@ -180,4 +182,80 @@ def import_bank(
         added=stored.added,
         duplicates=stored.duplicates,
         unmapped=stored.unmapped,
+    )
+
+
+class WaitingSectionOut(BaseModel):
+    id: uuid.UUID
+    number: str  # outline number, "3.4"
+    title: str
+
+
+class QuestionOut(BaseModel):
+    id: uuid.UUID
+    number: int | None  # place in the bank: "Câu 7"
+    prompt: str
+    type_name: str  # "" when the question has no type
+    origin: Literal["bank", "generated"]
+    answer_source: Literal["bank", "ai"]
+    status: Literal["ready", "waiting", "unlinked"]
+    line: str  # the one neutral line the list shows
+    waiting_sections: list[WaitingSectionOut]
+
+
+class TypeCountOut(BaseModel):
+    name: str
+    count: int
+
+
+class QuestionListOut(BaseModel):
+    total: int
+    ready: int
+    types: list[TypeCountOut]
+    questions: list[QuestionOut]
+
+
+@router.get("/subjects/{subject_id}/questions")
+def list_questions(
+    subject_id: uuid.UUID, user: VerifiedUser, session: DbSession
+) -> QuestionListOut:
+    """The subject's bank questions with readiness (T8.2, US-14 AC3-AC6)."""
+    if SubjectRepository(session, user.id).get(subject_id) is None:
+        raise _error(status.HTTP_404_NOT_FOUND, "subject_not_found")
+    listed = QuestionListRepository(session, user.id).list(subject_id)
+    out: list[QuestionOut] = []
+    counts: dict[str, int] = {}
+    for q in listed:
+        counts[q.type_name] = counts.get(q.type_name, 0) + 1
+        state = q.state
+        waiting = (
+            [
+                WaitingSectionOut(id=s.id, number=s.label, title=q.waiting_titles[s.id])
+                for s in state.sections
+            ]
+            if isinstance(state, Waiting)
+            else []
+        )
+        out.append(
+            QuestionOut(
+                id=q.id,
+                number=q.number,
+                prompt=q.prompt,
+                type_name=q.type_name,
+                origin="generated" if q.origin == "generated" else "bank",
+                answer_source="ai" if q.answer_source == "ai" else "bank",
+                status="ready"
+                if isinstance(state, Ready)
+                else "waiting"
+                if isinstance(state, Waiting)
+                else "unlinked",
+                line=display_line(state),
+                waiting_sections=waiting,
+            )
+        )
+    return QuestionListOut(
+        total=len(out),
+        ready=sum(1 for q in out if q.status == "ready"),
+        types=[TypeCountOut(name=n, count=c) for n, c in counts.items()],
+        questions=out,
     )
