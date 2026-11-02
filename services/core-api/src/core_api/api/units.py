@@ -26,7 +26,7 @@ from core_api.repositories.review import (
 )
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
 from core_api.repositories.today import TodayRepository
-from core_api.repositories.unit import KnowledgeUnitRepository
+from core_api.repositories.unit import DraftRepository, KnowledgeUnitRepository
 from core_api.services.today import session_steps
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
@@ -35,6 +35,24 @@ router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 class SkipIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     review_session_id: uuid.UUID | None = None
+
+
+class SectionUnitOut(BaseModel):
+    id: uuid.UUID
+    title: str
+    content: str
+    kind: str
+    status: str
+
+
+class SectionGroupOut(BaseModel):
+    section_id: uuid.UUID | None  # None: the cards not placed in any section
+    section_title: str | None
+    units: list[SectionUnitOut]
+
+
+class UnitsBySectionOut(BaseModel):
+    groups: list[SectionGroupOut]
 
 
 class SkipOut(BaseModel):
@@ -138,3 +156,36 @@ def unskip_unit(
             raise _error(status.HTTP_404_NOT_FOUND, "session_not_found")
     KnowledgeUnitRepository(session, user.id).unskip(unit_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/subjects/{subject_id}/units/by-section")
+def units_by_section(
+    subject_id: uuid.UUID, user: VerifiedUser, session: DbSession
+) -> UnitsBySectionOut:
+    """The subject's draft and canonical cards grouped by outline section (T7.12d, US-02b AC14);
+    a card in several sections is listed in each, the cards in none come last."""
+    if SubjectRepository(session, user.id).get(subject_id) is None:
+        raise _error(status.HTTP_404_NOT_FOUND, "subject_not_found")
+    sections, units, links = DraftRepository(session, user.id).by_section(subject_id)
+    out = {
+        u.id: SectionUnitOut(
+            id=u.id, title=u.title, content=u.summary, kind=u.kind, status=u.status
+        )
+        for u in units
+    }
+    members: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for unit_id, section_id in links:
+        members.setdefault(section_id, set()).add(unit_id)
+    placed = {unit_id for unit_id, _ in links}
+    groups = [
+        SectionGroupOut(
+            section_id=sec.id,
+            section_title=sec.title,
+            units=[o for uid, o in out.items() if uid in members[sec.id]],
+        )
+        for sec in sections
+    ]
+    loose = [o for uid, o in out.items() if uid not in placed]
+    if loose:
+        groups.append(SectionGroupOut(section_id=None, section_title=None, units=loose))
+    return UnitsBySectionOut(groups=groups)
