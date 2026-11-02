@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { FilterChip } from "@/components/ui/filter-chip";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { graphFixture, SUBJECT_NAME, type GraphState } from "@/lib/fixtures/graph";
-import { COPY, EDGE_KINDS, EDGE_STYLE, suggestList, viewGraph, type EdgeKind } from "@/lib/graph";
+import { graphFixture, SUBJECT_NAME, type GraphFixture, type GraphState } from "@/lib/fixtures/graph";
+import { COPY, EDGE_KINDS, EDGE_STYLE, suggestList, viewGraph, type EdgeKind, type GraphData } from "@/lib/graph";
 
 import { DetailPanel, type Selection } from "./detail-panel";
 import { EdgeList } from "./edge-list";
@@ -51,15 +51,28 @@ function Notice({ children, action }: { children: React.ReactNode; action?: Reac
   );
 }
 
-export function GraphScreen({ state }: { state: GraphState }) {
+/** T9.10: the screen on real data. The section filter is the URL's `section`, read again by the page. */
+export type LiveGraph = { subjectId: string; subjectName: string; data: GraphData };
+
+export function GraphScreen({ state = "few", live }: { state?: GraphState; live?: LiveGraph }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [retried, setRetried] = useState(false);
-  const fixture = useMemo(() => graphFixture(retried ? "few" : state), [state, retried]);
+  const fixture = useMemo<GraphFixture>(
+    () =>
+      live
+        ? { data: live.data, sectionId: null, kinds: [...EDGE_KINDS], selectedId: null, view: "graph", status: "ready" }
+        : graphFixture(retried ? "few" : state),
+    [state, retried, live],
+  );
+  const subjectName = live ? live.subjectName : SUBJECT_NAME;
+  const subjectHref = live ? `/subjects/${live.subjectId}` : "#";
   const reduced = useSyncExternalStore(subscribeReduced, reducedNow, () => false);
 
-  const section = params.has("section") ? params.get("section")! : (fixture.sectionId ?? ALL);
+  const wanted = params.has("section") ? params.get("section")! : (fixture.sectionId ?? ALL);
+  // A section that is not in the data (a stale link) shows the whole subject.
+  const section = live && !live.data.sections.some((s) => s.id === wanted) ? ALL : wanted;
   const kinds = useMemo(() => {
     const raw = params.get("edge");
     if (raw === null) return new Set<EdgeKind>(fixture.kinds);
@@ -160,8 +173,8 @@ export function GraphScreen({ state }: { state: GraphState }) {
       onKeyDownCapture={() => (lastKey.current = true)}
       onPointerDownCapture={() => (lastKey.current = false)}
     >
-      <a href="#" className="inline-flex min-h-11 items-center text-meta underline">
-        Về môn {SUBJECT_NAME}
+      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta underline">
+        Về môn {subjectName}
       </a>
       <h1 className="m-0 text-title">Đồ thị</h1>
 
@@ -224,7 +237,7 @@ export function GraphScreen({ state }: { state: GraphState }) {
           {noLinks ? (
             <div className="rounded-sheet bg-sheet p-6 shadow-sheet" data-empty>
               <p className="m-0 text-read">{COPY.empty}</p>
-              <a href="#" className="mt-3 inline-flex min-h-11 items-center text-meta underline">
+              <a href={subjectHref} className="mt-3 inline-flex min-h-11 items-center text-meta underline">
                 Về môn
               </a>
             </div>
@@ -298,7 +311,7 @@ export function GraphScreen({ state }: { state: GraphState }) {
             switchRef.current?.focus();
           }}
           onClose={() => setSelection(null)}
-          onRemoveEdge={(id) => {
+          onRemoveEdge={live ? undefined : (id) => {
             // Static preview: the unlink works on the fixture only; T9.10 calls the T9.2 command.
             setRemoved((prev) => new Set(prev).add(id));
             setSelection(null);

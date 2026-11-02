@@ -7,7 +7,16 @@ from collections.abc import Iterable, Sequence
 from sqlalchemy import exists, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from core_api.db.models import Anchor, KnowledgeUnit, UnitEdge, UnitSection
+from core_api.db.models import (
+    Anchor,
+    DocSection,
+    Document,
+    KnowledgeUnit,
+    Question,
+    QuestionUnit,
+    UnitEdge,
+    UnitSection,
+)
 from core_api.domain.graph import EdgeKey, EdgeKind, edge_key
 from core_api.repositories.base import UserScopedRepository
 
@@ -108,3 +117,99 @@ class UnitEdgeRepository(UserScopedRepository[UnitEdge]):
                 UnitEdge.kind == kind.value,
             )
         ).one_or_none()
+
+    # --- the graph screen (T9.10, US-19 AC3-AC4): reads only, all of this user's ---
+
+    def graph_sections(self, subject_id: uuid.UUID) -> list[DocSection]:
+        """Every outline section of the subject, in outline order."""
+        return list(
+            self.session.scalars(
+                select(DocSection)
+                .where(DocSection.user_id == self.user_id, DocSection.subject_id == subject_id)
+                .order_by(DocSection.document_id, DocSection.ord, DocSection.id)
+            )
+        )
+
+    def graph_units(self, subject_id: uuid.UUID) -> list[KnowledgeUnit]:
+        """The canonical, not retired cards: the only nodes the graph draws."""
+        return list(
+            self.session.scalars(
+                select(KnowledgeUnit)
+                .where(
+                    KnowledgeUnit.user_id == self.user_id,
+                    KnowledgeUnit.subject_id == subject_id,
+                    KnowledgeUnit.status == "canonical",
+                    KnowledgeUnit.retired_at.is_(None),
+                )
+                .order_by(KnowledgeUnit.created_at, KnowledgeUnit.id)
+            )
+        )
+
+    def graph_unit_sections(
+        self, unit_ids: Sequence[uuid.UUID]
+    ) -> dict[uuid.UUID, list[uuid.UUID]]:
+        """Section ids per card in the order written (the first is the card's own place)."""
+        found: dict[uuid.UUID, list[uuid.UUID]] = {}
+        rows = self.session.execute(
+            select(UnitSection.unit_id, UnitSection.section_id)
+            .where(UnitSection.user_id == self.user_id, UnitSection.unit_id.in_(list(unit_ids)))
+            .order_by(UnitSection.created_at, UnitSection.id)
+        )
+        for unit_id, section_id in rows:
+            found.setdefault(unit_id, []).append(section_id)
+        return found
+
+    def graph_edges(self, unit_ids: Sequence[uuid.UUID]) -> list[UnitEdge]:
+        """Active edges with BOTH ends among `unit_ids` (so never one that touches a draft, a
+        retired or a hidden card)."""
+        ids = list(unit_ids)
+        return list(
+            self.session.scalars(
+                self._select()
+                .where(
+                    UnitEdge.status == "active",
+                    UnitEdge.src_unit_id.in_(ids),
+                    UnitEdge.dst_unit_id.in_(ids),
+                )
+                .order_by(UnitEdge.created_at, UnitEdge.id)
+            )
+        )
+
+    def graph_anchors(
+        self, unit_ids: Sequence[uuid.UUID]
+    ) -> dict[uuid.UUID, list[tuple[uuid.UUID, str | None, int | None, str]]]:
+        """(anchor id, document name, page, quote) per card, the first `MAX_QUOTES` of each."""
+        out: dict[uuid.UUID, list[tuple[uuid.UUID, str | None, int | None, str]]] = {}
+        rows = self.session.execute(
+            select(
+                Anchor.id, Anchor.unit_id, Document.short_name, Anchor.page_no, Anchor.quote_text
+            )
+            .outerjoin(
+                Document, (Document.id == Anchor.document_id) & (Document.user_id == self.user_id)
+            )
+            .where(Anchor.user_id == self.user_id, Anchor.unit_id.in_(list(unit_ids)))
+            .order_by(Anchor.created_at, Anchor.id)
+        )
+        for anchor_id, unit_id, name, page, quote in rows:
+            held = out.setdefault(unit_id, [])
+            if len(held) < MAX_QUOTES:
+                held.append((anchor_id, name, page, quote[:MAX_QUOTE_CHARS]))
+        return out
+
+    def graph_questions(self, unit_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, list[str]]:
+        """The questions that need each card (up to `MAX_QUOTES`), cut for display."""
+        out: dict[uuid.UUID, list[str]] = {}
+        rows = self.session.execute(
+            select(QuestionUnit.unit_id, Question.prompt)
+            .join(
+                Question,
+                (Question.id == QuestionUnit.question_id) & (Question.user_id == self.user_id),
+            )
+            .where(QuestionUnit.user_id == self.user_id, QuestionUnit.unit_id.in_(list(unit_ids)))
+            .order_by(Question.created_at, Question.id)
+        )
+        for unit_id, prompt in rows:
+            held = out.setdefault(unit_id, [])
+            if len(held) < MAX_QUOTES:
+                held.append(prompt[:300])
+        return out

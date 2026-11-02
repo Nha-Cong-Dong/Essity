@@ -49,7 +49,13 @@ export type GraphEdge = {
   evidence: string;
 };
 export type GraphSection = { id: string; title: string; parentId: string | null };
-export type GraphData = { sections: GraphSection[]; cards: GraphCard[]; edges: GraphEdge[] };
+export type GraphData = {
+  sections: GraphSection[];
+  cards: GraphCard[];
+  edges: GraphEdge[];
+  /** Cards core-api left out (its own 300 cap); added to what the view cuts. */
+  hidden?: number;
+};
 
 export type GraphView = {
   cards: GraphCard[];
@@ -89,7 +95,7 @@ export function viewGraph(data: GraphData, sectionId: string | null, kinds: Read
   return {
     cards,
     edges,
-    hidden: inScope.length - cards.length,
+    hidden: inScope.length - cards.length + (data.hidden ?? 0),
     unlinked: new Set(cards.filter((c) => !linked.has(c.id)).map((c) => c.id)),
   };
 }

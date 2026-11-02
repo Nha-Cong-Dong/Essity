@@ -22,7 +22,8 @@ type Props = {
   onSelectCard: (id: string) => void;
   onBackToGraph: () => void;
   onClose: () => void;
-  onRemoveEdge: (id: string) => void;
+  /** Undefined hides the unlink button (the live screen: edge commands are the command bar's, T9.2). */
+  onRemoveEdge: ((id: string) => void) | undefined;
 };
 
 const QUIET =
@@ -141,7 +142,7 @@ function EdgeDetail({
   edge: GraphEdge;
   view: GraphView;
   unlink: Props["unlink"];
-  onRemoveEdge: (id: string) => void;
+  onRemoveEdge: Props["onRemoveEdge"];
 }) {
   const from = view.cards.find((c) => c.id === edge.from);
   const to = view.cards.find((c) => c.id === edge.to);
@@ -157,16 +158,18 @@ function EdgeDetail({
         <Quote>{edge.evidence}</Quote>
         <SourceButton label={`${from?.title ?? ""} và ${to?.title ?? ""}`} />
       </section>
-      <div className="mt-2 flex flex-col gap-2 border-t border-line pt-3">
-        <Button type="button" variant="secondary" className="self-start" onClick={() => onRemoveEdge(edge.id)}>
-          Gỡ liên kết này
-        </Button>
-        {unlink === "failed" && (
-          <p role="status" className="m-0 text-caption">
-            Chưa có gì thay đổi. Thử lại.
-          </p>
-        )}
-      </div>
+      {onRemoveEdge && (
+        <div className="mt-2 flex flex-col gap-2 border-t border-line pt-3">
+          <Button type="button" variant="secondary" className="self-start" onClick={() => onRemoveEdge(edge.id)}>
+            Gỡ liên kết này
+          </Button>
+          {unlink === "failed" && (
+            <p role="status" className="m-0 text-caption">
+              Chưa có gì thay đổi. Thử lại.
+            </p>
+          )}
+        </div>
+      )}
     </>
   );
 }

@@ -12,6 +12,7 @@ from core_api.api import (
     export,
     generated_questions,
     grades,
+    graph,
     health,
     me,
     outline,
@@ -81,6 +82,7 @@ app.include_router(practice_types.router)
 app.include_router(generated_questions.router)
 app.include_router(question_banks.router)
 app.include_router(units.router)
+app.include_router(graph.router)
 app.include_router(sessions.router)
 app.include_router(session_confirm.router)
 app.include_router(session_notes.router)

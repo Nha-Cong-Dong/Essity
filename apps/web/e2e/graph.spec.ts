@@ -156,3 +156,19 @@ test("DESIGN §6.15: with reduced motion the layout is placed at once", async ({
   const b = await canvas.evaluate((el) => (el as CyHost).__cy!.nodes(".card").first().renderedPosition());
   expect(b).toEqual(a);
 });
+
+test.describe("T9.10 live screen", () => {
+  // Red when: the real-data screen offers to unlink (edge commands are the command bar's), or its
+  // way back does not go to the subject.
+  test("US-19 AC4: a link shows its evidence and no unlink; the way back is the subject", async ({ page }) => {
+    await open(page, 390, "/design-preview/graph?live=1&view=list");
+    await expect(page.getByRole("link", { name: /Về môn Mạng máy tính/ })).toHaveAttribute(
+      "href",
+      "/subjects/c3d4e5f6-7a8b-4c9d-8e1f-2a3b4c5d6e7f",
+    );
+    await page.locator("[data-graph-screen] button", { hasText: "Bắt tay ba bước" }).first().click();
+    await expect(page.locator("[data-tray]")).toContainText("Liên kết");
+    await expect(page.getByRole("button", { name: "Gỡ liên kết này" })).toHaveCount(0);
+    expect(await noSideScroll(page)).toBe(true);
+  });
+});

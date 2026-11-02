@@ -36,7 +36,8 @@ function elements(view: GraphView, sections: GraphSection[]): ElementDefinition[
     .filter((s) => used.has(s.id))
     .map((s) => ({ data: { id: `s:${s.id}`, label: s.title, isSection: true }, selectable: false, grabbable: false }));
   for (const c of view.cards) {
-    out.push({ data: { id: c.id, parent: `s:${c.sectionId}`, label: shortLabel(c.title), title: c.title }, classes: "card" });
+    const parent = sections.some((s) => s.id === c.sectionId) ? { parent: `s:${c.sectionId}` } : {};
+    out.push({ data: { id: c.id, ...parent, label: shortLabel(c.title), title: c.title }, classes: "card" });
   }
   for (const e of view.edges) {
     out.push({ data: { id: e.id, source: e.from, target: e.to, kind: e.kind }, classes: e.kind });
