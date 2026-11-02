@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import select, text
-from sqlalchemy.orm import Session
 
 from core_api.db.models import StudyFilter
+from core_api.repositories.base import UserScopedRepository
 
 
 @dataclass(frozen=True)
@@ -22,12 +22,17 @@ class FilterState:
 NO_FILTER = FilterState(None, None, 0)
 
 
-class StudyFilterRepository:
-    def __init__(self, session: Session, user_id: uuid.UUID) -> None:
-        if not isinstance(user_id, uuid.UUID):  # pyright: ignore[reportUnnecessaryIsInstance]
-            raise TypeError("user_id must be a UUID")
-        self.session = session
-        self.user_id = user_id
+class StudyFilterRepository(UserScopedRepository[StudyFilter]):  # pyright: ignore[reportInvalidTypeArguments]
+    """Scoped like every repository (the structural rule). The key is (user, subject), not an
+    `id`, so the inherited by-id methods do not apply: `state(subject_id)` is the read."""
+
+    model = StudyFilter  # pyright: ignore[reportAssignmentType]
+
+    def get(self, id: uuid.UUID) -> StudyFilter | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        raise NotImplementedError("a filter is read by subject: use `state`")
+
+    def delete(self, id: uuid.UUID) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride]
+        raise NotImplementedError("a filter is cleared, never deleted (ABA): use `clear`")
 
     def _row(self, subject_id: uuid.UUID, *, lock: bool = False) -> StudyFilter | None:
         query = select(StudyFilter).where(
@@ -51,11 +56,12 @@ class StudyFilterRepository:
         )
         return self._state(self._row(subject_id, lock=True))
 
-    def get(self, subject_id: uuid.UUID) -> FilterState:
+    def state(self, subject_id: uuid.UUID) -> FilterState:
         return self._state(self._row(subject_id))
 
     def set(self, subject_id: uuid.UUID, mode: str, until: date) -> FilterState:
-        """Put a filter on the subject; the revision goes up by one (1 for a new row)."""
+        """Put a filter on the subject; the revision goes up by one (1 for a new row). Call `lock`
+        first: without it two writers of a new row race on the key."""
         return self._write(subject_id, mode, until)
 
     def clear(self, subject_id: uuid.UUID) -> FilterState:

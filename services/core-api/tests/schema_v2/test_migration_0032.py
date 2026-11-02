@@ -409,7 +409,7 @@ def test_rebuild_keeps_removed_at_of_a_question_without_log_events(practice: Pra
 def test_study_filter_set_clear_keeps_the_row_and_raises_rev(world: World) -> None:
     # Red when: clear deletes the row (rev returns to 1: ABA) or rev stays when only mode changes.
     repo = StudyFilterRepository(world.session, world.alice.id)
-    assert repo.get(world.subject.id).rev == 0
+    assert repo.state(world.subject.id).rev == 0
     assert repo.lock(world.subject.id).rev == 0
     assert repo.set(world.subject.id, "only", date(2026, 11, 9)).rev == 1
     assert repo.set(world.subject.id, "defer", date(2026, 11, 10)).rev == 2
@@ -431,7 +431,7 @@ def test_study_filter_is_isolated_and_refuses_unknown_mode_or_foreign_subject(
     alice = StudyFilterRepository(world.session, world.alice.id)
     alice.set(world.subject.id, "only", date(2026, 11, 9))
     bob = StudyFilterRepository(world.session, world.bob.id)
-    assert bob.get(world.subject.id).rev == 0
+    assert bob.state(world.subject.id).rev == 0
     with pytest.raises(IntegrityError), world.session.begin_nested():
         bob.set(world.subject.id, "only", date(2026, 11, 9))
     with pytest.raises(IntegrityError), world.session.begin_nested():

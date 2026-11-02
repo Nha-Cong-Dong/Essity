@@ -9,9 +9,9 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
 from core_api.db.models import PracticeRemovalLog
+from core_api.repositories.base import UserScopedRepository
 
 
 @dataclass(frozen=True)
@@ -31,12 +31,14 @@ def _event(row: PracticeRemovalLog) -> RemovalEvent:
     return RemovalEvent(row.id, row.question_id, row.action, row.at, row.command_id)
 
 
-class PracticeRemovalRepository:
-    def __init__(self, session: Session, user_id: uuid.UUID) -> None:
-        if not isinstance(user_id, uuid.UUID):  # pyright: ignore[reportUnnecessaryIsInstance]
-            raise TypeError("user_id must be a UUID")
-        self.session = session
-        self.user_id = user_id
+class PracticeRemovalRepository(UserScopedRepository[PracticeRemovalLog]):  # pyright: ignore[reportInvalidTypeArguments]
+    """Scoped like every repository (the structural rule). The model is not `UserOwned` (its key
+    is a counter), but it has `id` and `user_id`, which is all `_select()` needs."""
+
+    model = PracticeRemovalLog  # pyright: ignore[reportAssignmentType]
+
+    def delete(self, id: uuid.UUID) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride]
+        raise NotImplementedError("a removal event is kept for good")
 
     def append(
         self,

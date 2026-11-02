@@ -174,7 +174,8 @@ def fill_command_log(engine: Engine, user: uuid.UUID, subject: uuid.UUID) -> Non
         connection.execute(
             text(
                 "INSERT INTO command_log (id, user_id, subject_id, raw_text, ops_json, inverse_json,"  # noqa: E501
-                " status, affected_count) VALUES (gen_random_uuid(), :u, :s, 'x', '[]', '[]', 'applied', 0)"  # noqa: E501
+                " status, affected_count, command_id, payload_hash) VALUES (gen_random_uuid(), :u,"  # noqa: E501
+                " :s, 'x', '[]', '[]', 'applied', 0, gen_random_uuid(), repeat('0', 64))"
             ),
             {"u": user, "s": subject},
         )
