@@ -104,7 +104,7 @@ function parts(row: Locator) {
   const exam = row.getByText(/^thi \d{2}\/\d{2}\/\d{4}$/);
   return {
     cover: row.locator('span[aria-hidden="true"]').first(),
-    name: row.locator('[id$="-name"]'),
+    name: row.locator('a[id$="-name"]'),
     date: exam.locator("xpath=.."),
     halves: exam.locator("xpath=../span"),
     edit: row.getByRole("button", { name: /^Sửa / }),
