@@ -93,6 +93,40 @@ def uv_sync(path: Path) -> list[str]:
     return notes
 
 
+def pnpm_command() -> list[str]:
+    """pnpm as `node pnpm.js` from the active node's corepack, else `pnpm` on PATH."""
+    node = shutil.which("node")
+    if node:
+        js = Path(node).parent / "node_modules" / "corepack" / "dist" / "pnpm.js"
+        if js.exists():
+            return [node, str(js)]
+    return [shutil.which("pnpm") or "pnpm"]
+
+
+def node_install(path: Path) -> list[str]:
+    """Give the worktree its own node_modules from the shared pnpm store (never a junction into
+    the main checkout: RETRO-FIX4, three nights of the main checkout losing its node_modules).
+    Offline first; if the store lacks a package, a normal frozen install. Returns warnings."""
+    if not (path / "pnpm-lock.yaml").exists():
+        return []
+    lock = [sys.executable, str(Path(__file__).resolve().parent / "with_lock.py"), "web", "--"]
+    base = [*lock, *pnpm_command(), "install", "--frozen-lockfile"]
+    result = subprocess.run(
+        [*base, "--offline"], cwd=path, check=False, capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        return []
+    print(
+        f"lane: offline pnpm install failed in {path} (store missing a package?); "
+        "retrying with the network",
+        file=sys.stderr,
+    )
+    result = subprocess.run(base, cwd=path, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        return [f"lane: pnpm install failed in {path}: {result.stderr.strip()[-300:]}"]
+    return []
+
+
 HOOK_TEMPLATE = """#!/bin/sh
 # installed by lane.py up: a lane worktree may only commit/push on its card's branch
 guard="{repo}/scripts/hooks/branch_guard.py"
@@ -141,6 +175,7 @@ def up(
     base: str = "origin/main",
     create_db: bool = True,
     sync: Callable[[Path], list[str]] | None = uv_sync,
+    node: Callable[[Path], list[str]] | None = node_install,
 ) -> Path:
     path = lane_path(repo, lane)
     if path.exists() and not _is_worktree(repo, path):
@@ -164,7 +199,7 @@ def up(
         # the superuser creates them (`core` has no CREATEDB), see agent_env.ensure_database
         ensure_database(f"core_test_l{lane}")
         ensure_database(f"ai_test_l{lane}")
-    for note in sync(path) if sync else []:
+    for note in [*(sync(path) if sync else []), *(node(path) if node else [])]:
         print(note, file=sys.stderr)
     return path
 
@@ -758,6 +793,7 @@ def main(argv: list[str]) -> int:
     p_up.add_argument("--no-db", action="store_true")
     p_up.add_argument("--no-preflight", action="store_true")
     p_up.add_argument("--no-sync", action="store_true", help="skip `uv sync` of the services")
+    p_up.add_argument("--no-node", action="store_true", help="skip the per-worktree pnpm install")
     p_env = sub.add_parser("env")
     p_env.add_argument("lane", nargs="?")
     p_env.add_argument("--for-review", type=Path, help="worktree: env of the lane that owns it")
@@ -799,7 +835,10 @@ def main(argv: list[str]) -> int:
                 if not ok:
                     return 1
             sync = None if args.no_sync else uv_sync
-            print(up(repo, parse_lane(args.lane), args.branch, args.base, not args.no_db, sync))
+            node = None if args.no_node else node_install
+            print(
+                up(repo, parse_lane(args.lane), args.branch, args.base, not args.no_db, sync, node)
+            )
         elif args.action == "stop-all":
             print("\n".join(stop_all(repo)))
         elif args.action == "gc":
