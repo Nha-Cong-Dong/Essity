@@ -186,9 +186,8 @@ def test_remove_from_practice_inverse_holds_in_practice_and_log_rev(cw: CmdWorld
     q, cid = cw.questions[0], uuid.uuid4()
     cw.run([{"kind": "question_remove_from_practice", "question": str(q.id)}], command_id=cid)
     row = CommandLogRepository(cw.db, cw.user.id).by_command_id(cid)
-    assert row and row.undo_revs_json
+    assert row
     (revert,) = [r for e in row.inverse_json for r in e["reverts"]]
     rev = PracticeRemovalRepository(cw.db, cw.user.id).rev(q.id)
     assert revert["table"] == "practice_removal" and revert["before"] == {"in_practice": True}
     assert rev > 0 and revert["expected_rev"] == rev
-    assert row.undo_revs_json[f"practice_removal:{q.id}"] == rev

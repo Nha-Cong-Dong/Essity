@@ -27,13 +27,22 @@ import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import text
+from sqlalchemy import delete, select, text, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from core_api.db.models import CommandLog, DocSection, KnowledgeUnit, Question
+from core_api.db.models import (
+    Anchor,
+    CommandLog,
+    DocSection,
+    KnowledgeUnit,
+    Question,
+    UnitLineage,
+    UnitSection,
+)
 from core_api.domain import outline as rules
 from core_api.domain.commands.inverse import Change, diff
 from core_api.domain.commands.registry import (
@@ -106,6 +115,7 @@ __all__ = [
     "CommandRequest",
     "CommandService",
     "LockTargets",
+    "UndoOutcome",
 ]
 
 type Parser = Callable[[str], Sequence[Mapping[str, Any]]]
@@ -132,6 +142,15 @@ class ApplyOutcome:
     affected: int
     op_kinds: list[str]
     replayed: bool = False
+
+
+@dataclass(frozen=True)
+class UndoOutcome:
+    command_id: uuid.UUID
+    status: str  # always undone
+    diff: list[dict[str, Any]]  # what the undo changed: the apply's diff, read backwards
+    affected: int
+    replayed: bool = False  # the command was already undone: nothing more was done
 
 
 class _Raced(Exception):
@@ -246,6 +265,10 @@ class _Ctx:
         if key not in self.reverts:
             self.reverts[key] = {"table": table, "id": str(id_), "before": before}
             self.owner[key] = owner
+        else:  # a second op on the same row: the fields it adds keep their first value too
+            kept = self.reverts[key]["before"]
+            if kept is not None and before is not None:
+                self.reverts[key]["before"] = {**before, **kept}
 
 
 def _row(section: DocSection) -> rules.SectionRow:
@@ -365,12 +388,9 @@ class CommandService:
         self.session.flush()
 
         entries = self._entries(ctx, diff(start, state))
-        undo_revs: dict[str, int] = {}
-        for entry in entries:
+        for entry in entries:  # `undo_revs_json` stays empty: the undo writes it, once
             for revert in entry["reverts"]:
-                rev = self._rev(revert["table"], uuid.UUID(revert["id"]))
-                revert["expected_rev"] = rev
-                undo_revs[f"{revert['table']}:{revert['id']}"] = rev
+                revert["expected_rev"] = self._rev(revert["table"], uuid.UUID(revert["id"]))
         row = self.log.add_new(
             command_id=command_id,
             payload_hash=digest,
@@ -380,7 +400,6 @@ class CommandService:
             affected_count=len(entries),
             screen_session_id=session_id,
             subject_id=self._subject_of(ctx),
-            undo_revs=undo_revs,
         )
         if row is None:
             raise _Raced
@@ -575,6 +594,7 @@ class CommandService:
                 image["section_ids"] = [str(s) for s in sections.get(unit.id, [])]
             else:
                 image["anchor_ids"] = [str(a.id) for a in anchors.get(unit.id, [])]
+                image["merged_into"] = str(units[0].id)
             ctx.keep("unit", unit.id, image, ("card", unit.id))
         review.merge(study_id, [u.id for u in units])
 
@@ -723,16 +743,24 @@ class CommandService:
         return entries
 
     def _rev(self, table: str, id_: uuid.UUID) -> int:
+        found = self._rev_or_none(table, id_)
+        assert found is not None
+        return found
+
+    def _rev_or_none(self, table: str, id_: uuid.UUID) -> int | None:
+        """The revision now; None when the row is gone (or is not this user's)."""
         uid = self.user_id
-        if table == "doc_section":
-            return DocSectionRepository(self.session, uid).by_ids([id_])[0].version
-        if table == "question":
-            return QuestionRepository(self.session, uid).by_ids([id_])[0].version
-        if table == "unit":
-            return KnowledgeUnitRepository(self.session, uid).by_ids([id_])[0].version
         if table == "practice_removal":
             return PracticeRemovalRepository(self.session, uid).rev(id_)
-        return StudyFilterRepository(self.session, uid).state(id_).rev
+        if table == "study_filter":
+            return StudyFilterRepository(self.session, uid).state(id_).rev
+        repos: dict[str, DocSectionRepository | QuestionRepository | KnowledgeUnitRepository] = {
+            "doc_section": DocSectionRepository(self.session, uid),
+            "question": QuestionRepository(self.session, uid),
+            "unit": KnowledgeUnitRepository(self.session, uid),
+        }
+        rows = repos[table].by_ids([id_])
+        return rows[0].version if rows else None
 
     @staticmethod
     def _subject_of(ctx: _Ctx) -> uuid.UUID | None:
@@ -741,3 +769,214 @@ class CommandService:
         found |= {q.subject_id for q in ctx.questions.values()}
         found |= ctx.subjects
         return next(iter(found)) if len(found) == 1 else None
+
+    # --- undo ----------------------------------------------------------------------------
+
+    def undo(self, command_id: uuid.UUID, *, now: datetime | None = None) -> UndoOutcome:
+        """Undo one command (US-18 AC5): the newest applied one of its screen session, and only if
+        nothing it wrote has moved on since. Raises `CommandRejected`: `not_owned` (no such
+        command of this user: 404), `not_latest` (409), `changed_after` (409, the detail names the
+        object). An already undone command answers with its result and changes nothing.
+
+        The same locks as apply, in the same order (the command's advisory lock, its row, then
+        `LockTargets`); revisions are read after them, in this transaction, and each write says
+        `WHERE version = expected`. A refusal rolls back every write of the undo."""
+        stored = self.log.by_command_id(command_id)
+        if stored is None:
+            raise CommandRejected("not_owned")
+        if stored.status == "undone":
+            return self._undone(stored, replayed=True)
+        self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+            {"key": f"command:{self.user_id}:{command_id}"},
+        )
+        row = self.log.lock(command_id)
+        assert row is not None
+        if row.status == "undone":  # a twin undo finished while this one waited
+            return self._undone(row, replayed=True)
+        if row.screen_session_id is not None:
+            newest = self.log.latest_open(row.screen_session_id)
+            if newest is None or newest.id != row.id:
+                raise CommandRejected("not_latest")
+        try:
+            with self.session.begin_nested():
+                outcome = self._undo_locked(row, now or datetime.now(UTC))
+        except IntegrityError:
+            raise CommandRejected("conflict") from None
+        logger.info("command undone id=%s affected=%d", command_id, outcome.affected)
+        return outcome
+
+    def _undo_locked(self, row: CommandLog, now: datetime) -> UndoOutcome:
+        entries: list[Entry] = list(row.inverse_json)
+        reverts: list[dict[str, Any]] = [r for e in entries for r in e["reverts"]]
+        self._lock_for_undo(reverts)
+        self.session.expire_all()
+        expected = {f"{r['table']}:{r['id']}": r["expected_rev"] for r in reverts}
+        if row.screen_session_id is not None:
+            for later in self.log.after(row.screen_session_id, row.seq):
+                left_by: dict[str, int] = later.undo_revs_json or {}
+                for key, rev in left_by.items():  # undone since: it left revs
+                    if key in expected:
+                        expected[key] = rev
+        for revert in reverts:
+            now_rev = self._rev_or_none(revert["table"], uuid.UUID(revert["id"]))
+            if now_rev != expected[f"{revert['table']}:{revert['id']}"]:
+                raise CommandRejected("changed_after", f"{revert['table']} {revert['id']}")
+        for revert in reversed(reverts):
+            self._restore(revert, expected[f"{revert['table']}:{revert['id']}"], row, now)
+        self.session.flush()
+        self.session.expire_all()
+        left = {
+            f"{r['table']}:{r['id']}": self._rev(r["table"], uuid.UUID(r["id"])) for r in reverts
+        }
+        done = self.log.mark_undone(row.command_id, undo_revs=left, at=now)
+        if done is None:  # a newer command of the session landed first
+            raise CommandRejected("not_latest")
+        return self._undone(done, replayed=False)
+
+    def _undone(self, row: CommandLog, *, replayed: bool) -> UndoOutcome:
+        shown: list[dict[str, Any]] = []
+        for entry in row.inverse_json:
+            item = self._shown(entry)
+            item["verb"] = "reverted"
+            item["before"], item["after"] = item["after"], item["before"]
+            shown.append(item)
+        return UndoOutcome(row.command_id, "undone", shown, row.affected_count, replayed)
+
+    def _lock_for_undo(self, reverts: Sequence[dict[str, Any]]) -> None:
+        targets = LockTargets()
+        by_table: dict[str, set[uuid.UUID]] = {}
+        for revert in reverts:
+            by_table.setdefault(revert["table"], set()).add(uuid.UUID(revert["id"]))
+        sections = DocSectionRepository(self.session, self.user_id).by_ids(
+            sorted(by_table.get("doc_section", ()))
+        )
+        targets.documents = {s.document_id for s in sections}
+        targets.questions = by_table.get("question", set()) | by_table.get(
+            "practice_removal", set()
+        )
+        targets.filters = by_table.get("study_filter", set())
+        targets.units = by_table.get("unit", set())
+        units = KnowledgeUnitRepository(self.session, self.user_id).by_ids(sorted(targets.units))
+        targets.study_sessions = {u.session_id for u in units if u.session_id is not None}
+        targets.acquire(self.session, self.user_id)
+
+    def _restore(
+        self, revert: dict[str, Any], expected: int, row: CommandLog, now: datetime
+    ) -> None:
+        table, id_, before = revert["table"], uuid.UUID(revert["id"]), revert["before"]
+        uid = self.user_id
+        if table == "doc_section":
+            self._versioned(DocSection, id_, expected, dict(before), revert)
+        elif table == "question":
+            values = dict(before)
+            if "type_id" in values:
+                values["type_id"] = (
+                    None if values["type_id"] is None else uuid.UUID(values["type_id"])
+                )
+            self._versioned(Question, id_, expected, values, revert)
+        elif table == "unit":
+            self._restore_unit(id_, expected, before, revert, now)
+        elif table == "practice_removal":
+            if before.get("in_practice"):
+                practice.readd(self.session, uid, id_, at=now, command_id=row.command_id)
+        elif table == "study_filter":
+            filters = StudyFilterRepository(self.session, uid)
+            mode, until = before.get("mode"), before.get("until")
+            if mode is None or until is None:  # both or neither, always
+                filters.clear(id_)
+            else:
+                filters.set(id_, mode, datetime.fromisoformat(until).date())
+        else:  # pragma: no cover - apply writes no other table
+            raise CommandRejected("changed_after", f"{table} {id_}")
+
+    def _versioned(
+        self,
+        model: type[DocSection] | type[Question],
+        id_: uuid.UUID,
+        expected: int,
+        values: dict[str, Any],
+        revert: dict[str, Any],
+    ) -> None:
+        """Write the before-image only if the row still has the revision the undo saw. A row that
+        already holds the image (a pair of ops that cancelled out) is left alone: no new rev."""
+        current = self.session.scalars(
+            select(model).where(model.user_id == self.user_id, model.id == id_)
+        ).one_or_none()
+        if current is not None and all(getattr(current, k) == v for k, v in values.items()):
+            return
+        done = self.session.execute(
+            update(model)
+            .where(model.user_id == self.user_id, model.id == id_, model.version == expected)
+            .values(**values)
+            .execution_options(synchronize_session=False)
+        )
+        if cast("CursorResult[Any]", done).rowcount != 1:
+            raise CommandRejected("changed_after", f"{revert['table']} {id_}")
+
+    def _restore_unit(
+        self,
+        id_: uuid.UUID,
+        expected: int,
+        before: dict[str, Any] | None,
+        revert: dict[str, Any],
+        now: datetime,
+    ) -> None:
+        uid = self.user_id
+        current = self.session.scalars(
+            select(KnowledgeUnit).where(KnowledgeUnit.user_id == uid, KnowledgeUnit.id == id_)
+        ).one_or_none()
+        if before is None:  # a card the command made: kept, discarded (the history stays)
+            values: dict[str, Any] = {"status": "retired", "retired_at": now}
+        else:
+            retired_at = before["retired_at"]
+            values = {
+                "summary": before["summary"],
+                "status": before["status"],
+                "retired_at": None if retired_at is None else datetime.fromisoformat(retired_at),
+            }
+        same = current is not None and all(getattr(current, k) == v for k, v in values.items())
+        if not same:
+            done = self.session.execute(
+                update(KnowledgeUnit)
+                .where(
+                    KnowledgeUnit.user_id == uid,
+                    KnowledgeUnit.id == id_,
+                    KnowledgeUnit.version == expected,
+                )
+                .values(**values, version=expected + 1)
+                .execution_options(synchronize_session=False)
+            )
+            if cast("CursorResult[Any]", done).rowcount != 1:
+                raise CommandRejected("changed_after", f"unit {id_}")
+        if before is None:
+            return
+        if "section_ids" in before:  # the kept card of a merge: the sections it took in go again
+            keep = [uuid.UUID(s) for s in before["section_ids"]]
+            self.session.execute(
+                delete(UnitSection)
+                .where(
+                    UnitSection.user_id == uid,
+                    UnitSection.unit_id == id_,
+                    UnitSection.section_id.not_in(keep),
+                )
+                .execution_options(synchronize_session=False)
+            )
+        if "anchor_ids" in before:  # a card merged away: its anchors come back, its lineage goes
+            anchors = [uuid.UUID(a) for a in before["anchor_ids"]]
+            self.session.execute(
+                update(Anchor)
+                .where(Anchor.user_id == uid, Anchor.id.in_(anchors))
+                .values(unit_id=id_)
+                .execution_options(synchronize_session=False)
+            )
+            if before.get("merged_into"):
+                self.session.execute(
+                    delete(UnitLineage)
+                    .where(
+                        UnitLineage.user_id == uid,
+                        UnitLineage.old_unit_id == id_,
+                        UnitLineage.new_unit_id == uuid.UUID(before["merged_into"]),
+                    )
+                    .execution_options(synchronize_session=False)
+                )
