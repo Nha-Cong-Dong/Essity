@@ -362,7 +362,7 @@ def _seed_two_users(session: Session, alice: User, bob: User) -> dict[str, uuid.
 CROSS_USER_INSERTS = {
     "unit -> subject": "INSERT INTO knowledge_unit (id, user_id, subject_id, title, summary, kind,"
     " status, run_id) VALUES (gen_random_uuid(), :alice, :b_subject, 't', 's', 'concept',"
-    " 'active', :run)",
+    " 'canonical', :run)",
     "anchor -> unit": "INSERT INTO anchor (id, user_id, unit_id, source, quote_text, run_id)"
     " VALUES (gen_random_uuid(), :alice, :b_unit, 'document', 'q', :run)",
     "question -> subject": "INSERT INTO question (id, user_id, subject_id, level, prompt,"
@@ -381,7 +381,7 @@ def test_t21_cross_user_link_refused_raw_sql(
     # Alice's row to Bob's.
     alice, bob = two_users
     ids = _seed_two_users(db_session, alice, bob)
-    with pytest.raises(IntegrityError), db_session.begin_nested():
+    with pytest.raises(IntegrityError, match="foreign key"), db_session.begin_nested():
         db_session.execute(text(CROSS_USER_INSERTS[edge]), ids)
 
 

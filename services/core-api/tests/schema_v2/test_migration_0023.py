@@ -162,6 +162,7 @@ def test_downgrade_refuses_when_it_would_lose_data(
     engine: Engine, alembic_cfg: Config, kind: str
 ) -> None:
     # Red when: the downgrade deletes rows or turns drafts into 'active' to get its way (F5).
+    match = "without a run_id" if kind.startswith("question") else "units with status"
     user = seed_old_rows(engine, "canonical")
     with engine.begin() as connection:
         if kind.endswith("unit"):
@@ -171,12 +172,17 @@ def test_downgrade_refuses_when_it_would_lose_data(
                 {"u": user, "st": kind.split()[0]},
             )
         else:
+            # The unit guard fires first, so the unit must not be canonical or draft here.
+            connection.execute(
+                text("UPDATE knowledge_unit SET status = 'retired' WHERE user_id = :u"),
+                {"u": user},
+            )
             connection.execute(
                 text("UPDATE question SET source = 'bank', run_id = NULL WHERE user_id = :u"),
                 {"u": user},
             )
     try:
-        with pytest.raises(RuntimeError, match="0023 downgrade"):
+        with pytest.raises(RuntimeError, match=match):
             command.downgrade(alembic_cfg, "0022")
         with engine.connect() as connection:
             assert (
