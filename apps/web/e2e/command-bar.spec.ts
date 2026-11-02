@@ -105,3 +105,72 @@ test.describe("keyboard only", () => {
     await expect(page.getByLabel("Gõ một lệnh để sửa")).toBeFocused();
   });
 });
+
+// T9.3 (US-18 AC1, AC3, AC4, AC8): the bar on the live adapter (`?live=1`), with the two routes
+// answered by page.route: type an edit, see the diff, Hoàn tác, the screen read again.
+const FIELD = "Gõ một lệnh để sửa";
+const APPLIED = {
+  status: "applied",
+  affected: 9,
+  op_kinds: ["section_exclude"],
+  diff: [{ kind: "doc_section", id: "i", verb: "changed", before: null, after: null }],
+  replayed: false,
+};
+
+async function live(page: Page, width: number, answer: (url: string) => { status: number; body: unknown }) {
+  const calls: string[] = [];
+  await page.route("**/api/commands**", async (route) => {
+    calls.push(new URL(route.request().url()).pathname);
+    const { status, body } = answer(route.request().url());
+    await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+  });
+  await page.setViewportSize({ width, height: 900 });
+  expect((await page.goto("/design-preview/command-bar?live=1"))?.status()).toBe(200);
+  await settled(page);
+  return calls;
+}
+
+test.describe("live bar", () => {
+  test("US-18 AC1, AC4: edit, diff, Hoàn tác, old state; the screen is read again each time", async ({ page }) => {
+    const calls = await live(page, 390, (url) =>
+      url.endsWith("/undo") ? { status: 200, body: { status: "undone" } } : { status: 200, body: APPLIED },
+    );
+    await page.getByLabel(FIELD).fill("bỏ chương 7 khỏi đề cương");
+    await page.getByRole("button", { name: "Gửi" }).click();
+    await expect(page.getByText("bỏ 9 mục khỏi đề cương thi")).toBeVisible();
+    await expect(page.locator("[data-refreshed]")).toHaveAttribute("data-refreshed", "1");
+    await page.getByRole("button", { name: "Hoàn tác" }).click();
+    await expect(page.getByText("Đã hoàn tác:")).toBeVisible();
+    await expect(page.locator("[data-refreshed]")).toHaveAttribute("data-refreshed", "2");
+    expect(calls.map((c) => c.replace(/[0-9a-f-]{36}/, "id"))).toEqual(["/api/commands", "/api/commands/id/undo"]);
+    expect(await noSideScroll(page)).toBe(true);
+  });
+
+  test("US-18 AC3: unclear is one line and nothing is read again", async ({ page }) => {
+    await live(page, 320, () => ({ status: 200, body: { status: "unclear", reason: "ambiguous" } }));
+    await page.getByLabel(FIELD).fill("sửa nó");
+    await page.keyboard.press("Enter");
+    await expect(page.getByText(/^Chưa rõ:/)).toBeVisible();
+    await expect(page.locator("[data-refreshed]")).toHaveAttribute("data-refreshed", "0");
+    expect(await noSideScroll(page)).toBe(true);
+  });
+
+  test("US-18 AC8: when the AI budget is spent the field is off, with a neutral line", async ({ page }) => {
+    await live(page, 320, () => ({ status: 429, body: { error: "quota_hard_cap" } }));
+    await page.getByLabel(FIELD).fill("bỏ chương 7");
+    await page.keyboard.press("Enter");
+    await expect(page.getByText(/tạm tắt vì hết lượt AI/)).toBeVisible();
+    await expect(page.getByLabel(FIELD)).toHaveAttribute("aria-disabled", "true");
+    await expect(page.getByRole("button", { name: "Gửi" })).toBeDisabled();
+  });
+
+  test("US-18 AC4: a refused undo says why, in a short neutral line", async ({ page }) => {
+    await live(page, 360, (url) =>
+      url.endsWith("/undo") ? { status: 409, body: { error: "changed_after" } } : { status: 200, body: APPLIED },
+    );
+    await page.getByLabel(FIELD).fill("bỏ chương 7");
+    await page.keyboard.press("Enter");
+    await page.getByRole("button", { name: "Hoàn tác" }).click();
+    await expect(page.getByText(/Không hoàn tác được:/)).toBeVisible();
+  });
+});
