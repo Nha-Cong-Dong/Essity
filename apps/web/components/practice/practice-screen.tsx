@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Marker } from "@/components/notebook";
 import { GradeResult } from "@/components/review/grade-result";

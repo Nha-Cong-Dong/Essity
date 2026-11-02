@@ -386,3 +386,17 @@ rule("R44-i at 200% text the title and Tạo môn do not overlap", TITLE_ROW, as
   expect(overlap(await box(titleText(page)), await box(createButton(page)))).toBe(false);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+// --- T8.7: the same header on the live Luyện tập screen (long unbroken type name, rows, buttons),
+// at both sides of the 360 px breakpoint. Geometry only.
+for (const width of [320, 359, 360]) {
+  test(`T8.7 practice-live: header fits and the page does not scroll sideways @ ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    expect((await page.goto("/design-preview/practice-live"))?.status()).toBe(200);
+    await page.evaluate(() => document.fonts.ready);
+    await expect(page.locator("[data-question]").first()).toBeVisible();
+    await headerFits(page);
+    await headerApart(page);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+}

@@ -42,6 +42,7 @@ const SCREENS = [
   { path: "/design-preview/review" },
   { path: "/design-preview/session" },
   { path: "/design-preview/practice" },
+  { path: "/design-preview/practice-live" },
   { path: "/design-preview/stats" },
   { path: "/design-preview/syllabus" },
   { path: "/design-preview/graph" },
