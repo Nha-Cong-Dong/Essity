@@ -43,8 +43,17 @@ function ResumeRow({ item, primary }: { item: Unfinished; primary: boolean }) {
     );
   }
   const line =
-    item.kind === "review" ? reviewProgress(item.position, item.total) : draftLine(item.subject.name, item.drafts);
-  const href = item.kind === "review" ? `/review/${item.session_id}` : `/subjects/${item.subject.id}/sessions`;
+    item.kind === "review"
+      ? reviewProgress(item.position, item.total)
+      : item.kind === "session"
+        ? item.line
+        : draftLine(item.subject.name, item.drafts);
+  const href =
+    item.kind === "review"
+      ? `/review/${item.session_id}`
+      : item.kind === "session"
+        ? `/subjects/${item.subject.id}/sessions/${item.session_id}`
+        : `/subjects/${item.subject.id}/sessions`;
   return (
     <li className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
       <p className="m-0 min-w-0 flex-1 basis-60 text-read wrap-anywhere">
@@ -79,7 +88,15 @@ export function ResumeStrip({ items }: { items: Unfinished[] }) {
   );
 }
 
-export function ReviewTile({ review, primary }: { review: TodayV2["review"]; primary: boolean }) {
+export function ReviewTile({
+  review,
+  primary,
+  preview = false,
+}: {
+  review: TodayV2["review"];
+  primary: boolean;
+  preview?: boolean;
+}) {
   if (review.state === "none") {
     return (
       <Sheet
@@ -126,7 +143,9 @@ export function ReviewTile({ review, primary }: { review: TodayV2["review"]; pri
         </p>
       ) : (
         <div className="mt-4">
-          <StartButton variant={primary ? "primary-inverse" : "secondary"}>{COPY.start}</StartButton>
+          <StartButton variant={primary ? "primary-inverse" : "secondary"} preview={preview}>
+            {COPY.start}
+          </StartButton>
         </div>
       )}
     </>
@@ -223,7 +242,8 @@ function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2[
   );
 }
 
-export function TodayV2Screen({ today }: { today: TodayV2 }) {
+/** `preview`: the design-preview routes draw the screen but its buttons never call the API. */
+export function TodayV2Screen({ today, preview = false }: { today: TodayV2; preview?: boolean }) {
   if (today.subject_count === 0) {
     return (
       <>
@@ -246,7 +266,7 @@ export function TodayV2Screen({ today }: { today: TodayV2 }) {
       <Heading day={today.learning_day} />
       <div className="grid gap-6 min-[901px]:grid-cols-12">
         {today.unfinished.length > 0 && <ResumeStrip items={today.unfinished} />}
-        <ReviewTile review={today.review} primary={primary === "review"} />
+        <ReviewTile review={today.review} primary={primary === "review"} preview={preview} />
         <LearnSection today={today} primary={primary === "learn"} />
         {today.practice && <PracticeSection practice={today.practice} primary={primary === "practice"} />}
       </div>

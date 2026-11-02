@@ -61,3 +61,70 @@ for (const width of WIDTHS) {
     });
   });
 }
+
+// T7.13 (US-03, US-15 AC6): the main flow. Hôm nay (v2) offers "Vào buổi học"; the subject screen's
+// "Gợi ý cho hôm nay" asks the suggestion route (answered here, no core-api), shows the section,
+// and "Vào buổi học" goes to the study route (guarded: with no session it lands on /login). A failing answer never stays on "Đang tính…".
+const SUBJECT = "0b8f1d2e-0000-4000-8000-000000000001";
+const SUGGESTION = {
+  today: "2026-11-02",
+  suggestion: {
+    subject_id: SUBJECT,
+    subject_name: "Mạng máy tính",
+    kind: "next_leaf",
+    section_id: "5f0c0000-0000-4000-8000-000000000001",
+    section_title: "3.2 TCP flow control",
+    partial: false,
+    remaining: null,
+    unit: "mục",
+    reason: "Môn thi sau 20 ngày, còn 12 mục.",
+    pace: { remaining_leaves: 12, remaining_weight: 12, unit: "mục", days_left: 20, text: "còn 12 mục, 20 ngày" },
+  },
+};
+
+test("US-15 AC6: Hôm nay -> Gợi ý cho hôm nay -> Vào buổi học", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto("/design-preview/today?state=learn");
+  await settled(page);
+  const enter = page.getByRole("button", { name: /^Vào buổi học · Mạng máy tính/ });
+  await expect(enter).toHaveAttribute("href", `/subjects/${SUBJECT}/sessions/new`);
+
+  let asked = 0;
+  await page.route(`**/api/subjects/${SUBJECT}/suggestion`, (route) => {
+    asked += 1;
+    return route.fulfill({ json: SUGGESTION });
+  });
+  await page.goto("/design-preview/subject-live?state=not-suggested");
+  await settled(page);
+  await page.getByRole("button", { name: "Gợi ý cho hôm nay" }).click();
+  await expect(page.getByText("Hôm nay nên học: mục 3.2")).toBeVisible();
+  await expect(page.getByText("còn 12 mục, 20 ngày")).toBeVisible();
+  expect(asked).toBe(1);
+  const study = page.getByRole("button", { name: /^Vào buổi học/ });
+  await expect(study).toHaveAttribute("href", `/subjects/${SUBJECT}/sessions/new`);
+  await study.click();
+  await page.waitForURL(/\/login/); // the study route is guarded: no session, so the sign-in page
+});
+
+test("US-15 AC6: a failing suggestion route ends in a message, not Đang tính…", async ({ page }) => {
+  await page.route(`**/api/subjects/${SUBJECT}/suggestion`, (route) => route.fulfill({ status: 502, json: { error: "unavailable" } }));
+  await page.goto("/design-preview/subject-live?state=not-suggested");
+  await settled(page);
+  await page.getByRole("button", { name: "Gợi ý cho hôm nay" }).click();
+  await expect(page.getByText("Chưa tính được gợi ý")).toBeVisible();
+  await expect(page.locator("main [role=alert]")).toContainText("Chưa tính được gợi ý");
+  await expect(page.getByRole("button", { name: "Gợi ý cho hôm nay" })).toBeVisible();
+  await expect(page.getByText("Đang tính…")).toHaveCount(0);
+});
+
+test("US-03 AC7: the preview's Bắt đầu never calls the API", async ({ page }) => {
+  const calls: string[] = [];
+  await page.route("**/api/**", (route) => {
+    calls.push(route.request().url());
+    return route.fulfill({ status: 503, json: {} });
+  });
+  await page.goto("/design-preview/today?state=review");
+  await settled(page);
+  await page.getByRole("button", { name: "Bắt đầu" }).click();
+  expect(calls).toEqual([]);
+});

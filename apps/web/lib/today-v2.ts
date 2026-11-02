@@ -4,7 +4,13 @@ import { dayLabel } from "@/lib/today-copy";
 // fixtures feed it now; T7.13 swaps them for the T7.11 API. Strings are copy by Claude (30/10),
 // marked data-copy="tam" where drawn until the user tweaks them.
 
-export type Pace = { sections_left: number; pages_left: number | null; days_left: number | null };
+export type Pace = {
+  sections_left: number;
+  pages_left: number | null;
+  days_left: number | null;
+  /** The API's ready-made line (T7.13); the fixtures omit it and `paceLine` builds one. */
+  text?: string;
+};
 export type NamedSubject = { id: string; name: string };
 
 export type LearnItem =
@@ -21,6 +27,7 @@ export type LearnItem =
 export type Unfinished =
   | { kind: "review"; session_id: string; position: number; total: number }
   | { kind: "draft"; subject: NamedSubject; drafts: number }
+  | { kind: "session"; subject: NamedSubject; session_id: string; line: string }
   | { kind: "note"; text: string };
 
 export type EmptyReason = "exams_over" | "no_textbook" | "finished";
@@ -40,6 +47,7 @@ export type TodayV2 = {
 
 /** "còn 12 mục (86 trang), 20 ngày": numbers only (US-15 AC5). */
 export function paceLine(pace: Pace): string {
+  if (pace.text) return pace.text;
   const pages = pace.pages_left === null ? "" : ` (${pace.pages_left} trang)`;
   const days = pace.days_left === null ? "" : pace.days_left === 0 ? ", thi hôm nay" : `, ${pace.days_left} ngày`;
   return `còn ${pace.sections_left} mục${pages}${days}`;
