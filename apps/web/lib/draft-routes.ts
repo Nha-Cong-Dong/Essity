@@ -1,6 +1,7 @@
 import "server-only";
 
 import { readFields } from "@/lib/http";
+import { readUploadFile, type UploadFile } from "@/lib/session-routes";
 import { isSubjectId } from "@/lib/subject-id";
 
 // T7.12 (US-02, US-02b): what web's routes for the study session's drafts take from the browser.
@@ -17,12 +18,13 @@ export type SubmitBody = {
   session_id: string;
   description: string;
   mentions: { document_id: string; start: number; end: number }[];
+  files: UploadFile[];
 };
 
 /** The description is the learner's sentence (2000 characters, T7.6) and its `@` mentions. */
 export function readSubmit(body: unknown): SubmitBody | null {
-  if (!isObject(body) || !exactly(body, ["session_id", "description", "mentions"])) return null;
-  const { session_id, description, mentions } = body;
+  if (!isObject(body) || !exactly(body, ["session_id", "description", "mentions", "files"])) return null;
+  const { session_id, description, mentions, files } = body;
   if (!isSubjectId(session_id) || typeof description !== "string" || description.length > 2000) return null;
   if (mentions !== undefined && (!Array.isArray(mentions) || mentions.length > 20)) return null;
   const found: SubmitBody["mentions"] = [];
@@ -32,7 +34,14 @@ export function readSubmit(body: unknown): SubmitBody | null {
     if (!isSubjectId(document_id) || !Number.isSafeInteger(start) || !Number.isSafeInteger(end)) return null;
     found.push({ document_id, start: start as number, end: end as number });
   }
-  return { session_id, description, mentions: found };
+  if (files !== undefined && (!Array.isArray(files) || files.length > 20)) return null;
+  const read: UploadFile[] = [];
+  for (const item of files ?? []) {
+    const file = readUploadFile(item);
+    if (file === null) return null;
+    read.push(file);
+  }
+  return { session_id, description, mentions: found, files: read };
 }
 
 export type Edit = { version: number; title?: string; content?: string };

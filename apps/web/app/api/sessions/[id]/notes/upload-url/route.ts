@@ -1,6 +1,6 @@
 import { withOrigin } from "@/lib/csrf";
 import { errorResponse } from "@/lib/http";
-import { forwardSession, readNote } from "@/lib/session-routes";
+import { forwardSession, readUploadFile } from "@/lib/session-routes";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -9,7 +9,7 @@ type Params = { params: Promise<{ id: string }> };
 // The signed URL is in the answer to the browser and in no log (ADR-0013).
 export const POST = withOrigin(async (request, { params }: Params) => {
   const { id } = await params;
-  const body = readNote(await request.json().catch(() => null));
+  const body = readUploadFile(await request.json().catch(() => null));
   if (body === null) return errorResponse("invalid_request", 400);
   return forwardSession(
     request,

@@ -7,6 +7,7 @@ import { FieldHint } from "@/components/field-error";
 import { FocusShell } from "@/components/shells";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { FileRow, Suggestion } from "@/lib/fixtures/session-study";
+import { type FileRef, rowStateOf } from "@/lib/session-study/files";
 import type { SessionApi } from "@/lib/session-study/api";
 import { type Draft, draftsReducer } from "@/lib/session-study/drafts";
 import type { DocRef, Mention } from "@/lib/session-study/mention";
@@ -108,6 +109,9 @@ export function SessionScreen(props: SessionScreenProps) {
   const [history, setHistory] = useState<string[]>([]);
   const [free, setFree] = useState(props.suggestion.kind === "free");
   const counter = useRef(0);
+  // T7.12c: what each uploaded row hands in, and the file itself for "Thử lại".
+  const refs = useRef(new Map<string, FileRef>());
+  const blobs = useRef(new Map<string, File>());
   const timers = useRef<number[]>([]);
 
   const newId = () => `new-${++counter.current}`;
@@ -158,9 +162,47 @@ export function SessionScreen(props: SessionScreenProps) {
     };
   }, [api, round.phase, round.submission]);
 
+  function patchRow(id: string, patch: Partial<FileRow>) {
+    setFiles((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  }
+
+  function startUpload(id: string, file: File) {
+    if (!api) return;
+    blobs.current.set(id, file);
+    patchRow(id, { state: "uploading", percent: 0 });
+    void api.upload(file, (state) => {
+      if (state.kind === "uploading") patchRow(id, { state: "uploading", percent: state.percent });
+      else if (state.kind === "ready") {
+        refs.current.set(id, state.ref);
+        patchRow(id, { state: "done" });
+      } else patchRow(id, { state: rowStateOf(state.code) });
+    });
+  }
+
+  function addFiles(added: File[]) {
+    const rows = added.map((file) => ({ id: newId(), file }));
+    setFiles((current) => [
+      ...current,
+      ...rows.map(({ id, file }) => ({ id, name: file.name, kind: kindOf(file.name), state: "uploading" as const, percent: 0 })),
+    ]);
+    for (const { id, file } of rows) startUpload(id, file);
+  }
+
+  function removeFile(id: string) {
+    refs.current.delete(id);
+    blobs.current.delete(id);
+    setFiles((rows) => rows.filter((row) => row.id !== id));
+  }
+
   async function handIn() {
     if (!api) return;
-    const result = await api.submit(text, mentions);
+    // The same file twice is one (core-api keys a note by its hash).
+    const handed = new Map<string, FileRef>();
+    for (const row of files) {
+      const ref = row.state === "done" ? refs.current.get(row.id) : undefined;
+      if (ref) handed.set(ref.sha256, ref);
+    }
+    const result = await api.submit(text, mentions, [...handed.values()]);
     if (result.ok) {
       if (result.data.status !== "queued") send({ type: "processing" });
       return;
@@ -178,7 +220,7 @@ export function SessionScreen(props: SessionScreenProps) {
 
   function submit() {
     if (uploading > 0) return;
-    if (text.trim() === "" && (api || usableFiles === 0)) {
+    if (text.trim() === "" && usableFiles === 0) {
       setProblem(api ? SUBMIT_COPY.nothing : "Thêm ít nhất một file hoặc vài dòng mô tả.");
       return;
     }
@@ -289,20 +331,25 @@ export function SessionScreen(props: SessionScreenProps) {
                   setProblem(null);
                 }}
               />
-              {api ? null : (
               <FileDrop
-                  rows={files}
-                  tooManyPages={initial.tooManyPages}
-                  onAdd={(added) =>
-                    setFiles((rows) => [
-                      ...rows,
-                      ...added.map((file) => ({ id: newId(), name: file.name, kind: kindOf(file.name), state: "done" as const })),
-                    ])
-                  }
-                  onRemove={(id) => setFiles((rows) => rows.filter((row) => row.id !== id))}
-                  onRetry={(id) => setFiles((rows) => rows.map((row) => (row.id === id ? { ...row, state: "done" as const } : row)))}
-                />
-              )}
+                rows={files}
+                tooManyPages={initial.tooManyPages}
+                onAdd={
+                  api
+                    ? addFiles
+                    : (added) =>
+                        setFiles((rows) => [
+                          ...rows,
+                          ...added.map((file) => ({ id: newId(), name: file.name, kind: kindOf(file.name), state: "done" as const })),
+                        ])
+                }
+                onRemove={removeFile}
+                onRetry={(id) => {
+                  const file = blobs.current.get(id);
+                  if (api && file) startUpload(id, file);
+                  else patchRow(id, { state: "done" });
+                }}
+              />
               <div className="flex flex-col items-start gap-2">
                 <Button
                   type="button"
@@ -379,6 +426,8 @@ export function SessionScreen(props: SessionScreenProps) {
                   setText("");
                   setMentions([]);
                   setFiles([]);
+                  refs.current.clear();
+                  blobs.current.clear();
                   setFree(false);
                   send({ type: "continue" });
                 }}

@@ -19,7 +19,7 @@ const core = (card: Card) => ({
   revisions: [{ rev: 0, origin: "ai", content: {} }],
 });
 
-type Seen = { submitted: unknown[]; edits: { id: string; body: unknown }[]; saves: unknown[]; reads: number };
+type Seen = { submitted: unknown[]; uploads: unknown[]; edits: { id: string; body: unknown }[]; saves: unknown[]; reads: number };
 
 /** web's routes, answered by a small in-memory core-api. `stale` makes every edit a 409. */
 async function fakeCore(page: Page, { stale = false }: { stale?: boolean } = {}): Promise<Seen> {
@@ -27,13 +27,17 @@ async function fakeCore(page: Page, { stale = false }: { stale?: boolean } = {})
     { id: "11111111-1111-4111-8111-111111111111", title: "Cửa sổ trượt", content: "Bên gửi giữ rwnd.", version: 1, status: "draft" },
     { id: "22222222-2222-4222-8222-222222222222", title: "Cửa sổ nhận bằng 0", content: "Bên gửi dừng và thăm dò.", version: 1, status: "draft" },
   ];
-  const seen: Seen = { submitted: [], edits: [], saves: [], reads: 0 };
+  const seen: Seen = { submitted: [], uploads: [], edits: [], saves: [], reads: 0 };
   let submitted = false;
   const json = (route: Route, body: unknown, status = 200) => route.fulfill({ status, json: body });
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const body = request.postData() ? JSON.parse(request.postData() as string) : undefined;
+    if (url.pathname === `/api/sessions/${SESSION}/notes/upload-url`) {
+      seen.uploads.push(body);
+      return json(route, { url: "/storage-fake", method: "PUT", headers: {}, expires_at: "2099-01-01T00:00:00Z" }, 201);
+    }
     if (url.pathname === "/api/submissions") {
       submitted = true;
       seen.submitted.push(body);
@@ -108,6 +112,32 @@ test.describe("study session on the real screen", () => {
       },
     ]);
     await expect(page.getByText("Đã lưu 2 thẻ.")).toBeVisible();
+  });
+
+  // US-02 AC1, AC13 (T7.12c). Red when: a picked photo is not uploaded, the send leaves it out, the
+  // wrong type is silent, or the cards do not appear after a send made of a photo alone.
+  test("a photo alone: upload, send, see the cards; a wrong type is told neutrally", async ({ page }) => {
+    const seen = await fakeCore(page);
+    await page.route("**/storage-fake", (route) => route.fulfill({ status: 200 }));
+    await open(page);
+    const input = page.getByLabel("Chọn file bài nộp");
+    await input.setInputFiles([
+      { name: "trang-1.png", mimeType: "image/png", buffer: Buffer.from("abc") },
+      { name: "virus.exe", mimeType: "application/octet-stream", buffer: Buffer.from("x") },
+    ]);
+    await expect(page.getByText("Đã tải", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Định dạng này chưa dùng được/)).toBeVisible();
+    await page.getByRole("button", { name: "Gửi" }).click();
+    await expect(page.getByRole("button", { name: "Đúng rồi, lưu" })).toBeVisible({ timeout: 15_000 });
+    expect(seen.uploads).toHaveLength(1);
+    expect(seen.submitted).toEqual([
+      {
+        session_id: SESSION,
+        description: "",
+        mentions: [],
+        files: [{ sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", mime: "image/png", size_bytes: 3 }],
+      },
+    ]);
   });
 
   // US-02b AC7. Red when: a stale edit is silent, Lưu goes past it, or "Tải lại thẻ" does not bring the

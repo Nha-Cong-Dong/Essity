@@ -8,7 +8,7 @@ import { forwardSession } from "@/lib/session-routes";
 export const POST = withOrigin(async (request) => {
   const body = readSubmit(await request.json().catch(() => null));
   if (body === null) return errorResponse("invalid_request", 400);
-  return forwardSession(request, body.session_id, (core) => core.POST("/v1/submissions", { body: { ...body, files: [] } }), {
+  return forwardSession(request, body.session_id, (core) => core.POST("/v1/submissions", { body: body }), {
     notFound: "session_not_found",
   });
 });

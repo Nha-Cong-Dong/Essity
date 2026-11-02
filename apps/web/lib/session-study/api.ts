@@ -3,6 +3,7 @@
 // cards become the screen's `Draft`; an answer is `{ok}` or the code of the refusal, never a throw
 // (a dropped network is `status: 0`, `error: "network"`). The learner's words are not logged.
 import type { Anchor, Draft } from "./drafts";
+import { type FileRef, type FileState, uploadSubmissionFile } from "./files";
 import type { DocRef, Mention } from "./mention";
 
 type CoreAnchor = { id: string; source: string; document_id: string | null; page_no: number | null; quote_text: string };
@@ -62,7 +63,9 @@ export function toDraft(card: CoreDraft, docs: readonly DocRef[]): Draft {
 
 export type SessionApi = {
   sessionId: string;
-  submit(text: string, mentions: readonly Mention[]): Promise<ApiResult<{ status: Phase }>>;
+  submit(text: string, mentions: readonly Mention[], files?: readonly FileRef[]): Promise<ApiResult<{ status: Phase }>>;
+  /** T7.12c: one file to storage; the last state is "ready" (what the submission names) or "failed". */
+  upload(file: File, onState: (state: FileState) => void): Promise<void>;
   load(): Promise<ApiResult<{ phase: Phase; drafts: Draft[] }>>;
   get(id: string): Promise<ApiResult<Draft>>;
   edit(id: string, version: number, patch: { title?: string; content?: string }): Promise<ApiResult<Draft>>;
@@ -101,14 +104,15 @@ export function createSessionApi(sessionId: string, docs: readonly DocRef[], fet
 
   return {
     sessionId,
-    async submit(text, mentions) {
-      const body = { session_id: sessionId, description: text, mentions: mentions.map((m) => ({ document_id: m.docId, start: m.start, end: m.end })) };
+    async submit(text, mentions, files = []) {
+      const body = { session_id: sessionId, description: text, mentions: mentions.map((m) => ({ document_id: m.docId, start: m.start, end: m.end })), ...(files.length > 0 ? { files } : {}) };
       const { status, json } = await call("/api/submissions", "POST", body);
       if (status >= 200 && status < 300) return { ok: true, data: { status: readStatus(String(json.status)) } };
       const error = typeof json.error === "string" ? json.error : "unavailable";
       const at = typeof json.mention === "number" ? mentions[json.mention] : undefined;
       return at ? { ok: false, status, error, docId: at.docId } : { ok: false, status, error };
     },
+    upload: (file, onState) => uploadSubmissionFile(sessionId, file, onState),
     load: () =>
       run(`/api/sessions/${sessionId}/drafts`, "GET", undefined, (json) => ({
         phase: readStatus((json.submission_status as string | null) ?? null),
