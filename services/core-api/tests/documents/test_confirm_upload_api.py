@@ -47,14 +47,19 @@ def subject_of(session: Session, user: User) -> Subject:
 
 
 def asked(
-    client: TestClient, session: Session, *, sha256: str = PDF_SHA, size: int = len(PDF)
+    client: TestClient,
+    session: Session,
+    *,
+    sha256: str = PDF_SHA,
+    size: int = len(PDF),
+    filename: str = "Chương 3.pdf",
 ) -> tuple[User, dict[str, str], Document]:
     """A signed-in user with a document waiting for its file."""
     user, headers = signed_in(session)
     subject = subject_of(session, user)
     response = client.post(
         f"/v1/subjects/{subject.id}/documents",
-        json={"filename": "Chương 3.pdf", "size_bytes": size, "sha256": sha256},
+        json={"filename": filename, "size_bytes": size, "sha256": sha256},
         headers=headers,
     )
     assert response.status_code == 201, response.text
@@ -94,6 +99,7 @@ def test_a_stored_pdf_is_uploaded_and_announced_once(
         "document_id": str(document.id),
         "subject_id": str(document.subject_id),
         "object_key": document.object_key,
+        "format": "pdf",
     }
 
 
@@ -324,3 +330,42 @@ def test_confirm_logs_no_key_or_checksum(
     logged = log_output()
     assert document.object_key not in logged
     assert PDF_SHA not in logged
+
+
+ZIP = b"PK" + b"x" * 100
+ZIP_SHA = hashlib.sha256(ZIP).hexdigest()
+
+
+@pytest.mark.parametrize("ext", ["docx", "pptx"])
+def test_us13_a_stored_office_file_is_uploaded_and_announced_with_its_format(
+    client: TestClient, db_session: Session, fake_storage: FakeStorage, ext: str
+) -> None:
+    user, headers, document = asked(
+        client, db_session, sha256=ZIP_SHA, size=len(ZIP), filename=f"Bài giảng.{ext}"
+    )
+    assert document.format == ext
+    fake_storage.put(document.object_key, ZIP, base64.b64encode(bytes.fromhex(ZIP_SHA)).decode())
+
+    status, out = confirm(client, headers, document.id)
+
+    assert status == 200, out
+    [event] = events(db_session, user)
+    assert event.payload["format"] == ext
+
+
+def test_us13_a_pdf_stored_for_a_docx_name_is_refused(
+    client: TestClient, db_session: Session, fake_storage: FakeStorage
+) -> None:
+    _, headers, document = asked(client, db_session, filename="x.docx")
+    fake_storage.put(document.object_key, PDF, PDF_SHA_B64)
+    assert confirm(client, headers, document.id) == (422, {"detail": "content_mismatch"})
+
+
+def test_us13_a_zip_stored_for_a_pdf_name_is_refused(
+    client: TestClient, db_session: Session, fake_storage: FakeStorage
+) -> None:
+    _, headers, document = asked(
+        client, db_session, sha256=ZIP_SHA, size=len(ZIP), filename="x.pdf"
+    )
+    fake_storage.put(document.object_key, ZIP, base64.b64encode(bytes.fromhex(ZIP_SHA)).decode())
+    assert confirm(client, headers, document.id) == (422, {"detail": "content_mismatch"})

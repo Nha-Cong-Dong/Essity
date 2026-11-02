@@ -7,7 +7,7 @@ units under it; a leaf with no text weighs 1 (Q-D). Nothing here logs a title or
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 # Characters per estimated page (v2 §16.1).
 CHARS_PER_PAGE = 1800
@@ -57,3 +57,39 @@ def tiles(nodes: Sequence[OutlineNode], total: int) -> bool:
             return False
         expected = leaf.end + 1
     return expected == total + 1
+
+
+# `doc_section.source` has five values (US-13): headings and PowerPoint sections are both
+# `heading`; the flat slide list is a stand-in like `chunk10`, so it is stored as that.
+_CORE_SOURCE: dict[Source, str] = {
+    "headings": "heading",
+    "sections": "heading",
+    "llm_toc": "llm_toc",
+    "slides": "chunk10",
+    "chunk10": "chunk10",
+}
+
+
+def outline_body(nodes: Sequence[OutlineNode]) -> dict[str, Any]:
+    """The `outline.json` body core-api reads (nodes depth first, each with its parent's index),
+    in the unit of the nodes."""
+    parents: list[int | None] = []
+    stack: list[int] = []
+    for index, node in enumerate(nodes):
+        del stack[node.level :]
+        parents.append(stack[-1] if stack else None)
+        stack.append(index)
+    return {
+        "unit": nodes[0].unit if nodes else "est_page",
+        "nodes": [
+            {
+                "title": node.title,
+                "parent": parent,
+                "page_start": node.start,
+                "page_end": node.end,
+                "weight": node.weight,
+                "source": _CORE_SOURCE[node.source],
+            }
+            for node, parent in zip(nodes, parents, strict=True)
+        ],
+    }

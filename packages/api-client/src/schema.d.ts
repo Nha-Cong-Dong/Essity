@@ -952,7 +952,8 @@ export interface paths {
         put?: never;
         /**
          * Request Upload
-         * @description A URL to upload one PDF to the subject (201), or the document it already is (200).
+         * @description A URL to upload one PDF, DOCX or PPTX to the subject (201), or the document it already is
+         *     (200).
          *
          *     The same file (SHA-256) again: uploaded → `duplicate: true` and no URL; still uploading →
          *     a fresh URL for the same document. Errors: 404 `subject_not_found`; 422
@@ -3320,7 +3321,7 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentOut"];
                 };
             };
-            /** @description The file stored is not the PDF declared */
+            /** @description The file stored is not the PDF, DOCX or PPTX declared */
             422: {
                 headers: {
                     [name: string]: unknown;

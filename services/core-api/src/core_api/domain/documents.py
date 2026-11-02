@@ -1,7 +1,7 @@
 """Rules for an uploaded document (T4.5, ADR-0012): what a file must be, and where it goes.
 
-Only PDF for now (PRD AC4; notebook photos are US-02's `note_file`). A file is checked twice:
-by its name when the upload is requested, by its first bytes once it is stored. The name is
+PDF, DOCX and PPTX (PRD AC4, T9.11; notebook photos are US-02's `note_file`). A file is checked
+twice: by its name when the upload is requested, by its first bytes once it is stored. The name is
 only what the user calls it: the object key is built from ids and the SHA-256, never from it.
 """
 
@@ -10,6 +10,8 @@ import unicodedata
 import uuid
 
 PDF_MAGIC = b"%PDF-"
+ZIP_MAGIC = b"PK"  # DOCX and PPTX are zips; ai-service checks which parts they hold
+FORMATS = ("pdf", "docx", "pptx")
 SHORT_NAME_MAX = 200  # document.short_name is String(200)
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")
@@ -19,7 +21,7 @@ _DROPPED = frozenset({"Cc", "Cf", "Zl", "Zp"})
 
 
 class UnsupportedFileTypeError(ValueError):
-    """The file is not named as a PDF."""
+    """The file is not named as a PDF, DOCX or PPTX."""
 
 
 class InvalidFilenameError(ValueError):
@@ -39,17 +41,30 @@ def looks_like_pdf(start: bytes) -> bool:
     return start.startswith(PDF_MAGIC)
 
 
+def looks_like_office(start: bytes) -> bool:
+    """Whether the file's first bytes are a zip header (a DOCX or PPTX), at offset 0 only."""
+    return start.startswith(ZIP_MAGIC)
+
+
+def file_format(filename: str) -> str:
+    """`pdf`, `docx` or `pptx`, by the extension of the name. Raise UnsupportedFileTypeError."""
+    lowered = unicodedata.normalize("NFC", filename).strip().lower()
+    for fmt in FORMATS:
+        if lowered.endswith("." + fmt):
+            return fmt
+    raise UnsupportedFileTypeError  # no name in it: it must never reach a log
+
+
 def short_name(filename: str) -> str:
-    """The name shown for the document: the file name without `.pdf`, composed (NFC), with no
+    """The name shown for the document: the file name without its extension, composed (NFC), with no
     invisible or direction-changing characters, cut to SHORT_NAME_MAX.
 
-    Raise UnsupportedFileTypeError when the name does not end in `.pdf`, InvalidFilenameError
-    when nothing visible is left.
+    Raise UnsupportedFileTypeError when the name does not end in `.pdf`, `.docx` or `.pptx`,
+    InvalidFilenameError when nothing visible is left.
     """
     name = unicodedata.normalize("NFC", filename).strip()
-    if not name.lower().endswith(".pdf"):
-        raise UnsupportedFileTypeError  # no name in it: it must never reach a log
-    name = "".join(c for c in name[: -len(".pdf")] if unicodedata.category(c) not in _DROPPED)
+    extension = len(file_format(name)) + 1
+    name = "".join(c for c in name[:-extension] if unicodedata.category(c) not in _DROPPED)
     name = name.strip()[:SHORT_NAME_MAX].strip()
     if not name:
         raise InvalidFilenameError
