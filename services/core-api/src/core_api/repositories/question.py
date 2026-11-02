@@ -55,6 +55,17 @@ class QuestionRepository(UserScopedRepository[Question]):
             )
         )
 
+    def active_of_subject(self, subject_id: uuid.UUID, limit: int) -> list[Question]:
+        """The subject's active questions, oldest first (the command bar's context, T9.2e)."""
+        return list(
+            self.session.scalars(
+                self._select()
+                .where(Question.subject_id == subject_id, Question.status == "active")
+                .order_by(Question.created_at, Question.id)
+                .limit(limit)
+            )
+        )
+
     def lock_ids(self, ids: Sequence[uuid.UUID]) -> list[Question]:
         """These questions FOR NO KEY UPDATE in id order, read afresh (the same mode as
         `PracticeStateRepository.hold_question`: foreign keys' KEY SHARE still passes)."""

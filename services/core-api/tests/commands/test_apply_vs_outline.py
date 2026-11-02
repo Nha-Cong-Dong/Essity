@@ -3,12 +3,12 @@ land; neither overwrites the other and nothing deadlocks (plan: lock order, AC4)
 
 import uuid
 
-from cmd_world import SESSION, Parser
 from sqlalchemy import Engine, select, text
 from sqlalchemy.orm import Session
 from test_apply_lock_order import wait_for_lock_wait
 from test_apply_races import committed as committed  # noqa: F401  (fixture)
 
+from cmd_world import SESSION, Parser
 from core_api.db.models import DocSection
 from core_api.services.commands import CommandRequest, CommandService
 from core_api.services.outline import OutlineService

@@ -6,9 +6,9 @@ import unicodedata
 import uuid
 
 import pytest
-from cmd_world import SESSION, CmdWorld, Parser
 from sqlalchemy import func, select
 
+from cmd_world import SESSION, CmdWorld, Parser
 from core_api.db.models import CommandLog
 from core_api.domain.commands.registry import CommandRejected
 from core_api.services.command_codec import MAX_OPS, MAX_TEXT

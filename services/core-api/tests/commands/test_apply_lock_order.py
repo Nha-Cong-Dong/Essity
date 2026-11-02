@@ -12,11 +12,11 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import pytest
-from cmd_world import SESSION, CmdWorld, Parser
 from sqlalchemy import Connection, Engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from cmd_world import SESSION, CmdWorld, Parser
 from core_api.db.models import User
 from core_api.repositories.user import UserRepository
 from core_api.services.commands import ApplyOutcome, CommandRequest, CommandService

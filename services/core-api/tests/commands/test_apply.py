@@ -5,9 +5,9 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from cmd_world import SESSION, CmdWorld, Parser
 from sqlalchemy import func, select
 
+from cmd_world import SESSION, CmdWorld, Parser
 from core_api.db.models import CommandLog, KnowledgeUnit, PracticeRemovalLog, User
 from core_api.domain.commands.registry import CommandRejected
 from core_api.repositories.command_log import CommandLogRepository

@@ -18,7 +18,7 @@ from fastapi.routing import APIRoute, iter_route_contexts
 from pydantic import AfterValidator, BaseModel, ValidationError
 from starlette.routing import BaseRoute
 
-from core_api.api import auth, subjects, text
+from core_api.api import auth, commands, subjects, text
 from core_api.api.text import DbText, Email, LoginEmail, storable_text
 from core_api.main import app
 
@@ -27,6 +27,7 @@ CHECKS: set[Callable[..., Any]] = {
     text.storable_text,
     text.storable_email,
     text.storable_answer,
+    commands.storable_ops,  # strings anywhere in the ops of a command
     subjects._name,  # pyright: ignore[reportPrivateUsage]
 }
 # Only hashed, never stored or sent to a query: any character is allowed (plan D4, D5). By model

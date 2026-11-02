@@ -1,7 +1,7 @@
 import pytest
-from cmd_world import CmdWorld
 from sqlalchemy.orm import Session
 
+from cmd_world import CmdWorld
 from core_api.db.models import User
 
 
