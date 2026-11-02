@@ -109,6 +109,7 @@ def schedule(
     due: datetime,
     *,
     removed: datetime | None = None,
+    last_review: datetime | None = None,
 ) -> PracticeStateRow:
     """A practice state (review phase) due at `due`."""
     row = PracticeStateRow(
@@ -119,7 +120,7 @@ def schedule(
         stability=10.0,
         difficulty=5.0,
         due=due,
-        last_review=due - timedelta(days=10),
+        last_review=last_review or due - timedelta(days=10),
         removed_at=removed,
     )
     session.add(row)
