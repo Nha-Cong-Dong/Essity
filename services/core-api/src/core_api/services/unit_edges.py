@@ -234,9 +234,10 @@ def subject_graph(
 ) -> SubjectGraph:
     """What the graph screen draws (T9.10, US-19 AC3-AC4): canonical cards, the active edges
     between two of them (an edge that touches a draft, retired or hidden card is not returned,
-    T9.9 review F1), and the sections that hold a card (any card) or lead to one. `section_id` keeps the cards
-    of that section and its subsections. More than `limit` cards: the first ones in outline order
-    and the count left out. The caller has already checked the subject is the user's."""
+    T9.9 review F1), and the sections that hold a card (any card) or lead to one. `section_id`
+    keeps the cards of that section and its subsections. More than `limit` cards: the first ones
+    in outline order and the count left out. The caller has already checked the subject is the
+    user's."""
     repo = UnitEdgeRepository(session, user_id)
     sections = repo.graph_sections(subject_id)
     by_id = {s.id: s for s in sections}
