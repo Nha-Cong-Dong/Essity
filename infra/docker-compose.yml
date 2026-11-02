@@ -173,9 +173,23 @@ services:
       redis:
         condition: service_healthy
 
+  # Takes domain events from Redis Streams and applies them to core's database (ADR-0006):
+  # without it uploaded documents stay `uploaded` and saved cards get no review question.
+  core-consumer:
+    build: ../services/core-api
+    command: ["uv", "run", "--no-sync", "python", "-m", "core_api.messaging.consumer"]
+    environment: *core-environment
+    stop_grace_period: 10s
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   ai-service:
     build: ../services/ai-service
-    environment:
+    environment: &ai-environment
       AI_ENVIRONMENT: local  # this file is for dev only; deploys set production (T0.13)
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?set in .env}
       AI_DATABASE_URL: postgresql+psycopg://${AI_DB_USER}:${AI_DB_PASSWORD}@postgres:5432/${AI_DB_NAME}
@@ -190,12 +204,31 @@ services:
       AI_QUOTA_DAILY_USD: ${AI_QUOTA_DAILY_USD:-0.20}
       AI_QUOTA_MONTHLY_USD: ${AI_QUOTA_MONTHLY_USD:-2.00}
       AI_QUOTA_HARD_CAP_FACTOR: ${AI_QUOTA_HARD_CAP_FACTOR:-3}
+      # Object storage for the document indexer (T4.7).
+      AI_S3_ENDPOINT: ${S3_ENDPOINT:?set in .env}
+      AI_S3_ACCESS_KEY: ${S3_ACCESS_KEY:?set in .env}
+      AI_S3_SECRET_KEY: ${S3_SECRET_KEY:?set in .env}
+      AI_S3_BUCKET: ${S3_BUCKET:?set in .env}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     ports:
       - "127.0.0.1:8001:8001"
     healthcheck:
       <<: *python-healthcheck
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/healthz')"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Reads document and submission events, indexes PDFs, drafts cards (same image and settings
+  # as ai-service, no port).
+  ai-consumer:
+    build: ../services/ai-service
+    command: ["uv", "run", "--no-sync", "python", "-m", "ai_service.messaging.consumer"]
+    environment: *ai-environment
+    stop_grace_period: 10s
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
