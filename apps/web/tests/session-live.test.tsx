@@ -325,11 +325,11 @@ describe("study session on core-api", () => {
     expect(screen.getByText(/Giáo trình có mặt nhiều lần/)).toBeTruthy();
   });
 
-  // US-02 AC2 (files wait for T7.12c): on this screen the form is the sentence.
-  it("needs some words to send, and has no file drop yet", () => {
+  // US-02 AC2. Red when: a send with neither words nor files reaches core-api.
+  it("needs some words or a file to send", () => {
     const api = fakeApi();
     show(api);
-    expect(screen.queryByText("Chọn file")).toBeNull();
+    expect(screen.getByText("Chọn file")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
     expect(api.submit).not.toHaveBeenCalled();
     expect(screen.getByText("Viết vài dòng mô tả buổi học rồi gửi.")).toBeTruthy();
