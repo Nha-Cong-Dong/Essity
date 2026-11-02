@@ -1,8 +1,8 @@
 task: T9.2
 lane: L2
 status: done
-head_sha: 2d38401
-step: planning phase (planner, tech-expert, security-reviewer plan round 1; 6 orange folded in)
+head_sha: 4c5d970
+step: plan-review r2 fixed in place; tech-expert confirmed (tech-expert-confirm.md)
 tests: {cmd: "n/a (planning only)", passed: 0, failed: 0}
 blockers: []
 decisions: ["F2 removed_at -> C: append-only practice_removal_log, cache derived (tech-expert)", "study_filter table with rev, no DELETE on undo (tech-expert + reviewer Y3)", "undo scoped by command_id + screen_session_id from stored row (reviewer P3)"]
