@@ -721,3 +721,45 @@ def test_t715_twenty_photos_are_all_read_one_call_each(
     run(h, event)
     assert len(seen) == n
     assert isinstance(sent(redis_client, stream)[-1], SessionProcessedEvent)
+
+
+class _Recording(FakeStorage):
+    def __init__(self) -> None:
+        super().__init__()
+        self.gets: list[str] = []
+
+    def get(self, key: str, *, max_bytes: int) -> bytes:
+        self.gets.append(key)
+        return super().get(key, max_bytes=max_bytes)
+
+
+@pytest.mark.parametrize("mime", ["image/png", "text/plain"])
+def test_t715_another_users_note_is_never_read(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session], mime: str
+) -> None:
+    storage = _Recording()
+    other = f"users/{uuid.uuid4()}/subjects/{SUBJECT}/notes/{uuid.uuid4()}.bin"
+    storage.objects[other] = _png() if mime == "image/png" else b"someone else's text"
+    index(storage)
+    event = confirmed(notes=[{"object_key": other, "mime": mime}])
+    h, seen = _vision_handler(storage, redis_client, stream, sessions, _legible)
+    run(h, event)
+    assert other not in storage.gets
+    assert seen == []
+    assert {"kind": "note", "ref": 1, "reason": "unreadable"} in result(storage, event)["skipped"]
+
+
+def test_t715_quota_on_a_reading_is_llm_unavailable(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    event = confirmed(ranges=[], notes=[_photo(storage, _png())])
+
+    def over(request: Any) -> str:
+        raise ProviderError("rate_limited")
+
+    h, _ = _vision_handler(storage, redis_client, stream, sessions, over)
+    run(h, event)
+    (out,) = sent(redis_client, stream)
+    assert isinstance(out, SessionFailedEvent)
+    assert out.payload.reason == "llm_unavailable"

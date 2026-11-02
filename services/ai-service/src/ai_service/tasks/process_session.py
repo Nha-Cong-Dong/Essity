@@ -394,7 +394,11 @@ class ProcessSession:
         parts: list[str] = []
         images: list[ImageSource] = []
         note_of: dict[int, int] = {}  # image ordinal -> index of its note, for `skipped`
+        owner = f"users/{event.user_id}/"
         for index, note in enumerate(event.payload.notes, 1):
+            if not note.object_key.startswith(owner):  # never read another user's object
+                work.skipped.append({"kind": "note", "ref": index, "reason": "unreadable"})
+                continue
             if note.mime in IMAGE_NOTES:
                 raw = self._get(note.object_key, vision.MAX_BYTES)
                 if raw is None:
