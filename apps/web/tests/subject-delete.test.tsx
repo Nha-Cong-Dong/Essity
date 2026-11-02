@@ -33,7 +33,7 @@ function fakeWeb(...replies: (() => Response | Promise<Response>)[]) {
   return sent;
 }
 
-const row = (name: string) => screen.getByText(name, { selector: "span" }).closest("li") as HTMLElement;
+const row = (name: string) => screen.getByText(name, { selector: "a" }).closest("li") as HTMLElement;
 const openEdit = (name: string) => fireEvent.click(screen.getByRole("button", { name: `Sửa ${name}` }));
 const deleteButton = (scope: HTMLElement = document.body) => within(scope).getByRole("button", { name: "Xóa môn" });
 const keepButton = () => screen.getByRole("button", { name: "Giữ môn" });

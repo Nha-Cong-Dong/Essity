@@ -78,6 +78,12 @@ describe("toTodayV2", () => {
     ]);
   });
 
+  // Red when: a session whose subject is not in today's list gets an empty name (a blank button label).
+  it("an unfinished session of an unlisted subject gets a neutral name", () => {
+    const out = toTodayV2(base({ unfinished: [{ session_id: SID, subject_id: "other", line: "x" }] }));
+    expect(out.unfinished[0]).toMatchObject({ subject: { id: "other", name: "Môn học" } });
+  });
+
   // Red when: a suggestion is shown without its section, reason or the API's pace line.
   it("US-15 AC1: next_leaf becomes a section with the reason and the API pace", () => {
     const out = toTodayV2(base({ next_study: { items: [next()], empty_reason: null, links: [] } }));

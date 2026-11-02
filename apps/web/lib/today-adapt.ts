@@ -52,7 +52,7 @@ function learnItem(s: SuggestionApi): LearnItem {
 
 export function toTodayV2(today: TodayApi): TodayV2 {
   const names = new Map(today.subjects.map((s) => [s.id, s.name]));
-  const subjectOf = (id: string): NamedSubject => ({ id, name: names.get(id) ?? "" });
+  const subjectOf = (id: string): NamedSubject => ({ id, name: names.get(id) || "Môn học" });
 
   const unfinished: Unfinished[] = [];
   if (today.in_progress) unfinished.push({ kind: "review", ...today.in_progress });

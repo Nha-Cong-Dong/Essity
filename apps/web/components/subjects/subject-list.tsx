@@ -175,9 +175,13 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
           aria-hidden="true"
           className="row-span-2 h-14 w-11 shrink-0 self-start rounded-slip bg-(color:--rose-200) shadow-sheet sm:self-auto"
         />
-        <span id={ids.name} className="min-w-0 text-section font-semibold wrap-anywhere sm:flex-1">
+        <a
+          id={ids.name}
+          href={`/subjects/${subject.id}`}
+          className="min-w-0 text-section font-semibold wrap-anywhere text-inherit no-underline hover:underline sm:flex-1"
+        >
           {subject.name}
-        </span>
+        </a>
         {/* The space between the halves keeps them two words for a screen reader (plan G9). */}
         <span className="col-span-2 col-start-2 row-start-2 flex flex-wrap gap-x-2 text-small sm:flex-col sm:items-end">
           <span className="whitespace-nowrap">thi {formatExamDate(subject.exam_date)}</span>{" "}
