@@ -590,6 +590,60 @@ class Lanes(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual([Path(p).name for p in calls[0]], ["core-api", "ai-service"])
 
+    def test_up_installs_node_modules_in_the_worktree(self) -> None:
+        calls: list[Path] = []
+        path = lane.up(self.repo, 2, "t1-n", base="main", create_db=False, sync=None,
+                       node=lambda p: calls.append(p) or [])  # fmt: skip
+        self.assertEqual(calls, [path])
+
+    def test_up_no_node_skips_the_install(self) -> None:
+        with mock.patch.object(lane, "node_install") as inst:
+            lane.up(self.repo, 2, "t1-m", base="main", create_db=False, sync=None, node=None)
+        inst.assert_not_called()
+
+    def test_node_install_goes_offline_through_the_web_lock_in_the_worktree(self) -> None:
+        wt = self.repo.parent / "wt"
+        wt.mkdir()
+        (wt / "pnpm-lock.yaml").write_text("")
+        ok = subprocess.CompletedProcess([], 0, "", "")
+        with mock.patch.object(lane.subprocess, "run", return_value=ok) as run:
+            self.assertEqual(lane.node_install(wt), [])
+        cmd = run.call_args.args[0]
+        self.assertEqual(run.call_args.kwargs["cwd"], wt)
+        self.assertIn("web", cmd)
+        self.assertEqual(cmd[-3:], ["install", "--frozen-lockfile", "--offline"])
+        self.assertEqual(run.call_count, 1)
+
+    def test_node_install_falls_back_to_online_when_the_store_lacks_a_package(self) -> None:
+        wt = self.repo.parent / "wt2"
+        wt.mkdir()
+        (wt / "pnpm-lock.yaml").write_text("")
+        bad = subprocess.CompletedProcess([], 1, "", "ERR_PNPM_NO_OFFLINE_TARBALL")
+        ok = subprocess.CompletedProcess([], 0, "", "")
+        with mock.patch.object(lane.subprocess, "run", side_effect=[bad, ok]) as run:
+            self.assertEqual(lane.node_install(wt), [])
+        self.assertEqual(run.call_count, 2)
+        self.assertNotIn("--offline", run.call_args.args[0])
+        self.assertEqual(run.call_args.args[0][-2:], ["install", "--frozen-lockfile"])
+
+    def test_node_install_raises_when_both_installs_fail_and_skips_without_lockfile(self) -> None:
+        wt = self.repo.parent / "wt3"
+        wt.mkdir()
+        self.assertEqual(lane.node_install(wt), [])
+        (wt / "pnpm-lock.yaml").write_text("")
+        bad = subprocess.CompletedProcess([], 1, "", "boom")
+        with mock.patch.object(lane.subprocess, "run", return_value=bad):
+            with self.assertRaisesRegex(RuntimeError, "boom"):
+                lane.node_install(wt)
+
+    def test_up_keeps_the_worktree_when_the_node_install_fails(self) -> None:
+        def fail(_: Path) -> list[str]:
+            raise RuntimeError("pnpm install failed")
+
+        with self.assertRaises(RuntimeError):
+            lane.up(self.repo, 2, "t1-f", base="main", create_db=False, sync=None, node=fail)
+        self.assertTrue(lane.lane_path(self.repo, 2).exists())
+
     def test_env_for_review_uses_the_owning_lane(self) -> None:
         busy = self.lane(3, "T7.4", "in_progress", "L3-t74")
         env = lane.review_env(self.repo, busy / "services")
