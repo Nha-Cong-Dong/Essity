@@ -1,7 +1,7 @@
 // T7.14 (US-15 AC6; US-02 AC1, AC14; US-02b AC6-AC9; US-03 AC1): the v2 learning loop on the screens a
 // browser can reach without core-api: Gợi ý cho hôm nay -> the session screen (a sentence, then a
-// note photo) -> the draft cards -> Lưu -> the next learning day (fake clock), where the saved cards are
-// due and the Today screen offers Ôn. One stateful in-memory core answers web's /api routes for the
+// note photo) -> the draft cards -> Lưu. The next-day Ôn step lives in core-api's
+// tests/drafts/test_t714_learning_loop.py (real API and database). One stateful in-memory core answers web's /api routes for the
 // whole loop, so a step that forgets the previous one fails here.
 //
 // Not reachable in CI (server components that call core-api): create subject, textbook upload and the
@@ -82,7 +82,7 @@ async function fakeCore(page: Page) {
   return state;
 }
 
-test("the loop: suggestion, sentence, photo, cards, Lưu, next day has them in Ôn", async ({ page }) => {
+test("the loop: suggestion, sentence, photo, cards, Lưu", async ({ page }) => {
   const core = await fakeCore(page);
   await page.setViewportSize({ width: 390, height: 900 });
 
@@ -124,16 +124,7 @@ test("the loop: suggestion, sentence, photo, cards, Lưu, next day has them in �
     "22222222-2222-4222-8222-222222222222",
   ]);
 
-  // 4. The next learning day (fake clock): both cards are due, the suggestion has moved on, and the
-  // Today screen offers Ôn (US-03 AC1).
-  core.now = new Date(core.now.getTime() + DAY_MS);
-  await page.clock.setFixedTime(core.now);
-  expect(core.saved.every((u) => u.due === core.now.toISOString().slice(0, 10))).toBe(true);
-  expect((await page.goto("/design-preview/subject-live?state=not-suggested"))?.status()).toBe(200);
-  await settled(page);
-  await page.getByRole("button", { name: "Gợi ý cho hôm nay" }).click();
-  await expect(page.getByText("Hôm nay nên học: mục 3.3")).toBeVisible();
-  expect((await page.goto("/design-preview/today?state=review"))?.status()).toBe(200);
-  await settled(page);
-  await expect(page.getByRole("button", { name: "Bắt đầu" })).toBeVisible();
+  // 4. Not asserted here: "the saved card is in Ôn on the next learning day" is proven against the
+  // real API and database in services/core-api/tests/drafts/test_t714_learning_loop.py (US-02b AC12,
+  // US-03 AC4). A mocked save that sets `due` itself would prove nothing.
 });
