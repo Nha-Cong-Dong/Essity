@@ -1,4 +1,4 @@
-"""T9.2c: apply a command in one transaction (US-18 AC4, AC8, AC9; ADR-0030)."""
+"""T9.2c: apply a command in one transaction (US-18 AC4, AC6, AC8, AC9; ADR-0030)."""
 
 import logging
 import uuid
@@ -26,7 +26,7 @@ def exclude(section: object) -> list[dict[str, object]]:
     return [{"kind": "section_exclude", "sections": [str(section.id)]}]  # type: ignore[attr-defined]
 
 
-def test_same_command_id_applies_once(cw: CmdWorld) -> None:  # AC4
+def test_ac4_same_command_id_applies_once(cw: CmdWorld) -> None:  # AC4
     cid = uuid.uuid4()
     first = cw.run(exclude(cw.leaf1), command_id=cid)
     again = cw.run(exclude(cw.leaf1), command_id=cid)
@@ -34,21 +34,21 @@ def test_same_command_id_applies_once(cw: CmdWorld) -> None:  # AC4
     assert first.affected == 1 and first.diff[0]["kind"] == "section"
 
 
-def test_retry_same_command_id_one_parse_call(cw: CmdWorld) -> None:  # AC4, AC8
+def test_ac4_ac8_retry_same_command_id_one_parse_call(cw: CmdWorld) -> None:  # AC4, AC8
     parser, cid = Parser(exclude(cw.leaf1)), uuid.uuid4()
     for _ in range(2):
         cw.service.apply(cid, SESSION, CommandRequest("loại mục 1.1"), parse=parser)
     assert parser.calls == 1
 
 
-def test_command_id_reused_different_payload_409(cw: CmdWorld) -> None:  # AC4
+def test_ac4_command_id_reused_different_payload_409(cw: CmdWorld) -> None:  # AC4
     cid = uuid.uuid4()
     cw.run(exclude(cw.leaf1), command_id=cid, text="a")
     with pytest.raises(CommandIdReused):
         cw.run(exclude(cw.leaf1), command_id=cid, text="b")
 
 
-def test_failing_op_rolls_back_whole_command(cw: CmdWorld) -> None:  # AC4
+def test_ac4_failing_op_rolls_back_whole_command(cw: CmdWorld) -> None:  # AC4
     ops = [
         *exclude(cw.leaf1),
         {
@@ -63,7 +63,7 @@ def test_failing_op_rolls_back_whole_command(cw: CmdWorld) -> None:  # AC4
     assert cw.leaf1.excluded is False and rows(cw) == 0
 
 
-def test_other_users_ids_rejected_no_leak(cw: CmdWorld, two_users: tuple[User, User]) -> None:
+def test_ac4_other_users_ids_rejected_no_leak(cw: CmdWorld, two_users: tuple[User, User]) -> None:
     bob = CmdWorld(cw.db, two_users[1])
     with pytest.raises(CommandRejected) as theirs:
         cw.run(exclude(bob.leaf1))
@@ -74,7 +74,7 @@ def test_other_users_ids_rejected_no_leak(cw: CmdWorld, two_users: tuple[User, U
     assert bob.leaf1.excluded is False
 
 
-def test_command_id_collision_across_users(cw: CmdWorld, two_users: tuple[User, User]) -> None:
+def test_ac4_command_id_collision_across_users(cw: CmdWorld, two_users: tuple[User, User]) -> None:
     bob = CmdWorld(cw.db, two_users[1])
     cid = uuid.uuid4()
     cw.run(exclude(cw.leaf1), command_id=cid)
@@ -83,7 +83,7 @@ def test_command_id_collision_across_users(cw: CmdWorld, two_users: tuple[User, 
     assert CommandLogRepository(cw.db, two_users[1].id).by_command_id(cid) is not None
 
 
-def test_large_command_runs_and_reports_count(cw: CmdWorld) -> None:  # AC4
+def test_ac4_large_command_runs_and_reports_count(cw: CmdWorld) -> None:  # AC4
     ops = [
         {"kind": "question_set_answer", "question": str(q.id), "text": "x"} for q in cw.questions
     ]
@@ -98,12 +98,12 @@ def test_unregistered_op_422(cw: CmdWorld, kind: str) -> None:
     assert caught.value.code == "unsupported" and rows(cw) == 0
 
 
-def test_no_destructive_op_registered() -> None:  # AC6
+def test_ac6_no_destructive_op_registered() -> None:  # AC6
     assert not {k for k in APPLICABLE_KINDS if "delete" in k or "reset" in k or "fsrs" in k}
     assert {"section_set_pages", "question_relink"}.isdisjoint(APPLICABLE_KINDS)
 
 
-def test_command_log_has_ops_diff_inverse(cw: CmdWorld) -> None:  # AC9
+def test_ac9_command_log_has_ops_diff_inverse(cw: CmdWorld) -> None:  # AC9
     cid = uuid.uuid4()
     qid = str(cw.questions[0].id)
     cw.run([{"kind": "question_set_answer", "question": qid, "text": "đáp"}], command_id=cid)
@@ -224,3 +224,18 @@ def test_study_filter_and_removal_log_isolated_two_users(
     assert PracticeRemovalRepository(cw.db, bob.user.id).rev(cw.questions[0].id) == 0
     with pytest.raises(CommandRejected):
         bob.run([{"kind": "question_remove_from_practice", "question": str(cw.questions[0].id)}])
+
+
+def test_ac4_removed_then_readded_question_survives_rebuild(cw: CmdWorld) -> None:  # review Y4
+    from core_api.repositories.practice import PracticeStateRepository
+
+    q = cw.questions[0]
+    now = datetime.now(UTC)
+    practice.remove(cw.db, cw.user.id, q.id, now)
+    practice.readd(cw.db, cw.user.id, q.id, at=now)
+    actions = [
+        r.action for r in cw.db.scalars(select(PracticeRemovalLog).order_by(PracticeRemovalLog.id))
+    ]
+    assert actions == ["removed", "readded"]
+    PracticeStateRepository(cw.db, cw.user.id).rebuild([q.id])
+    assert PracticeRemovalRepository(cw.db, cw.user.id).in_practice(q.id)
