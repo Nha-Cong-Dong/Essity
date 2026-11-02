@@ -92,3 +92,39 @@ def test_core_to_ai_list_matches_the_contract() -> None:
     # Red when: the contract gains or renames a core → ai type and the CHECK test above silently
     # stops covering the split.
     assert CORE_TO_AI < EVENT_TYPES
+
+
+def test_outage_backs_off_and_logs_once(caplog: pytest.LogCaptureFixture) -> None:
+    # Red when: a down database is retried every poll with an error line each time, or the
+    # recovery goes unlogged.
+    import threading
+    from typing import Any
+
+    from core_api.messaging import relay
+
+    waits: list[float] = []
+    rounds = 0
+    stop = threading.Event()
+
+    def fake_once(*args: Any, **kwargs: Any) -> int:
+        nonlocal rounds
+        rounds += 1
+        if rounds <= 8:
+            raise ConnectionRefusedError("secret")
+        if rounds == 10:
+            stop.set()
+        return 0
+
+    original = relay.relay_once
+    relay.relay_once = fake_once  # type: ignore[assignment]
+    stop.wait = lambda timeout=None: waits.append(float(timeout or 0)) or False  # type: ignore[method-assign]
+    try:
+        with caplog.at_level("INFO", logger="core_api.messaging"):
+            relay.run(None, None, stop)  # type: ignore[arg-type]
+    finally:
+        relay.relay_once = original
+    assert waits[:6] == [2.0, 4.0, 8.0, 16.0, 30.0, 30.0]
+    assert waits[8] == relay.POLL_SECONDS
+    msgs = [r.getMessage() for r in caplog.records if r.name == "core_api.messaging"]
+    assert msgs == ["outbox relay round failed", "outbox relay recovered"]
+    assert "secret" not in caplog.text
