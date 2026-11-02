@@ -1041,6 +1041,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Questions
+         * @description The subject's bank questions with readiness (T8.2, US-14 AC3-AC6).
+         */
+        get: operations["list_questions_v1_subjects__subject_id__questions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects/{subject_id}/sessions": {
         parameters: {
             query?: never;
@@ -1301,6 +1321,39 @@ export interface components {
             subject_name: string;
             /** Units */
             units: number;
+        };
+        /** BankQuestionOut */
+        BankQuestionOut: {
+            /**
+             * Answer Source
+             * @enum {string}
+             */
+            answer_source: "bank" | "ai";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Line */
+            line: string;
+            /** Number */
+            number: number | null;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "bank" | "generated";
+            /** Prompt */
+            prompt: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "waiting" | "unlinked";
+            /** Type Name */
+            type_name: string;
+            /** Waiting Sections */
+            waiting_sections: components["schemas"]["WaitingSectionOut"][];
         };
         /** CandidateOut */
         CandidateOut: {
@@ -1942,6 +1995,17 @@ export interface components {
             /** Step */
             step: ("reading_notes" | "splitting_units" | "anchoring" | "writing_questions") | null;
         };
+        /** QuestionListOut */
+        QuestionListOut: {
+            /** Questions */
+            questions: components["schemas"]["BankQuestionOut"][];
+            /** Ready */
+            ready: number;
+            /** Total */
+            total: number;
+            /** Types */
+            types: components["schemas"]["TypeCountOut"][];
+        };
         /** QuestionOut */
         QuestionOut: {
             /**
@@ -2523,6 +2587,13 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** TypeCountOut */
+        TypeCountOut: {
+            /** Count */
+            count: number;
+            /** Name */
+            name: string;
+        };
         /** TypeCountsOut */
         TypeCountsOut: {
             /** Mastered */
@@ -2621,6 +2692,18 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** WaitingSectionOut */
+        WaitingSectionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: string;
+            /** Title */
+            title: string;
         };
         /** DraftOut */
         core_api__api__drafts__DraftOut: {
@@ -4621,6 +4704,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_questions_v1_subjects__subject_id__questions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionListOut"];
                 };
             };
             /** @description Validation Error */

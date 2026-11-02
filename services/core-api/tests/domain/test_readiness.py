@@ -107,3 +107,17 @@ def test_ac4_not_ready_yet_or_already_ready_is_no_flip():
     assert not became_ready([A.id, B.id], ALL, [], canon(A))
     assert not became_ready([A.id], ALL, [canon(A)], canon(A))
     assert not became_ready([A.id], ALL, [], draft(A))
+
+
+# T8.2: outline numbers shown in "Chờ học: mục X".
+def test_outline_numbers_follow_the_tree_and_sibling_order_us14_ac4():
+    from core_api.domain.readiness import OutlineNode, outline_numbers
+
+    a, b, c, d = (uuid.UUID(int=i) for i in (1, 2, 3, 4))
+    nodes = [
+        OutlineNode(c, a, 1),  # second child of a
+        OutlineNode(a, None, 0),
+        OutlineNode(b, a, 0),  # first child of a
+        OutlineNode(d, None, 1),
+    ]
+    assert outline_numbers(nodes) == {a: "1", b: "1.1", c: "1.2", d: "2"}

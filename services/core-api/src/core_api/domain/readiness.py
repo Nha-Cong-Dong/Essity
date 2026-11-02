@@ -27,6 +27,13 @@ class Section:
 
 
 @dataclass(frozen=True)
+class OutlineNode:
+    id: uuid.UUID
+    parent_id: uuid.UUID | None
+    ord: int
+
+
+@dataclass(frozen=True)
 class Card:
     section_id: uuid.UUID
     canonical: bool
@@ -96,3 +103,19 @@ def became_ready(
     before = readiness(linked_section_ids, sections, cards_before)
     after = readiness(linked_section_ids, sections, [*cards_before, saved])
     return not isinstance(before, Ready) and isinstance(after, Ready)
+
+
+def outline_numbers(nodes: Sequence[OutlineNode]) -> dict[uuid.UUID, str]:
+    """The number of each section of ONE document's outline ("1", "1.2", "3.10"): its place among
+    its siblings (by `ord`, then id), under its parent's number (T8.2)."""
+    children: dict[uuid.UUID | None, list[OutlineNode]] = {}
+    for node in nodes:
+        children.setdefault(node.parent_id, []).append(node)
+    numbers: dict[uuid.UUID, str] = {}
+    stack: list[tuple[uuid.UUID | None, str]] = [(None, "")]
+    while stack:
+        parent, prefix = stack.pop()
+        for rank, node in enumerate(sorted(children.get(parent, []), key=lambda n: (n.ord, n.id))):
+            numbers[node.id] = f"{prefix}{rank + 1}"
+            stack.append((node.id, f"{numbers[node.id]}."))
+    return numbers
