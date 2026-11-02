@@ -234,7 +234,7 @@ def subject_graph(
 ) -> SubjectGraph:
     """What the graph screen draws (T9.10, US-19 AC3-AC4): canonical cards, the active edges
     between two of them (an edge that touches a draft, retired or hidden card is not returned,
-    T9.9 review F1), and the sections that hold a card or lead to one. `section_id` keeps the cards
+    T9.9 review F1), and the sections that hold a card (any card) or lead to one. `section_id` keeps the cards
     of that section and its subsections. More than `limit` cards: the first ones in outline order
     and the count left out. The caller has already checked the subject is the user's."""
     repo = UnitEdgeRepository(session, user_id)
@@ -282,11 +282,14 @@ def subject_graph(
         )
         for e in repo.graph_edges(ids)
     ]
+    # The choice of section lists every section that holds a card (not only the ones shown), so a
+    # filter never hides the others.
     keep: set[uuid.UUID] = set()
-    for card in cards:
-        parent = card.section_id
-        while parent is not None and parent not in keep:
-            keep.add(parent)
-            parent = by_id[parent].parent_id
+    for linked in placed.values():
+        for held in linked:
+            parent: uuid.UUID | None = held
+            while parent is not None and parent not in keep:
+                keep.add(parent)
+                parent = by_id[parent].parent_id
     rows = [GraphSectionRow(s.id, s.parent_id, s.title) for s in sections if s.id in keep]
     return SubjectGraph(rows, cards, edges, len(chosen) - len(shown))

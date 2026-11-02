@@ -185,6 +185,8 @@ def test_ac3_section_filter_takes_the_subtree(client: TestClient, db_session: Se
     assert sorted(x["title"] for x in body["cards"]) == ["A", "B"]
     assert [(e["from_id"], e["to_id"]) for e in body["edges"]] == [(str(a.id), str(b.id))]
     assert body["truncated"] is False
+    # the picker still lists every section that holds a card
+    assert [x["title"] for x in body["sections"]] == ["Chương 1", "1.1", "Chương 2"]
 
 
 def test_ac3_section_of_another_user_or_unknown_is_404(client: TestClient, db_session: Session):
