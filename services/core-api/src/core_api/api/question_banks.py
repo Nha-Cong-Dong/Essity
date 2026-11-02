@@ -222,7 +222,7 @@ def list_questions(
     """The subject's bank questions with readiness (T8.2, US-14 AC3-AC6)."""
     if SubjectRepository(session, user.id).get(subject_id) is None:
         raise _error(status.HTTP_404_NOT_FOUND, "subject_not_found")
-    listed = QuestionListRepository(session, user.id).list(subject_id)
+    listed = QuestionListRepository(session, user.id).list_for_subject(subject_id)
     out: list[BankQuestionOut] = []
     counts: dict[str, int] = {}
     for q in listed:

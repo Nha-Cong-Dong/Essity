@@ -8,7 +8,6 @@ import uuid
 from dataclasses import dataclass
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from core_api.db.models import (
     DocSection,
@@ -27,6 +26,7 @@ from core_api.domain.readiness import (
     outline_numbers,
     readiness,
 )
+from core_api.repositories.base import UserScopedRepository
 
 _BANK_SOURCES = ("bank", "generated")
 
@@ -43,10 +43,8 @@ class ListedQuestion:
     waiting_titles: dict[uuid.UUID, str]  # section id -> title, for the waiting sections
 
 
-class QuestionListRepository:
-    def __init__(self, session: Session, user_id: uuid.UUID) -> None:
-        self.session = session
-        self.user_id = user_id
+class QuestionListRepository(UserScopedRepository[Question]):
+    model = Question
 
     def _sections(self, subject_id: uuid.UUID) -> dict[uuid.UUID, Section]:
         rows = list(
@@ -89,7 +87,7 @@ class QuestionListRepository:
             for r in rows
         }
 
-    def list(self, subject_id: uuid.UUID) -> list[ListedQuestion]:
+    def list_for_subject(self, subject_id: uuid.UUID) -> list[ListedQuestion]:
         """The subject's questions in bank order."""
         sections = self._sections(subject_id)
         titles = {
