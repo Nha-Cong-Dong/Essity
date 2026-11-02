@@ -77,6 +77,7 @@ class Backlog:
     subject_id: uuid.UUID
     sessions: int
     days: int
+    units: int = 0  # the units behind `sessions` (due and never asked, exams up to this one)
 
 
 @dataclass(frozen=True)
@@ -111,7 +112,7 @@ def compose_today(
 
     def risk(unit: DueUnit) -> float:
         recall = _SCHEDULER.retrievability(unit.state, now)
-        return recall * _exam_weight(exams.get(unit.subject_id), today)
+        return recall * exam_weight(exams.get(unit.subject_id), today)
 
     ranked = sorted((u for u in due if u.question_id not in exclude), key=risk)
     first_of_each: dict[uuid.UUID, DueUnit] = {}
@@ -207,7 +208,7 @@ def _add(
     items.append(item)
 
 
-def _exam_weight(exam_day: date | None, today: date) -> float:
+def exam_weight(exam_day: date | None, today: date) -> float:
     if exam_day is None or exam_day < today:  # no exam, or it is over
         return 1.0
     days_left = (exam_day - today).days
@@ -235,5 +236,5 @@ def _backlog(
         units = sum(counts[s] for s, day in upcoming.items() if day <= exam_day)
         sessions, days = math.ceil(units / MAX_QUESTIONS), (exam_day - today).days
         if sessions > days and (worst is None or sessions / days > worst.sessions / worst.days):
-            worst = Backlog(subject_id, sessions, days)
+            worst = Backlog(subject_id, sessions, days, units)
     return worst

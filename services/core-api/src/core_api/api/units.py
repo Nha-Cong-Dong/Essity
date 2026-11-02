@@ -101,8 +101,10 @@ def _replace(
     listed = SubjectRepository(session, user.id).list_with_exams()
     exams = {subject.id: exam.exam_date for subject, exam, _ in listed}
     reads = TodayRepository(session, user.id)
+    tz, hour = ZoneInfo(user.timezone), user.day_start_hour
+    day = learning_day(now, tz, hour)
     due = [u for u in reads.scheduled_units() if subject_id in (None, u.subject_id)]
-    fresh = [q for q in reads.new_questions() if subject_id in (None, q.subject_id)]
+    fresh = [q for q in reads.new_questions(day=day) if subject_id in (None, q.subject_id)]
     plan = compose_today(
         due,
         fresh,
@@ -110,7 +112,9 @@ def _replace(
         now=now,
         tz=ZoneInfo(user.timezone),
         day_start_hour=user.day_start_hour,
-        unasked={s: n for s, n in reads.unasked_by_subject().items() if subject_id in (None, s)},
+        unasked={
+            s: n for s, n in reads.unasked_by_subject(day=day).items() if subject_id in (None, s)
+        },
         exclude=inside,
         room=missing,
     )

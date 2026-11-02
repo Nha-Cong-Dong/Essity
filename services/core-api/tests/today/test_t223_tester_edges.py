@@ -3,6 +3,7 @@ exam quota counts (`unasked_by_subject`), a question linked to no unit, a skip w
 whose unit is outside the session or in two of its questions, and an override of a stale grade."""
 
 import uuid
+from datetime import date
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -22,10 +23,12 @@ from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.today import TodayRepository
 from core_api.repositories.unit import KnowledgeUnitRepository
 
-
 # US-06 AC6, plan b2 ("chưa_hỏi = mảnh active, chưa skipped, chưa có memory_state, môn hiện").
 # Red when: a skipped unit, or a unit of a deleted subject, still counts in the exam quota and
 # the backlog note.
+DAY = date(2026, 11, 2)  # no card here is saved, so the day does not matter
+
+
 def test_t223_units_never_asked_leave_out_skipped_units_and_deleted_subjects(
     db_session: Session,
 ) -> None:
@@ -34,12 +37,12 @@ def test_t223_units_never_asked_leave_out_skipped_units_and_deleted_subjects(
     gone = space.subject("Đã xóa")
     space.question(gone, "Bỏ môn")
     reads = TodayRepository(db_session, space.user.id)
-    assert reads.unasked_by_subject() == {subject: 3, gone: 1}
+    assert reads.unasked_by_subject(day=DAY) == {subject: 3, gone: 1}
     (unit, *_) = [u.id for u in KnowledgeUnitRepository(db_session, space.user.id).list()]
     KnowledgeUnitRepository(db_session, space.user.id).skip(unit, FROZEN_NOW)
     SubjectRepository(db_session, space.user.id).soft_delete(gone, FROZEN_NOW)
     db_session.flush()
-    counts = reads.unasked_by_subject()
+    counts = reads.unasked_by_subject(day=DAY)
     assert sum(counts.values()) == 2 and gone not in counts
 
 
@@ -52,7 +55,7 @@ def test_t223_a_question_linked_to_no_unit_is_still_new(db_session: Session) -> 
         subject, level=1, prompt="Không gắn mảnh?", reference_answer="a", run_id=RUN
     )
     db_session.flush()
-    fresh = TodayRepository(db_session, space.user.id).new_questions()
+    fresh = TodayRepository(db_session, space.user.id).new_questions(day=DAY)
     assert alone.id in {q.question_id for q in fresh}
 
 

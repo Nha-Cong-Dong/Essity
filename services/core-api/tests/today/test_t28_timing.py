@@ -77,7 +77,7 @@ def bulk_subject(
                 "title": f"u{n}",
                 "summary": "s",
                 "kind": "concept",
-                "status": "active",
+                "status": "canonical",
                 "run_id": RUN,
             }
             for n, u in enumerate(unit_ids)

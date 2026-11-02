@@ -10,7 +10,7 @@ from core_api.db.models import DocSection, KnowledgeUnit, UnitSection
 from core_api.repositories.base import UserScopedRepository
 
 # unit.status values that count as a card the learner owns (not a draft, not retired).
-_LIVE_CARD = ("active", "canonical")
+_LIVE_CARD = ("canonical",)
 
 
 @dataclass(frozen=True)

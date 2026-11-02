@@ -3,6 +3,7 @@ apply) are optional practice made on demand later; a question of those levels th
 in the database never reaches today, whether its unit is due or new."""
 
 import uuid
+from datetime import date
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -12,6 +13,8 @@ from accounts import signed_in
 from core_api.db.models import Question
 from core_api.repositories.question import QuestionRepository, QuestionUnitRepository
 from core_api.repositories.today import TodayRepository
+
+DAY = date(2026, 11, 2)  # no card here is saved, so the day does not matter
 
 
 def add_higher(
@@ -65,7 +68,7 @@ def test_t5r_higher_questions_on_a_new_unit_are_not_new_questions(db_session: Se
     add_higher(space, subject, 2, "Áp dụng TCP?", unit)
     add_higher(space, subject, 3, "Nối TCP?", unit)
 
-    fresh = TodayRepository(db_session, user.id).new_questions()
+    fresh = TodayRepository(db_session, user.id).new_questions(day=DAY)
     assert [q.question_id for q in fresh] == [level_one.id]
 
 

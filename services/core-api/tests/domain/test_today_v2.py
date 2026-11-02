@@ -6,8 +6,9 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from core_api.domain.explain import Reason
 from core_api.domain.suggest import Leaf, SubjectInput, SuggestFilter
-from core_api.domain.today import MAX_QUESTIONS
+from core_api.domain.today import MAX_QUESTIONS, PlannedQuestion, TodayPlan
 from core_api.domain.today_v2 import (
     EMPTY_LINKS,
     REASON_ALL_STUDIED,
@@ -22,6 +23,7 @@ from core_api.domain.today_v2 import (
     TodayInputs,
     TodayV2,
     compose,
+    review_from_plan,
 )
 
 TZ = ZoneInfo("Asia/Ho_Chi_Minh")
@@ -298,3 +300,37 @@ def test_practice_part_leaves_other_parts_equal():  # US-03 AC6 (T8.5 hook)
     extended = compose(inputs([s], cards=[c], practice=part))
     assert base.practice is None and extended.practice == part
     assert dataclasses.replace(extended, practice=None) == base
+
+
+# T7.11 C4: the review part built from the v1 plan (D1), the single source of questions.
+def _plan(items: list[PlannedQuestion], next_day: date | None = None) -> TodayPlan:
+    return TodayPlan(items=items, minutes=len(items) * 2, backlog=None, next_day=next_day)
+
+
+def test_us03_ac4_review_from_plan_keeps_order_and_gives_every_item_a_why() -> None:
+    s1, q1, q2 = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    plan = _plan([PlannedQuestion(q1, s1, "due"), PlannedQuestion(q2, s1, "new")])
+    reasons = {q1: Reason("review", 0.42, 9), q2: Reason("new", None, None)}
+    review = review_from_plan(plan, reasons, new_saved_today=False)
+    assert [i.question_id for i in review.items] == [q1, q2]
+    assert review.items[0].why == "Đến hạn ôn; khả năng nhớ khoảng 42%."
+    assert (review.items[0].kind, review.items[0].retrievability) == ("review", 0.42)
+    assert review.items[0].days_since_last == 9
+    assert review.items[1].kind == "new" and review.items[1].why
+    assert all(not _has_banned(i.why) for i in review.items)
+    assert review.minutes == 4 and review.next_due_day is None
+
+
+def test_us03_ac7_review_from_empty_plan_carries_next_due_day() -> None:
+    nxt = TODAY + timedelta(days=3)
+    review = review_from_plan(_plan([], next_day=nxt), {}, new_saved_today=True)
+    assert review.items == () and review.next_due_day == nxt and review.new_saved_today is True
+
+
+def test_us03_ac4_compose_takes_a_ready_review_and_skips_the_card_one() -> None:
+    sub = subject([leaf("Chương 1")])
+    given = review_from_plan(_plan([]), {}, new_saved_today=False)
+    # a card that would be due is ignored: the caller's review wins
+    ready = inputs([sub], cards=[card(sub.id, due=NOW - timedelta(days=1), recall=0.2)])
+    assert compose(ready, review=given).review is given
+    assert len(compose(ready).review.items) == 1

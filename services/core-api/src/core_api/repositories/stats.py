@@ -35,7 +35,7 @@ from core_api.repositories.practice import PracticeLogRepository
 from core_api.repositories.progress import ProgressRepository
 
 _SCHEDULER = FsrsScheduler()
-_LIVE_CARD = ("active", "canonical")
+_LIVE_CARD = ("canonical",)
 # A question that is not a pipeline review question: the learner's practice bank.
 _BANK_SOURCES = ("bank", "generated")
 

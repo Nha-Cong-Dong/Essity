@@ -103,7 +103,7 @@ def seed_unit(engine: Engine, user: uuid.UUID, subject: uuid.UUID) -> uuid.UUID:
         connection.execute(
             text(
                 "INSERT INTO knowledge_unit (id, user_id, subject_id, title, summary, kind,"
-                " status, run_id) VALUES (:id, :u, :s, 't', 's', 'concept', 'active', :r)"
+                " status, run_id) VALUES (:id, :u, :s, 't', 's', 'concept', 'canonical', :r)"
             ),
             {"id": unit, "u": user, "s": subject, "r": RUN},
         )

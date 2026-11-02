@@ -40,7 +40,7 @@ def test_tester_unit_with_history_can_still_change_status(
     # Retiring/splitting a reviewed unit is the way to "remove" it (plan D10). Red when: a
     # trigger or a stricter FK on knowledge_unit/question blocks UPDATE of a row with history.
     h = History(db_session, two_users[0])
-    for status in ("split", "merged", "retired", "active"):
+    for status in ("draft", "merged", "retired", "canonical"):
         db_session.execute(
             text("UPDATE knowledge_unit SET status = :s WHERE id = :id"),
             {"s": status, "id": h.unit.id},

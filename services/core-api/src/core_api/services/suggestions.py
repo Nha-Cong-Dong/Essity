@@ -38,7 +38,7 @@ class Suggestions:
     subject_names: dict[uuid.UUID, str]
 
 
-def _inputs(session: Session, user: User) -> tuple[list[SubjectInput], dict[uuid.UUID, str]]:
+def subject_inputs(session: Session, user: User) -> tuple[list[SubjectInput], dict[uuid.UUID, str]]:
     infos = StatsRepository(session, user.id).subjects()
     ledger = StudyLedgerRepository(session, user.id)
     last = last_studied_days(ledger.entries())
@@ -52,7 +52,7 @@ def build_suggestions(
 ) -> Suggestions:
     """`filters` is the hook for "this week only subject A" (T9.2); None filters nothing."""
     today = ledger_day(now, ZoneInfo(user.timezone), user.day_start_hour)
-    inputs, names = _inputs(session, user)
+    inputs, names = subject_inputs(session, user)
     suggestions = suggest_today(inputs, today, filters)
     finished = suggest_finished(inputs, today, filters)
     empty = (
@@ -68,7 +68,7 @@ def suggest_one(
 ) -> tuple[date, Suggestion, str]:
     """The "Gợi ý cho hôm nay" button: one subject, same rules, no ranking."""
     today = ledger_day(now, ZoneInfo(user.timezone), user.day_start_hour)
-    inputs, names = _inputs(session, user)
+    inputs, names = subject_inputs(session, user)
     subject = next((s for s in inputs if s.id == subject_id), None)
     if subject is None:
         raise UnknownSubjectError(subject_id)

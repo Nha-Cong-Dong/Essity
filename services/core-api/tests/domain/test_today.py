@@ -124,6 +124,7 @@ def test_ac5_a_backlog_of_200_keeps_the_cap_and_says_how_many_sessions_it_needs(
     assert len(plan.items) == MAX_QUESTIONS
     assert plan.backlog is not None
     assert (plan.backlog.subject_id, plan.backlog.sessions, plan.backlog.days) == (MMT, 10, 5)
+    assert plan.backlog.units == 200  # T7.11 D15: the screen words "còn 200 mục, 5 ngày" (AC5)
 
 
 def test_ac5_no_note_when_the_backlog_fits_before_the_exam() -> None:
@@ -165,3 +166,14 @@ def test_ac5_subjects_sharing_the_days_before_their_exams_add_up() -> None:
 def test_minutes_round_up() -> None:
     assert compose([due(MMT)]).minutes == 2
     assert compose([due(MMT) for _ in range(3)]).minutes == 5
+
+
+def test_exam_weight_is_public_and_falls_towards_the_exam() -> None:
+    """T7.11: the weight is shared by v1 and v2 composers (US-03 AC4 risk order)."""
+    from core_api.domain.today import NEAR_EXAM_WEIGHT, exam_weight
+
+    today = date(2026, 10, 30)
+    assert exam_weight(None, today) == 1.0
+    assert exam_weight(date(2026, 10, 29), today) == 1.0
+    assert exam_weight(today, today) == NEAR_EXAM_WEIGHT
+    assert exam_weight(date(2027, 10, 30), today) == 1.0

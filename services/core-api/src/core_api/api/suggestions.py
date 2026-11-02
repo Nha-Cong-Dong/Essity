@@ -56,7 +56,7 @@ class SubjectSuggestionOut(BaseModel):
     suggestion: SuggestionOut
 
 
-def _out(s: Suggestion, name: str) -> SuggestionOut:
+def suggestion_out(s: Suggestion, name: str) -> SuggestionOut:
     return SuggestionOut(
         subject_id=s.subject_id,
         subject_name=name,
@@ -83,8 +83,8 @@ def get_suggestions(user: VerifiedUser, session: DbSession, now: Now) -> Suggest
     names = result.subject_names
     return SuggestionsOut(
         today=result.today,
-        suggestions=[_out(s, names[s.subject_id]) for s in result.suggestions],
-        finished=[_out(s, names[s.subject_id]) for s in result.finished],
+        suggestions=[suggestion_out(s, names[s.subject_id]) for s in result.suggestions],
+        finished=[suggestion_out(s, names[s.subject_id]) for s in result.finished],
         empty=None
         if result.empty is None
         else EmptyOut(
@@ -101,4 +101,4 @@ def get_subject_suggestion(
         today, suggestion, name = suggest_one(session, user, now, subject_id)
     except UnknownSubjectError:
         raise HTTPException(status_code=404, detail="subject_not_found") from None
-    return SubjectSuggestionOut(today=today, suggestion=_out(suggestion, name))
+    return SubjectSuggestionOut(today=today, suggestion=suggestion_out(suggestion, name))
