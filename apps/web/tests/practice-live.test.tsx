@@ -66,6 +66,10 @@ const gradedView = (): PracticeView =>
       grade_id: GRADE,
       overall: "partial",
       missing: ["Nêu ảnh hưởng tới độ trễ."],
+      units: [
+        { text: "Nêu độ tin cậy.", met: true },
+        { text: "Nêu ảnh hưởng tới độ trễ.", met: false },
+      ],
       reference_answer: "TCP tin cậy nhưng thêm độ trễ.",
       answer_origin: "ai",
       differs_from_card_id: null,
@@ -80,6 +84,7 @@ function fakeApi(over: Partial<PracticeApi> = {}): PracticeApi {
     regrade: vi.fn(async () => ok(gradedView())),
     read: vi.fn(async () => ok(gradedView())),
     remove: vi.fn(async () => ok(null)),
+    restore: vi.fn(async () => ok(null)),
     ...over,
   } as PracticeApi;
 }
@@ -122,8 +127,28 @@ describe("PracticeLive (US-16 AC1, AC3, AC8)", () => {
     const { container } = render(<PracticeLive subjectId={SUBJECT} subjectName="Mạng" list={list} types={types} api={api} />);
     await act(async () => fireEvent.click(within(container.querySelector(`[data-question="${Q2}"]`) as HTMLElement).getByRole("button", { name: "Gỡ khỏi luyện tập" })));
     expect(api.remove).toHaveBeenCalledWith(Q2);
-    expect(container.querySelector(`[data-removed="${Q2}"]`)?.textContent).toBe("Đã gỡ khỏi luyện tập.");
+    expect(container.querySelector(`[data-removed="${Q2}"]`)?.textContent).toContain("Đã gỡ khỏi luyện tập.");
     expect(document.activeElement?.getAttribute("data-focus")).toBe(`removed-${Q2}`);
+  });
+
+  // Red when: Hoàn tác does not call restore, or the row does not come back with focus on its button.
+  it("T8.7b: 'Hoàn tác' restores the question and brings the row back", async () => {
+    const api = fakeApi();
+    const { container } = render(<PracticeLive subjectId={SUBJECT} subjectName="Mạng" list={list} types={types} api={api} />);
+    await act(async () => fireEvent.click(within(container.querySelector(`[data-question="${Q1}"]`) as HTMLElement).getByRole("button", { name: "Gỡ khỏi luyện tập" })));
+    await act(async () => fireEvent.click(within(container.querySelector(`[data-removed="${Q1}"]`) as HTMLElement).getByRole("button", { name: "Hoàn tác" })));
+    expect(api.restore).toHaveBeenCalledWith(Q1);
+    expect(container.querySelector(`[data-question="${Q1}"]`)).not.toBeNull();
+    expect(container.querySelector(`[data-removed="${Q1}"]`)).toBeNull();
+  });
+
+  it("T8.7b: a failed undo keeps the row removed and says so calmly", async () => {
+    const api = fakeApi({ restore: vi.fn(async () => ({ ok: false as const, error: "unavailable" })) });
+    const { container } = render(<PracticeLive subjectId={SUBJECT} subjectName="Mạng" list={list} types={types} api={api} />);
+    await act(async () => fireEvent.click(within(container.querySelector(`[data-question="${Q2}"]`) as HTMLElement).getByRole("button", { name: "Gỡ khỏi luyện tập" })));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Hoàn tác" })));
+    expect(container.querySelector(`[data-removed="${Q2}"]`)).not.toBeNull();
+    expect(screen.getByRole("alert")).toBeTruthy();
   });
 
   it("AC3: a failed removal keeps the row and says so calmly", async () => {
@@ -206,13 +231,33 @@ describe("PracticeAnswer (US-16 AC2, AC5)", () => {
     const api = fakeApi();
     await answer(api);
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Gửi" })));
-    expect(await screen.findByText("Nêu ảnh hưởng tới độ trễ.")).toBeTruthy();
+    expect((await screen.findAllByText("Nêu ảnh hưởng tới độ trễ.")).length).toBeGreaterThan(0);
     expect(screen.getByText("TCP tin cậy nhưng thêm độ trễ.")).toBeTruthy();
     expect(screen.getByText("đáp án do AI soạn")).toBeTruthy();
     const own = document.querySelector("[data-practice-extras]") as HTMLElement;
     expect(own.textContent).not.toMatch(FORBIDDEN);
     expect(document.querySelector("time")).toBeNull();
     expect(document.querySelectorAll("[data-variant='primary']").length).toBe(1);
+  });
+
+  // Red when: a rubric point is not listed, or a met point is not told apart from a missed one.
+  it("T8.7b: the result lists every rubric point with Đúng or Thiếu, in an accessible list", async () => {
+    const api = fakeApi();
+    await answer(api);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Gửi" })));
+    const list = await screen.findByRole("list", { name: "theo từng ý" });
+    const items = within(list).getAllByRole("listitem").map((li) => li.textContent);
+    expect(items).toEqual(["Nêu độ tin cậy.Đúng", "Nêu ảnh hưởng tới độ trễ.Thiếu"]);
+  });
+
+  it("T8.7b: Hoàn tác on the result calls restore and offers 'Gỡ khỏi luyện tập' again", async () => {
+    const api = fakeApi();
+    await answer(api);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Gửi" })));
+    await act(async () => fireEvent.click(await screen.findByRole("button", { name: "Gỡ khỏi luyện tập" })));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Hoàn tác" })));
+    expect(api.restore).toHaveBeenCalledWith(Q1);
+    expect(screen.getByRole("button", { name: "Gỡ khỏi luyện tập" })).toBeTruthy();
   });
 
   it("AC3: the result offers 'Gỡ khỏi luyện tập' in one tap", async () => {
@@ -242,7 +287,7 @@ describe("PracticeAnswer (US-16 AC2, AC5)", () => {
     expect(screen.getByRole("button", { name: "Câu tiếp" })).toBeTruthy();
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Chấm lại" })));
     expect(api.regrade).toHaveBeenCalledWith(ATTEMPT);
-    expect(await screen.findByText("Nêu ảnh hưởng tới độ trễ.")).toBeTruthy();
+    expect((await screen.findAllByText("Nêu ảnh hưởng tới độ trễ.")).length).toBeGreaterThan(0);
   });
 
   it("an already submitted attempt opens on its result, not on an empty box", async () => {

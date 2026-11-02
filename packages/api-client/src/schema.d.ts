@@ -650,6 +650,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/practice/questions/{question_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore
+         * @description Undo of "Gỡ khỏi luyện tập" (T8.7b): the question is served again, its schedule resumes.
+         */
+        post: operations["restore_v1_practice_questions__question_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/practice/questions/{question_id}/worthless": {
         parameters: {
             query?: never;
@@ -2167,6 +2187,11 @@ export interface components {
             overall: "correct" | "partial" | "incorrect" | "forgot";
             /** Reference Answer */
             reference_answer: string | null;
+            /**
+             * Units
+             * @default []
+             */
+            units: components["schemas"]["PracticeUnitOut"][];
         };
         /** PracticeTypeOut */
         PracticeTypeOut: {
@@ -2196,6 +2221,16 @@ export interface components {
              * Format: uuid
              */
             type_id: string;
+        };
+        /**
+         * PracticeUnitOut
+         * @description One rubric point and whether the answer met it (the grade stores only the ones it did not).
+         */
+        PracticeUnitOut: {
+            /** Met */
+            met: boolean;
+            /** Text */
+            text: string;
         };
         /** PracticeView */
         PracticeView: {
@@ -4227,6 +4262,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PracticeView"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_v1_practice_questions__question_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

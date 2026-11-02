@@ -14,7 +14,7 @@ import type { QuestionListOut, QuestionRow } from "@/lib/question-list-types";
 // types come from /v1/subjects/{id}/practice-types (mastery and sensitivity already worded by the
 // backend: "chưa đủ dữ liệu" under 3 answers, neutral words for time), the questions from the
 // bank list (T8.2). One primary button: the first ready row. "Làm câu này" answers in place with
-// PracticeAnswer; "Gỡ khỏi luyện tập" is one tap, no dialog (the API has no way back, so no undo).
+// PracticeAnswer; "Gỡ khỏi luyện tập" is one tap, no dialog ("Hoàn tác" calls restore, T8.7b).
 
 const FULL = "max-sm:w-full";
 const OTHER_TYPE = "Chưa có dạng";
@@ -48,6 +48,7 @@ function Row({
   removed,
   onDo,
   onRemove,
+  onUndo,
 }: {
   q: QuestionRow;
   subjectId: string;
@@ -55,12 +56,22 @@ function Row({
   removed: boolean;
   onDo: () => void;
   onRemove: () => void;
+  onUndo: () => void;
 }) {
   if (removed) {
     return (
-      <li data-removed={q.id} className="border-t border-line bg-sunken px-3 py-3 first:border-t-0">
+      <li
+        data-removed={q.id}
+        className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line bg-sunken px-3 py-3 first:border-t-0"
+      >
         <span tabIndex={-1} data-focus={`removed-${q.id}`} className="outline-none">
           Đã gỡ khỏi luyện tập.
+        </span>
+        <Button variant="quiet" aria-describedby={`sum-${q.id}`} onClick={onUndo}>
+          Hoàn tác
+        </Button>
+        <span id={`sum-${q.id}`} data-user className="sr-only">
+          {q.prompt}
         </span>
       </li>
     );
@@ -84,7 +95,7 @@ function Row({
       {q.answer_source === "ai" && <Pen>đáp án do AI soạn</Pen>}
       <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:items-center">
         {q.status === "ready" && (
-          <Button variant={primary ? "primary" : "secondary"} aria-describedby={`sum-${q.id}`} className={FULL} onClick={onDo}>
+          <Button variant={primary ? "primary" : "secondary"} data-focus={`do-${q.id}`} aria-describedby={`sum-${q.id}`} className={FULL} onClick={onDo}>
             Làm câu này
           </Button>
         )}
@@ -138,6 +149,21 @@ export function PracticeLive({
   }
 
   const { groups, unlinked } = groupQuestions(list, types);
+  async function undo(id: string) {
+    setFailed(false);
+    const reply = await api.restore(id);
+    if (!reply.ok) {
+      setFailed(true);
+      return;
+    }
+    setRemoved((was) => {
+      const next = new Set(was);
+      next.delete(id);
+      return next;
+    });
+    setFocus(`do-${id}`);
+  }
+
   const live = list.questions.filter((q) => !removed.has(q.id));
   const firstReady = groups.flatMap((g) => g.rows).find((q) => q.status === "ready" && !removed.has(q.id))?.id ?? null;
 
@@ -152,6 +178,7 @@ export function PracticeLive({
           removed={removed.has(q.id)}
           onDo={() => setDoing(q.id)}
           onRemove={() => void remove(q.id)}
+          onUndo={() => void undo(q.id)}
         />
       ))}
     </ul>
