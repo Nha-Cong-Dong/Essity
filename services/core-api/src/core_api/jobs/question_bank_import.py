@@ -39,9 +39,9 @@ from core_api.repositories.document import DocumentRepository
 from core_api.repositories.subject import SubjectRepository
 from core_api.security.rate_limit import (
     RateLimit,
-    RateLimitedError,
     RateLimiter,
     RateLimiterUnavailableError,
+    RateLimitResult,
 )
 
 # A bank that has waited this long is given up; the learner can import it again by hand.
@@ -53,7 +53,9 @@ __all__ = ["MAX_AGE", "QUESTION_BANK_IMPORT", "run_queued"]
 
 
 class Limiter(Protocol):
-    def enforce(self, rule: RateLimit, key: str) -> None: ...
+    def hit(self, rule: RateLimit, key: str) -> RateLimitResult: ...
+
+    def refund(self, hit: RateLimitResult) -> None: ...
 
 
 def run_queued(
@@ -87,26 +89,42 @@ def run_queued(
     ):
         return "dropped"
 
+    hits: list[RateLimitResult] = []
+
     def may_call() -> bool:
         try:
-            limiter.enforce(GRADINGS_PER_USER, str(user_id))
-        except (RateLimitedError, RateLimiterUnavailableError):
+            hit = limiter.hit(GRADINGS_PER_USER, str(user_id))
+        except RateLimiterUnavailableError:
             return False
+        if not hit.allowed:
+            return False
+        hits.append(hit)
         return True
 
     try:
         result = run_import(session, user_id, document, ai, storage, may_call)
     except BankPagesError as error:
+        _refund(limiter, hits)
         if error.http == 503:  # storage is down for now: try later
             return _again(session, user_id, document, queued_at)
         return "dropped"
     if result.status == "pending_ai":
+        # The AI gave no answer (global quota, down): this retry must not cost the learner a turn.
+        _refund(limiter, hits)
         return _again(session, user_id, document, queued_at)
     _log.info(
         "question bank import done",
         extra={"outcome": result.status, "count": result.added},
     )
     return "done"
+
+
+def _refund(limiter: Limiter, hits: list[RateLimitResult]) -> None:
+    for hit in hits:
+        try:
+            limiter.refund(hit)
+        except RateLimiterUnavailableError:
+            pass
 
 
 def _again(session: Session, user_id: uuid.UUID, document: Document, queued_at: datetime) -> str:

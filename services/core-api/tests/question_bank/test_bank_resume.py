@@ -25,7 +25,7 @@ from core_api.clients.bank_contract import BankReply
 from core_api.db.models import DocSection, Question, QuestionSection, User
 from core_api.domain.question_hash import content_hash
 from core_api.jobs.question_bank_import import MAX_AGE, QUESTION_BANK_IMPORT, run_queued
-from core_api.security.rate_limit import RateLimitedError
+from core_api.security.rate_limit import RateLimitResult
 from v2_rows import make_question, make_type
 
 Q1, Q2 = "TCP mở kết nối thế nào?", "UDP có bảo đảm không?"
@@ -40,14 +40,20 @@ def jobs(session: Session) -> list[dict[str, Any]]:
 
 
 class Turns:
-    """The per-user limiter: `open` False means no turn."""
+    """The per-user limiter: `open` False means no turn. Counts the turns spent."""
 
     def __init__(self, open: bool = True) -> None:
         self.open = open
+        self.spent = 0
 
-    def enforce(self, rule: object, key: str) -> None:
+    def hit(self, rule: object, key: str) -> RateLimitResult:
         if not self.open:
-            raise RateLimitedError(60)
+            return RateLimitResult(allowed=False, retry_after_seconds=60)
+        self.spent += 1
+        return RateLimitResult(allowed=True, retry_after_seconds=60, redis_key=key)
+
+    def refund(self, hit: RateLimitResult) -> None:
+        self.spent -= 1
 
 
 def stored(world: World, prompt: str, **kw: Any) -> Question:
@@ -249,3 +255,42 @@ def test_a_filled_question_is_never_rewritten(world: World, ai: FakeBank) -> Non
     assert done.type_id == kind.id and done.answer_text is None
     assert links_of(world, done) == [world.leaf_b.id]
     assert world.session.scalar(select(func.count()).select_from(Question)) == 1
+
+
+def test_retries_while_the_global_quota_is_out_cost_the_learner_no_turn(
+    world: World, ai: FakeBank
+) -> None:
+    # US-14 AC9. Red when: each 10-minute retry of a queued import spends one of the learner's
+    # per-minute turns although the AI answered nothing.
+    turns = Turns()
+    ai.script = NotGraded("quota", "quota_hard_cap")
+    for _ in range(5):
+        assert run(world, ai, turns) == "requeued"
+    assert len(ai.payloads) == 5 and turns.spent == 0
+    ai.script = reply([], status="pending_ai")
+    assert run(world, ai, turns) == "requeued" and turns.spent == 0
+    ai.script = reply([bq(1, Q1)])
+    assert run(world, ai, turns) == "done" and turns.spent == 1
+
+
+def test_one_learners_stored_hashes_are_never_sent_for_another(world: World, ai: FakeBank) -> None:
+    # US-14 AC8, US-01 AC9. Red when: the known list of Alice's import holds a hash of Bob's
+    # question (same subject id or not), which would leak and skip her questions.
+    from accounts import signed_in
+    from v2_rows import make_subject
+
+    bob, _ = signed_in(world.session)
+    bob_subject = make_subject(world.session, bob)
+    make_question(
+        world.session,
+        bob,
+        bob_subject,
+        n=77,
+        prompt="Câu riêng của Bob?",
+        source="bank",
+        content_hash=content_hash("Câu riêng của Bob?"),
+    )
+    stored(world, Q1)
+    ai.script = reply([])
+    world.post()
+    assert [k["hash"] for k in ai.payloads[0]["known"]] == [content_hash(Q1)]
