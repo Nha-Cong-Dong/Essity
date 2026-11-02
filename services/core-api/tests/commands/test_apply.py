@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from core_api.db.models import CommandLog, KnowledgeUnit, PracticeRemovalLog, User
 from core_api.domain.commands.registry import CommandRejected
 from core_api.repositories.command_log import CommandLogRepository
+from core_api.repositories.practice_removal import PracticeRemovalRepository
 from core_api.repositories.study_filter import StudyFilterRepository
 from core_api.services import practice
 from core_api.services.command_codec import APPLICABLE_KINDS
@@ -193,3 +194,33 @@ def test_logs_and_errors_do_not_contain_raw_text(
         cw.service.apply(uuid.uuid4(), SESSION, CommandRequest(secret), parse=bad)
     assert secret not in caplog.text
     assert secret not in str(caught.value) and secret not in caught.value.detail
+
+
+def test_op_pair_that_cancels_keeps_its_reverts(cw: CmdWorld) -> None:  # review Y1
+    cw.leaf1.studied_weight = 1.0
+    cw.db.flush()
+    cid = uuid.uuid4()
+    pid = str(cw.leaf1.id)
+    cw.run(
+        [
+            {"kind": "section_mark", "sections": [pid], "studied": True},
+            {"kind": "section_mark", "sections": [pid], "studied": False},
+        ],
+        command_id=cid,
+    )
+    row = CommandLogRepository(cw.db, cw.user.id).by_command_id(cid)
+    assert row
+    reverts = [r for e in row.inverse_json for r in e["reverts"] if r["id"] == pid]
+    assert reverts and reverts[0]["before"] == {"studied_weight": 1.0}
+
+
+def test_study_filter_and_removal_log_isolated_two_users(
+    cw: CmdWorld, two_users: tuple[User, User]
+) -> None:
+    bob = CmdWorld(cw.db, two_users[1])
+    cw.run([{"kind": "suggest_only_subject", "subject": str(cw.subject.id), "until": "2026-12-01"}])
+    cw.run([{"kind": "question_remove_from_practice", "question": str(cw.questions[0].id)}])
+    assert StudyFilterRepository(cw.db, bob.user.id).state(cw.subject.id).rev == 0
+    assert PracticeRemovalRepository(cw.db, bob.user.id).rev(cw.questions[0].id) == 0
+    with pytest.raises(CommandRejected):
+        bob.run([{"kind": "question_remove_from_practice", "question": str(cw.questions[0].id)}])

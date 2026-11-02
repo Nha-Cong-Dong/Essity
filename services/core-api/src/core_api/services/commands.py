@@ -4,8 +4,10 @@
 of text, or ops already parsed), and in ONE transaction runs the ops through the pure domain
 (`domain/commands`), writes the result with the services and repositories the screens use
 (`OutlineService`, `UnitReviewService`, `practice.remove`, `StudyFilterRepository`) and logs the
-command with its inverse. Nothing here commits: the caller's commit keeps it, its rollback drops
-it (a failing op rolls back the savepoint of the command: no change, no log row).
+command with its inverse. The command's own writes are never committed here: the caller's commit
+keeps them, its rollback drops them (a failing op rolls back the savepoint of the command: no
+change, no log row). The one commit is before the parser call and closes a read-only transaction:
+the caller must not have written anything yet.
 
 Order of things (plan T9.2c):
 1. `payload_hash` of the request as received; a stored row of (user, command_id) answers a retry
@@ -290,8 +292,8 @@ class CommandService:
             stored = self.log.by_command_id(command_id)
             assert stored is not None
             return self._replay(stored, digest)
-        except IntegrityError as error:
-            raise CommandRejected("conflict") from error
+        except IntegrityError:
+            raise CommandRejected("conflict") from None  # the error text carries row values
         logger.info(
             "command applied id=%s ops=%d affected=%d kinds=%s",
             command_id,
@@ -685,6 +687,22 @@ class CommandService:
                     "before": before,
                     "after": after,
                     "reverts": [ctx.reverts[k] for k, owner in ctx.owner.items() if owner == key],
+                }
+            )
+        seen = {(e["kind"], e["id"]) for e in entries}
+        extra: dict[tuple[str, uuid.UUID], list[dict[str, Any]]] = {}
+        for key, owner in ctx.owner.items():
+            if (owner[0], str(ctx.made.get(owner[1], owner[1]))) not in seen:
+                extra.setdefault(owner, []).append(ctx.reverts[key])
+        for (kind, id_), reverts in extra.items():  # written, then written back to the start
+            entries.append(
+                {
+                    "kind": kind,
+                    "id": str(id_),
+                    "verb": "changed",
+                    "before": None,
+                    "after": None,
+                    "reverts": reverts,
                 }
             )
         return entries
