@@ -106,7 +106,7 @@ def pnpm_command() -> list[str]:
 def node_install(path: Path) -> list[str]:
     """Give the worktree its own node_modules from the shared pnpm store (never a junction into
     the main checkout: RETRO-FIX4, three nights of the main checkout losing its node_modules).
-    Offline first; if the store lacks a package, a normal frozen install. Returns warnings."""
+    Offline first; if the store lacks a package, a normal frozen install. Raises RuntimeError when both fail."""
     if not (path / "pnpm-lock.yaml").exists():
         return []
     lock = [sys.executable, str(Path(__file__).resolve().parent / "with_lock.py"), "web", "--"]
@@ -123,7 +123,10 @@ def node_install(path: Path) -> list[str]:
     )
     result = subprocess.run(base, cwd=path, check=False, capture_output=True, text=True)
     if result.returncode != 0:
-        return [f"lane: pnpm install failed in {path}: {result.stderr.strip()[-300:]}"]
+        raise RuntimeError(
+            f"pnpm install failed in {path} (worktree kept for inspection): "
+            f"{result.stderr.strip()[-300:]}"
+        )
     return []
 
 
