@@ -6,12 +6,13 @@ import uuid
 from cmd_world import SESSION, Parser
 from sqlalchemy import Engine, select, text
 from sqlalchemy.orm import Session
+from test_apply_lock_order import wait_for_lock_wait
 from test_apply_races import committed as committed  # noqa: F401  (fixture)
 
 from core_api.db.models import DocSection
 from core_api.services.commands import CommandRequest, CommandService
 from core_api.services.outline import OutlineService
-from races import finished, in_thread, wait_for_lock
+from races import finished, in_thread
 
 
 def test_ac4_apply_waits_for_outline_edit_then_both_land(
@@ -23,11 +24,10 @@ def test_ac4_apply_waits_for_outline_edit_then_both_land(
             select(DocSection.id).where(DocSection.user_id == user_id, DocSection.title == "1.2")
         ).one()
         OutlineService(screen, user_id).edit_section(leaf2, excluded=True)  # holds the document
-        pids: list[int] = []
+        screen_pid = screen.execute(text("SELECT pg_backend_pid()")).scalar_one()
 
         def command() -> object:
             with Session(engine, expire_on_commit=False) as own:
-                pids.append(own.execute(text("SELECT pg_backend_pid()")).scalar_one())
                 out = CommandService(own, user_id).apply(
                     uuid.uuid4(),
                     SESSION,
@@ -38,9 +38,7 @@ def test_ac4_apply_waits_for_outline_edit_then_both_land(
                 return out
 
         thread, outcome = in_thread(command)
-        while not pids:
-            thread.join(0.05)
-        wait_for_lock(engine, pids[0], outcome)
+        wait_for_lock_wait(engine, screen_pid)  # whoever waits on the screen's lock, on any backend
         screen.commit()
     result = finished(thread, outcome)
     assert not isinstance(result, BaseException), result
