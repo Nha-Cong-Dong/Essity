@@ -11,6 +11,7 @@ from core_api.db.models import Attempt, Grade, Question, User
 from core_api.domain.mastery import PracticeVerdict
 from core_api.domain.scheduling.practice import PracticeState
 from core_api.domain.scheduling.rating import Verdict
+from core_api.repositories.practice_attempt import PracticeAttemptRepository
 from core_api.repositories.question import QuestionUnitRepository
 from core_api.repositories.review import (
     AttemptRepository,
@@ -60,6 +61,10 @@ class Practice:
         return self._units[question.id]
 
     def attempt(self, question: Question, at: datetime) -> Attempt:
+        if question.source != "review_auto":  # a bank question is answered on the practice path
+            practice = PracticeAttemptRepository(self.session, self.user.id)
+            draft, _ = practice.open_draft(question.id, at - timedelta(seconds=60))
+            return practice.submit(draft.id, at, hidden_ms=0, reference_seconds=100.0)
         sessions = ReviewSessionRepository(self.session, self.user.id)
         sitting = sessions.start(at.date(), at)
         attempts = AttemptRepository(self.session, self.user.id)

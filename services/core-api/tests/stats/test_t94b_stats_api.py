@@ -19,6 +19,7 @@ from core_api.db.models import (
 )
 from core_api.domain.scheduling.fsrs_adapter import MemoryState, Phase
 from core_api.repositories.auth_session import AuthSessionRepository
+from core_api.repositories.practice_attempt import PracticeAttemptRepository
 from core_api.repositories.review import (
     AttemptRepository,
     MemoryStateRepository,
@@ -244,7 +245,13 @@ def test_stats_and_csv_are_isolated(
     section = make_section(db_session, bob, doc, title="Mục của Bob", weight=1, studied_weight=1)
     save_card(db_session, bob, subject, NOW - timedelta(days=1), section.id)
     question = make_question(db_session, bob, subject, n=7, source="bank")
-    answer(db_session, bob, question.id, NOW - timedelta(hours=2))
+    practice_attempts = PracticeAttemptRepository(
+        db_session, bob.id
+    )  # a bank question: practice path
+    draft, _ = practice_attempts.open_draft(question.id, NOW - timedelta(hours=2, minutes=1))
+    practice_attempts.submit(
+        draft.id, NOW - timedelta(hours=2), hidden_ms=0, reference_seconds=100.0
+    )
     body = stats(client, a_headers)
     assert body["subjects"] == [] and body["grid"] == []
     text = client.get("/v1/export.csv", headers=a_headers).text
