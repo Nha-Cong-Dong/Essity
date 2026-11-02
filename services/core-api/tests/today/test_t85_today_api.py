@@ -123,3 +123,23 @@ def test_today_runs_the_same_queries_for_few_or_many_practice_questions(
     assert statements_per_request(client, db_session, small) == statements_per_request(
         client, db_session, large
     )
+
+
+def test_t85_f2_practice_kept_but_not_due_is_rested(
+    client: TestClient, db_session: Session
+) -> None:
+    """T8.5 F2: only practice questions, attempted and not due today: rested, not no_questions."""
+    user, headers = signed_in(db_session)
+    bench = Bench(db_session, user)
+    schedule(db_session, user, bench.ready(), FROZEN_NOW + timedelta(days=5))
+    body = today(client, headers)
+    assert body["state"] == "rested" and body["review"]["items"] == []
+
+
+def test_t85_f2_removed_practice_is_still_no_questions(
+    client: TestClient, db_session: Session
+) -> None:
+    user, headers = signed_in(db_session)
+    bench = Bench(db_session, user)
+    schedule(db_session, user, bench.ready(), FROZEN_NOW + timedelta(days=5), removed=FROZEN_NOW)
+    assert today(client, headers)["state"] == "no_questions"
