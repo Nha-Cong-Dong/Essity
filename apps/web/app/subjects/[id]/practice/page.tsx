@@ -4,9 +4,11 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
-import { QuestionList } from "@/components/question-list";
+import { PracticeLive } from "@/components/practice/practice-live";
 import { AppShell } from "@/components/shells";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
+import type { PracticeType } from "@/lib/practice-client";
+import { loadPracticeTypes } from "@/lib/practice-types";
 import { loadQuestionList } from "@/lib/question-list";
 import type { QuestionListOut } from "@/lib/question-list-types";
 import { requireVerifiedSession } from "@/lib/session";
@@ -22,15 +24,17 @@ async function Practice({ params }: { params: Promise<{ id: string }> }) {
   await requireVerifiedSession();
   const subject = await subjectForUpload((await params).id);
   let list: QuestionListOut | null = null;
+  let types: PracticeType[] = [];
   try {
-    list = await loadQuestionList(subject.id);
+    [list, types] = await Promise.all([loadQuestionList(subject.id), loadPracticeTypes(subject.id)]);
   } catch (error) {
     if (error instanceof CoreStatusError && error.status === 401) redirect("/login");
   }
   return (
     <div className="mx-auto w-full max-w-(--col-session)">
-      <h1 className="m-0 mb-6 font-display text-title">Luyện tập</h1>
       {list === null ? (
+        <>
+        <h1 className="m-0 mb-6 font-display text-title">Luyện tập</h1>
         <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
           <p className="m-0 font-semibold">Không tải được danh sách câu hỏi.</p>
           <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
@@ -38,8 +42,9 @@ async function Practice({ params }: { params: Promise<{ id: string }> }) {
             Thử lại
           </a>
         </div>
+        </>
       ) : (
-        <QuestionList subjectId={subject.id} list={list} />
+        <PracticeLive subjectId={subject.id} subjectName={subject.name} list={list} types={types} />
       )}
     </div>
   );

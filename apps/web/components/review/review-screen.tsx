@@ -5,12 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnswerBox, clock, type SaveState } from "@/components/review/answer-box";
 import { GradeResult } from "@/components/review/grade-result";
 import { ResultActions } from "@/components/review/result-actions";
+import { PracticeAnswer } from "@/components/practice/practice-answer";
 import { QuestionReason } from "@/components/question-reason";
 import { Summary } from "@/components/review/summary";
 import { FocusShell } from "@/components/shells";
 import { Button } from "@/components/ui/button";
 import { clearDraft, pickDraft, readDraft, writeDraft } from "@/lib/draft";
 import { go } from "@/lib/navigate";
+import { type PracticeApi, practiceApi } from "@/lib/practice-client";
 import { type AttemptView, type Current, reviewApi, type ReviewApi, type Summary as Stopped } from "@/lib/review-client";
 
 // T2.15, T2.13 (US-04, US-05, US-08; DESIGN.md §6.4, §6.5; plan t2.15-t2.13-t2.16-answer-grade.md):
@@ -42,11 +44,22 @@ type Phase =
   | { kind: "ended" }
   | { kind: "done"; ungraded: string[] }
   | { kind: "summary"; stopped: Stopped }
-  | { kind: "question"; step: Current; attemptId: string };
+  | { kind: "question"; step: Current; attemptId: string }
+  // T8.7 (T8.5 review F1): a practice question due today. core-api refuses an attempt on it
+  // (409 practice_question): it is answered through /v1/practice, with its own schedule.
+  | { kind: "practice"; step: Current };
 
 const ENDED = new Set(["session_ended", "session_not_found", "attempt_not_found"]);
 
-export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string; api?: ReviewApi }) {
+export function ReviewScreen({
+  sessionId,
+  api = reviewApi,
+  practice = practiceApi,
+}: {
+  sessionId: string;
+  api?: ReviewApi;
+  practice?: PracticeApi;
+}) {
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [text, setText] = useState("");
   const [save, setSave] = useState<{ state: SaveState; at: number | null }>({ state: "idle", at: null });
@@ -135,6 +148,12 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
       if (step.done) {
         if (step.ungraded.length === 0) await finish();
         else setPhase({ kind: "done", ungraded: step.ungraded });
+        return;
+      }
+      if (step.question.kind === "practice") {
+        attemptRef.current = null;
+        setLast({ position: step.position, total: step.total });
+        setPhase({ kind: "practice", step });
         return;
       }
       if (step.attempt) {
@@ -337,6 +356,21 @@ export function ReviewScreen({ sessionId, api = reviewApi }: { sessionId: string
       0,
       0,
       <Ungraded ids={phase.ungraded} api={api} busy={busy} onLeave={() => void finish()} />,
+    );
+  }
+
+  if (phase.kind === "practice") {
+    const { step } = phase;
+    return shell(
+      step.position,
+      step.total,
+      <PracticeAnswer
+        key={step.question.id}
+        questionId={step.question.id}
+        api={practice}
+        nextLabel={step.position >= step.total ? "Về trang chính" : "Câu tiếp"}
+        onNext={reload}
+      />,
     );
   }
 

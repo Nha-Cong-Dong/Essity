@@ -20,7 +20,7 @@ export const ANSWER_MAX = 4000;
 
 export type Reply<T> = { ok: true; data: T } | { ok: false; error: string };
 
-async function call<T>(path: string, method: string, body?: object): Promise<Reply<T>> {
+export async function call<T>(path: string, method: string, body?: object): Promise<Reply<T>> {
   let response: Response;
   try {
     response = await fetch(path, {
