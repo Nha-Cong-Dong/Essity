@@ -130,5 +130,25 @@ class Cli(unittest.TestCase):
         self.assertIsNone(cb.infer_lane(Path("D:/Essity")))
 
 
+class Main(unittest.TestCase):
+    def test_batch_runs_only_the_numbered_batch(self) -> None:
+        with mock.patch.object(cb, "run_batches", return_value=0) as run:
+            self.assertEqual(cb.main(["--lane", "L2", "--batch", "2"]), 0)
+        batches = run.call_args.args[0]
+        self.assertEqual(len(batches), 1)
+        with mock.patch("builtins.print") as out:
+            cb.main(["--list"])
+        listed = [c.args[0] for c in out.call_args_list]
+        self.assertEqual(batches[0].name, listed[2].split("  ", 1)[1])
+
+    def test_batch_out_of_range_is_an_error(self) -> None:
+        self.assertEqual(cb.main(["--lane", "L2", "--batch", "99"]), 2)
+
+    def test_list_prints_the_command_for_each_batch(self) -> None:
+        with mock.patch("builtins.print") as out:
+            cb.main(["--list"])
+        self.assertTrue(any("--batch 1" in c.args[0] for c in out.call_args_list))
+
+
 if __name__ == "__main__":
     unittest.main()

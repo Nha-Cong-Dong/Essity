@@ -168,6 +168,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--list", action="store_true", help="print the batches and exit"
     )
+    parser.add_argument(
+        "--batch", type=int, help="run only batch N as --list numbers them"
+    )
     parser.add_argument("--keep-going", action="store_true")
     parser.add_argument("--budget", type=float, default=BUDGET)
     parser.add_argument(
@@ -185,7 +188,13 @@ def main(argv: list[str]) -> int:
     if args.list:
         for i, b in enumerate(batches, 1):
             print(f"{i}: ~{b.seconds:.0f}s  {b.name}")
+            print(f"   python scripts/core_batches.py --lane L<n> --batch {i}")
         return 0
+    if args.batch is not None:
+        if not 1 <= args.batch <= len(batches):
+            print(f"no batch {args.batch} (have 1..{len(batches)})", file=sys.stderr)
+            return 2
+        batches = [batches[args.batch - 1]]
 
     lane = int(args.lane.lstrip("Ll")) if args.lane else infer_lane(REPO)
     if lane is None:
