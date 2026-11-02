@@ -178,3 +178,23 @@ def test_t716_the_fake_provider_answers_the_review_question(
     assert data["status"] == "ok"
     assert data["provider"] == "fake"
     assert data["prompt"] and data["reference_answer"] and data["rubric"]
+
+
+def test_question_language_rule_is_in_the_prompt(
+    app: FastAPI, sessions: sessionmaker[Session]
+) -> None:
+    # REALFIX2 (REALCHECK finding 6). Red when: the prompt stops telling the model to write the
+    # question and answer in the material's language (Vietnamese notes got English questions).
+    payload = body(title="Giao thức bắt tay ba bước", summary="Ba bước mở một kết nối.")
+    adapter = Scripted(GOOD)
+    client(app, adapter, sessions).post(URL, json=payload)
+    [request] = adapter.requests
+    assert "Vietnamese material gets a Vietnamese question and answer" in request.system
+    assert "Giao thức bắt tay ba bước" in request.user
+
+
+@pytest.mark.parametrize("version", ["v1", "v2"])
+def test_question_prompts_carry_the_language_rule(version: str) -> None:
+    from ai_service.tasks.generate_questions import load_prompt
+
+    assert "language of the unit titles, summaries and sources" in load_prompt(version).text
