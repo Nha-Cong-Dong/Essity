@@ -44,6 +44,30 @@ class QuestionRepository(UserScopedRepository[Question]):
         self.session.flush()
         return True
 
+    def by_ids(self, ids: Sequence[uuid.UUID]) -> list[Question]:
+        """This user's questions among `ids`, in id order."""
+        return list(
+            self.session.scalars(
+                self._select()
+                .where(Question.id.in_(ids))
+                .order_by(Question.id)
+                .execution_options(populate_existing=True)
+            )
+        )
+
+    def lock_ids(self, ids: Sequence[uuid.UUID]) -> list[Question]:
+        """These questions FOR NO KEY UPDATE in id order, read afresh (the same mode as
+        `PracticeStateRepository.hold_question`: foreign keys' KEY SHARE still passes)."""
+        return list(
+            self.session.scalars(
+                self._select()
+                .where(Question.id.in_(ids))
+                .order_by(Question.id)
+                .with_for_update(key_share=True)
+                .execution_options(populate_existing=True)
+            )
+        )
+
     def find_by_prompt(self, subject_id: uuid.UUID, prompt: str) -> Question | None:
         """The subject's question with this prompt however typed (same content hash): the active
         one, else the newest retired one, else None."""

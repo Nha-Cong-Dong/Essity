@@ -17,6 +17,7 @@ from core_api.domain.mastery import (
 )
 from core_api.domain.scheduling.practice import PracticeState, verdict_of
 from core_api.repositories.practice import PracticeLogRepository, PracticeStateRepository
+from core_api.repositories.practice_removal import PracticeRemovalRepository
 from core_api.repositories.question import QuestionNotFoundError
 from core_api.repositories.review import AttemptRepository, GradeRepository
 
@@ -76,15 +77,37 @@ def record_grade(
     return state
 
 
-def remove(session: Session, user_id: uuid.UUID, question_id: uuid.UUID, at: datetime) -> bool:
-    """Stop the question's schedule. False for a question never attempted: it has no state."""
+def remove(
+    session: Session,
+    user_id: uuid.UUID,
+    question_id: uuid.UUID,
+    at: datetime,
+    *,
+    command_id: uuid.UUID | None = None,
+) -> bool:
+    """Take the question out of practice: one `removed` event in the append-only log (the truth,
+    kept for a question never attempted too), then the schedule's cache. The question's row is
+    locked before the event is written. False for a question never attempted: it has no state."""
     states = PracticeStateRepository(session, user_id)
     states.hold_question(question_id)
+    removals = PracticeRemovalRepository(session, user_id)
+    if removals.in_practice(question_id):
+        removals.append(question_id, "removed", at=at, command_id=command_id)
     return states.set_removed_at(question_id, at)
 
 
-def readd(session: Session, user_id: uuid.UUID, question_id: uuid.UUID) -> bool:
-    """Resume the schedule where it left off."""
+def readd(
+    session: Session,
+    user_id: uuid.UUID,
+    question_id: uuid.UUID,
+    *,
+    at: datetime | None = None,
+    command_id: uuid.UUID | None = None,
+) -> bool:
+    """Put the question back: a `readded` event, and the schedule resumes where it left off."""
     states = PracticeStateRepository(session, user_id)
     states.hold_question(question_id)
+    removals = PracticeRemovalRepository(session, user_id)
+    if not removals.in_practice(question_id):
+        removals.append(question_id, "readded", at=at, command_id=command_id)
     return states.set_removed_at(question_id, None)

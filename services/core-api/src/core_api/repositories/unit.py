@@ -88,6 +88,17 @@ class KnowledgeUnitRepository(UserScopedRepository[KnowledgeUnit]):
         ).first()
         return done is not None
 
+    def by_ids(self, ids: Sequence[uuid.UUID]) -> list[KnowledgeUnit]:
+        """This user's units among `ids`, in id order, read afresh."""
+        return list(
+            self.session.scalars(
+                self._select()
+                .where(KnowledgeUnit.id.in_(ids))
+                .order_by(KnowledgeUnit.id)
+                .execution_options(populate_existing=True)
+            )
+        )
+
     def lock(self, ids: Sequence[uuid.UUID]) -> None:
         """Hold these units FOR NO KEY UPDATE until commit, in id order (T2.13): two answers on
         one unit graded at once write its schedule one after the other, never over each other.
@@ -168,6 +179,25 @@ class DraftRepository(KnowledgeUnitRepository):
             .where(StudySession.user_id == self.user_id, StudySession.id == session_id)
             .with_for_update(key_share=True)
             .execution_options(populate_existing=True)
+        ).one_or_none()
+
+    def lock_sessions(self, session_ids: Sequence[uuid.UUID]) -> None:
+        """The sessions FOR NO KEY UPDATE in id order (a command locks every session of its cards
+        before any card, as `lock_session` then `lock_drafts` do for one)."""
+        for session_id in sorted(set(session_ids)):
+            self.lock_session(session_id)
+
+    def draft_session_of(self, subject_id: uuid.UUID) -> StudySession | None:
+        """The subject's newest draft study session: where a card added by a command lands."""
+        return self.session.scalars(
+            select(StudySession)
+            .where(
+                StudySession.user_id == self.user_id,
+                StudySession.subject_id == subject_id,
+                StudySession.status == "draft",
+            )
+            .order_by(StudySession.created_at.desc(), StudySession.id)
+            .limit(1)
         ).one_or_none()
 
     def lock_drafts(
