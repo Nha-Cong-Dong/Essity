@@ -57,7 +57,7 @@ for (const width of WIDTHS) {
   test(`R44-k while editing, the Sửa button is gone and the name keeps the full first line @ ${width}px`, async ({ page }) => {
     await open(page, width);
     const row = page.locator("main li").first();
-    const name = row.locator('span[id$="-name"]');
+    const name = row.locator('a[id$="-name"]');
     const before = await name.boundingBox();
     await row.getByRole("button", { name: /^Sửa / }).click();
     await expect(row.getByRole("button", { name: /^Sửa / })).toHaveCount(0);

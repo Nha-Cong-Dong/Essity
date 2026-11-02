@@ -18,7 +18,7 @@ async function Fixture({ searchParams }: { searchParams: Promise<{ state?: strin
   return (
     <AppShell current="/today" account={<AccountMenu email="xem-thu@example.com" />}>
       <div className="mx-auto w-full max-w-280">
-        <TodayV2Screen today={today} />
+        <TodayV2Screen today={today} preview />
       </div>
     </AppShell>
   );

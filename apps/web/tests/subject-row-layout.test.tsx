@@ -48,3 +48,12 @@ describe("subject row (T2.3c, R44)", () => {
     expect(within(row).getByRole("button", { name: "Sửa Mạng máy tính" })).toBeTruthy();
   });
 });
+
+describe("subject row link (T7.13 review F1)", () => {
+  // Red when: the subject's name is not a link to its screen (the milestone walk needs it).
+  it("US-15 AC6: the name links to /subjects/[id]", () => {
+    render(<SubjectList subjects={[MMT]} example="15/12/2031" />);
+    const link = screen.getByRole("link", { name: "Mạng máy tính" });
+    expect(link.getAttribute("href")).toBe(`/subjects/${MMT.id}`);
+  });
+});

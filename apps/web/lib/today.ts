@@ -16,3 +16,13 @@ export async function getToday(): Promise<Today> {
   if (!data) throw new CoreStatusError("/v1/today", response.status);
   return data;
 }
+
+// T7.13: every subject's suggestion for today (GET /v1/suggestions, T7.10), for the subject screen.
+export type Suggestions = components["schemas"]["SuggestionsOut"];
+
+export async function getSuggestions(): Promise<Suggestions> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const { data, response } = await coreClient({ token }).GET("/v1/suggestions");
+  if (!data) throw new CoreStatusError("/v1/suggestions", response.status);
+  return data;
+}
