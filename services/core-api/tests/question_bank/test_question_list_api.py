@@ -228,3 +228,11 @@ def test_someone_elses_subject_is_a_404(bench: Bench, db_session: Session) -> No
 
 def test_requires_sign_in(bench: Bench) -> None:
     assert bench.client.get(f"/v1/subjects/{bench.subject.id}/questions").status_code in (401, 403)
+
+
+def test_an_unverified_account_is_refused(bench: Bench, db_session: Session) -> None:
+    # US-14 section 7 ("chưa xác minh bị từ chối"). Red when: an unverified account can list.
+    user, headers = signed_in(db_session, verified=False)
+    subject = make_subject(db_session, user)
+    response = bench.client.get(f"/v1/subjects/{subject.id}/questions", headers=headers)
+    assert response.status_code == 403
