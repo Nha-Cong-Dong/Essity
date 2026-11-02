@@ -6,12 +6,14 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Float,
+    ForeignKey,
     ForeignKeyConstraint,
     Identity,
     Index,
     SmallInteger,
     String,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -82,3 +84,37 @@ class PracticeLog(UserOwned, Base):
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     grade_id: Mapped[uuid.UUID]
     seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
+
+
+REMOVAL_ACTIONS = frozenset({"removed", "readded"})
+
+
+class PracticeRemovalLog(Base):
+    """Taking a practice question out of practice, and putting it back (T9.2b): added, never
+    changed (the trigger of `practice_log`). The newest row of a question is the truth;
+    `practice_state.removed_at` is a cache of it, so a rebuild of the cache cannot bring a removed
+    question back, and a question never answered (no state row) can be removed too.
+    `command_id` is the command that did it, NULL for the button; no foreign key.
+
+    Not `UserOwned`: its key is a counter, whose order is the history's order."""
+
+    __tablename__ = "practice_removal_log"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["question_id", "user_id"], ["question.id", "question.user_id"], ondelete="NO ACTION"
+        ),
+        CheckConstraint(one_of("action", REMOVAL_ACTIONS), name="action_known"),
+        Index(
+            "ix_practice_removal_log_user_id_question_id_id",
+            "user_id",
+            "question_id",
+            text("id DESC"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
+    question_id: Mapped[uuid.UUID]
+    action: Mapped[str] = mapped_column(String(7))
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    command_id: Mapped[uuid.UUID | None]

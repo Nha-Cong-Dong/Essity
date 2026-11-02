@@ -6,7 +6,7 @@ from core_api.db.models.document import DocSection, Document
 from core_api.db.models.email_token import EmailToken
 from core_api.db.models.grade_job import GradeJob
 from core_api.db.models.outbox import Outbox
-from core_api.db.models.practice import PracticeLog, PracticeState
+from core_api.db.models.practice import PracticeLog, PracticeRemovalLog, PracticeState
 from core_api.db.models.processed_event import ProcessedEvent
 from core_api.db.models.question import (
     Question,
@@ -24,6 +24,7 @@ from core_api.db.models.review import (
     ReviewSession,
     ReviewSessionItem,
 )
+from core_api.db.models.study_filter import StudyFilter
 from core_api.db.models.study_session import (
     NoteFile,
     NoteUpload,
@@ -61,6 +62,7 @@ __all__ = [
     "NoteUpload",
     "Outbox",
     "PracticeLog",
+    "PracticeRemovalLog",
     "PracticeState",
     "ProcessedEvent",
     "Question",
@@ -74,6 +76,7 @@ __all__ = [
     "SessionRange",
     "StudyLedger",
     "StudySession",
+    "StudyFilter",
     "Subject",
     "Submission",
     "UnitEdge",

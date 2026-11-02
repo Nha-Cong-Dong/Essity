@@ -6,6 +6,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    FetchedValue,
     Float,
     ForeignKeyConstraint,
     Index,
@@ -165,6 +166,7 @@ class DocSection(UserOwned, Base):
         # Positions in the file, 1-based; both or neither (T7.6, set by T7.3/T7.5).
         CheckConstraint("(first_page IS NULL) = (last_page IS NULL)", name="pages_both_or_neither"),
         CheckConstraint("first_page >= 1 AND last_page >= first_page", name="pages_ordered"),
+        CheckConstraint("version >= 1", name="version_from_one"),
     )
 
     subject_id: Mapped[uuid.UUID]
@@ -180,3 +182,8 @@ class DocSection(UserOwned, Base):
     excluded: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     first_page: Mapped[int | None] = mapped_column(Integer)
     last_page: Mapped[int | None] = mapped_column(Integer)
+    # Raised by a trigger (0032) on any change of the content columns, never by code: the
+    # revision a command's undo checks. See `tests/schema_v2/test_version_trigger.py`.
+    version: Mapped[int] = mapped_column(
+        Integer, server_default="1", server_onupdate=FetchedValue()
+    )

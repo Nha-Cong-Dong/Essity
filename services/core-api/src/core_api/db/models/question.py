@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
+    FetchedValue,
     ForeignKeyConstraint,
     Index,
     Integer,
@@ -62,6 +63,7 @@ class Question(UserOwned, Base):
             ["question_type.id", "question_type.subject_id", "question_type.user_id"],
         ),
         CheckConstraint("length(content_hash) = 64", name="content_hash_length"),
+        CheckConstraint("version >= 1", name="version_from_one"),
         # Unique among the active ones: a question whose answer changed is retired and replaced
         # (T2.2), so retired ones may repeat the hash.
         Index(
@@ -119,6 +121,11 @@ class Question(UserOwned, Base):
     bank_document_id: Mapped[uuid.UUID | None]
     bank_ord: Mapped[int | None] = mapped_column(Integer)
     generation_id: Mapped[uuid.UUID | None]
+    # Raised by a trigger (0032) on any change of the content columns, never by code: the
+    # revision a command's undo checks.
+    version: Mapped[int] = mapped_column(
+        Integer, server_default="1", server_onupdate=FetchedValue()
+    )
 
 
 class QuestionUnit(UserOwned, Base):
