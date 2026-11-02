@@ -1,0 +1,35 @@
+step: tester
+verdict: pass
+sha: 9432532ac43af64951970c64a05af0a35ff6ecd8
+round: 1
+open_orange: 0
+by: feature-tester
+at: 2026-11-02
+summary: "Đạt. Không lỗi src. T1/T2 đã có test (commit 9432532), T4 và T3 đã bù bằng test tester; bất biến phiên trộn hai chiều được kiểm qua chấm, chấm lại, chấm sai."
+tests_run:
+  - "tests/today -m 'not timing': 292 passed (DB core_test_l1, redis /6)"
+  - "tests/review tests/practice tests/question_bank -m 'not timing': 336 passed + 2 error ở test_t23b_subject_lock_race (DDL tranh chấp do chạy song song với vòng đột biến trên cùng DB; chạy riêng 3 passed; đã dọn 2 user t23b-race sót lại)"
+  - "test_t85_tester_edges.py 12 passed; test_t85_tester_timing.py 1 passed (best 152 ms); ruff check/format, pyright sạch"
+review_task_points:
+  T1: "đã có test_practice_answered_before_the_session_started_is_not_answered (giết S01)"
+  T2: "đã tham số hóa test_due_boundary_is_the_learning_day_end (4 múi/giờ, có DST); thêm ranh đúng end trong tester (giết S06)"
+  T3: "thêm test_us03_ac2_today_with_250_cards_and_250_practice_under_300ms (timing)"
+  T4: "thêm regrade + override hai chiều trong phiên trộn, và chéo route 404"
+mutations: {killed: 36, survived: 3, compensated: 10}
+mutation_table:
+  - "S01 bỏ submitted_at>=started_at -> test_practice_answered_before_the_session_started_is_not_answered"
+  - "S04/S05 closed sai -> test_an_opened_but_unsent_..., test_a_practice_question_taken_out_mid_session_drops_out"
+  - "S06 due < thành <= -> test_a_question_due_exactly_at_the_learning_day_end_waits_for_tomorrow (bù)"
+  - "S14/A05 next_day/stop tính câu đã gỡ -> test_only_a_removed_..., test_a_removed_... (bù)"
+  - "S17 is_practice chỉ bank -> test_a_kept_generated_question_is_a_practice_step_too (bù)"
+  - "A02 ungraded gồm luyện tập -> test_practice_regrade_and_override_in_mixed_session_leave_cards (bù)"
+  - "A06 stop bỏ lịch luyện tập -> test_stop_of_a_practice_only_session_gives_the_practice_next_day (bù)"
+  - "T04 next_day chỉ theo thẻ -> test_today_next_day_comes_from_the_practice_schedule_too (bù)"
+  - "T07 bỏ sắp dòng Luyện tập -> test_practice_lines_are_in_subject_name_order (bù)"
+  - "T09 lazy job nhận cả câu luyện tập -> test_a_due_practice_question_never_enqueues_a_lazy_job_for_its_card (bù, viết vòng này)"
+  - "R01-R06, A01, A03, A07-A09, T01-T03, T08, S07-S24 khác: test dev đỏ"
+  - "SỐNG (tương đương): S02 bỏ status=submitted (draft có submitted_at NULL nên S01 đã loại); S03 bỏ review_session_id IS NULL (open_draft chặn câu không review_auto); A04 bỏ 'practice or' ở attempt (bước luyện tập hiện tại không bao giờ có attempt đã nộp)"
+tests_added:
+  - "services/core-api/tests/today/test_t85_tester_edges.py (12 test: regrade/override hai chiều, chéo route 404, draft chưa nộp, câu gỡ và next_day, ranh cuối ngày, câu generated đã giữ, next_day từ lịch luyện tập, thứ tự dòng, lazy job)"
+  - "services/core-api/tests/today/test_t85_tester_timing.py (US-03 AC2, mark timing)"
+git_status: "chỉ 2 file test chưa track trong tests/today; worktree tạm wt-mut-t85 đã gỡ"

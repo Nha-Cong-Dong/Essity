@@ -17,7 +17,6 @@ from core_api.db.models import Attempt
 from core_api.db.session import DbSession
 from core_api.domain.explain import explain
 from core_api.domain.learning_day import learning_day
-from core_api.domain.today import compose_today
 from core_api.repositories.question import QuestionNotFoundError, QuestionUnitRepository
 from core_api.repositories.review import (
     AttemptNotDraftError,
@@ -34,6 +33,7 @@ from core_api.repositories.review import (
 )
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
 from core_api.repositories.today import TodayRepository
+from core_api.services.today import compose_mixed, is_practice, practice_reason, session_steps
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
@@ -68,8 +68,10 @@ class QuestionOut(BaseModel):
     id: uuid.UUID
     prompt: str
     subject: SubjectRef
-    unit_ids: list[uuid.UUID]  # what "Không cần ôn phần này" skips (T2.23)
+    unit_ids: list[uuid.UUID]  # what "Không cần ôn phần này" skips (T2.23); none for practice
     reason: ReasonOut
+    # T8.5: a practice question is answered at `/v1/practice`, not through this session's attempts
+    kind: Literal["card", "practice"] = "card"
 
 
 class AttemptOut(BaseModel):
@@ -126,9 +128,7 @@ def _attempt_out(attempt: Attempt) -> AttemptOut:
 
 
 def _finished(session_id: uuid.UUID, user_id: uuid.UUID, session: DbSession) -> bool:
-    answered, total = session_counts(
-        ReviewSessionItemRepository(session, user_id).progress(session_id)
-    )
+    answered, total = session_counts(session_steps(session, user_id, session_id))
     return answered == total
 
 
@@ -150,35 +150,21 @@ def start_session(
         found = None
     if found is None:
         listed = SubjectRepository(session, user.id).list_with_exams()
-        exams = {subject.id: exam.exam_date for subject, exam, _ in listed}
-        if body.subject_id is not None and body.subject_id not in exams:
+        known = {subject.id for subject, _, _ in listed}
+        if body.subject_id is not None and body.subject_id not in known:
             raise _error(status.HTTP_404_NOT_FOUND, "subject_not_found")
         reads = TodayRepository(session, user.id)
-        units = [u for u in reads.scheduled_units() if body.subject_id in (None, u.subject_id)]
-        fresh = [q for q in reads.new_questions(day=day) if body.subject_id in (None, q.subject_id)]
-        plan = compose_today(
-            units,
-            fresh,
-            exams,
-            now=now,
-            tz=tz,
-            day_start_hour=user.day_start_hour,
-            unasked={
-                s: n
-                for s, n in reads.unasked_by_subject(day=day).items()
-                if body.subject_id in (None, s)
-            },
-        )
-        if not plan.items:
+        mixed = compose_mixed(session, user, now, reads, subject_id=body.subject_id)
+        if not mixed.entries:
             raise _error(status.HTTP_409_CONFLICT, "nothing_to_review")
         found, made = sessions.open_for_day(day, now, body.subject_id)
         if made:
-            items.add_all(found.id, [item.question_id for item in plan.items])
+            items.add_all(found.id, [entry.question_id for entry in mixed.entries])
         else:  # another tab made it a moment ago: the open session, as when it already was
             response.status_code = status.HTTP_200_OK
     else:
         response.status_code = status.HTTP_200_OK
-    answered, total = session_counts(items.progress(found.id))
+    answered, total = session_counts(session_steps(session, user.id, found.id))
     return SessionOut(id=found.id, answered=answered, total=total)
 
 
@@ -189,13 +175,17 @@ def _open_steps(
     found = ReviewSessionRepository(session, user_id).get(session_id)
     if found is None:
         raise _error(status.HTTP_404_NOT_FOUND, "session_not_found")
-    steps = ReviewSessionItemRepository(session, user_id).progress(session_id)
+    steps = session_steps(session, user_id, session_id)
     return found.ended_at is not None, steps
 
 
 def _ungraded(steps: list[SessionStep], user_id: uuid.UUID, session: DbSession) -> list[uuid.UUID]:
     """The session's submitted answers that have no grade yet, in session order (plan D-7)."""
-    submitted = [s.attempt.id for s in steps if s.attempt is not None and s.answered]
+    submitted = [
+        s.attempt.id
+        for s in steps
+        if s.attempt is not None and s.answered and not is_practice(s.question)
+    ]
     graded = GradeRepository(session, user_id).graded(submitted)
     return [attempt_id for attempt_id in submitted if attempt_id not in graded]
 
@@ -213,6 +203,12 @@ def current_out(
     if ended or step is None:
         return DoneOut(ungraded=ungraded)
     answered, total = session_counts(steps)
+    practice = is_practice(step.question)
+    reason = (
+        practice_reason(session, user_id, step.question.id, now)
+        if practice
+        else explain(TodayRepository(session, user_id).schedules_of(step.question.id), now)
+    )
     return CurrentOut(
         ungraded=ungraded,
         position=answered + 1,
@@ -221,15 +217,15 @@ def current_out(
             id=step.question.id,
             prompt=step.question.prompt,
             subject=SubjectRef(id=step.subject.id, name=step.subject.name),
-            unit_ids=[
+            unit_ids=[]
+            if practice
+            else [
                 u.id for u in QuestionUnitRepository(session, user_id).units_of(step.question.id)
             ],
-            reason=ReasonOut.model_validate(
-                explain(TodayRepository(session, user_id).schedules_of(step.question.id), now),
-                from_attributes=True,
-            ),
+            reason=ReasonOut.model_validate(reason, from_attributes=True),
+            kind="practice" if practice else "card",
         ),
-        attempt=_attempt_out(step.attempt) if step.attempt is not None else None,
+        attempt=None if practice or step.attempt is None else _attempt_out(step.attempt),
     )
 
 
@@ -253,6 +249,8 @@ def open_current_attempt(
     step = _current(steps)
     if step is None:
         raise _error(status.HTTP_409_CONFLICT, "session_done")
+    if is_practice(step.question):  # answered through /v1/practice: its own schedule (T8.5)
+        raise _error(status.HTTP_409_CONFLICT, "practice_question")
     if step.attempt is not None:
         response.status_code = status.HTTP_200_OK
         return _attempt_out(step.attempt)
@@ -300,17 +298,23 @@ def stop_session(
     held = sessions.hold_for_update(session_id)
     if held is None:
         raise _error(status.HTTP_404_NOT_FOUND, "session_not_found")
-    answered, total = session_counts(
-        ReviewSessionItemRepository(session, user.id).progress(session_id)
-    )
+    answered, total = session_counts(session_steps(session, user.id, session_id))
     if held.ended_at is None:
         sessions.end(session_id, now, reason="completed" if answered == total else "user_stopped")
     tz = ZoneInfo(user.timezone)
     today = learning_day(now, tz, user.day_start_hour)
+    reads = TodayRepository(session, user.id)
     later = [
         day
-        for unit in TodayRepository(session, user.id).scheduled_units()
+        for unit in reads.scheduled_units()
         if (day := learning_day(unit.state.due, tz, user.day_start_hour)) > today
+    ]
+    later += [  # the practice schedule counts too (T8.5)
+        day
+        for c in reads.practice_candidates()
+        if c.state is not None
+        and not c.removed
+        and (day := learning_day(c.state.due, tz, user.day_start_hour)) > today
     ]
     return StoppedOut(
         answered=answered,

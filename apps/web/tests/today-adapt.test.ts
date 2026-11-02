@@ -49,7 +49,7 @@ describe("toTodayV2", () => {
 
   // Red when: the pink tile counts something other than the API's questions, or repeats a subject.
   it("US-03 AC1: due items give the count, minutes and each subject once", () => {
-    const item = (subject_id: string) => ({ question_id: SID, subject_id, why: "x", reason: { kind: "due" } as never });
+    const item = (subject_id: string) => ({ question_id: SID, subject_id, item_kind: "card" as const, why: "x", reason: { kind: "due" } as never });
     const out = toTodayV2(
       base({
         review: { items: [item(A), item(A), item(B)], minutes: 5, new_saved_today: false, next_due_day: null },

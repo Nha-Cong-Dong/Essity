@@ -6,7 +6,7 @@ second close or an edit after submitting changes nothing and says so.
 """
 
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime
 from itertools import groupby
@@ -195,12 +195,22 @@ class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
         self.session.flush()
         return items
 
-    def progress(self, review_session_id: uuid.UUID) -> list[SessionStep]:
+    def progress(
+        self,
+        review_session_id: uuid.UUID,
+        *,
+        practice_attempts: Mapping[uuid.UUID, Attempt] | None = None,
+        closed: Collection[uuid.UUID] = (),
+    ) -> list[SessionStep]:
         """Each item of the session in order, with its question, its subject, whether it can
         still be asked (question active, subject not deleted, no unit of it skipped, and the
         session's cap of `MAX_QUESTIONS` not passed) and its attempt, if any. The cap counts the
         answered questions first, then the unanswered ones in order, so a skip undone after a
-        replacement was added hides the last replacement instead of making a 21st question."""
+        replacement was added hides the last replacement instead of making a 21st question.
+        T8.5: a practice question in the session is answered by a practice attempt, which has no
+        session; `practice_attempts` (question id -> submitted attempt, from
+        `services.today.session_steps`) fills it in so the cap counts it as answered, and `closed`
+        lists the questions that can no longer be asked (taken out of practice)."""
         skipped = (
             select(QuestionUnit.question_id)
             .join(
@@ -233,14 +243,16 @@ class ReviewSessionItemRepository(AppendOnlyRepository[ReviewSessionItem]):
             )
             .order_by(ReviewSessionItem.position)
         ).all()
+        found = practice_attempts or {}
         steps = [
             SessionStep(
                 question=question,
                 subject=subject,
-                attempt=attempt,
+                attempt=attempt if attempt is not None else found.get(question.id),
                 askable=question.status == "active"
                 and subject.deleted_at is None
-                and question.id not in skipped_ids,
+                and question.id not in skipped_ids
+                and question.id not in closed,
             )
             for _, question, subject, attempt in rows
         ]
@@ -284,6 +296,8 @@ class AttemptRepository(AppendOnlyRepository[Attempt]):
         question = QuestionRepository(self.session, self.user_id).get(question_id)
         if question is None:
             raise QuestionNotFoundError(question_id)
+        if question.source != "review_auto":  # a bank question is practice, never graded as a card
+            raise QuestionNotAskableError(question_id)
         SubjectRepository(self.session, self.user_id).hold_for_share(question.subject_id)
         self._check_askable(review_session_id, question_id)
         made = self.session.execute(
