@@ -126,11 +126,9 @@ def test_inverse_expected_rev_matches_db_version(cw: CmdWorld) -> None:  # P1
         command_id=cid,
     )
     row = CommandLogRepository(cw.db, cw.user.id).by_command_id(cid)
-    assert row and row.undo_revs_json
+    assert row and row.undo_revs_json is None  # the undo writes it, once
     cw.db.refresh(cw.leaf1)
     cw.db.refresh(q)
-    assert row.undo_revs_json[f"doc_section:{cw.leaf1.id}"] == cw.leaf1.version
-    assert row.undo_revs_json[f"question:{q.id}"] == q.version
     revs = {r["id"]: r["expected_rev"] for e in row.inverse_json for r in e["reverts"]}
     assert revs[str(cw.leaf1.id)] == cw.leaf1.version
     assert cw.leaf1.studied_weight == cw.leaf1.weight

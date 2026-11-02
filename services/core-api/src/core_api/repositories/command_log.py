@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import null, update
+from sqlalchemy import null, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from core_api.db.models import CommandLog
@@ -74,11 +74,31 @@ class CommandLogRepository(UserScopedRepository[CommandLog]):
             .limit(1)
         ).one_or_none()
 
+    def lock(self, command_id: uuid.UUID) -> CommandLog | None:
+        """This user's command, held FOR UPDATE until commit and read afresh."""
+        return self.session.scalars(
+            self._select()
+            .where(CommandLog.command_id == command_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).one_or_none()
+
+    def after(self, screen_session_id: uuid.UUID, seq: int) -> list[CommandLog]:
+        """The commands of the session logged after `seq`, oldest first."""
+        return list(
+            self.session.scalars(
+                self._select()
+                .where(CommandLog.screen_session_id == screen_session_id, CommandLog.seq > seq)
+                .order_by(CommandLog.seq)
+            )
+        )
+
     def mark_undone(
         self, command_id: uuid.UUID, *, undo_revs: Any | None = None, at: datetime | None = None
     ) -> CommandLog | None:
         """Flip applied to undone, once, under the row's lock; None if it is not there (or is not
-        this user's) or was already undone."""
+        this user's), was already undone, or is not the newest applied command of its screen
+        session (an undo takes the newest first; T9.2b review Y3)."""
         locked = self.session.scalars(
             self._select()
             .where(CommandLog.command_id == command_id, CommandLog.status == "applied")
@@ -86,6 +106,19 @@ class CommandLogRepository(UserScopedRepository[CommandLog]):
         ).one_or_none()
         if locked is None:
             return None
+        if locked.screen_session_id is not None:
+            newer = self.session.scalar(
+                select(CommandLog.id)
+                .where(
+                    CommandLog.user_id == self.user_id,
+                    CommandLog.screen_session_id == locked.screen_session_id,
+                    CommandLog.status == "applied",
+                    CommandLog.seq > locked.seq,
+                )
+                .limit(1)
+            )
+            if newer is not None:
+                return None
         values: dict[str, Any] = {"status": "undone", "undone_at": at or datetime.now(UTC)}
         if undo_revs is not None and locked.undo_revs_json is None:
             values["undo_revs_json"] = undo_revs

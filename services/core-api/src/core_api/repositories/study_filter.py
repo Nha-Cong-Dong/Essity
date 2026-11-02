@@ -59,9 +59,11 @@ class StudyFilterRepository(UserScopedRepository[StudyFilter]):  # pyright: igno
     def state(self, subject_id: uuid.UUID) -> FilterState:
         return self._state(self._row(subject_id))
 
-    def set(self, subject_id: uuid.UUID, mode: str, until: date) -> FilterState:
+    def set(self, subject_id: uuid.UUID, mode: str | None, until: date | None) -> FilterState:
         """Put a filter on the subject; the revision goes up by one (1 for a new row). The lock
-        is taken here (a no-op when the caller holds it): two writers of a new row must not race."""
+        is taken here (a no-op when the caller holds it): two writers of a new row must not race.
+        `mode` and `until` are both set or both empty (T9.2b review Y1): the check is here, not in
+        the database."""
         self.lock(subject_id)
         return self._write(subject_id, mode, until)
 
@@ -71,6 +73,8 @@ class StudyFilterRepository(UserScopedRepository[StudyFilter]):  # pyright: igno
         return self._write(subject_id, None, None)
 
     def _write(self, subject_id: uuid.UUID, mode: str | None, until: date | None) -> FilterState:
+        if (mode is None) != (until is None):
+            raise ValueError("a filter has a mode and an end date, or neither")
         row = self._row(subject_id, lock=True)
         if row is None:
             row = StudyFilter(user_id=self.user_id, subject_id=subject_id, rev=1)
