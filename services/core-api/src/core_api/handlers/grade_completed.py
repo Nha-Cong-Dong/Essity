@@ -58,6 +58,9 @@ class OnGradeCompleted:
         extra = {"event_id": str(event.event_id), "attempt_id": str(attempt_id)}
         user = session.get(User, event.user_id)
         attempt = None if user is None else AttemptRepository(session, user.id).get(attempt_id)
+        if attempt is not None and attempt.review_session_id is None:
+            _log.warning("grade result ignored", extra=extra | {"practice": True})
+            return  # a practice answer is graded by `practice_grade_retry`, never from a file
         if user is None or attempt is None or attempt.status != "submitted":
             _log.warning("grade result ignored", extra=extra | {"found": attempt is not None})
             return

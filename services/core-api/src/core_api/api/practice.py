@@ -25,6 +25,7 @@ from core_api.api.review_sessions import AnswerText
 from core_api.clients.ai_client import AiServiceClient
 from core_api.db.models import Attempt, Grade, Question
 from core_api.db.session import DbSession
+from core_api.repositories.grade_job import GradeJobRepository
 from core_api.repositories.practice_attempt import (
     AttemptNotDraftError,
     AttemptNotFoundError,
@@ -34,7 +35,11 @@ from core_api.repositories.practice_attempt import (
 from core_api.repositories.question import QuestionNotFoundError, QuestionRepository
 from core_api.repositories.review import GradeRepository
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
-from core_api.security.rate_limit import RateLimitedError, RateLimiterUnavailableError
+from core_api.security.rate_limit import (
+    RateLimit,
+    RateLimitedError,
+    RateLimiterUnavailableError,
+)
 from core_api.services.practice import remove
 from core_api.services.practice_grading import (
     MAX_ANSWER_CHARS,
@@ -54,6 +59,9 @@ router = APIRouter(prefix="/v1/practice", dependencies=[Depends(verified_user)])
 
 Ai = Annotated[AiServiceClient, Depends(get_ai_client)]
 MAX_HIDDEN_MS = 24 * 3600 * 1000
+# Serving a question that needs an AI-drafted answer has its own limit, so opening questions
+# never uses up the turns that grade answers (T8.4 review F5).
+DRAFTS_PER_USER = RateLimit("draft_user", 10, dt.timedelta(minutes=1))
 
 
 class DraftIn(BaseModel):
@@ -132,7 +140,11 @@ def _view(
         elif grades.is_being_graded(attempt.id):
             outcome = PracticeOutcome("in_progress")
         else:
-            outcome = PracticeOutcome("pending")  # saved, waiting for a turn: "Chấm lại"
+            job = GradeJobRepository(session, user_id).for_attempt(attempt.id)
+            if job is not None and job.status == "queued":
+                outcome = PracticeOutcome("pending")  # saved, queued: graded when there is a turn
+            else:  # failed for good, or an old answer nothing queued: "Chấm lại"
+                outcome = PracticeOutcome("failed", failure=job.failure if job else "invalid")
     result = _result(question, outcome.grade) if outcome.grade is not None else None
     return PracticeView(
         attempt_id=attempt.id,
@@ -189,7 +201,7 @@ def open_question(
     session.commit()
     question = QuestionRepository(session, user.id).get(question_id)
     assert question is not None
-    if standard_answer(question) is None and _may_call(limiter, user.id):
+    if standard_answer(question) is None and _may_call(limiter, user.id, DRAFTS_PER_USER):
         ensure_reference(session, user.id, question, ai)
         session.commit()
     return _view(session, user.id, attempt, question)
@@ -248,17 +260,22 @@ def submit_attempt(
         except AttemptNotDraftError:
             session.rollback()  # another request submitted it first: grade that one
     session.commit()  # the answer and its timing are kept, whatever grading does next
-    return _graded(session, user.id, attempt_id, ai, limiter)
+    return _graded(session, user.id, attempt_id, ai, limiter, now)
 
 
 @router.post("/attempts/{attempt_id}/regrade")
 def regrade_attempt(
-    attempt_id: uuid.UUID, user: VerifiedUser, session: DbSession, ai: Ai, limiter: Limiter
+    attempt_id: uuid.UUID,
+    user: VerifiedUser,
+    session: DbSession,
+    ai: Ai,
+    limiter: Limiter,
+    now: Now,
 ) -> PracticeView:
     """ "Chấm lại": grade a submitted answer that has no grade yet; a graded one is returned as it
     is, never paid for (or scheduled) twice."""
     _owned(session, user.id, attempt_id)
-    return _graded(session, user.id, attempt_id, ai, limiter)
+    return _graded(session, user.id, attempt_id, ai, limiter, now)
 
 
 @router.post("/grades/{grade_id}/override")
@@ -290,9 +307,9 @@ def worthless(question_id: uuid.UUID, user: VerifiedUser, session: DbSession, no
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-def _may_call(limiter: Limiter, user_id: uuid.UUID) -> bool:
+def _may_call(limiter: Limiter, user_id: uuid.UUID, rule: RateLimit = GRADINGS_PER_USER) -> bool:
     try:
-        limiter.enforce(GRADINGS_PER_USER, str(user_id))
+        limiter.enforce(rule, str(user_id))
     except (RateLimitedError, RateLimiterUnavailableError):
         return False
     return True
@@ -304,6 +321,7 @@ def _graded(
     attempt_id: uuid.UUID,
     ai: Ai,
     limiter: Limiter,
+    now: dt.datetime,
 ) -> PracticeView:
     try:
         outcome = grade_practice_attempt(
@@ -313,5 +331,8 @@ def _graded(
         raise _error(status.HTTP_404_NOT_FOUND, "attempt_not_found") from error
     except AttemptNotDraftError as error:
         raise _error(status.HTTP_409_CONFLICT, "attempt_not_submitted") from error
+    GradeJobRepository(session, user_id).settle_practice(
+        attempt_id, outcome.grading, outcome.failure, now
+    )
     attempt, question = _owned(session, user_id, attempt_id)
     return _view(session, user_id, attempt, question, outcome)

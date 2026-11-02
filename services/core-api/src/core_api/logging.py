@@ -85,6 +85,7 @@ ALLOWED_FIELDS = frozenset(
         "job_kind",
         "job_id",
         "attempt",
+        "attempt_id",  # a uuid naming the row a job gave up on, never the answer
         "outcome",
         "deleted_count",  # purge_unverified
         "jobs_failed_recent",  # job_health (R05)
@@ -101,6 +102,10 @@ ALLOWED_FIELDS = frozenset(
         "error_type",  # exception class name only
         "deliveries",
         "reason",  # dead letter: exception class name or a code (contracts/events/README.md)
+        "graded_count",  # practice_grade_retry summary
+        "failed_count",
+        "skipped_count",
+        "halted",
         "outbox_unsent_stale",  # job_health (plan Y8)
     }
 )
