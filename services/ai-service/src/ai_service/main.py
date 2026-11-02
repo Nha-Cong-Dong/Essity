@@ -18,6 +18,7 @@ from ai_service.api import (
 from ai_service.config import get_settings
 from ai_service.db.session import get_session_factory
 from ai_service.llm.client import LlmClient, build_adapter
+from ai_service.llm.fake_adapter import Responder
 from ai_service.llm.quota import DbQuotaGuard, QuotaLimits
 from ai_service.logging import configure_logging, log_requests
 from ai_service.security import require_service_token
@@ -32,6 +33,20 @@ from ai_service.tasks.like_run import fake_generate_like, fake_judge_questions
 from ai_service.tasks.practice_run import fake_draft_answer, fake_grade_practice
 from ai_service.tasks.process_session import fake_questions
 from ai_service.telemetry import configure_tracing
+
+# What AI_LLM_PROVIDER=fake answers with, by task (local and test only). The review question
+# (T7.9) asks as `generate_questions`, so it is covered by that responder.
+FAKE_RESPONDERS: dict[str, Responder] = {
+    "grade": fake_grade,
+    "extract_session": extract_task.fake_extract,
+    "parse_command": parse_task.fake_parse,
+    "grade_practice": fake_grade_practice,
+    "draft_answer": fake_draft_answer,
+    "generate_like": fake_generate_like,
+    "judge_questions": fake_judge_questions,
+    "generate_questions": fake_questions,
+    "parse_question_bank": fake_parse_question_bank,
+}
 
 
 @asynccontextmanager
@@ -48,20 +63,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     generate_like_task.load_prompt(generate_like_task.JUDGE_TASK)
     for name in ("bank_split", "bank_types", "bank_sections"):
         question_bank_task.load_prompt(name)
-    adapter = build_adapter(
-        settings,
-        {
-            "grade": fake_grade,
-            "extract_session": extract_task.fake_extract,
-            "parse_command": parse_task.fake_parse,
-            "grade_practice": fake_grade_practice,
-            "draft_answer": fake_draft_answer,
-            "generate_like": fake_generate_like,
-            "judge_questions": fake_judge_questions,
-            "generate_questions": fake_questions,
-            "parse_question_bank": fake_parse_question_bank,
-        },
-    )
+    adapter = build_adapter(settings, FAKE_RESPONDERS)
     sessions = get_session_factory()
     limits = QuotaLimits(
         daily=settings.quota_daily_usd,

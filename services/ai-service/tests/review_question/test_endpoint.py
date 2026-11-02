@@ -153,3 +153,28 @@ def test_ac11_broken_output_is_failed_with_a_rule_name_only(
 
 def test_ac11_rejects_a_missing_token(app: FastAPI) -> None:
     assert TestClient(app).post(URL, json=body()).status_code in (401, 403)
+
+
+def test_t716_the_fake_provider_answers_the_review_question(
+    app: FastAPI, sessions: sessionmaker[Session]
+) -> None:
+    # T7.16. Red when: AI_LLM_PROVIDER=fake (the dev stack) has no responder for the review
+    # question's task, so Save -> review question never completes locally. The fake's answer
+    # goes through the same output checks as a model's.
+    from ai_service.llm.fake_adapter import FakeAdapter
+    from ai_service.llm.pricing import FAKE_MODEL
+    from ai_service.main import FAKE_RESPONDERS
+
+    llm = LlmClient(
+        FakeAdapter(FAKE_RESPONDERS),
+        sessions,
+        models={"generate_questions": FAKE_MODEL},
+        quota_guard=NoQuota(),
+    )
+    app.dependency_overrides[get_llm_client] = lambda: llm
+    response = TestClient(app, headers={SERVICE_TOKEN_HEADER: TOKEN}).post(URL, json=body())
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["provider"] == "fake"
+    assert data["prompt"] and data["reference_answer"] and data["rubric"]

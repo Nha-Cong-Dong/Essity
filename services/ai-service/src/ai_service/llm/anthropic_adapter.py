@@ -11,14 +11,57 @@
   request, are never passed on.
 """
 
-from typing import Any
+import logging
+import re
+from typing import Any, cast
 
 import anthropic
 import httpx2
 
 from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError, ProviderName
 
+_log = logging.getLogger(__name__)
+
 MAX_TOKENS = 800
+
+# Structured outputs refuse these JSON Schema keywords with a 400 (T7.16: the `provider_rejected`
+# of chunk_units). The sizes stay in the task's own checks, which run on every reply.
+_UNSUPPORTED = frozenset(
+    {
+        "maxLength",
+        "minLength",
+        "maxItems",
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "multipleOf",
+    }
+)
+_ERROR_TYPE = re.compile(r"[a-z_]{1,64}")
+
+
+def _supported(node: Any) -> Any:
+    """A copy of a JSON Schema without the keywords the API refuses (`minItems` > 1 as well)."""
+    if isinstance(node, dict):
+        fields = cast("dict[str, Any]", node)
+        return {
+            key: _supported(value)
+            for key, value in fields.items()
+            if key not in _UNSUPPORTED and not (key == "minItems" and value not in (0, 1))
+        }
+    if isinstance(node, list):
+        return [_supported(item) for item in cast("list[Any]", node)]
+    return node
+
+
+def _error_type(error: anthropic.APIStatusError) -> str | None:
+    """Anthropic's error type (`invalid_request_error`...), never its message: that may quote
+    the request."""
+    body: Any = error.body
+    inner = cast("dict[str, Any]", body).get("error") if isinstance(body, dict) else None
+    kind = cast("dict[str, Any]", inner).get("type") if isinstance(inner, dict) else None
+    return kind if isinstance(kind, str) and _ERROR_TYPE.fullmatch(kind) else None
 
 
 def _content(request: LlmRequest) -> Any:
@@ -54,7 +97,9 @@ class AnthropicAdapter:
                 max_tokens=MAX_TOKENS,
                 system=request.system,
                 messages=[{"role": "user", "content": _content(request)}],
-                output_config={"format": {"type": "json_schema", "schema": request.output_schema}},
+                output_config={
+                    "format": {"type": "json_schema", "schema": _supported(request.output_schema)}
+                },
                 thinking={"type": "disabled"},
                 timeout=timeout,
             )
@@ -66,6 +111,10 @@ class AnthropicAdapter:
             raise ProviderError("rate_limited") from None
         except anthropic.APIStatusError as error:
             code = "provider_error" if error.status_code >= 500 else "provider_rejected"
+            _log.warning(
+                "provider rejected" if code == "provider_rejected" else "provider failed",
+                extra={"status": error.status_code, "error_type": _error_type(error)},
+            )
             raise ProviderError(code) from None
         except anthropic.APIError:
             # A response the SDK could not read.

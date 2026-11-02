@@ -5,6 +5,7 @@ import json
 import logging
 import uuid
 from collections.abc import Iterator
+from typing import Any, cast
 
 import httpx2
 import pytest
@@ -252,3 +253,80 @@ def test_t210_request_ids_are_uuids() -> None:
     with pytest.raises(ValueError):
         make_request(user_id="not-a-uuid")
     assert isinstance(make_request().user_id, uuid.UUID)
+
+
+# --- T7.16: the schema Anthropic accepts, and a rejection that can be diagnosed -----------------
+
+_STRICT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "units": {
+            "type": "array",
+            "maxItems": 40,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "minLength": 1, "maxLength": 300},
+                    "n": {"type": "integer", "minimum": 1, "maximum": 9},
+                    "tags": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+                },
+                "required": ["title"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["units"],
+    "additionalProperties": False,
+}
+
+
+def _keywords(node: Any) -> set[str]:
+    if isinstance(node, dict):
+        fields = cast("dict[str, Any]", node)
+        return set(fields) | {k for v in fields.values() for k in _keywords(v)}
+    if isinstance(node, list):
+        return {k for v in cast("list[Any]", node) for k in _keywords(v)}
+    return set()
+
+
+def test_t716_anthropic_schema_drops_size_keywords_the_api_rejects() -> None:
+    # Red when: maxLength/minLength/maxItems/minimum reach the API. Structured outputs refuse
+    # them with a 400 (the proxy's `provider_rejected` of chunk_units, STACK-LOCAL 02/11); the
+    # task checks the sizes again on the reply anyway.
+    api = answering()
+    request = make_request().model_copy(update={"output_schema": _STRICT_SCHEMA})
+    adapter_on(api).complete(request, model=MODEL, timeout=5.0)
+    sent = api.body()["output_config"]["format"]["schema"]
+    assert not _keywords(sent) & {"maxLength", "minLength", "maxItems", "minimum", "maximum"}
+    assert sent["properties"]["units"]["items"]["required"] == ["title"]
+    assert sent["additionalProperties"] is False
+    assert _STRICT_SCHEMA["properties"]["units"]["maxItems"] == 40  # the caller's schema is intact
+
+
+def test_t716_anthropic_keeps_min_items_zero_or_one() -> None:
+    api = answering()
+    request = make_request().model_copy(update={"output_schema": _STRICT_SCHEMA})
+    adapter_on(api).complete(request, model=MODEL, timeout=5.0)
+    tags = api.body()["output_config"]["format"]["schema"]["properties"]["units"]["items"]
+    assert tags["properties"]["tags"]["minItems"] == 1
+
+
+def test_t716_rejection_logs_status_and_error_type_but_not_the_message(
+    debug_log: io.StringIO,
+) -> None:
+    # Red when: a 400 leaves no trace of why. The log gets the HTTP status and Anthropic's error
+    # type; the message may quote the request, so it never goes in.
+    error = {
+        "type": "error",
+        "error": {"type": "invalid_request_error", "message": "quoted learner-text-xyz"},
+    }
+    api = FakeAnthropicApi(lambda _: httpx2.Response(400, json=error))
+    with pytest.raises(ProviderError) as raised:
+        adapter_on(api).complete(make_request(), model=MODEL, timeout=5.0)
+    assert raised.value.code == "provider_rejected"
+    logged = debug_log.getvalue()
+    rejected = [json.loads(line) for line in logged.splitlines() if "provider rejected" in line]
+    assert rejected
+    assert rejected[0]["status"] == 400
+    assert rejected[0]["error_type"] == "invalid_request_error"
+    assert "learner-text-xyz" not in logged
