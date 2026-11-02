@@ -1804,6 +1804,35 @@
         "title": "PingResponse",
         "type": "object"
       },
+      "PracticeLineOut": {
+        "properties": {
+          "question_types": {
+            "title": "Question Types",
+            "type": "integer"
+          },
+          "ready_questions": {
+            "title": "Ready Questions",
+            "type": "integer"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject_id",
+          "subject_name",
+          "ready_questions",
+          "question_types"
+        ],
+        "title": "PracticeLineOut",
+        "type": "object"
+      },
       "PracticeOverrideIn": {
         "additionalProperties": false,
         "properties": {
@@ -1820,6 +1849,22 @@
           "verdict"
         ],
         "title": "PracticeOverrideIn",
+        "type": "object"
+      },
+      "PracticePartOut": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/PracticeLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          }
+        },
+        "required": [
+          "lines"
+        ],
+        "title": "PracticePartOut",
         "type": "object"
       },
       "PracticeResultOut": {
@@ -2191,6 +2236,15 @@
             "title": "Id",
             "type": "string"
           },
+          "kind": {
+            "default": "card",
+            "enum": [
+              "card",
+              "practice"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
           "prompt": {
             "title": "Prompt",
             "type": "string"
@@ -2521,6 +2575,15 @@
       },
       "ReviewItemOut": {
         "properties": {
+          "item_kind": {
+            "default": "card",
+            "enum": [
+              "card",
+              "practice"
+            ],
+            "title": "Item Kind",
+            "type": "string"
+          },
           "question_id": {
             "format": "uuid",
             "title": "Question Id",
@@ -3692,8 +3755,14 @@
             "$ref": "#/components/schemas/NextStudyOut"
           },
           "practice": {
-            "title": "Practice",
-            "type": "null"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PracticePartOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "review": {
             "$ref": "#/components/schemas/ReviewOut"

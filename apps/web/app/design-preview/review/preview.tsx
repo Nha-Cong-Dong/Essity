@@ -16,6 +16,7 @@ const STEP: Current = {
   total: 14,
   question: {
     id: "0b8f1d2e-0000-4000-8000-0000000000b1",
+    kind: "card",
     prompt:
       "Gói SYN-ACK trong quá trình bắt tay ba bước bị mất. Client và server sẽ làm gì tiếp theo, và vì sao " +
       LONG_WORD +

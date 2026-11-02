@@ -1891,6 +1891,20 @@ export interface components {
              */
             core_api: "ok" | "unavailable";
         };
+        /** PracticeLineOut */
+        PracticeLineOut: {
+            /** Question Types */
+            question_types: number;
+            /** Ready Questions */
+            ready_questions: number;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /** Subject Name */
+            subject_name: string;
+        };
         /** PracticeOverrideIn */
         PracticeOverrideIn: {
             /**
@@ -1898,6 +1912,11 @@ export interface components {
              * @enum {string}
              */
             verdict: "correct" | "incorrect";
+        };
+        /** PracticePartOut */
+        PracticePartOut: {
+            /** Lines */
+            lines: components["schemas"]["PracticeLineOut"][];
         };
         /** PracticeResultOut */
         PracticeResultOut: {
@@ -2013,6 +2032,12 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Kind
+             * @default card
+             * @enum {string}
+             */
+            kind: "card" | "practice";
             /** Prompt */
             prompt: string;
             reason: components["schemas"]["ReasonOut"];
@@ -2130,6 +2155,12 @@ export interface components {
         };
         /** ReviewItemOut */
         ReviewItemOut: {
+            /**
+             * Item Kind
+             * @default card
+             * @enum {string}
+             */
+            item_kind: "card" | "practice";
             /**
              * Question Id
              * Format: uuid
@@ -2551,8 +2582,7 @@ export interface components {
             /** Next Day */
             next_day: string | null;
             next_study: components["schemas"]["NextStudyOut"];
-            /** Practice */
-            practice?: null;
+            practice?: components["schemas"]["PracticePartOut"] | null;
             review: components["schemas"]["ReviewOut"];
             session: components["schemas"]["core_api__api__today__SessionOut"] | null;
             /**
