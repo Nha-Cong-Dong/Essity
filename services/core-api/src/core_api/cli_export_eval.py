@@ -21,10 +21,19 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from core_api.db.engine import get_engine
-from core_api.db.models import Attempt, Grade, GradeUnit, KnowledgeUnit, Question, User
+from core_api.db.models import (
+    Anchor,
+    Attempt,
+    Grade,
+    GradeUnit,
+    KnowledgeUnit,
+    Question,
+    UnitRevision,
+    User,
+)
 
 
 def _consented() -> tuple[Any, ...]:
@@ -94,8 +103,50 @@ def export_rows(session: Session) -> Iterator[dict[str, Any]]:
         }
 
 
+def export_unit_edits(session: Session) -> Iterator[dict[str, Any]]:
+    """T9.7: the learner's first edit of a card (rev 1, origin user) beside what the AI drafted
+    (rev 0) and the quotes the card anchors: the label of the `draft_units` eval. Same consent
+    test in the SQL as above; rows carry the unit's own id only."""
+    first = aliased(UnitRevision)
+    rows = session.execute(
+        select(KnowledgeUnit.id, UnitRevision.content, first.content)
+        .join(User, User.id == KnowledgeUnit.user_id)
+        .join(UnitRevision, UnitRevision.unit_id == KnowledgeUnit.id)
+        .join(first, first.unit_id == KnowledgeUnit.id)
+        .where(
+            *_consented(),
+            UnitRevision.rev == 0,
+            UnitRevision.origin == "ai",
+            first.rev == 1,
+            first.origin == "user",
+        )
+        .order_by(KnowledgeUnit.created_at, KnowledgeUnit.id)
+    ).all()
+    quotes: dict[uuid.UUID, list[str]] = defaultdict(list)
+    for unit_id, quote in session.execute(
+        select(Anchor.unit_id, Anchor.quote_text)
+        .join(User, User.id == Anchor.user_id)
+        .where(*_consented(), Anchor.unit_id.in_([row[0] for row in rows]))
+        .order_by(Anchor.unit_id, Anchor.created_at, Anchor.id)
+    ):
+        quotes[unit_id].append(quote)
+    for unit_id, rev0, rev1 in rows:
+        yield {
+            "unit_id": str(unit_id),
+            "rev0": rev0,
+            "rev1": rev1,
+            "anchors": quotes.get(unit_id, []),
+        }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m core_api.cli_export_eval")
+    parser.add_argument(
+        "--kind",
+        choices=["attempts", "unit-edits"],
+        default="attempts",
+        help="attempts: grading eval (T3.2); unit-edits: draft_units labels (T9.7)",
+    )
     parser.add_argument("--out", required=True, type=Path, help="JSONL file to write")
     return parser
 
@@ -104,10 +155,11 @@ def run(session: Session, argv: Sequence[str]) -> int:
     args = _parser().parse_args(argv)
     count = 0
     with args.out.open("w", encoding="utf-8", newline="\n") as file:
-        for row in export_rows(session):
+        rows = export_unit_edits if args.kind == "unit-edits" else export_rows
+        for row in rows(session):
             file.write(json.dumps(row, ensure_ascii=False) + "\n")
             count += 1
-    print(f"exported {count} attempts to {args.out}")
+    print(f"exported {count} {args.kind} to {args.out}")
     return 0
 
 
