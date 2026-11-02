@@ -173,3 +173,29 @@ def test_question_read_after_its_lock(engine: Engine, world: Ids) -> None:
         result = future.result(timeout=30)
     assert isinstance(result, ApplyOutcome), result
     assert result.diff[0]["before"]["answer"] == "tay"
+
+
+def test_card_add_does_not_deadlock_with_a_screen_insert_under_a_sibling(
+    engine: Engine, world: Ids
+) -> None:
+    # Red when: the command locks the document's sections FOR UPDATE: the review screen holds its
+    # study session, then takes KEY SHARE on a section (the foreign key of a new card), and the
+    # two wait for each other (final review O1).
+    ops: list[dict[str, object]] = [
+        {"kind": "card_add", "section": str(world.leaf), "text": "thẻ mới"}
+    ]
+    with engine.connect() as screen, ThreadPoolExecutor(1) as pool:
+        screen.begin()
+        pid = hold(screen, "study_session", world.study)
+        sibling = screen.execute(
+            text("SELECT id FROM doc_section WHERE id <> :l AND user_id = :u LIMIT 1"),
+            {"l": world.leaf, "u": world.user},
+        ).scalar_one()
+        future = pool.submit(apply_once, engine, world.user, ops)
+        wait_for_lock_wait(engine, pid)
+        screen.execute(
+            text("SELECT 1 FROM doc_section WHERE id = :i FOR KEY SHARE"), {"i": sibling}
+        )
+        screen.commit()
+        result = future.result(timeout=30)
+    assert isinstance(result, ApplyOutcome), result

@@ -63,15 +63,16 @@ class DocSectionRepository(UserScopedRepository[DocSection]):
         )
 
     def lock_of_documents(self, document_ids: Sequence[uuid.UUID]) -> list[DocSection]:
-        """Every section of these documents FOR UPDATE in id order, read afresh: a command writes
-        sections (and the leaves under them) only after this. Take the documents' own locks first
-        (the outline service's order: document, then sections)."""
+        """Every section of these documents FOR NO KEY UPDATE in id order, read afresh. That mode
+        lets a card insert's KEY SHARE on a sibling pass (the review screen holds its session,
+        then inserts under a section). A command writes sections only after this; take the
+        documents' own locks first (the outline service's order: document, then sections)."""
         return list(
             self.session.scalars(
                 self._select()
                 .where(DocSection.document_id.in_(document_ids))
                 .order_by(DocSection.id)
-                .with_for_update()
+                .with_for_update(key_share=True)
                 .execution_options(populate_existing=True)
             )
         )

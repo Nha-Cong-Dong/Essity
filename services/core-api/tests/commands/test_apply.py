@@ -239,3 +239,25 @@ def test_ac4_removed_then_readded_question_survives_rebuild(cw: CmdWorld) -> Non
     assert actions == ["removed", "readded"]
     PracticeStateRepository(cw.db, cw.user.id).rebuild([q.id])
     assert PracticeRemovalRepository(cw.db, cw.user.id).in_practice(q.id)
+
+
+def test_ac4_service_errors_become_codes_without_detail(cw: CmdWorld) -> None:
+    # SectionNotFoundError / QuestionNotFoundError / NoChangeError / RangeError out of the
+    # services the screens use are rejections with a code, not a 500 (final review Y1).
+    from core_api.services.commands import CommandService
+
+    service = cw.service
+    ops = [{"kind": "section_exclude", "sections": [str(cw.leaf1.id)]}]
+    from unittest.mock import patch
+
+    from core_api.services.outline import NoChangeError, OutlineService, SectionNotFoundError
+
+    for error, code in ((SectionNotFoundError, "not_owned"), (NoChangeError, "no_change")):
+        with (
+            patch.object(OutlineService, "edit_section", side_effect=error("BIMAT-xyz")),
+            pytest.raises(CommandRejected) as caught,
+        ):
+            service.apply(uuid.uuid4(), SESSION, CommandRequest("x"), parse=Parser(ops))
+        assert caught.value.code == code and "BIMAT" not in str(caught.value)
+    assert rows(cw) == 0
+    assert isinstance(service, CommandService)

@@ -80,7 +80,7 @@ from core_api.repositories.doc_section import DocSectionRepository
 from core_api.repositories.document import DocumentRepository
 from core_api.repositories.practice_removal import PracticeRemovalRepository
 from core_api.repositories.practice_types import PracticeTypeRepository
-from core_api.repositories.question import QuestionRepository
+from core_api.repositories.question import QuestionNotFoundError, QuestionRepository
 from core_api.repositories.study_filter import StudyFilterRepository
 from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.unit import (
@@ -90,7 +90,12 @@ from core_api.repositories.unit import (
 )
 from core_api.services import practice
 from core_api.services.command_codec import op_to_json, payload_hash, record_to_json, validate_ops
-from core_api.services.outline import OutlineService
+from core_api.services.outline import (
+    NoChangeError,
+    OutlineService,
+    RangeError,
+    SectionNotFoundError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -188,6 +193,14 @@ def _wanted(ops: Sequence[Op]) -> dict[str, set[uuid.UUID]]:
         if isinstance(op, SuggestOnlySubject | SuggestDeferSubject):
             found.setdefault("filter", set()).add(op.subject)
     return found
+
+
+_CODES: dict[type[Exception], str] = {
+    SectionNotFoundError: "not_owned",
+    QuestionNotFoundError: "not_owned",
+    NoChangeError: "no_change",
+    RangeError: "invalid_range",
+}
 
 
 def _title_of(content: str) -> str:
@@ -494,7 +507,9 @@ class CommandService:
         try:
             self._dispatch(ctx, op, changes, after)
         except (NotADraft, UnitNotFound, SessionNotFound, UnitChangedElsewhere) as error:
-            raise CommandRejected(type(error).__name__.lower()) from error
+            raise CommandRejected(type(error).__name__.lower()) from None
+        except (SectionNotFoundError, NoChangeError, RangeError, QuestionNotFoundError) as error:
+            raise CommandRejected(_CODES[type(error)]) from None
 
     def _dispatch(self, ctx: _Ctx, op: Op, changes: tuple[Change, ...], after: Snapshot) -> None:
         review = UnitReviewService(self.session, self.user_id)
