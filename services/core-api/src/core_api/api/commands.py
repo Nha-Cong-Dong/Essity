@@ -57,6 +57,7 @@ _AS_CONFLICT = {
     "conflict",
     "nothing_to_undo",
     "id_collision",
+    "unitchangedelsewhere",  # a screen saved the card first: the client may retry
 }
 _UNCLEAR_REASONS = ("ambiguous", "unknown_target", "unsupported", "missing_info")
 type UnclearReason = Literal["ambiguous", "unknown_target", "unsupported", "missing_info"]
@@ -128,7 +129,7 @@ def _fail(code: int, detail: str) -> NoReturn:
     raise HTTPException(status_code=code, detail=detail)
 
 
-def _refused(error: CommandRejected) -> HTTPException:
+def refusal(error: CommandRejected) -> HTTPException:
     if error.code in _AS_MISSING:
         return HTTPException(status_code=404, detail=error.code)
     if error.code in _AS_CONFLICT:
@@ -187,7 +188,7 @@ def apply_command(
     except CommandIdReused:
         raise HTTPException(status_code=409, detail="command_id_reused") from None
     except CommandRejected as error:
-        raise _refused(error) from None
+        raise refusal(error) from None
     return _out(outcome)
 
 
@@ -198,7 +199,7 @@ def undo_command(
     try:
         outcome = CommandService(session, user.id).undo(command_id, now=now)
     except CommandRejected as error:
-        raise _refused(error) from None
+        raise refusal(error) from None
     return UndoOut(
         command_id=outcome.command_id,
         status="undone",

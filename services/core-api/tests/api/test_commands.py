@@ -374,3 +374,21 @@ def test_suggestion_filter_defer_makes_room_and_undo_lifts_it(
     set_now(FROZEN_NOW)
     assert undo(client, h, cid).status_code == 200
     assert shown(client, h) == ["A", "B"]
+
+
+@pytest.mark.parametrize(
+    ("code", "status"),
+    [
+        ("not_owned", 404),
+        ("changed_after", 409),
+        ("unitchangedelsewhere", 409),
+        ("unsupported", 422),
+        ("not_a_draft", 422),
+    ],
+)
+def test_command_rejected_codes_map_to_4xx_never_500(code: str, status: int) -> None:
+    from core_api.api.commands import refusal
+    from core_api.domain.commands.registry import CommandRejected
+
+    error = refusal(CommandRejected(code, "an id"))
+    assert (error.status_code, error.detail) == (status, code)
