@@ -364,6 +364,24 @@ def _pick(titles: dict[str, str], prefix: str, numbers: list[str]) -> list[str]:
     return [f"{prefix}{n}" for n in numbers if f"{prefix}{n}" in titles]
 
 
+def _match_sections(titles: dict[str, str], command: str) -> list[str]:
+    """E3: the sections a sentence like "bỏ phần phụ lục" or "bỏ mục 1.2" names: a title that
+    appears in the sentence, or the words after "bỏ phần/mục/chương" found in a title, or a title
+    that starts with the number given."""
+    rest = re.sub(r"^(bỏ|loại)\s+(hẳn\s+)?(phần|mục|chương|bài)?\s*", "", command).strip()
+    found: list[str] = []
+    for label, title in titles.items():
+        norm = _norm(title)
+        number = re.match(r"\d+(\.\d+)*", norm)
+        if (
+            norm in command
+            or (rest and rest in norm)
+            or (number is not None and rest.split(" ")[0] == number.group(0))
+        ):
+            found.append(label)
+    return found
+
+
 def fake_parse(request: LlmRequest) -> str:
     """A deterministic parse of a few phrasings, shaped like a model's output (PLAN T9.1)."""
     payload = request.payload
@@ -383,6 +401,11 @@ def fake_parse(request: LlmRequest) -> str:
         cards = _pick(titles["card"], "C", numbers)
         if len(cards) >= 2 and len(set(cards)) == len(cards):
             return out({"kind": "card_merge", "cards": cards})
+        return unclear("unknown_target")
+    if command.startswith(("bỏ ", "loại ")) and "thẻ" not in command:
+        sections = _match_sections(titles["section"], command)
+        if sections:
+            return out({"kind": "section_exclude", "sections": sections})
         return unclear("unknown_target")
     if "đã học" in command or "chưa học" in command:
         sections = _pick(titles["section"], "S", numbers)
