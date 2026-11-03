@@ -237,6 +237,14 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
           {noLinks ? (
             <div className="rounded-sheet bg-sheet p-6 shadow-sheet" data-empty>
               <p className="m-0 text-read">{COPY.empty}</p>
+              {view.cards.length === 0 && live && (
+                <a
+                  href={`/subjects/${live.subjectId}/sessions/new`}
+                  className="mt-3 mr-4 inline-flex min-h-11 items-center font-semibold underline"
+                >
+                  Ghi buổi học
+                </a>
+              )}
               <a href={subjectHref} className="mt-3 inline-flex min-h-11 items-center text-meta underline">
                 Về môn
               </a>

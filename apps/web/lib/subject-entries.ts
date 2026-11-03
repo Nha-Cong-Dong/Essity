@@ -28,8 +28,12 @@ export function entryRow(subjectId: string, src: EntrySources): SubjectEntry[] {
     entries.push({ key: "practice", label: "Luyện tập", href: `${base}/practice`, note: `${src.questions.ready} câu sẵn sàng` });
   }
   entries.push({ key: "stats", label: "Thống kê", href: `/stats?subject=${subjectId}`, note: null });
-  if (src.graphCards !== null && src.graphCards > 0) {
-    entries.push({ key: "graph", label: "Đồ thị", href: `${base}/graph`, note: null });
-  }
+  // J1 (T9.10d): the tile is always there; an empty graph leads to "Ghi buổi học".
+  entries.push({
+    key: "graph",
+    label: "Đồ thị tri thức",
+    href: `${base}/graph`,
+    note: src.graphCards !== null && src.graphCards > 0 ? `${src.graphCards} thẻ` : "chưa có thẻ",
+  });
   return entries;
 }
