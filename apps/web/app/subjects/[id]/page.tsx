@@ -53,7 +53,7 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
     loadQuestionList(subject.id).catch(() => null),
     loadGraph(subject.id, null).catch(() => null),
   ]);
-  const stats = await getStats(subject.id)
+  const stats = await getStats()
     .then((r) => r.view.subjects.find((x) => x.id === subject.id) ?? null)
     .catch(() => null);
   const view = outline === null ? null : outlineView(outline);

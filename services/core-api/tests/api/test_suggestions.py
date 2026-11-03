@@ -91,7 +91,7 @@ def test_ac1_ac2_top_two_with_next_leaf_and_reason(
     assert first["section_title"] == "Mục 2"
     assert first["kind"] == "next_leaf"
     assert first["reason"]
-    assert first["pace"]["text"] == "còn 1 mục (10 trang), 5 ngày"
+    assert first["pace"]["text"] == "còn 1 chương (10 trang), 5 ngày"
     assert body["empty"] is None
 
 
@@ -176,9 +176,9 @@ def test_ac3_tie_goes_to_longest_unstudied_per_ledger(
 ) -> None:
     alice = two_users[0]
     h = headers_of(db_session, alice)
-    a, *_ = subject_with(db_session, alice, "A", [{"weight": 10}], days=10)
-    b, *_ = subject_with(db_session, alice, "B", [{"weight": 10}], days=10)
-    c, *_ = subject_with(db_session, alice, "C", [{"weight": 10}], days=10)
+    a, *_ = subject_with(db_session, alice, "A", [{"weight": 10}] * 12, days=10)
+    b, *_ = subject_with(db_session, alice, "B", [{"weight": 10}] * 12, days=10)
+    c, *_ = subject_with(db_session, alice, "C", [{"weight": 10}] * 12, days=10)
     log_saved(db_session, alice, a, TODAY - timedelta(days=1))
     log_saved(db_session, alice, b, TODAY - timedelta(days=5))
     ids = [s["subject_id"] for s in get(client, h)["suggestions"]]
@@ -213,7 +213,7 @@ def test_ac5_no_pressure_wording_anywhere(
     subject_with(db_session, alice, "B", [{"weight": 5, "studied_weight": 5}], days=9)
     subject_with(db_session, alice, "C", [], days=9)
     body = get(client, h)
-    assert any("còn 1 mục (86 trang), 20 ngày" in t for t in strings(body))
+    assert any("còn 1 chương (86 trang), 20 ngày" in t for t in strings(body))
     assert not [t for t in strings(body) if BANNED.search(t)]
 
 

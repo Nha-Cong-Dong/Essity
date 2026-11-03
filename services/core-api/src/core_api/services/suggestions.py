@@ -39,12 +39,23 @@ class Suggestions:
     subject_names: dict[uuid.UUID, str]
 
 
-def subject_inputs(session: Session, user: User) -> tuple[list[SubjectInput], dict[uuid.UUID, str]]:
+def subject_inputs(
+    session: Session, user: User, today: date | None = None
+) -> tuple[list[SubjectInput], dict[uuid.UUID, str]]:
     infos = StatsRepository(session, user.id).subjects()
     ledger = StudyLedgerRepository(session, user.id)
-    last = last_studied_days(ledger.entries())
+    entries = ledger.entries()
+    last = last_studied_days(entries)
     leaves = ledger.leaves()
-    inputs = [SubjectInput(i.id, i.exam_date, last.get(i.id), leaves.get(i.id, [])) for i in infos]
+    inputs: list[SubjectInput] = []
+    for i in infos:
+        subject_leaves = leaves.get(i.id, [])
+        # Leaves finished earlier today count toward today's quota (E2).
+        done_today = {
+            e.section_id for e in entries if e.subject_id == i.id and e.learning_day == today
+        }
+        learned = sum(1 for lf in subject_leaves if lf.id in done_today and not lf.open)
+        inputs.append(SubjectInput(i.id, i.exam_date, last.get(i.id), subject_leaves, learned))
     return inputs, {i.id: i.name for i in infos}
 
 
@@ -77,7 +88,7 @@ def build_suggestions(
 ) -> Suggestions:
     """`filters` None: those a command put on the user's subjects (T9.2e); a value replaces them."""
     today = ledger_day(now, ZoneInfo(user.timezone), user.day_start_hour)
-    inputs, names = subject_inputs(session, user)
+    inputs, names = subject_inputs(session, user, today)
     if filters is None:
         filters = command_filters(session, user, today, {i.id for i in inputs})
     suggestions = suggest_today(inputs, today, filters)
@@ -95,7 +106,7 @@ def suggest_one(
 ) -> tuple[date, Suggestion, str]:
     """The "Gợi ý cho hôm nay" button: one subject, same rules, no ranking."""
     today = ledger_day(now, ZoneInfo(user.timezone), user.day_start_hour)
-    inputs, names = subject_inputs(session, user)
+    inputs, names = subject_inputs(session, user, today)
     subject = next((s for s in inputs if s.id == subject_id), None)
     if subject is None:
         raise UnknownSubjectError(subject_id)

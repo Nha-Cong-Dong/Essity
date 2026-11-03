@@ -11,7 +11,7 @@ export function sessionSuggestion(all: SuggestionsApi, subjectId: string, sectio
   const { label, title } = splitTitle(mine.section_title);
   return {
     kind: "section",
-    text: `Hôm nay nên học: ${label ? `mục ${label} ` : ""}${title}`.trim(),
+    text: `Nội dung học tập: ${label ? `${label} ` : ""}${title}`.replace(/\.pdf\b/gi, "").trim(),
     reason: mine.reason,
     pace: mine.pace.text,
   };

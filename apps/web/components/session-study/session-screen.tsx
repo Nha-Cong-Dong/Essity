@@ -79,7 +79,6 @@ function Suggest({ suggestion, id }: { suggestion: Suggestion; id: string }) {
     <Region phase={id} title={suggestion.text}>
       {suggestion.kind === "section" && (
         <>
-          <p className="m-0 text-body text-ink-soft">{suggestion.reason}</p>
           <div className="flex flex-col items-start gap-2">
             <button
               type="button"

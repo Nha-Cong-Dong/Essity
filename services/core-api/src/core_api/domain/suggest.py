@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
+from core_api.domain.plan import remaining_chapters, todays_units
+
 MAX_SUGGESTIONS = 2
 
 SuggestionKind = Literal["next_leaf", "review_practice", "free_session"]
@@ -37,6 +39,13 @@ class Leaf:
     excluded: bool = False
     covered_weight: float = 0
     prerequisites: tuple[uuid.UUID, ...] = ()
+    # The top-level section the leaf sits in (None: the leaf counts as its own chapter).
+    chapter_id: uuid.UUID | None = None
+    chapter_title: str | None = None
+
+    @property
+    def chapter_key(self) -> uuid.UUID:
+        return self.chapter_id or self.id
 
     @property
     def remaining(self) -> float:
@@ -53,6 +62,7 @@ class SubjectInput:
     exam_date: date | None
     last_studied_day: date | None
     leaves: Sequence[Leaf]  # syllabus order
+    learned_today: int = 0  # leaves finished earlier today (count toward today's quota)
 
 
 @dataclass(frozen=True)
@@ -71,10 +81,11 @@ class Pace:
     remaining_weight: float
     unit: str | None
     days_left: int | None
+    remaining_chapters: int = 0
 
     @property
     def text(self) -> str:
-        line = f"còn {self.remaining_leaves} mục"
+        line = f"còn {self.remaining_chapters} chương"
         if self.unit is not None:
             line += f" ({self.remaining_weight:g} {self.unit})"
         if self.days_left is not None:
@@ -92,6 +103,9 @@ class Suggestion:
     partial: bool
     unit: str | None
     pace: Pace
+    # Today's leaves (may be empty); `nothing_today` is true when leaves remain but none is due.
+    units: tuple[Leaf, ...] = ()
+    nothing_today: bool = False
 
 
 def _days_left(exam: date | None, today: date) -> int | None:
@@ -128,6 +142,17 @@ def _pace(subject: SubjectInput, today: date) -> Pace:
         remaining_weight=sum(leaf.remaining for leaf in open_leaves),
         unit=open_leaves[0].unit if open_leaves else None,
         days_left=_days_left(subject.exam_date, today),
+        remaining_chapters=remaining_chapters([leaf.chapter_key for leaf in open_leaves]),
+    )
+
+
+def plan_units(subject: SubjectInput, today: date) -> list[Leaf]:
+    """Leaves to study today (E2): balanced from the open leaves and the days to the exam."""
+    return todays_units(
+        subject.leaves,
+        _days_left(subject.exam_date, today),
+        subject.learned_today,
+        can_rest=subject.last_studied_day is not None,
     )
 
 
@@ -139,6 +164,13 @@ def suggest_for_subject(subject: SubjectInput, today: date) -> Suggestion:
     leaf = next_leaf(subject.leaves)
     if leaf is None:  # fully studied, or every leaf excluded
         return Suggestion(subject.id, "review_practice", None, None, None, False, None, pace)
+    units = plan_units(subject, today)
+    if not units:  # ahead of the pace: nothing new today
+        return Suggestion(
+            subject.id, "review_practice", None, None, None, False, None, pace, (), True
+        )
+    if leaf not in units:  # a prerequisite hole comes first
+        units = [leaf, *units[:-1]]
     return Suggestion(
         subject.id,
         "next_leaf",
@@ -148,6 +180,7 @@ def suggest_for_subject(subject: SubjectInput, today: date) -> Suggestion:
         leaf.covered_weight > 0,
         leaf.unit,
         pace,
+        tuple(units),
     )
 
 
@@ -180,7 +213,9 @@ def suggest_today(
 ) -> list[Suggestion]:
     """At most `MAX_SUGGESTIONS` subjects with something left to study, tightest first."""
     studying = [
-        s for s in eligible_subjects(subjects, today, filters) if _pace(s, today).remaining_leaves
+        s
+        for s in eligible_subjects(subjects, today, filters)
+        if _pace(s, today).remaining_leaves and plan_units(s, today)
     ]
     ranked = sorted(studying, key=lambda s: _rank_key(s, today))
     return [suggest_for_subject(s, today) for s in ranked[:MAX_SUGGESTIONS]]
@@ -195,7 +230,7 @@ def suggest_finished(
     done = [
         s
         for s in eligible_subjects(subjects, today, filters)
-        if not _pace(s, today).remaining_leaves
+        if not _pace(s, today).remaining_leaves or not plan_units(s, today)
     ]
     return [suggest_for_subject(s, today) for s in sorted(done, key=lambda s: _rank_key(s, today))]
 
@@ -214,6 +249,8 @@ _EMPTY_TEXT: dict[EmptyReason, str] = {
 
 def reason_line(s: Suggestion) -> str:
     """One neutral line saying why this item (US-15 §9 #4): numbers from the data only."""
+    if s.nothing_today:
+        return "Hôm nay môn này chưa có nội dung mới cần học."
     if s.kind == "review_practice":
         return "Đã học hết đề cương: ôn và luyện tập."
     if s.kind == "free_session":
@@ -221,7 +258,7 @@ def reason_line(s: Suggestion) -> str:
     if s.partial and s.remaining_weight is not None:
         return f"Mục học dở, còn {s.remaining_weight:g} {s.unit}."
     if s.pace.days_left is not None:
-        return f"Môn thi sau {s.pace.days_left} ngày, còn {s.pace.remaining_leaves} mục."
+        return f"Môn thi sau {s.pace.days_left} ngày, còn {s.pace.remaining_chapters} chương."
     return "Mục chưa học đầu tiên trong đề cương."
 
 

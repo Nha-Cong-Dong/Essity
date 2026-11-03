@@ -3,7 +3,8 @@ heading and top-level sections that are not content (cover, preface, contents, i
 learner can bring one back ("Đưa lại"); core-api stores the flag as `doc_section.excluded`.
 
 Matching is on the whole title, so a chapter that merely starts with such a word is kept.
-`Phụ lục` / `Appendix` are NOT excluded: an appendix is often examined (worked tables, proofs).
+`Phụ lục` / `Appendix` are excluded too (user decision 04/11, E1): not exam knowledge by default;
+the learner can bring one back.
 Nothing here logs a title.
 """
 
@@ -20,6 +21,7 @@ _TERMS = (
     r"|(?:subject\s+|name\s+|author\s+)?index|bibliography|references|works\s+cited"
     r"|loi\s+noi\s+dau|loi\s+gioi\s+thieu|loi\s+tua|loi\s+cam\s+on|loi\s+tri\s+an"
     r"|muc\s+luc|tai\s+lieu\s+tham\s+khao|danh\s+muc\s+tai\s+lieu(?:\s+tham\s+khao)?"
+    r"|(?:appendix|appendices)(?:\s+[a-z0-9]+)?|phu\s+luc(?:\s+[a-z0-9]+)?"
     r"|chi\s+muc|bia(?:\s+sach)?|trang\s+bia|trang\s+phu\s+bia"
 )
 _NON_CONTENT = re.compile(rf"(?:{_TERMS})", re.I)

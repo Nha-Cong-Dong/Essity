@@ -108,11 +108,11 @@ describe("DocRole (US-01 AC4, AC5)", () => {
 type Section = OutlineOut["sections"][number];
 const sec = (over: Partial<Section> & { id: string }): Section => ({
   parent_id: null, title: `${over.id} Mục`, first_page: 1, last_page: 10, weight: 10, unit: "page", source: "bookmark",
-  excluded: false, excluded_effective: false, progress: 0, studied: false, children: [], ...over,
+  excluded: false, excluded_effective: false, progress: 0, studied: false, learned: false, children: [], ...over,
 });
 const outline = (sections: Section[], over: Partial<OutlineOut> = {}): OutlineOut => ({
   subject_id: SUBJECT, document: { id: DOC, page_count: 100, short_name: "Giáo trình MMT" }, progress: 0,
-  reason: null, temporary: false, sections, ...over,
+  reason: null, temporary: false, remaining_chapters: 0, sections, ...over,
 });
 const TREE = [sec({ id: "1", last_page: 20, weight: 20, children: [sec({ id: "1.1" }), sec({ id: "1.2", first_page: 11, last_page: 20 })] })];
 

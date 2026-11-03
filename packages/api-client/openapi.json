@@ -2009,6 +2009,86 @@
         "title": "NoteUploadUrl",
         "type": "object"
       },
+      "OutlineChatIn": {
+        "additionalProperties": false,
+        "properties": {
+          "command_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command Id"
+          },
+          "screen_session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Screen Session Id"
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "OutlineChatIn",
+        "type": "object"
+      },
+      "OutlineChatOut": {
+        "properties": {
+          "affected": {
+            "default": 0,
+            "title": "Affected",
+            "type": "integer"
+          },
+          "command_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command Id"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "applied",
+              "unclear",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reply"
+        ],
+        "title": "OutlineChatOut",
+        "type": "object"
+      },
       "OutlineDocumentOut": {
         "properties": {
           "id": {
@@ -2072,6 +2152,10 @@
             ],
             "title": "Reason"
           },
+          "remaining_chapters": {
+            "title": "Remaining Chapters",
+            "type": "integer"
+          },
           "sections": {
             "items": {
               "$ref": "#/components/schemas/SectionOut"
@@ -2095,6 +2179,7 @@
           "reason",
           "progress",
           "temporary",
+          "remaining_chapters",
           "sections"
         ],
         "title": "OutlineOut",
@@ -2132,6 +2217,10 @@
             ],
             "title": "Days Left"
           },
+          "remaining_chapters": {
+            "title": "Remaining Chapters",
+            "type": "integer"
+          },
           "remaining_leaves": {
             "title": "Remaining Leaves",
             "type": "integer"
@@ -2158,6 +2247,7 @@
         },
         "required": [
           "remaining_leaves",
+          "remaining_chapters",
           "remaining_weight",
           "unit",
           "days_left",
@@ -2223,6 +2313,37 @@
           "ai_service"
         ],
         "title": "PingResponse",
+        "type": "object"
+      },
+      "PlannedUnitOut": {
+        "properties": {
+          "chapter_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Title"
+          },
+          "section_id": {
+            "format": "uuid",
+            "title": "Section Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_id",
+          "title",
+          "chapter_title"
+        ],
+        "title": "PlannedUnitOut",
         "type": "object"
       },
       "PracticeLineOut": {
@@ -3284,6 +3405,10 @@
             ],
             "title": "Last Page"
           },
+          "learned": {
+            "title": "Learned",
+            "type": "boolean"
+          },
           "parent_id": {
             "anyOf": [
               {
@@ -3346,6 +3471,7 @@
           "excluded_effective",
           "progress",
           "studied",
+          "learned",
           "children"
         ],
         "title": "SectionOut",
@@ -4059,6 +4185,10 @@
             "title": "Kind",
             "type": "string"
           },
+          "nothing_today": {
+            "title": "Nothing Today",
+            "type": "boolean"
+          },
           "pace": {
             "$ref": "#/components/schemas/PaceOut"
           },
@@ -4080,6 +4210,10 @@
               }
             ],
             "title": "Remaining"
+          },
+          "remaining_chapters": {
+            "title": "Remaining Chapters",
+            "type": "integer"
           },
           "section_id": {
             "anyOf": [
@@ -4123,6 +4257,13 @@
               }
             ],
             "title": "Unit"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedUnitOut"
+            },
+            "title": "Units",
+            "type": "array"
           }
         },
         "required": [
@@ -4135,7 +4276,10 @@
           "remaining",
           "unit",
           "reason",
-          "pace"
+          "pace",
+          "units",
+          "nothing_today",
+          "remaining_chapters"
         ],
         "title": "SuggestionOut",
         "type": "object"
@@ -7633,6 +7777,56 @@
           }
         },
         "summary": "Read Outline"
+      }
+    },
+    "/v1/subjects/{subject_id}/outline/chat": {
+      "post": {
+        "operationId": "outline_chat_v1_subjects__subject_id__outline_chat_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutlineChatIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutlineChatOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Outline Chat"
       }
     },
     "/v1/subjects/{subject_id}/practice-types": {

@@ -93,7 +93,7 @@ test.describe("study session on the real screen", () => {
     await page.setViewportSize({ width: 390, height: 900 });
     expect((await page.goto(`${PAGE}?section=${SECTION}`))?.status()).toBe(200);
     await settled(page);
-    await expect(page.getByText("Hôm nay nên học: mục 3.2 TCP flow control")).toBeVisible();
+    await expect(page.getByText("Nội dung học tập: 3.2 TCP flow control")).toBeVisible();
     await expect(page.getByText("Buổi học tự do")).toHaveCount(0);
     await page.goto(PAGE);
     await settled(page);

@@ -137,9 +137,9 @@ def test_tightest_first_and_top_two():
 
 
 def test_tie_goes_to_longest_ago_never_first():
-    old = subject([leaf("a")], last=TODAY - timedelta(days=9))
-    new = subject([leaf("b")], last=TODAY - timedelta(days=1))
-    never = subject([leaf("c")], last=None)
+    old = subject([leaf(f"a{i}") for i in range(12)], last=TODAY - timedelta(days=9))
+    new = subject([leaf(f"b{i}") for i in range(12)], last=TODAY - timedelta(days=1))
+    never = subject([leaf(f"c{i}") for i in range(12)], last=None)
     out = suggest_today([new, old, never], TODAY)
     assert [s.subject_id for s in out] == [never.id, old.id]
 
@@ -180,13 +180,13 @@ def test_filter_hidden_until_date():
 
 def test_pace_text_numbers_only():
     s = subject([leaf("a", 86)], exam=TODAY + timedelta(days=20))
-    assert suggest_for_subject(s, TODAY).pace.text == "còn 1 mục (86 trang), 20 ngày"
+    assert suggest_for_subject(s, TODAY).pace.text == "còn 1 chương (86 trang), 20 ngày"
 
 
 def test_pace_text_without_exam_or_leaves():
     no_exam = suggest_for_subject(subject([leaf("a", 5)], exam=None), TODAY)
-    assert no_exam.pace.text == "còn 1 mục (5 trang)"
-    assert suggest_for_subject(subject([], exam=None), TODAY).pace.text == "còn 0 mục"
+    assert no_exam.pace.text == "còn 1 chương (5 trang)"
+    assert suggest_for_subject(subject([], exam=None), TODAY).pace.text == "còn 0 chương"
 
 
 leaf_st: st.SearchStrategy[Leaf] = st.builds(
@@ -239,3 +239,24 @@ def test_reason_lines_and_empty_texts_have_no_banned_words() -> None:
     assert all(texts)
     assert not [t for t in texts for w in BANNED if w in t.lower()]
     assert empty_state(0, [], []) == "no_subjects"
+
+
+def test_ahead_subject_has_nothing_today_and_a_flag():
+    """E2: a subject that has studied and has fewer units than days gets no units on some days."""
+    s = subject([leaf("a")], last=TODAY - timedelta(days=1))
+    out = suggest_for_subject(s, TODAY)
+    assert out.nothing_today and out.units == () and out.pace.remaining_leaves == 1
+    assert suggest_today([s], TODAY) == []
+    assert [x.subject_id for x in suggest_finished([s], TODAY)] == [s.id]
+
+
+def test_units_of_a_day_are_several_leaves_and_chapters_are_counted():
+    ch1, ch2 = uuid.uuid4(), uuid.uuid4()
+    leaves = [
+        Leaf(uuid.uuid4(), f"l{i}", 10, "trang", chapter_id=ch1 if i < 5 else ch2)
+        for i in range(10)
+    ]
+    s = subject(leaves, exam=TODAY + timedelta(days=2), last=TODAY - timedelta(days=1))
+    out = suggest_for_subject(s, TODAY)
+    assert len(out.units) == 5 and out.pace.remaining_chapters == 2
+    assert out.pace.text.startswith("còn 2 chương")
