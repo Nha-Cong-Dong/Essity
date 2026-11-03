@@ -86,7 +86,8 @@ test("US-15 AC6: Hôm nay -> Gợi ý cho hôm nay -> Vào buổi học", async 
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("/design-preview/today?state=learn");
   await settled(page);
-  const enter = page.getByRole("button", { name: /^Vào buổi học · Mạng máy tính/ });
+  await page.getByRole("button", { name: "Xem tất cả" }).click();
+  const enter = page.getByRole("button", { name: /^Học môn này ngay · Mạng máy tính/ });
   // T7.19 F2: "Vào buổi học" is the study session, never the free one ("Học tự do" is /sessions/new).
   await expect(enter).toHaveAttribute("href", new RegExp(`^/subjects/${SUBJECT}/sessions/study`));
 
