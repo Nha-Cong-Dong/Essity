@@ -29,6 +29,7 @@ async function Preview({ searchParams }: { searchParams: Promise<{ section?: str
     <SessionLive
       sessionId={SESSION}
       subjectId={SUBJECT}
+      stayOnComplete
       subject={SUBJECT_NAME}
       stopHref="/design-preview"
       docs={DOCS}

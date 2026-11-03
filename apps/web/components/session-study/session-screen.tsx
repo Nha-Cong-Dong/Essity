@@ -44,6 +44,8 @@ export type SessionScreenProps = {
   subject: string;
   /** F3: where the "cards are ready" toast leads (the subject's area of the knowledge store). */
   subjectId?: string;
+  /** The preview: "Hoàn thành" stays on this screen, which then shows the reading and the cards. */
+  stayOnComplete?: boolean;
   stopHref: string;
   docs: DocRef[];
   suggestion: Suggestion;
@@ -180,7 +182,7 @@ export function SessionScreen(props: SessionScreenProps) {
       setProblem(SUBMIT_COPY.network);
       return;
     }
-    if (!subjectId) {
+    if (!subjectId || props.stayOnComplete) {
       // The preview has no subject page to go to: the same screen shows the reading and the cards.
       send({ type: "send" });
       return;

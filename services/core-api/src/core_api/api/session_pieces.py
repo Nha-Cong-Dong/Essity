@@ -10,7 +10,14 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select
 
 from core_api.api.deps import Now, Storage, VerifiedUser, verified_user
-from core_api.api.submissions import FileIn, MentionIn, SubmissionOut, SubmitRequest, submit
+from core_api.api.submissions import (
+    FileIn,
+    MentionIn,
+    SubmissionOut,
+    SubmitRequest,
+    Typed,
+    submit,
+)
 from core_api.db.models import SessionPiece, Submission
 from core_api.db.models.study_session import DESCRIPTION_MAX
 from core_api.db.session import DbSession
@@ -25,7 +32,7 @@ MAX_PIECES = 60
 class PieceIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    text: str = Field(default="", max_length=DESCRIPTION_MAX)
+    text: Typed = Field(default="", max_length=DESCRIPTION_MAX)
     files: list[FileIn] = Field(default=[], max_length=20)
     mentions: list[MentionIn] = Field(default=[], max_length=20)
 

@@ -23,10 +23,12 @@ export function SessionLive({
   initial,
   suggestion = FREE,
   sectionId,
+  stayOnComplete,
 }: {
   sessionId: string;
   /** T7.12d: without it (the preview) the cards by section are not shown. */
   subjectId?: string;
+  stayOnComplete?: boolean;
   subject: string;
   stopHref: string;
   docs: DocRef[];
@@ -42,6 +44,7 @@ export function SessionLive({
       footer={subjectId ? <UnitsBySection subjectId={subjectId} /> : undefined}
       subject={subject}
       subjectId={subjectId}
+      stayOnComplete={stayOnComplete}
       stopHref={stopHref}
       docs={docs}
       suggestion={suggestion}
