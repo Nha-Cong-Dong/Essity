@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { LogSession } from "@/components/log-session";
-import { PageFold } from "@/components/motifs";
 import { PageColumn } from "@/components/shells";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { Sheet } from "@/components/ui/sheet";
@@ -35,7 +34,6 @@ export async function NewSessionEntry({
         ← {subject.name}
       </a>
       <Sheet className="relative mt-3" aria-labelledby="log-title">
-        <PageFold />
         <LogSession subjectId={subject.id} subjectName={subject.name} savedSessionId={saved} />
       </Sheet>
     </PageColumn>

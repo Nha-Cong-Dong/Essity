@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/empty-state";
 import { Marker } from "@/components/notebook";
 import { PageColumn } from "@/components/shells";
 
@@ -42,15 +43,16 @@ function Status({ doc }: { doc: ListedDocument }) {
 export function DocumentList({ subjectId, docs }: { subjectId: string; docs: ListedDocument[] }) {
   if (docs.length === 0) {
     return (
-      <div className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
-        <p className="m-0 text-section font-semibold">Chưa có tài liệu.</p>
-        <p className="m-0 text-body text-ink-soft">
-          Tải giáo trình, slide hoặc ảnh vở để app biết bạn học từ đâu.
-        </p>
-        <a href={`/subjects/${subjectId}/upload`} className="mt-3 font-semibold underline">
-          Tải tài liệu lên
-        </a>
-      </div>
+      <EmptyState
+        className="rounded-sheet bg-sunken p-6"
+        title="Chưa có tài liệu."
+        hint="Tải giáo trình, slide hoặc ảnh vở để app biết bạn học từ đâu."
+        action={
+          <a href={`/subjects/${subjectId}/upload`} className="font-semibold underline">
+            Tải tài liệu lên
+          </a>
+        }
+      />
     );
   }
   return (

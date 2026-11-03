@@ -1,4 +1,3 @@
-import { PageFold } from "@/components/motifs";
 import { Marker } from "@/components/notebook";
 import { AUTH_LINK } from "@/components/auth/fields";
 import { Uploader } from "@/components/subjects/uploader";
@@ -9,7 +8,6 @@ import { Sheet } from "@/components/ui/sheet";
 export function UploadStep({ name, subjectId, hasMain = true }: { name: string; subjectId: string; hasMain?: boolean }) {
   return (
     <Sheet className="relative w-full max-w-220" aria-labelledby="upload-title">
-      <PageFold />
       <h1 id="upload-title" className="m-0 flex flex-wrap items-center gap-3 font-display text-title">
         <Marker>Tải tài liệu cho {name}</Marker>
       </h1>

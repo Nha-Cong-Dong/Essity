@@ -135,6 +135,48 @@ describe("design rules", () => {
     expect(missing.map(({ file, name }) => `${file}: ${name}`)).toEqual([]);
   });
 
+  // UI-1b (direction rule 3): a card has a hairline OR a shadow, never both; a sheet on the cover has
+  // no shadow; there is no dog-ear; the highlighter is for first-level titles (and quoted evidence).
+  it("UI-1b: no class list draws a border or ring and a shadow together", () => {
+    const BORDER = /(^|[\s"'`])(border|border-\d|inset-ring|inset-ring-\d(\.\d)?|ring|ring-\d)(?=[\s"'`])/;
+    const SHADOW = /(^|[\s"'`:])shadow-(?!none)/;
+    const both = UI.filter((f) => !f.startsWith(path.join("app", "design-preview"))).flatMap((file) =>
+      read(file)
+        .split("\n")
+        .flatMap((line, i) => (BORDER.test(line) && SHADOW.test(line) ? [`${file}:${i + 1}: ${line.trim()}`] : [])),
+    );
+    expect(both).toEqual([]);
+  });
+
+  it("UI-1b: the label sheet on the cover has a hairline and no box-shadow", () => {
+    const css = read(path.join("components", "notebook", "notebook.module.css"));
+    const label = /\.label \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(label).toMatch(/border:\s*1px solid/);
+    expect(label).not.toMatch(/box-shadow/);
+  });
+
+  it("UI-1b: no dog-ear (PageFold, motif-fold) anywhere", () => {
+    expect(offenders(UI, /PageFold|motif-fold|data-motif="fold"/)).toEqual([]);
+    expect(GLOBALS).not.toMatch(/motif-fold/);
+  });
+
+  it("UI-1b: <Marker> sits in an <h1>, or on quoted evidence (<q>)", () => {
+    const outside = UI.filter((f) => !f.startsWith(path.join("app", "design-preview"))).flatMap((file) => {
+      const lines = read(file).split("\n");
+      return lines.flatMap((line, i) => {
+        if (!line.includes("<Marker>")) return [];
+        const before = lines.slice(Math.max(0, i - 3), i + 1).join("\n");
+        return /<h1|<q /.test(before) ? [] : [`${file}:${i + 1}`];
+      });
+    });
+    expect(outside).toEqual([]);
+  });
+
+  it("UI-1b: a secondary Start button is never larger than the primary (md); lg is for the pink tile", () => {
+    const src = read(path.join("components", "today", "start-button.tsx"));
+    expect(src).toMatch(/size=\{variant === "secondary" \? "md" : "lg"\}/);
+  });
+
   it("a declaration inside a longer name does not count (review of 2ab0d91)", () => {
     expect(declaresItself("x--strong: #000;", "--strong")).toBe(false);
     expect(declaresItself("--strong-line: #000;", "--strong")).toBe(false);

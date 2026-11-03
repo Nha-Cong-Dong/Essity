@@ -2,6 +2,7 @@
 
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 
+import { EmptyState } from "@/components/empty-state";
 import { FieldError } from "@/components/field-error";
 import { checkSubject, refusalErrors, type SubjectErrors, SubjectFields } from "@/components/subjects/subject-fields";
 import { SubjectsFrame } from "@/components/subjects/subjects-frame";
@@ -335,13 +336,16 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
               <DeletedRow key={deletedId} />
             </ul>
           )}
-          <div className="flex flex-col items-start gap-3 py-8">
-            <p className="m-0 text-section font-semibold">Chưa có môn nào.</p>
-            <p className="m-0 text-body text-ink-soft">Tạo môn đầu tiên bằng tên và ngày thi.</p>
-            <Button render={<a href="/subjects/new" />} nativeButton={false} className="mt-3">
-              Tạo môn
-            </Button>
-          </div>
+          <EmptyState
+            className="py-8"
+            title="Chưa có môn nào."
+            hint="Tạo môn đầu tiên bằng tên và ngày thi."
+            action={
+              <Button render={<a href="/subjects/new" />} nativeButton={false}>
+                Tạo môn
+              </Button>
+            }
+          />
         </>
       ) : (
         <ul className="m-0 flex list-none flex-col p-0">

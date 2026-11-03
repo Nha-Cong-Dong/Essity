@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
 import { FieldError, FieldHint } from "@/components/field-error";
-import { GridCorner, PageFold, Sticker } from "@/components/motifs";
+import { GridCorner, Sticker } from "@/components/motifs";
 import { Marker, NhanVo, NhanVoRow, NotebookCover, PencilNote } from "@/components/notebook";
 import { ServiceChain } from "@/components/service-chain";
 import { AppShell } from "@/components/shells";
@@ -163,7 +163,6 @@ export default function DesignPreviewPage() {
           <h2 className="text-lead">Trang vở và ô</h2>
           <div className="grid gap-5 md:grid-cols-2">
             <Sheet className="relative">
-              <PageFold />
               <p className="m-0 font-display text-question">Vì sao có ngày và đêm?</p>
               <p className="mt-4 mb-0 text-read">
                 <Marker>Trái Đất tự quay quanh trục</Marker>, nên mỗi nơi lần lượt được Mặt Trời chiếu sáng.

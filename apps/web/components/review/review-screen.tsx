@@ -581,8 +581,8 @@ function Notice({ calm, children }: { calm: boolean; children: React.ReactNode }
     <div
       className={
         calm
-          ? "flex items-start gap-3 rounded-control bg-sheet px-4.5 py-4 inset-ring-1 inset-ring-line"
-          : "flex items-start gap-3 rounded-control bg-sheet px-4.5 py-4 shadow-[inset_3px_0_0_var(--partial)] inset-ring-1 inset-ring-line"
+          ? "flex items-start gap-3 rounded-control border border-line bg-sheet px-4.5 py-4"
+          : "flex items-start gap-3 rounded-control border border-l-3 border-line border-l-(--partial) bg-sheet px-4.5 py-4"
       }
     >
       <svg

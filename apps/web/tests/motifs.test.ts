@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { AuthCard } from "@/components/auth/auth-card";
-import { GridCorner, PageFold, Sticker } from "@/components/motifs";
+import { GridCorner, Sticker } from "@/components/motifs";
 
 const CSS = readFileSync(path.resolve(import.meta.dirname, "../app/globals.css"), "utf-8");
 const rule = (selector: string) => new RegExp(`${selector.replace(/[.[\]()]/g, "\\$&")}\\s*\\{([^}]*)\\}`).exec(CSS)?.[1] ?? "";
@@ -16,7 +16,6 @@ const rule = (selector: string) => new RegExp(`${selector.replace(/[.[\]()]/g, "
 describe("motifs are decoration (§4.10 rule 7)", () => {
   it.each([
     ["GridCorner", h(GridCorner, { corner: "tl" })],
-    ["PageFold", h(PageFold)],
     ["Sticker", h(Sticker, { icon: "pen" })],
   ])("%s is hidden from assistive tech", (_, node) => {
     const markup = renderToStaticMarkup(node);
@@ -47,11 +46,6 @@ describe("motifs are decoration (§4.10 rule 7)", () => {
     expect(layer).toContain(".sticker {");
   });
 
-  it("the folded corner shows the surface under the sheet, the cover by default (review of 940760e)", () => {
-    expect(CSS).toMatch(/--fold-under: var\(--cover\)/);
-    expect(CSS).toMatch(/linear-gradient\(225deg, var\(--fold-under\)/);
-  });
-
   it("the background grid is hidden on narrow screens (§4.10 rule 5)", () => {
     expect(CSS).toMatch(/@media \(max-width: 900px\)\s*\{\s*\.motif-wide\s*\{\s*display:\s*none/);
     expect(renderToStaticMarkup(h(GridCorner, { corner: "br" }))).toMatch(/motif-wide/);
@@ -61,10 +55,10 @@ describe("motifs are decoration (§4.10 rule 7)", () => {
 describe("account screens (§4.10 rule 3)", () => {
   const markup = () => renderToStaticMarkup(h(AuthCard, { title: "Đăng nhập", children: "form" }));
 
-  it("carry the grid in two opposite corners, a page fold and the pen sticker: three motifs", () => {
+  it("carry the grid in two opposite corners and the pen sticker: two motifs, no dog-ear (UI-1b)", () => {
     // The grid in two corners counts as the one background motif.
     const kinds = new Set(markup().match(/data-motif="[^"]+"/g) ?? []);
-    expect([...kinds].sort()).toEqual(['data-motif="fold"', 'data-motif="grid"', 'data-motif="sticker"']);
+    expect([...kinds].sort()).toEqual(['data-motif="grid"', 'data-motif="sticker"']);
     expect(markup()).toMatch(/motif-grid[^"]*\btl\b/);
     expect(markup()).toMatch(/motif-grid[^"]*\bbr\b/);
   });

@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Kiểm tra email · Essity" };
 
 export default function CheckEmailPage() {
   return (
-    <AuthCard title="Hãy kiểm tra email của bạn">
+    <AuthCard title="Kiểm tra email của bạn">
       <Suspense
         fallback={<div className="h-40 rounded-control bg-sunken" />}
       >

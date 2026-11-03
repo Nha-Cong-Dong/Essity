@@ -64,7 +64,7 @@ export function StartButton({
       <Button
         type="button"
         variant={variant}
-        size="lg"
+        size={variant === "secondary" ? "md" : "lg"}
         pending={pending}
         aria-disabled={empty || undefined}
         aria-describedby={empty ? "nothing-due" : undefined}
