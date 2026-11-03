@@ -50,3 +50,19 @@ def test_complete_makes_one_submission_from_all_pieces(client: TestClient, world
 def test_complete_without_pieces_refused(client: TestClient, world: World) -> None:
     done = client.post(f"/v1/study-sessions/{world.draft.id}/complete", headers=world.headers)
     assert done.status_code == 422
+
+
+def test_complete_marks_the_given_section_studied(client: TestClient, world: World) -> None:
+    from core_api.db.models import DocSection  # noqa: PLC0415
+
+    piece(client, world, text="Mảnh một")
+    done = client.post(
+        f"/v1/study-sessions/{world.draft.id}/complete",
+        json={"section_id": str(world.chapter.id)},
+        headers=world.headers,
+    )
+    assert done.status_code == 201, done.text
+    world.db.expire_all()
+    row = world.db.scalars(select(DocSection).where(DocSection.id == world.chapter.id)).one()
+    assert row.weight > 0
+    assert row.studied_weight >= row.weight
