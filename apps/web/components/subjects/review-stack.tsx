@@ -8,10 +8,11 @@ import { Sheet } from "@/components/ui/sheet";
 // Hackathon D6: this subject's cards due today, stacked. Click the top card: it slides to the
 // bottom and the next one shows. "Ôn riêng môn này" starts a review session for this subject only.
 
-export type StackCard = { id: string; why: string; kind: "card" | "practice" };
+export type StackCard = { id: string; why: string; kind: "card" | "practice"; front?: string | null; back?: string | null };
 
 export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: StackCard[] }) {
   const [order, setOrder] = useState(cards);
+  const [flipped, setFlipped] = useState(false);
   if (order.length === 0) {
     return (
       <Sheet variant="tile" className="flex min-w-0 flex-col items-start gap-3" aria-labelledby={`rv-${subjectId}`} data-review-empty>
@@ -42,13 +43,19 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
               key={card.id}
               type="button"
               disabled={i !== 0}
-              onClick={() => setOrder((o) => [...o.slice(1), o[0]!])}
-              aria-label={i === 0 ? "Thẻ trên cùng: bấm để xem thẻ tiếp theo" : undefined}
+              onClick={() => {
+                if (card.back && !flipped) return setFlipped(true);
+                setFlipped(false);
+                setOrder((o) => [...o.slice(1), o[0]!]);
+              }}
+              aria-label={i === 0 ? (card.back && !flipped ? "Thẻ trên cùng: bấm để xem đáp án" : "Thẻ trên cùng: bấm để xem thẻ tiếp theo") : undefined}
               style={{ transform: `translate(${i * 8}px, ${i * 8}px)`, zIndex: 10 - i }}
               className="absolute inset-0 flex flex-col items-start justify-between rounded-tile bg-paper p-4 text-left shadow-sheet transition-transform duration-300 disabled:cursor-default"
             >
-              <span className="text-meta text-ink-soft">{card.kind === "practice" ? "Câu luyện tập" : "Thẻ ôn"}</span>
-              <span className="text-read wrap-anywhere">{card.why}</span>
+              <span className="text-meta text-ink-soft">{i === 0 && flipped ? "Đáp án" : card.kind === "practice" ? "Câu luyện tập" : "Thẻ ôn"}</span>
+              <span className="line-clamp-4 text-read wrap-anywhere">
+                {i === 0 && flipped && card.back ? card.back : (card.front ?? card.why)}
+              </span>
             </button>
           ))}
       </div>

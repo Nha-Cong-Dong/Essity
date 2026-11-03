@@ -20,10 +20,12 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from core_api.api.deps import Now, VerifiedUser, verified_user
 from core_api.api.review_sessions import ReasonOut
 from core_api.api.suggestions import SuggestionOut, suggestion_out
+from core_api.db.models.question import Question
 from core_api.db.session import DbSession
 from core_api.domain.learning_day import learning_day
 from core_api.domain.subjects import days_until_exam
@@ -96,6 +98,8 @@ class ReviewItemOut(BaseModel):
     why: str
     reason: ReasonOut
     item_kind: Literal["card", "practice"] = "card"  # T8.5: a practice question is not a card
+    front: str | None = None  # the question text, for the subject screen's card stack
+    back: str | None = None  # its reference answer (the flip side)
 
 
 class ReviewOut(BaseModel):
@@ -217,13 +221,40 @@ def get_today(
             links=list(parts.next_study.links),
         ),
         review=ReviewOut(
-            items=_review_items(mixed.entries, {i.question_id: i for i in parts.review.items}),
+            items=_with_text(
+                session,
+                user.id,
+                _review_items(mixed.entries, {i.question_id: i for i in parts.review.items}),
+            ),
             minutes=mixed.minutes,
             next_due_day=None if mixed.entries else mixed.next_day,
             new_saved_today=parts.review.new_saved_today,
         ),
         practice=_practice_part(mixed.fresh, names),
     )
+
+
+def _with_text(
+    session: DbSession, user_id: uuid.UUID, items: list[ReviewItemOut]
+) -> list[ReviewItemOut]:
+    """Front and back of each item's question, read in one query."""
+    if not items:
+        return items
+    rows = session.execute(
+        select(Question.id, Question.prompt, Question.reference_answer).where(
+            Question.user_id == user_id, Question.id.in_([i.question_id for i in items])
+        )
+    ).all()
+    text = {row.id: (row.prompt, row.reference_answer) for row in rows}
+    return [
+        item.model_copy(
+            update={
+                "front": text.get(item.question_id, (None, None))[0],
+                "back": text.get(item.question_id, (None, None))[1],
+            }
+        )
+        for item in items
+    ]
 
 
 def _practice_why(entry: MixedEntry) -> str:

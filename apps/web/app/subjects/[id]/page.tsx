@@ -15,7 +15,7 @@ import { CoreStatusError } from "@/lib/subjects";
 import { loadGraph } from "@/lib/graph-load";
 import { loadOutline } from "@/lib/outline";
 import { loadQuestionList } from "@/lib/question-list";
-import { ReviewStack } from "@/components/subjects/review-stack";
+import { ReviewStack, type StackCard } from "@/components/subjects/review-stack";
 import { SubjectOutlineAside } from "@/components/subjects/subject-chapters-aside";
 import { SubjectStatsBlock } from "@/components/subjects/subject-stats-block";
 import { CoverageBar } from "@/components/stats/stat-tile";
@@ -50,9 +50,9 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
     .then((today) =>
       today.review.items
         .filter((item) => item.subject_id === subject.id)
-        .map((item) => ({ id: item.question_id, why: item.why, kind: item.item_kind })),
+        .map((item) => ({ id: item.question_id, why: item.why, kind: item.item_kind, front: item.front, back: item.back })),
     )
-    .catch(() => [] as { id: string; why: string; kind: "card" | "practice" }[]);
+    .catch(() => [] as StackCard[]);
   const nothingDue = dueCards.length === 0;
   const [outline, questions, graph] = await Promise.all([
     loadOutline(subject.id).catch(() => null),
