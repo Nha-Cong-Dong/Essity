@@ -976,6 +976,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/study-sessions/{session_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete
+         * @description Hand every piece in as one submission (queued for the worker). 404 `session_not_found`;
+         *     422 `nothing_submitted`; the rest as `POST /v1/submissions`.
+         */
+        post: operations["complete_v1_study_sessions__session_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/study-sessions/{session_id}/pieces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Pieces */
+        get: operations["list_pieces_v1_study_sessions__session_id__pieces_get"];
+        put?: never;
+        /**
+         * Add Piece
+         * @description Keep one piece. 404 `session_not_found`; 409 `session_confirmed` (already handed in);
+         *     422 `nothing_submitted`, `too_many_pieces`.
+         */
+        post: operations["add_piece_v1_study_sessions__session_id__pieces_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects": {
         parameters: {
             query?: never;
@@ -2201,6 +2244,50 @@ export interface components {
             content: string;
             /** Title */
             title: string;
+        };
+        /** PieceIn */
+        PieceIn: {
+            /**
+             * Files
+             * @default []
+             */
+            files: components["schemas"]["FileIn"][];
+            /**
+             * Mentions
+             * @default []
+             */
+            mentions: components["schemas"]["MentionIn"][];
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+        };
+        /** PieceOut */
+        PieceOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** File Count */
+            file_count: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Position */
+            position: number;
+            /** Text */
+            text: string;
+        };
+        /** PiecesOut */
+        PiecesOut: {
+            /** Pieces */
+            pieces: components["schemas"]["PieceOut"][];
+            /** Submitted */
+            submitted: boolean;
         };
         /** PingResponse */
         PingResponse: {
@@ -4956,6 +5043,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_v1_study_sessions__session_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_pieces_v1_study_sessions__session_id__pieces_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PiecesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_piece_v1_study_sessions__session_id__pieces_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PieceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceOut"];
                 };
             };
             /** @description Validation Error */
