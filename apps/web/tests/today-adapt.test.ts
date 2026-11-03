@@ -8,7 +8,7 @@ const A = "0b8f1d2e-0000-4000-8000-000000000001";
 const B = "0b8f1d2e-0000-4000-8000-000000000002";
 const SID = "5f0c0000-0000-4000-8000-000000000001";
 
-const pace = { remaining_leaves: 12, remaining_weight: 12, unit: "mục", days_left: 20, text: "còn 12 mục, 20 ngày" };
+const pace = { remaining_chapters: 12, remaining_leaves: 12, remaining_weight: 12, unit: "mục", days_left: 20, text: "còn 12 mục, 20 ngày" };
 const next = (over = {}) => ({
   subject_id: A,
   subject_name: "Mạng máy tính",
@@ -20,6 +20,9 @@ const next = (over = {}) => ({
   unit: "mục",
   reason: "Môn thi sau 20 ngày, còn 12 mục.",
   pace,
+  units: [] as { section_id: string; title: string; chapter_title: string | null }[],
+  nothing_today: false,
+  remaining_chapters: 12,
   ...over,
 });
 
