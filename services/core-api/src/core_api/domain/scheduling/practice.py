@@ -67,7 +67,10 @@ class PracticeState:
 
 
 def apply(
-    state: PracticeState | None, attempt: Attempt, config: MasteryConfig = DEFAULT_CONFIG
+    state: PracticeState | None,
+    attempt: Attempt,
+    config: MasteryConfig = DEFAULT_CONFIG,
+    scheduler: FsrsScheduler = _SCHEDULER,
 ) -> PracticeState:
     previous = state.last_verdict if state is not None else None
     rating = rating_for(
@@ -78,7 +81,7 @@ def apply(
         attempt.timing_ok,
         config,
     )
-    return apply_rating(state, rating, attempt.at)
+    return apply_rating(state, rating, attempt.at, scheduler)
 
 
 def verdict_of(rating: PracticeRating) -> PracticeVerdict:
@@ -90,23 +93,29 @@ def verdict_of(rating: PracticeRating) -> PracticeVerdict:
 
 
 def apply_rating(
-    state: PracticeState | None, rating: PracticeRating, at: datetime
+    state: PracticeState | None,
+    rating: PracticeRating,
+    at: datetime,
+    scheduler: FsrsScheduler = _SCHEDULER,
 ) -> PracticeState:
     """One FSRS step by a rating already decided: the step the live path and the replay of
-    `practice_log` share, so a rebuilt state equals the cached one."""
+    `practice_log` share, so a rebuilt state equals the cached one. `scheduler` carries the
+    user's active parameters (T5.9c); the default is the shared defaults."""
     return PracticeState(
-        memory=_SCHEDULER.review(state.memory if state else None, rating, at),
+        memory=scheduler.review(state.memory if state else None, rating, at),
         last_verdict=verdict_of(rating),
         removed_at=state.removed_at if state is not None else None,
     )
 
 
-def replay_ratings(log: Iterable[tuple[PracticeRating, datetime]]) -> PracticeState | None:
+def replay_ratings(
+    log: Iterable[tuple[PracticeRating, datetime]], scheduler: FsrsScheduler = _SCHEDULER
+) -> PracticeState | None:
     """The state from a question's rating log, oldest first; None if never attempted.
     `removed_at` is not in the log: the caller sets it."""
     state: PracticeState | None = None
     for rating, at in log:
-        state = apply_rating(state, rating, at)
+        state = apply_rating(state, rating, at, scheduler)
     return state
 
 
@@ -122,13 +131,15 @@ def readd(state: PracticeState) -> PracticeState:
 
 
 def replay(
-    log: Iterable[Attempt | Removal | Readd], config: MasteryConfig = DEFAULT_CONFIG
+    log: Iterable[Attempt | Removal | Readd],
+    config: MasteryConfig = DEFAULT_CONFIG,
+    scheduler: FsrsScheduler = _SCHEDULER,
 ) -> PracticeState | None:
     """The state from a question's log, oldest first; None if it was never attempted."""
     state: PracticeState | None = None
     for event in log:
         if isinstance(event, Attempt):
-            state = apply(state, event, config)
+            state = apply(state, event, config, scheduler)
         elif isinstance(event, Removal):
             state = remove(state, event.at)
         elif state is not None:
