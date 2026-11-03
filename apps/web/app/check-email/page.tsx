@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AuthCard } from "@/components/auth/auth-card";
+import { AuthLayout } from "@/components/auth/auth-layout";
 import { SentTo } from "@/components/auth/sent-to";
+import { CHECK_EMAIL_TITLE } from "@/lib/auth-copy";
 
 export const metadata: Metadata = { title: "Kiểm tra email · Essity" };
 
@@ -10,12 +11,12 @@ export const metadata: Metadata = { title: "Kiểm tra email · Essity" };
 
 export default function CheckEmailPage() {
   return (
-    <AuthCard title="Kiểm tra email của bạn">
+    <AuthLayout title={CHECK_EMAIL_TITLE}>
       <Suspense
         fallback={<div className="h-40 rounded-control bg-sunken" />}
       >
         <SentTo />
       </Suspense>
-    </AuthCard>
+    </AuthLayout>
   );
 }

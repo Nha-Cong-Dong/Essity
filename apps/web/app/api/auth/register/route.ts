@@ -2,19 +2,29 @@ import { NextResponse } from "next/server";
 
 import { onlyPasswordTooLong, passwordReason } from "@/lib/auth-errors";
 import { cookieOptions, PENDING_EMAIL_COOKIE, PENDING_EMAIL_MAX_AGE } from "@/lib/cookies";
-import { coreClientFor } from "@/lib/core-client";
+import { type components, coreClientFor } from "@/lib/core-client";
 import { withOrigin } from "@/lib/csrf";
-import { errorResponse, rateLimited, readStrings, unavailable } from "@/lib/http";
+import { errorResponse, rateLimited, readFields, unavailable } from "@/lib/http";
 
-// T1.13: sign-up. core-api answers 202 whether or not the email has an account (AC5), so this
+type RegisterBody = components["schemas"]["RegisterBody"];
+
+// T1.13, T1.24: sign-up. core-api answers 202 whether or not the email has an account (AC5), so this
 // always goes on to /check-email, remembering the email in a cookie rather than the URL (F1).
 export const POST = withOrigin(async (request) => {
-  const signUp = await readStrings(request, ["email", "password"]);
-  if (signUp === null) return errorResponse("invalid_request", 400);
+  const fields = await readFields(request, {
+    username: { kind: "string" },
+    email: { kind: "string" },
+    password: { kind: "string" },
+    display_name: { kind: "string", optional: true },
+  });
+  if (fields === null) return errorResponse("invalid_request", 400);
+  const { display_name: displayName, ...signUp } = fields;
+  // display_name (D7) joins the typed body with T1.23's api-client; blank means "use the username".
+  const body = (displayName?.trim() ? { ...signUp, display_name: displayName.trim() } : signUp) as RegisterBody;
 
   let result;
   try {
-    result = await coreClientFor(request).POST("/v1/auth/register", { body: signUp });
+    result = await coreClientFor(request).POST("/v1/auth/register", { body });
   } catch (error) {
     return unavailable("register", error);
   }
@@ -33,8 +43,11 @@ export const POST = withOrigin(async (request) => {
     if (Array.isArray(detail)) {
       return errorResponse(onlyPasswordTooLong(detail) ? "too_long" : "invalid_email", 422);
     }
+    if (detail === "username_invalid" || detail === "username_reserved") return errorResponse(detail, 422);
     return errorResponse(passwordReason(detail), 422);
   }
+  // D2: a username is not a secret, so "taken" is said (the email never is, AC5).
+  if (response.status === 409) return errorResponse("username_taken", 409);
   if (response.status === 429) return rateLimited(response);
   return unavailable("register");
 });

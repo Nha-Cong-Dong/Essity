@@ -3,7 +3,7 @@
 
 const MESSAGES: Record<string, string> = {
   // AC5: the same sentence whatever was wrong, so it reveals no account.
-  invalid_credentials: "Email hoặc mật khẩu không đúng.",
+  invalid_credentials: "Tên đăng nhập, email hoặc mật khẩu không đúng.",
   unavailable: "Chưa gửi được. Kiểm tra kết nối rồi thử lại.",
   // AC1: why a password was refused (core-api's domain/auth/passwords.py).
   too_short: "Mật khẩu cần ít nhất 8 ký tự. Không cần ký tự đặc biệt.",
@@ -11,7 +11,12 @@ const MESSAGES: Record<string, string> = {
   common: "Mật khẩu này quá phổ biến, dễ bị đoán. Chọn mật khẩu khác.",
   same_as_email: "Mật khẩu không được giống email.",
   invalid_password: "Mật khẩu này không dùng được. Chọn mật khẩu khác.",
-  invalid_email: "Email chưa đúng. Kiểm tra lại.",
+  invalid_email: "Email chưa đúng dạng, ví dụ an@gmail.com",
+  // D2: why a username was refused. The shape rules read per rule in lib/username.ts.
+  username_taken: "Tên này đã có người dùng.",
+  username_invalid: "Chỉ dùng chữ không dấu, số, _ và . (3–20 ký tự)",
+  username_reserved: "Tên này không dùng được. Chọn tên khác.",
+  display_name_invalid: "Họ và tên dài tối đa 60 ký tự.",
 };
 
 /** Reasons core-api gives for refusing a password (422), passed on to the form. */

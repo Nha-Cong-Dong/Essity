@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AuthCard } from "@/components/auth/auth-card";
+import { AuthLayout } from "@/components/auth/auth-layout";
 import { VerifyEmail } from "@/components/auth/verify-email";
 
 export const metadata: Metadata = { title: "Xác minh email · Essity" };
@@ -9,8 +9,8 @@ export const metadata: Metadata = { title: "Xác minh email · Essity" };
 // nothing from a third party, so the token in the URL goes nowhere.
 export default function VerifyEmailPage() {
   return (
-    <AuthCard title="Xác minh email">
+    <AuthLayout title="Xác minh email">
       <VerifyEmail />
-    </AuthCard>
+    </AuthLayout>
   );
 }

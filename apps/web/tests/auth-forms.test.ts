@@ -24,10 +24,12 @@ describe("LoginForm", () => {
   const markup = () => render(h(LoginForm));
 
   // Red when: name/type/autoComplete/required of a field changes (password managers, FormData read).
-  it("email and password keep name, type, autocomplete, required", () => {
-    expect(input(markup(), "email")).toMatch(/type="email"/);
-    expect(input(markup(), "email")).toMatch(/autoComplete="email"/);
-    expect(input(markup(), "email")).toMatch(/required=""/);
+  it("identifier and password keep name, type, autocomplete, required", () => {
+    expect(input(markup(), "identifier")).toMatch(/type="text"/);
+    expect(input(markup(), "identifier")).toMatch(/autoComplete="username"/);
+    expect(input(markup(), "identifier")).toMatch(/autoCapitalize="none"/);
+    expect(input(markup(), "identifier")).toMatch(/spellCheck="false"/);
+    expect(input(markup(), "identifier")).toMatch(/required=""/);
     expect(input(markup(), "password")).toMatch(/type="password"/);
     expect(input(markup(), "password")).toMatch(/autoComplete="current-password"/);
     expect(input(markup(), "password")).toMatch(/required=""/);
@@ -42,9 +44,9 @@ describe("LoginForm", () => {
 
   // Red when: labels lose their for/id pairs.
   it("each field has a label that points at it", () => {
-    expect(markup()).toMatch(/<label[^>]*for="email"/);
+    expect(markup()).toMatch(/<label[^>]*for="identifier"/);
     expect(markup()).toMatch(/<label[^>]*for="password"/);
-    expect(input(markup(), "email")).toMatch(/id="email"/);
+    expect(input(markup(), "identifier")).toMatch(/id="identifier"/);
     expect(input(markup(), "password")).toMatch(/id="password"/);
   });
 

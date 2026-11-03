@@ -3,15 +3,15 @@
 import { type FormEvent, useEffect, useState } from "react";
 
 import { AUTH_LINK, AuthField, AuthNote, PasswordField } from "@/components/auth/fields";
-import { FieldError } from "@/components/field-error";
+import { GoogleSection } from "@/components/auth/google-button";
 import { Button } from "@/components/ui/button";
 import { authMessage, postJson, rateLimitMessage } from "@/lib/auth-errors";
 import { clearAllDrafts } from "@/lib/draft";
 import { safeNext } from "@/lib/landing";
 import { go } from "@/lib/navigate";
 
-// T1.12, canvas Auth "login". The session token stays in an HttpOnly cookie set by
-// /api/auth/login; this form only learns where to go next.
+// T1.12, T1.24 (AC5, AC6): one field takes a username or an email (D3). The session token stays
+// in an HttpOnly cookie set by /api/auth/login; this form only learns where to go next.
 const SIGN_IN_PAGES = ["/", "/check-email"];
 
 export function LoginForm() {
@@ -28,11 +28,12 @@ export function LoginForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy) return;
     const form = new FormData(event.currentTarget);
     setBusy(true);
     setError(undefined);
     const result = await postJson<{ next: string }>("/api/auth/login", {
-      email: String(form.get("email")),
+      identifier: String(form.get("identifier")).trim(),
       password: String(form.get("password")),
     });
     if (result.data) {
@@ -50,42 +51,59 @@ export function LoginForm() {
   const rateLimited = error === "rate_limited" && lockedFor > 0;
   const wrong = error === "invalid_credentials";
   return (
-    <form method="post" onSubmit={submit} className="flex flex-col gap-5" noValidate>
-      {rateLimited && <AuthNote>{rateLimitMessage(lockedFor)}</AuthNote>}
-      <AuthField
-        id="email"
-        name="email"
-        label="Email"
-        type="email"
-        autoComplete="email"
-        required
-        invalid={wrong}
-        describedBy={wrong ? "login-error" : undefined}
-      />
-      <PasswordField
-        id="password"
-        name="password"
-        label="Mật khẩu"
-        autoComplete="current-password"
-        required
-        invalid={wrong}
-        describedBy={wrong ? "login-error" : undefined}
-      />
-      {error && !rateLimited && <FieldError id="login-error">{authMessage(error)}</FieldError>}
-      <Button type="submit" pending={busy} disabled={rateLimited} className="w-full">
-        {busy ? "Đang đăng nhập…" : "Đăng nhập"}
-      </Button>
-      <div className="flex flex-col gap-2.5 text-body">
-        <a href="/forgot-password" className={AUTH_LINK}>
-          Quên mật khẩu?
-        </a>
-        <span>
+    <>
+      <GoogleSection label="Đăng nhập bằng Google" />
+      <form
+        method="post"
+        onSubmit={submit}
+        className="flex flex-col gap-5"
+        noValidate
+        aria-busy={busy || undefined}
+      >
+        {rateLimited && <AuthNote>{rateLimitMessage(lockedFor)}</AuthNote>}
+        {error && !rateLimited && (
+          <AuthNote id="login-error">{authMessage(error)}</AuthNote>
+        )}
+        <AuthField
+          id="identifier"
+          name="identifier"
+          label="Tên đăng nhập hoặc email"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="an.nguyen hoặc an@gmail.com"
+          required
+          readOnly={busy}
+          invalid={wrong}
+          describedBy={wrong ? "login-error" : undefined}
+        />
+        <div className="flex flex-col gap-1">
+          <PasswordField
+            id="password"
+            name="password"
+            label="Mật khẩu"
+            autoComplete="current-password"
+            required
+            readOnly={busy}
+            invalid={wrong}
+            describedBy={wrong ? "login-error" : undefined}
+          />
+          <a href="/forgot-password" className={`${AUTH_LINK} inline-flex min-h-11 items-center self-end`}>
+            Quên mật khẩu?
+          </a>
+        </div>
+        <Button type="submit" pending={busy} disabled={rateLimited} className="w-full">
+          {busy ? "Đang đăng nhập…" : "Đăng nhập"}
+        </Button>
+        <p className="m-0 text-center text-body">
           Chưa có tài khoản?{" "}
-          <a href="/register" className={AUTH_LINK}>
+          <a href="/register" className={`${AUTH_LINK} inline-flex min-h-11 items-center px-1.5`}>
             Đăng ký
           </a>
-        </span>
-      </div>
-    </form>
+        </p>
+      </form>
+    </>
   );
 }
