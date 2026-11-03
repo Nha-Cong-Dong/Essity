@@ -91,11 +91,16 @@ class StatsRepository(UserScopedRepository[MemoryState]):
         """Leaf sections of each subject's outline: a leaf has no child."""
         sections = self._sections()
         parents = {s.parent_id for s in sections if s.parent_id is not None}
+        by_id = {s.id: s for s in sections}
         out: dict[uuid.UUID, list[Leaf]] = {}
         for s in sections:
             if s.id not in parents:
+                # Left out when it or an ancestor is (the flag is set on the top section only).
+                gone, up, hops = s.excluded, s.parent_id, 0
+                while not gone and up in by_id and hops < 10:
+                    gone, up, hops = by_id[up].excluded, by_id[up].parent_id, hops + 1
                 out.setdefault(s.subject_id, []).append(
-                    Leaf(s.weight, s.unit, self._studied(s), s.excluded)
+                    Leaf(s.weight, s.unit, self._studied(s), gone)
                 )
         return out
 

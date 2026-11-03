@@ -32,6 +32,8 @@ class OutlineNode:
     weight: int
     unit: Unit
     source: Source
+    # Left out of the exam outline until the learner brings it back (T7.2b).
+    excluded: bool = False
 
     @property
     def temporary(self) -> bool:
@@ -89,6 +91,7 @@ def outline_body(nodes: Sequence[OutlineNode]) -> dict[str, Any]:
                 "page_end": node.end,
                 "weight": node.weight,
                 "source": _CORE_SOURCE[node.source],
+                "excluded": node.excluded,
             }
             for node, parent in zip(nodes, parents, strict=True)
         ],
