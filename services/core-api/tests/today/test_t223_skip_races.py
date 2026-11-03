@@ -26,6 +26,7 @@ from core_api.repositories.review import (
 from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.unit import KnowledgeUnitRepository
 from core_api.repositories.user import UserRepository
+from erasure import erase_user
 from races import finished, in_thread, wait_for_lock
 
 NOW = datetime(2026, 11, 4, 13, 0, tzinfo=UTC)
@@ -46,7 +47,9 @@ class Ready:
 
 
 @pytest.fixture
-def ready(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Ready]:
+def ready(
+    engine: Engine, eraser_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[Ready]:
     monkeypatch.setattr("core_api.domain.today.MAX_QUESTIONS", 2)
     monkeypatch.setattr("core_api.repositories.review.MAX_QUESTIONS", 2)
     with Session(engine) as session:
@@ -74,12 +77,7 @@ def ready(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Ready]:
         state = Ready(user.id, review.id, attempt.id, unit_ids[0])
         session.commit()
     yield state
-    with engine.begin() as connection:
-        for table, trigger in GUARDS:
-            connection.execute(text(f"ALTER TABLE {table} DISABLE TRIGGER {trigger}"))
-        connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": state.user_id})
-        for table, trigger in GUARDS:
-            connection.execute(text(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}"))
+    erase_user(eraser_engine, state.user_id)
 
 
 def skip(session: Session, state: Ready) -> None:

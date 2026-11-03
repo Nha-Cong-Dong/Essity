@@ -2,7 +2,7 @@
 see each other's practice rows (ADR-0029, ADR-0024, ADR-0013; US-16 AC3, US-06 AC5)."""
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import Engine, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,7 @@ from core_api.repositories.base import AppendOnlyError
 from core_api.repositories.practice import PracticeLogRepository, PracticeStateRepository
 from core_api.repositories.review import MemoryStateRepository, ReviewLogRepository
 from practice_rows import Practice, day
+from truncate import truncate_refused_by_trigger
 
 
 def card_rows(session: Session) -> tuple[int, int]:
@@ -73,15 +74,18 @@ def test_practice_log_repo_delete_raises_append_only(practice: Practice) -> None
     [
         "UPDATE practice_log SET rating = 1",
         "DELETE FROM practice_log",
-        "TRUNCATE practice_log",
     ],
 )
-def test_practice_log_trigger_refuses_update_delete_truncate(practice: Practice, sql: str) -> None:
+def test_practice_log_trigger_refuses_update_delete(practice: Practice, sql: str) -> None:
     # Red when: the 0025 trigger is missing, so a log row can change or go (ADR-0024).
     practice.do(practice.question(), "correct", day(0))
     with pytest.raises(DBAPIError, match="is refused"), practice.session.begin_nested():
         practice.session.execute(text(sql))
     assert practice.session.query(PracticeLog).count() == 1
+
+
+def test_practice_log_trigger_refuses_truncate(owner_engine: Engine) -> None:
+    truncate_refused_by_trigger(owner_engine, "practice_log")
 
 
 # ADR-0013: every read is scoped to the user.

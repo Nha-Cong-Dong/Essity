@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
-from sqlalchemy import Connection, text
+from sqlalchemy import Connection, Engine, text
 from sqlalchemy.exc import IntegrityError
 
 from core_api.db.base import Base
@@ -338,13 +338,14 @@ def facts(connection: Connection, schema: str) -> dict[str, set[tuple[str, ...]]
 
 
 @pytest.fixture
-def mirror(world: World) -> Iterator[Connection]:
-    """The models built with create_all in a schema of their own, inside the test's transaction
-    (rolled back with it)."""
-    connection = world.session.connection()
-    connection.execute(text(f"CREATE SCHEMA {MIRROR}"))
-    Base.metadata.create_all(connection.execution_options(schema_translate_map={None: MIRROR}))
-    yield connection
+def mirror(owner_engine: Engine) -> Iterator[Connection]:
+    """The models built with create_all in a schema of their own, as the schema owner (core_app
+    cannot create schemas, T2.22), inside a transaction that is rolled back."""
+    with owner_engine.connect() as connection, connection.begin() as transaction:
+        connection.execute(text(f"CREATE SCHEMA {MIRROR}"))
+        Base.metadata.create_all(connection.execution_options(schema_translate_map={None: MIRROR}))
+        yield connection
+        transaction.rollback()
 
 
 @pytest.mark.parametrize("kind", ["constraints", "indexes", "columns"])

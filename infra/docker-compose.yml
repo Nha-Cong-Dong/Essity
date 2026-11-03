@@ -19,8 +19,17 @@ services:
       AI_DB_USER: ${AI_DB_USER}
       AI_DB_PASSWORD: ${AI_DB_PASSWORD}
       AI_DB_NAME: ${AI_DB_NAME}
+      # Roles of T2.22 (roles.sh). Only postgres gets the eraser login's password: no app
+      # service may hold it (do not move these into the core-environment block below).
+      CORE_APP_DB_USER: ${CORE_APP_DB_USER:?set in .env (T2.22, see .env.example)}
+      CORE_APP_DB_PASSWORD: ${CORE_APP_DB_PASSWORD:?set in .env (T2.22, see .env.example)}
+      CORE_ERASER_LOGIN: ${CORE_ERASER_LOGIN:-}
+      CORE_ERASER_PASSWORD: ${CORE_ERASER_PASSWORD:-}
     volumes:
       - ./postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      # Not in initdb.d (that would run it a second time): init.sh and `just db-roles` call it.
+      - ./postgres/roles.sh:/opt/roles/roles.sh:ro
+      - ./postgres/roles.sql:/opt/roles/roles.sql:ro
       # Postgres 18 images keep data under /var/lib/postgresql/<major>/, so mount the parent.
       - postgres-data:/var/lib/postgresql
     ports:
@@ -114,7 +123,8 @@ services:
     build: ../services/core-api
     environment: &core-environment
       CORE_ENVIRONMENT: local  # this file is for dev only; deploys set production (T0.13)
-      CORE_DATABASE_URL: postgresql+psycopg://${CORE_DB_USER}:${CORE_DB_PASSWORD}@postgres:5432/${CORE_DB_NAME}
+      # core_app, not the owner `core`: no DDL, cannot disable the append-only triggers (T2.22).
+      CORE_DATABASE_URL: postgresql+psycopg://${CORE_APP_DB_USER:?set in .env (T2.22, see .env.example)}:${CORE_APP_DB_PASSWORD:?set in .env (T2.22, see .env.example)}@postgres:5432/${CORE_DB_NAME}
       CORE_REDIS_URL: ${REDIS_URL}
       CORE_AI_SERVICE_URL: ${AI_SERVICE_URL}
       CORE_AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?set in .env}
@@ -146,6 +156,17 @@ services:
       redis:
         condition: service_healthy
       ai-service:
+        condition: service_healthy
+
+  # `just migrate`: the only service that connects as the schema owner `core` (T2.22). Not part
+  # of `just up` (profile tools), so the owner's URL is not in the app services' environment.
+  core-migrate:
+    build: ../services/core-api
+    profiles: ["tools"]
+    environment:
+      CORE_DATABASE_URL: postgresql+psycopg://${CORE_DB_USER}:${CORE_DB_PASSWORD}@postgres:5432/${CORE_DB_NAME}
+    depends_on:
+      postgres:
         condition: service_healthy
 
   # Background jobs of core-api (ADR-0014): same image and settings, no port.

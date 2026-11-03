@@ -32,7 +32,7 @@ from core_api.db.models import (
 from core_api.domain.learning_day import learning_day
 from core_api.repositories.review import MemoryStateRepository
 
-pytestmark = pytest.mark.timing
+pytestmark = [pytest.mark.timing, pytest.mark.usefixtures("analyze_allowed")]
 
 RUN = uuid.uuid4()
 

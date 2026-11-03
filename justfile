@@ -46,7 +46,11 @@ gen-api:
 
 # Chạy migration của core-api lên database local (cần `just up` trước)
 migrate:
-    {{compose}} run --rm --no-deps core-api uv run --no-sync alembic upgrade head
+    {{compose}} run --rm core-migrate uv run --no-sync alembic upgrade head
+
+# Tạo hoặc làm mới vai trò core_app / core_eraser (T2.22). Chạy một lần trên volume cũ, TRƯỚC `just migrate`
+db-roles:
+    {{compose}} exec -T postgres sh /opt/roles/roles.sh
 
 # Chạy migration của ai-service lên database `ai` local (cần `just up` trước)
 migrate-ai:

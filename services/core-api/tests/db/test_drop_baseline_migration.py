@@ -92,13 +92,13 @@ def test_0009_drop_and_restore_match_0005(engine: Engine, alembic_cfg: Config) -
     ],
 )
 def test_the_snapshot_sees_a_changed_schema(
-    engine: Engine, alembic_cfg: Config, change: str
+    owner_engine: Engine, alembic_cfg: Config, change: str
 ) -> None:
     # Red when: the snapshot leaves out a constraint, a column's full type or its default, so a
     # downgrade that got one wrong would pass (review 097fdad #1).
     try:
         command.downgrade(alembic_cfg, "0008")
-        with engine.connect() as connection, connection.begin() as transaction:
+        with owner_engine.connect() as connection, connection.begin() as transaction:
             whole = snapshot(connection)
             connection.execute(text(change))
             assert snapshot(connection) != whole

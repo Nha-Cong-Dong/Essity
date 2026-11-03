@@ -12,6 +12,7 @@ from alembic.config import Config
 from sqlalchemy import Engine, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
+from erasure import erase_user
 from v2_rows import World, make_question
 
 
@@ -133,11 +134,11 @@ def test_old_guard_rules_still_hold(world: World) -> None:
 
 
 def test_downgrade_refuses_while_a_practice_attempt_exists(
-    engine: Engine, alembic_cfg: Config
+    engine: Engine, eraser_engine: Engine, alembic_cfg: Config
 ) -> None:
     # Red when: the downgrade sets NOT NULL over rows that have no session, or deletes them.
     # Committed on purpose (Alembic runs on its own connection); attempt rows can never be
-    # deleted, so the triggers are switched off for the clean-up in `finally`.
+    # deleted, so the user is erased by core_eraser in `finally`.
     user, subject, question = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
     with engine.begin() as c:
         c.execute(
@@ -166,13 +167,7 @@ def test_downgrade_refuses_while_a_practice_attempt_exists(
         with pytest.raises(RuntimeError, match="0028 downgrade"):
             command.downgrade(alembic_cfg, "0027")
     finally:
-        with engine.begin() as c:
-            c.execute(text("ALTER TABLE attempt DISABLE TRIGGER USER"))
-            try:
-                c.execute(text("DELETE FROM attempt WHERE user_id = :u"), {"u": user})
-            finally:
-                c.execute(text("ALTER TABLE attempt ENABLE TRIGGER USER"))
-            c.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": user})
+        erase_user(eraser_engine, user)
         command.upgrade(alembic_cfg, "head")
 
 

@@ -24,6 +24,7 @@ from core_api.repositories.review import (
 )
 from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.user import UserRepository
+from erasure import erase_user
 
 NOW = datetime(2026, 11, 2, 9, 0, tzinfo=UTC)
 DAY = date(2026, 11, 2)
@@ -38,7 +39,7 @@ class Open:
 
 
 @pytest.fixture
-def open_session(engine: Engine) -> Iterator[Open]:
+def open_session(engine: Engine, eraser_engine: Engine) -> Iterator[Open]:
     with Session(engine) as session:
         user = UserRepository(session).create(f"race-{uuid.uuid4()}@example.com")
         session.flush()
@@ -50,10 +51,7 @@ def open_session(engine: Engine) -> Iterator[Open]:
         opened = Open(user.id, review.id, question.id)
         session.commit()
     yield opened
-    with engine.begin() as connection:
-        connection.execute(text("ALTER TABLE review_session DISABLE TRIGGER review_session_guard"))
-        connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": opened.user_id})
-        connection.execute(text("ALTER TABLE review_session ENABLE TRIGGER review_session_guard"))
+    erase_user(eraser_engine, opened.user_id)
 
 
 def test_us08_ending_waits_for_an_answer_being_written(engine: Engine, open_session: Open) -> None:

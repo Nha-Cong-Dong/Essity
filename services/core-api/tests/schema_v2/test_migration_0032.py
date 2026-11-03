@@ -25,6 +25,7 @@ from core_api.repositories.question import QuestionRepository
 from core_api.repositories.study_filter import StudyFilterRepository
 from core_api.services.outline import OutlineService
 from practice_rows import Practice, day
+from truncate import truncate_refused_by_trigger
 from v2_rows import World, make_document, make_question, make_section, make_subject
 
 HASH = "ab" * 32
@@ -36,8 +37,8 @@ def practice(db_session: Session, two_users: tuple[User, User]) -> Practice:
 
 
 def test_single_alembic_head_after_0032(alembic_cfg: Config) -> None:
-    # Red when: a migration branches from 0031, or 0033 is not the head.
-    assert ScriptDirectory.from_config(alembic_cfg).get_heads() == ["0033"]
+    # Red when: a migration branches from 0031 (the head moves on with every migration).
+    assert len(ScriptDirectory.from_config(alembic_cfg).get_heads()) == 1
 
 
 def refused_sql(world: World, sql: str, **params: Any) -> None:
@@ -317,7 +318,10 @@ def test_removal_log_is_append_only(world: World) -> None:
         world, "UPDATE practice_removal_log SET action = 'readded' WHERE id = :id", id=event.id
     )  # noqa: E501
     refused_sql(world, "DELETE FROM practice_removal_log WHERE id = :id", id=event.id)
-    refused_sql(world, "TRUNCATE practice_removal_log")
+
+
+def test_removal_log_refuses_truncate(owner_engine: Engine) -> None:
+    truncate_refused_by_trigger(owner_engine, "practice_removal_log")
 
 
 def test_removal_log_checks_action_and_owner_of_the_question(world: World) -> None:

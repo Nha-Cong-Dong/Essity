@@ -4,7 +4,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent_env import create_database_command, database_name, env_lines, redis_db, release
+from agent_env import (
+    create_database_command,
+    database_name,
+    ensure_roles_command,
+    env_lines,
+    redis_db,
+    release,
+)
 
 
 class Names(unittest.TestCase):
@@ -82,6 +89,19 @@ class Env(unittest.TestCase):
         command = create_database_command("core_test_coder_s2")
         self.assertEqual(command[:4], ["docker", "exec", "essity-postgres-1", "psql"])
         self.assertIn('CREATE DATABASE "core_test_coder_s2" OWNER core', command[-1])
+
+    def test_t222_ensure_roles_feeds_roles_sql_with_local_defaults(self) -> None:
+        # Red when: new lanes/agents get a database but no core_app, so migration 0034 refuses.
+        command = ensure_roles_command({})
+        self.assertEqual(command[:5], ["docker", "exec", "-i", "essity-postgres-1", "psql"])
+        self.assertIn("app_user=core_app", command)
+        self.assertIn("eraser_login=core_eraser_login", command)
+        self.assertEqual(command[-2:], ["-f", "-"])
+
+    def test_t222_ensure_roles_takes_the_env_values(self) -> None:
+        command = ensure_roles_command({"CORE_APP_DB_PASSWORD": "pw", "CORE_ERASER_LOGIN": ""})
+        self.assertIn("app_password=pw", command)
+        self.assertIn("eraser_login=", command)
 
 
 if __name__ == "__main__":

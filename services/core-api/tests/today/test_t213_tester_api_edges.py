@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, create_engine, func, select, text
+from sqlalchemy import Engine, create_engine, func, select
 from sqlalchemy.orm import Session
 from test_t213_attempts_api import opened, submit
 
@@ -28,6 +28,7 @@ from core_api.repositories.review import (
 from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.user import UserRepository
 from core_api.security.rate_limit import RateLimiter, get_rate_limiter
+from erasure import erase_user
 from grader_stub import Stub
 
 
@@ -118,7 +119,7 @@ GUARDS = [
 
 
 @pytest.fixture
-def committed(engine: Engine) -> Iterator[tuple[uuid.UUID, uuid.UUID]]:
+def committed(engine: Engine, eraser_engine: Engine) -> Iterator[tuple[uuid.UUID, uuid.UUID]]:
     with Session(engine) as session:
         user = UserRepository(session).create(f"t213-tester-{uuid.uuid4()}@example.com")
         session.flush()
@@ -132,12 +133,7 @@ def committed(engine: Engine) -> Iterator[tuple[uuid.UUID, uuid.UUID]]:
         ids = (user.id, attempt.id)
         session.commit()
     yield ids
-    with engine.begin() as connection:
-        for table, trigger in GUARDS:
-            connection.execute(text(f"ALTER TABLE {table} DISABLE TRIGGER {trigger}"))
-        connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": ids[0]})
-        for table, trigger in GUARDS:
-            connection.execute(text(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}"))
+    erase_user(eraser_engine, ids[0])
 
 
 # Red when: `session.commit()` before grading in submit_attempt is dropped (or made a flush):

@@ -11,6 +11,8 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, text
 
+from erasure import erase_user
+
 NEW_TABLES = ("practice_state", "practice_log", "command_log", "unit_edge")
 NEW_QUESTION_COLUMNS = {"bank_document_id", "bank_ord"}
 RUN = uuid.uuid4()
@@ -201,23 +203,9 @@ FILLERS = {
 }
 
 
-GUARDED = ("practice_log", "attempt", "grade", "review_session")
-
-
-def erase_user(engine: Engine, user: uuid.UUID) -> None:
-    """Remove a test user whose history the append-only triggers protect: they are switched off
-    for this clean-up only."""
-    with engine.begin() as connection:
-        for table in GUARDED:
-            connection.execute(text(f"ALTER TABLE {table} DISABLE TRIGGER USER"))  # noqa: S608
-        connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": user})
-        for table in GUARDED:
-            connection.execute(text(f"ALTER TABLE {table} ENABLE TRIGGER USER"))  # noqa: S608
-
-
 @pytest.mark.parametrize("table", NEW_TABLES)
 def test_0025_downgrade_refuses_when_any_new_table_has_rows(
-    engine: Engine, alembic_cfg: Config, table: str
+    eraser_engine: Engine, engine: Engine, alembic_cfg: Config, table: str
 ) -> None:
     # Red when: the downgrade drops a table that still holds learner data, or checks only some.
     user, subject = seed_user(engine)
@@ -234,12 +222,12 @@ def test_0025_downgrade_refuses_when_any_new_table_has_rows(
         assert held == 1
     finally:
         command.upgrade(alembic_cfg, "head")
-        erase_user(engine, user)
+        erase_user(eraser_engine, user)
 
 
 @pytest.mark.parametrize("held", ["default origin", "bank link"])
 def test_0025_downgrade_refuses_default_origin_and_bank_link(
-    engine: Engine, alembic_cfg: Config, held: str
+    eraser_engine: Engine, engine: Engine, alembic_cfg: Config, held: str
 ) -> None:
     # Red when: the downgrade narrows the CHECK over a 'default' row or drops a bank link.
     user, subject = seed_user(engine)
@@ -284,11 +272,11 @@ def test_0025_downgrade_refuses_default_origin_and_bank_link(
         assert NEW_QUESTION_COLUMNS <= question_columns(engine)
     finally:
         command.upgrade(alembic_cfg, "head")
-        erase_user(engine, user)
+        erase_user(eraser_engine, user)
 
 
 def test_0025_downgrade_refuses_when_a_section_has_studied_weight(
-    engine: Engine, alembic_cfg: Config
+    eraser_engine: Engine, engine: Engine, alembic_cfg: Config
 ) -> None:
     # Red when: the downgrade drops studied_weight over learner progress.
     user, subject = seed_user(engine)
@@ -321,4 +309,4 @@ def test_0025_downgrade_refuses_when_a_section_has_studied_weight(
             command.downgrade(alembic_cfg, "0024")
     finally:
         command.upgrade(alembic_cfg, "head")
-        erase_user(engine, user)
+        erase_user(eraser_engine, user)

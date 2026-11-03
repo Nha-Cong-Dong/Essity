@@ -5,7 +5,7 @@ import uuid
 from datetime import UTC, date, datetime
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import Engine, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from test_t23_review_history import _assert_append_only_isolated  # pyright: ignore[reportPrivateUsage]
@@ -14,6 +14,7 @@ from core_api.db.models import Question, User
 from core_api.repositories.question import QuestionRepository
 from core_api.repositories.review import ReviewSessionItemRepository, ReviewSessionRepository
 from core_api.repositories.subject import SubjectRepository
+from truncate import truncate_refused_by_trigger
 
 RUN = uuid.uuid4()
 NOW = datetime(2026, 10, 25, 13, 0, tzinfo=UTC)
@@ -83,7 +84,6 @@ def test_t29_items_cannot_point_at_another_users_rows(
     [
         "UPDATE review_session_item SET position = 9",
         "DELETE FROM review_session_item",
-        "TRUNCATE review_session_item",
     ],
 )
 def test_t29_items_are_append_only(
@@ -95,6 +95,10 @@ def test_t29_items_are_append_only(
     ReviewSessionItemRepository(db_session, alice.id).add_all(sitting.id, [q.id])
     with pytest.raises(IntegrityError, match="is refused"), db_session.begin_nested():
         db_session.execute(text(sql))
+
+
+def test_t29_items_refuse_truncate(owner_engine: Engine) -> None:
+    truncate_refused_by_trigger(owner_engine, "review_session_item")
 
 
 def test_t29_items_isolated(db_session: Session, two_users: tuple[User, User]) -> None:

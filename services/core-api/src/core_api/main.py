@@ -36,6 +36,7 @@ from core_api.api.errors import install_validation_handler
 from core_api.clients.ai_client import AiServiceClient
 from core_api.clients.storage import S3Storage
 from core_api.config import get_settings
+from core_api.db.role_guard import check_app_role
 from core_api.logging import configure_logging, log_requests
 from core_api.security.rate_limit import install_rate_limit_handlers
 from core_api.telemetry import configure_tracing
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Reading settings here makes a missing or short AI service token fail at startup.
     settings = get_settings()
     configure_logging("core-api", settings.log_level)
+    check_app_role(settings)  # outside local/test: refuse the owner, a superuser, the eraser
     ai_client = AiServiceClient.from_settings(settings)
     app.state.ai_client = ai_client
     # Builds the clients only: no call to the store, so startup does not wait on it.

@@ -10,7 +10,8 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from redis import Redis
-from sqlalchemy import Engine
+from sqlalchemy import Engine, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from core_api.api.deps import get_storage
@@ -41,10 +42,38 @@ TEST_AI_SERVICE_TOKEN = "test-ai-service-token-0123456789abcdef"
 WEB_TOKEN = "test-web-token-0123456789abcdefghij"
 # Tests run on a real PostgreSQL, in a database of their own (`core_test`), never on local data.
 # CI points this at its service container; locally it is the Compose Postgres (`just up`).
-TEST_DATABASE_URL = os.environ.get(
+# T2.22: three logins on that database. CORE_TEST_DATABASE_URL is the OWNER `core` (migrations and
+# the odd test that needs DDL); the app and the tests use `core_app`, the eraser path uses a
+# member of `core_eraser`. The latter two follow the owner's host and database unless set.
+OWNER_DATABASE_URL = os.environ.get(
     "CORE_TEST_DATABASE_URL",
     "postgresql+psycopg://core:change-me-local@127.0.0.1:5432/core_test",
 )
+
+
+def _login_url(variable: str, user: str, password: str) -> str:
+    given = os.environ.get(variable)
+    if given:
+        return given
+    return (
+        make_url(OWNER_DATABASE_URL)
+        .set(username=user, password=password)
+        .render_as_string(hide_password=False)
+    )
+
+
+APP_DATABASE_URL = _login_url(
+    "CORE_TEST_APP_DATABASE_URL",
+    os.environ.get("CORE_APP_DB_USER", "core_app"),
+    os.environ.get("CORE_APP_DB_PASSWORD", "change-me-local"),
+)
+ERASER_DATABASE_URL = _login_url(
+    "CORE_TEST_ERASER_DATABASE_URL",
+    os.environ.get("CORE_ERASER_LOGIN", "core_eraser_login"),
+    os.environ.get("CORE_ERASER_PASSWORD", "change-me-local"),
+)
+# What the app code under test connects with.
+TEST_DATABASE_URL = APP_DATABASE_URL
 # Redis database 15 is for tests only; local data lives in database 0.
 TEST_REDIS_URL = os.environ.get("CORE_TEST_REDIS_URL", "redis://127.0.0.1:6379/15")
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
@@ -76,7 +105,7 @@ def test_settings_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     get_redis.cache_clear()
 
 
-def alembic_config(url: str = TEST_DATABASE_URL) -> Config:
+def alembic_config(url: str = OWNER_DATABASE_URL) -> Config:
     config = Config(str(SERVICE_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(SERVICE_ROOT / "migrations"))
     config.set_main_option("sqlalchemy.url", url)
@@ -85,7 +114,26 @@ def alembic_config(url: str = TEST_DATABASE_URL) -> Config:
 
 @pytest.fixture
 def test_database_url() -> str:
+    """The `core_app` login: what core-api and core-worker use."""
     return TEST_DATABASE_URL
+
+
+@pytest.fixture
+def analyze_allowed(owner_engine: Engine) -> Iterator[None]:
+    """ANALYZE needs ownership or MAINTAIN, and core_app has neither (T2.22). The timing tests
+    refresh statistics of rows still uncommitted in their own transaction, so for them core_app is
+    lent MAINTAIN (PostgreSQL 17+) on the tables, and gives it back."""
+    names = "ALL TABLES IN SCHEMA public"
+    with owner_engine.begin() as connection:
+        connection.execute(text(f"GRANT MAINTAIN ON {names} TO core_app"))
+    yield
+    with owner_engine.begin() as connection:
+        connection.execute(text(f"REVOKE MAINTAIN ON {names} FROM core_app"))
+
+
+@pytest.fixture
+def owner_database_url() -> str:
+    return OWNER_DATABASE_URL
 
 
 @pytest.fixture
@@ -95,11 +143,27 @@ def alembic_cfg() -> Config:
 
 @pytest.fixture(scope="session")
 def engine() -> Iterator[Engine]:
-    """Engine on the test database, migrated to head once per test run."""
+    """Engine on the test database as `core_app`, migrated to head (by the owner) once per run."""
     command.upgrade(alembic_config(), "head")
     engine = create_db_engine(TEST_DATABASE_URL)
     yield engine
     engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def owner_engine(engine: Engine) -> Iterator[Engine]:
+    """The schema owner `core`: DDL a test truly needs. Not the app, so never for app paths."""
+    owner = create_db_engine(OWNER_DATABASE_URL)
+    yield owner
+    owner.dispose()
+
+
+@pytest.fixture(scope="session")
+def eraser_engine(engine: Engine) -> Iterator[Engine]:
+    """A login that is a member of `core_eraser`: the only way to delete a user's history."""
+    eraser = create_db_engine(ERASER_DATABASE_URL)
+    yield eraser
+    eraser.dispose()
 
 
 @pytest.fixture
