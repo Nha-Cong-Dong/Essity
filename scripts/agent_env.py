@@ -107,6 +107,8 @@ def ensure_roles_command(env: Mapping[str, str]) -> list[str]:
         "app_password": value("CORE_APP_DB_PASSWORD", "change-me-local"),
         "eraser_login": value("CORE_ERASER_LOGIN", "core_eraser_login"),
         "eraser_password": value("CORE_ERASER_PASSWORD", "change-me-local"),
+        # Never reset an existing password from here: the real .env may differ from the defaults.
+        "refresh": "0",
     }
     command = ["docker", "exec", "-i", POSTGRES_CONTAINER, "psql", "-v", "ON_ERROR_STOP=1"]
     command += ["-U", "postgres", "-d", "postgres"]

@@ -21,8 +21,8 @@ services:
       AI_DB_NAME: ${AI_DB_NAME}
       # Roles of T2.22 (roles.sh). Only postgres gets the eraser login's password: no app
       # service may hold it (do not move these into the core-environment block below).
-      CORE_APP_DB_USER: ${CORE_APP_DB_USER}
-      CORE_APP_DB_PASSWORD: ${CORE_APP_DB_PASSWORD}
+      CORE_APP_DB_USER: ${CORE_APP_DB_USER:?set in .env (T2.22, see .env.example)}
+      CORE_APP_DB_PASSWORD: ${CORE_APP_DB_PASSWORD:?set in .env (T2.22, see .env.example)}
       CORE_ERASER_LOGIN: ${CORE_ERASER_LOGIN:-}
       CORE_ERASER_PASSWORD: ${CORE_ERASER_PASSWORD:-}
     volumes:
@@ -124,7 +124,7 @@ services:
     environment: &core-environment
       CORE_ENVIRONMENT: local  # this file is for dev only; deploys set production (T0.13)
       # core_app, not the owner `core`: no DDL, cannot disable the append-only triggers (T2.22).
-      CORE_DATABASE_URL: postgresql+psycopg://${CORE_APP_DB_USER}:${CORE_APP_DB_PASSWORD}@postgres:5432/${CORE_DB_NAME}
+      CORE_DATABASE_URL: postgresql+psycopg://${CORE_APP_DB_USER:?set in .env (T2.22, see .env.example)}:${CORE_APP_DB_PASSWORD:?set in .env (T2.22, see .env.example)}@postgres:5432/${CORE_DB_NAME}
       CORE_REDIS_URL: ${REDIS_URL}
       CORE_AI_SERVICE_URL: ${AI_SERVICE_URL}
       CORE_AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?set in .env}
