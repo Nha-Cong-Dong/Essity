@@ -90,10 +90,10 @@ const Q1 = "0b8f1d2e-0000-4000-8000-0000000000a1";
 const Q2 = "0b8f1d2e-0000-4000-8000-0000000000a2";
 const ATTEMPT = "0b8f1d2e-0000-4000-8000-0000000000b1";
 
-type Seen = { opened: string[]; submitted: Record<string, unknown>[]; removed: string[] };
+type Seen = { opened: string[]; submitted: Record<string, unknown>[]; removed: string[]; restored: number };
 
 async function fakePractice(page: Page): Promise<Seen> {
-  const seen: Seen = { opened: [], submitted: [], removed: [] };
+  const seen: Seen = { opened: [], submitted: [], removed: [], restored: 0 };
   const json = (route: Route, body: unknown, status = 200) => route.fulfill({ status, json: body });
   await page.route("**/api/practice/**", async (route) => {
     const request = route.request();
@@ -114,11 +114,16 @@ async function fakePractice(page: Page): Promise<Seen> {
         grading: "graded", question: { id: Q1, prompt: "So sánh TCP và UDP." }, submitted_at: "2026-11-02T08:00:00Z", timing_ok: false,
         result: {
           grade_id: "0b8f1d2e-0000-4000-8000-0000000000e1", overall: "partial", missing: ["Nêu ảnh hưởng tới độ trễ."],
+          units: [{ text: "Nêu độ tin cậy.", met: true }, { text: "Nêu ảnh hưởng tới độ trễ.", met: false }],
           reference_answer: "TCP tin cậy nhưng thêm độ trễ; UDP nhanh hơn.", answer_origin: "ai", differs_from_card_id: null,
         },
       });
     }
     const worthless = /\/questions\/([0-9a-f-]{36})\/worthless$/.exec(pathname);
+    if (/\/questions\/[0-9a-f-]{36}\/restore$/.test(pathname)) {
+      seen.restored += 1;
+      return route.fulfill({ status: 204 });
+    }
     if (worthless) {
       seen.removed.push(worthless[1]);
       return route.fulfill({ status: 204 });
@@ -151,7 +156,8 @@ test("US-16 AC2 AC3 AC5 AC8: list, do a question, see what is missing, remove it
     set(false);
   });
   await page.getByRole("button", { name: "Gửi" }).click();
-  await expect(page.getByText("Nêu ảnh hưởng tới độ trễ.")).toBeVisible();
+  await expect(page.getByRole("list", { name: "theo từng ý" }).getByRole("listitem")).toHaveCount(2);
+  await expect(page.getByText("Nêu ảnh hưởng tới độ trễ.").first()).toBeVisible();
   expect(seen.submitted).toHaveLength(1);
   expect(seen.submitted[0]).toMatchObject({ answer_text: "TCP tin cậy hơn.", dont_remember: false });
   expect(seen.submitted[0].hidden_ms).toBeGreaterThanOrEqual(250);
@@ -185,8 +191,12 @@ test("US-16 AC3: remove from the list is one tap and the row turns into a one-li
   const seen = await fakePractice(page);
   await open(page, 390, LIVE);
   await page.locator(`[data-question="${Q2}"]`).getByRole("button", { name: "Gỡ khỏi luyện tập" }).click();
-  await expect(page.locator(`[data-removed="${Q2}"]`)).toHaveText("Đã gỡ khỏi luyện tập.");
+  await expect(page.locator(`[data-removed="${Q2}"]`)).toContainText("Đã gỡ khỏi luyện tập.");
   expect(seen.removed).toEqual([Q2]);
+  // T8.7b: Hoàn tác brings the row back.
+  await page.locator(`[data-removed="${Q2}"]`).getByRole("button", { name: "Hoàn tác" }).click();
+  await expect(page.locator(`[data-question="${Q2}"]`)).toBeVisible();
+  expect(seen.restored).toBe(1);
 });
 
 for (const width of WIDTHS) {

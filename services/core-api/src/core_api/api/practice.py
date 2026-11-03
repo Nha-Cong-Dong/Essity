@@ -17,6 +17,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.exc import IntegrityError
 
 from core_api.api.attempts import GRADINGS_PER_USER, Limiter
 from core_api.api.deps import Now, VerifiedUser, verified_user
@@ -26,12 +27,14 @@ from core_api.clients.ai_client import AiServiceClient
 from core_api.db.models import Attempt, Grade, Question
 from core_api.db.session import DbSession
 from core_api.repositories.grade_job import GradeJobRepository
+from core_api.repositories.practice import PracticeStateRepository
 from core_api.repositories.practice_attempt import (
     AttemptNotDraftError,
     AttemptNotFoundError,
     DraftContendedError,
     PracticeAttemptRepository,
 )
+from core_api.repositories.practice_removal import PracticeRemovalRepository
 from core_api.repositories.question import QuestionNotFoundError, QuestionRepository
 from core_api.repositories.review import GradeRepository
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
@@ -40,7 +43,7 @@ from core_api.security.rate_limit import (
     RateLimitedError,
     RateLimiterUnavailableError,
 )
-from core_api.services.practice import remove
+from core_api.services.practice import readd, remove
 from core_api.services.practice_grading import (
     MAX_ANSWER_CHARS,
     GradeBusyError,
@@ -85,10 +88,18 @@ class QuestionRef(BaseModel):
     prompt: str
 
 
+class PracticeUnitOut(BaseModel):
+    """One rubric point and whether the answer met it (the grade stores the ones it missed)."""
+
+    text: str
+    met: bool
+
+
 class PracticeResultOut(BaseModel):
     grade_id: uuid.UUID  # what "Chấm sai" overrides
     overall: Literal["correct", "partial", "incorrect", "forgot"]
     missing: list[str]  # the rubric ideas not fully met
+    units: list[PracticeUnitOut] = []  # every rubric point, in the rubric's order (T8.7b)
     reference_answer: str | None
     answer_origin: Literal["bank", "ai", "user"] | None  # "ai": the screen labels it
     differs_from_card_id: uuid.UUID | None = None  # "đáp án này khác thẻ X" when core knows it
@@ -160,11 +171,19 @@ def _view(
     )
 
 
+def _units(question: Question, grade: Grade) -> list[PracticeUnitOut]:
+    ideas = rubric_of(question) or []
+    missed = {str(m) for m in grade.missing}
+    forgot = grade.overall == "forgot"
+    return [PracticeUnitOut(text=idea, met=not forgot and idea not in missed) for idea in ideas]
+
+
 def _result(question: Question, grade: Grade) -> PracticeResultOut:
     return PracticeResultOut(
         grade_id=grade.id,
         overall=grade.overall,  # type: ignore[arg-type]
         missing=[str(m) for m in grade.missing],
+        units=_units(question, grade),
         reference_answer=standard_answer(question),
         answer_origin=question.answer_origin,  # type: ignore[arg-type]
     )
@@ -304,6 +323,28 @@ def worthless(question_id: uuid.UUID, user: VerifiedUser, session: DbSession, no
         raise _error(status.HTTP_404_NOT_FOUND, "question_not_found")
     questions.retire(question_id)
     remove(session, user.id, question_id, now)  # False for a question never attempted
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/questions/{question_id}/restore", status_code=status.HTTP_204_NO_CONTENT)
+def restore(question_id: uuid.UUID, user: VerifiedUser, session: DbSession, now: Now) -> Response:
+    """Undo of "Gỡ khỏi luyện tập" (T8.7b): the question is served again, its schedule resumes."""
+    questions = QuestionRepository(session, user.id)
+    question = questions.get(question_id)
+    if question is None or SubjectRepository(session, user.id).get(question.subject_id) is None:
+        raise _error(status.HTTP_404_NOT_FOUND, "question_not_found")
+    PracticeStateRepository(session, user.id).hold_question(question_id)
+    removed_here = not PracticeRemovalRepository(session, user.id).in_practice(question_id)
+    if not removed_here or question.quality_status == "rejected":
+        # Only a question the learner took out of practice comes back: a rejected or replaced one
+        # stays retired, and one still in practice has nothing to undo (review F1).
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    try:
+        with session.begin_nested():
+            questions.unretire(question_id)
+    except IntegrityError as error:  # an active question of the same content took its place
+        raise _error(status.HTTP_409_CONFLICT, "question_not_restorable") from error
+    readd(session, user.id, question_id, at=now)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

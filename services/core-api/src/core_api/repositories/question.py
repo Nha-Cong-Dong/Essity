@@ -44,6 +44,15 @@ class QuestionRepository(UserScopedRepository[Question]):
         self.session.flush()
         return True
 
+    def unretire(self, id: uuid.UUID) -> bool:
+        """Undo of `retire` (Hoàn tác of "Gỡ khỏi luyện tập"). False when not this user's."""
+        question = self.get(id)
+        if question is None:
+            return False
+        question.status = "active"
+        self.session.flush()
+        return True
+
     def by_ids(self, ids: Sequence[uuid.UUID]) -> list[Question]:
         """This user's questions among `ids`, in id order."""
         return list(

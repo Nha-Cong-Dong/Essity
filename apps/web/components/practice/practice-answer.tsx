@@ -37,7 +37,12 @@ export function toResult(view: PracticeView): Result | null {
     overall: r.overall,
     missing: r.missing,
     understanding: null,
-    units: [],
+    // Every rubric point; GradeResult draws them (T8.7b). Met = "Đúng", not met = "Thiếu".
+    units: r.units.map((u, index) => ({
+      unit_id: String(index),
+      title: u.text,
+      verdict: u.met ? ("correct" as const) : ("incorrect" as const),
+    })),
     reference_answer: r.reference_answer ?? "",
     sources: [],
     practice: true,
@@ -204,6 +209,11 @@ export function PracticeAnswer({
     if (reply.ok) setRemoved(true);
   }
 
+  async function undoRemove() {
+    const reply = await api.restore(questionId);
+    if (reply.ok) setRemoved(false);
+  }
+
   // The grade may be written by another request: read it again a few times, then say to go on.
   const view = phase.kind === "sent" ? phase.view : null;
   const waiting =
@@ -322,7 +332,12 @@ export function PracticeAnswer({
                     {nextLabel}
                   </Button>
                   {removed ? (
-                    <Pen>Đã gỡ khỏi luyện tập.</Pen>
+                    <>
+                      <Pen>Đã gỡ khỏi luyện tập.</Pen>
+                      <Button variant="quiet" onClick={() => void undoRemove()}>
+                        Hoàn tác
+                      </Button>
+                    </>
                   ) : (
                     <Button variant="quiet" onClick={() => void remove()}>
                       Gỡ khỏi luyện tập

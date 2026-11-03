@@ -2315,6 +2315,14 @@
               }
             ],
             "title": "Reference Answer"
+          },
+          "units": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PracticeUnitOut"
+            },
+            "title": "Units",
+            "type": "array"
           }
         },
         "required": [
@@ -2397,6 +2405,25 @@
           "formula_version"
         ],
         "title": "PracticeTypeOut",
+        "type": "object"
+      },
+      "PracticeUnitOut": {
+        "description": "One rubric point and whether the answer met it (the grade stores the ones it missed).",
+        "properties": {
+          "met": {
+            "title": "Met",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "met"
+        ],
+        "title": "PracticeUnitOut",
         "type": "object"
       },
       "PracticeView": {
@@ -6303,6 +6330,40 @@
           }
         },
         "summary": "Open Question"
+      }
+    },
+    "/v1/practice/questions/{question_id}/restore": {
+      "post": {
+        "description": "Undo of \"Gỡ khỏi luyện tập\" (T8.7b): the question is served again, its schedule resumes.",
+        "operationId": "restore_v1_practice_questions__question_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore"
       }
     },
     "/v1/practice/questions/{question_id}/worthless": {
