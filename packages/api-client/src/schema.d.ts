@@ -2224,7 +2224,7 @@ export interface components {
         };
         /**
          * PracticeUnitOut
-         * @description One rubric point and whether the answer met it (the grade stores only the ones it did not).
+         * @description One rubric point and whether the answer met it (the grade stores the ones it missed).
          */
         PracticeUnitOut: {
             /** Met */
