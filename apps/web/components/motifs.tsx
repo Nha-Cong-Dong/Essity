@@ -17,11 +17,6 @@ export function GridCorner({ corner, className }: { corner: "tl" | "tr" | "bl" |
   );
 }
 
-/** M6: a folded corner on a sheet (the account card, the session confirmation). */
-export function PageFold({ className }: { className?: string }) {
-  return <span aria-hidden="true" data-motif="fold" className={cn("motif motif-fold", className)} />;
-}
-
 const ICONS = { moon: Moon, pen: PenLine, paperclip: Paperclip, sparkle: Sparkle } as const;
 
 /** M8: one sticker per screen, tilted, with a ring of the surface under it. */

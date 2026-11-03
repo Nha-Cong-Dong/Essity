@@ -131,16 +131,16 @@ describe("account screen motifs: edges", () => {
 
   // Red when: a third grid corner, a second fold or a second sticker is added: §4.10 rules
   // (two opposite corners, one sticker per screen).
-  it("exactly two grids, one fold, one sticker", () => {
+  it("exactly two grids, no fold, one sticker", () => {
     expect(markup().match(/data-motif="grid"/g)).toHaveLength(2);
-    expect(markup().match(/data-motif="fold"/g)).toHaveLength(1);
+    expect(markup().match(/data-motif="fold"/g)).toBeNull();
     expect(markup().match(/data-motif="sticker"/g)).toHaveLength(1);
   });
 
   // Red when: every decorative element loses aria-hidden: count the motifs and their hidden flag together.
   it("every motif and the sticker's icon are hidden from assistive tech", () => {
     const motifs = markup().match(/<span[^>]*data-motif="[^"]+"[^>]*>/g) ?? [];
-    expect(motifs).toHaveLength(4);
+    expect(motifs).toHaveLength(3);
     for (const tag of motifs) expect(tag).toContain('aria-hidden="true"');
     expect(markup()).toMatch(/<svg[^>]*aria-hidden="true"/);
   });

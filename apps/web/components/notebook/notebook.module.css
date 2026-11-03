@@ -71,7 +71,8 @@
   position: relative;
   border-radius: var(--radius-sheet);
   background: var(--sheet);
-  box-shadow: var(--elev-sheet);
+  /* On the cover a sheet has a hairline, never a shadow too (UI-1b: border OR shadow). */
+  border: 1px solid var(--line);
   padding: 32px;
 }
 

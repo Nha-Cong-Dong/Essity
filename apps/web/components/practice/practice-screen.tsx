@@ -321,7 +321,7 @@ export function PracticeScreen({
 
   if (state === "result") {
     return (
-      <div ref={root} className="mx-auto w-full max-w-180">
+      <div ref={root} className="w-full max-w-180">
         <h1 className="m-0 mb-6 font-display text-title">
           <Marker>{COPY.heading}</Marker>
         </h1>
@@ -339,7 +339,7 @@ export function PracticeScreen({
   }
 
   return (
-    <div ref={root} className="mx-auto w-full max-w-180">
+    <div ref={root} className="w-full max-w-180">
       <a href={`/subjects/${SUBJECT.id}`} className="text-meta text-ink-soft underline wrap-anywhere">
         ← {SUBJECT.name}
       </a>

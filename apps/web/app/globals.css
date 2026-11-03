@@ -247,10 +247,8 @@
   --motif-stroke: #e3a1bd;
   --motif-fill: var(--rose-100);
   --motif-grid: #eaafc7;
-  --motif-fold: var(--rose-100);
   --motif-faint: 0.55;
   --motif-soft: 0.9;
-  --motif-fold-shadow: -2px 2px 6px -3px rgb(110 23 62 / 0.25);
   --sticker-shadow: 0 10px 22px -10px rgb(110 23 62 / 0.45);
   color-scheme: light;
 }
@@ -302,10 +300,8 @@
     --motif-stroke: #7c4a62;
     --motif-fill: #2c1d27;
     --motif-grid: #5a3a4a;
-    --motif-fold: var(--rose-200);
     --motif-faint: 0.6;
     --motif-soft: 0.85;
-    --motif-fold-shadow: -2px 2px 6px -3px rgb(0 0 0 / 0.6);
     --sticker-shadow: 0 10px 22px -8px rgb(0 0 0 / 0.7);
     color-scheme: dark;
   }
@@ -359,10 +355,8 @@
   --motif-stroke: #7c4a62;
   --motif-fill: #2c1d27;
   --motif-grid: #5a3a4a;
-  --motif-fold: var(--rose-200);
   --motif-faint: 0.6;
   --motif-soft: 0.85;
-  --motif-fold-shadow: -2px 2px 6px -3px rgb(0 0 0 / 0.6);
   --sticker-shadow: 0 10px 22px -8px rgb(0 0 0 / 0.7);
   color-scheme: dark;
 }
@@ -508,18 +502,6 @@
     right: 0;
     bottom: 0;
     mask-image: radial-gradient(100% 100% at 100% 100%, #000, transparent 70%);
-  }
-  .motif-fold {
-    top: 0;
-    right: 0;
-    width: 44px;
-    height: 44px;
-    border-top-right-radius: var(--radius-sheet);
-    border-bottom-left-radius: 10px;
-    /* the corner shows what lies under the sheet: the cover, by default */
-    --fold-under: var(--cover);
-    background: linear-gradient(225deg, var(--fold-under) 0 50%, var(--motif-fold) 50% 100%);
-    box-shadow: var(--motif-fold-shadow);
   }
   .sticker {
     --sticker-ring: var(--bg); /* the ring takes the colour of the surface under the sticker */
