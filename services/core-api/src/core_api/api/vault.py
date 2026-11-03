@@ -8,13 +8,14 @@ import json
 import re
 import uuid
 from datetime import date
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, StrictStr
 from sqlalchemy import ColumnElement, func, select
 
 from core_api.api.deps import Now, Storage, VerifiedUser, verified_user
+from core_api.api.text import storable_text
 from core_api.clients.storage import StorageUnavailableError
 from core_api.db.models import (
     Anchor,
@@ -68,9 +69,13 @@ class VaultCardsOut(BaseModel):
     cards: list[VaultCardOut]
 
 
+Title = Annotated[StrictStr, Field(min_length=1, max_length=200), AfterValidator(storable_text)]
+Body = Annotated[StrictStr, Field(min_length=1, max_length=4000), AfterValidator(storable_text)]
+
+
 class CardEditIn(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=200)
-    content: str | None = Field(default=None, min_length=1, max_length=4000)
+    title: Title | None = None
+    content: Body | None = None
 
 
 class SourceOut(BaseModel):

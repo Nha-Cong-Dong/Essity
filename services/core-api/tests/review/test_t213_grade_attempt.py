@@ -137,7 +137,9 @@ def test_t213_graded_in_time_writes_grade_units_log_and_state(desk: Desk) -> Non
     # US-05 AC8: the request carries every unit's source.
     sent = stub.calls[0]["units"]  # type: ignore[index]
     quotes = {u["anchors"][0]["quote_text"] for u in sent}  # type: ignore[index]
-    assert quotes == {"nguồn 0", "nguồn 1"}
+    # G3: each first quote leads with the card text, then the stored quote.
+    assert {q.rsplit("[Trích nguồn] ", 1)[1] for q in quotes} == {"nguồn 0", "nguồn 1"}
+    assert all(q.startswith("[Nội dung thẻ] ") for q in quotes)
 
 
 # T2.13 case 2 and `grading_disabled` (plan test table). Red when: a failed or switched-off
