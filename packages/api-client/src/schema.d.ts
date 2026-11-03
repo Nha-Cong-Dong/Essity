@@ -1410,6 +1410,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/vault/cards/{card_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Card */
+        delete: operations["delete_card_v1_vault_cards__card_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit Card
+         * @description "Lưu" on the card: the new text is the answer reviews compare against.
+         */
+        patch: operations["edit_card_v1_vault_cards__card_id__patch"];
+        trace?: never;
+    };
+    "/v1/vault/cards/{card_id}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Card Sources
+         * @description "Nguồn" on the card: for each anchor the page's extracted text with the cited passage's
+         *     position, so the screen can mark it (a real PDF highlight is for later).
+         */
+        get: operations["card_sources_v1_vault_cards__card_id__sources_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/vault/sessions/{session_id}/cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vault Cards */
+        get: operations["vault_cards_v1_vault_sessions__session_id__cards_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/vault/subjects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vault Subjects */
+        get: operations["vault_subjects_v1_vault_subjects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/vault/subjects/{subject_id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vault Sessions */
+        get: operations["vault_sessions_v1_vault_subjects__subject_id__sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1553,6 +1646,13 @@ export interface components {
             prompt: string;
             /** Type Id */
             type_id: string | null;
+        };
+        /** CardEditIn */
+        CardEditIn: {
+            /** Content */
+            content?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /** CardRange */
         CardRange: {
@@ -2800,6 +2900,31 @@ export interface components {
             /** Quote Text */
             quote_text: string;
         };
+        /** SourceOut */
+        SourceOut: {
+            /**
+             * Anchor Id
+             * Format: uuid
+             */
+            anchor_id: string;
+            /** Document Id */
+            document_id: string | null;
+            /** Document Name */
+            document_name: string | null;
+            /** Highlight */
+            highlight: [
+                number,
+                number
+            ] | null;
+            /** Page No */
+            page_no: number | null;
+            /** Page Text */
+            page_text: string | null;
+            /** Quote */
+            quote: string;
+            /** Source */
+            source: string;
+        };
         /** SplitIn */
         SplitIn: {
             /** Parts */
@@ -3259,6 +3384,80 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VaultAnchorOut */
+        VaultAnchorOut: {
+            /** Document Id */
+            document_id: string | null;
+            /** Document Name */
+            document_name: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Page No */
+            page_no: number | null;
+            /** Quote */
+            quote: string;
+            /** Source */
+            source: string;
+        };
+        /** VaultCardOut */
+        VaultCardOut: {
+            /** Anchors */
+            anchors: components["schemas"]["VaultAnchorOut"][];
+            /** Content */
+            content: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+        };
+        /** VaultCardsOut */
+        VaultCardsOut: {
+            /** Cards */
+            cards: components["schemas"]["VaultCardOut"][];
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Title */
+            title: string;
+        };
+        /** VaultSessionOut */
+        VaultSessionOut: {
+            /** Cards */
+            cards: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Studied On */
+            studied_on: string | null;
+            /** Title */
+            title: string;
+        };
+        /** VaultSubjectOut */
+        VaultSubjectOut: {
+            /** Cards */
+            cards: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Sessions */
+            sessions: number;
         };
         /** WaitingSectionOut */
         WaitingSectionOut: {
@@ -5947,6 +6146,183 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_card_v1_vault_cards__card_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                card_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_card_v1_vault_cards__card_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                card_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CardEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VaultCardOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    card_sources_v1_vault_cards__card_id__sources_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                card_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vault_cards_v1_vault_sessions__session_id__cards_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VaultCardsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vault_subjects_v1_vault_subjects_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VaultSubjectOut"][];
+                };
+            };
+        };
+    };
+    vault_sessions_v1_vault_subjects__subject_id__sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VaultSessionOut"][];
+                };
             };
             /** @description Validation Error */
             422: {
