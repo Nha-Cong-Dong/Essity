@@ -6,9 +6,9 @@ worker sends.
 """
 
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 
@@ -28,6 +28,7 @@ from core_api.domain.auth.passwords import (
 from core_api.domain.auth.sessions import SESSION_MAX
 from core_api.domain.auth.tokens import TokenPurpose
 from core_api.domain.auth.username import (
+    UsernameProblem,
     UsernameRejectedError,
     normalize_username,
     validate_username,
@@ -77,6 +78,10 @@ LOGIN_PER_IDENTIFIER = RateLimit("login_identifier", 20, timedelta(minutes=15))
 # as long as an unverified account would have been (jobs/purge_unverified.UNVERIFIED_LIFETIME),
 # so "is this username free?" says nothing about whether an address has an account (AC5).
 USERNAME_HOLD = Hold("username_hold", timedelta(days=7))
+
+# D8: the sign-up form asks whether a username is free when the field is left. A name is no secret
+# (D2), but a script could list every taken name: counted per IP, 30 a minute.
+USERNAME_CHECK_PER_IP = RateLimit("username_check_ip", 30, timedelta(minutes=1))
 
 CHECK_EMAIL = {"status": "check_email"}
 
@@ -143,6 +148,35 @@ def register(
     if user is not None:
         enqueue_email(session, user.id, kind)
     return CHECK_EMAIL
+
+
+class UsernameAvailability(BaseModel):
+    available: bool
+    reason: Literal["taken", "reserved", "invalid"] | None
+
+
+@router.get("/username-availability")
+def username_availability(
+    u: Annotated[DbText, Query(max_length=64)],
+    request: Request,
+    session: DbSession,
+    limiter: Limiter,
+) -> UsernameAvailability:
+    """Whether `u` can be taken now: no session needed, the same rules as sign-up (D2, D8).
+
+    A name held by a sign-up with an existing email is "taken" here too (review P1).
+    """
+    limiter.enforce(USERNAME_CHECK_PER_IP, client_ip(request, get_settings().web_token))
+    try:
+        username = validate_username(normalize_username(u))
+    except UsernameRejectedError as exc:
+        reason = "reserved" if exc.problem is UsernameProblem.RESERVED else "invalid"
+        return UsernameAvailability(available=False, reason=reason)
+    if UserRepository(session).username_taken(username) or limiter.is_reserved(
+        USERNAME_HOLD, username
+    ):
+        return UsernameAvailability(available=False, reason="taken")
+    return UsernameAvailability(available=True, reason=None)
 
 
 @router.post("/verify-email/resend", status_code=202)

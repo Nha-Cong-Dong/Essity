@@ -212,6 +212,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/username-availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Username Availability
+         * @description Whether `u` can be taken now: no session needed, the same rules as sign-up (D2, D8).
+         *
+         *     A name held by a sign-up with an existing email is "taken" here too (review P1).
+         */
+        get: operations["username_availability_v1_auth_username_availability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/verify-email": {
         parameters: {
             query?: never;
@@ -3048,6 +3070,13 @@ export interface components {
             /** Url */
             url: string;
         };
+        /** UsernameAvailability */
+        UsernameAvailability: {
+            /** Available */
+            available: boolean;
+            /** Reason */
+            reason: ("taken" | "reserved" | "invalid") | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -3488,6 +3517,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    username_availability_v1_auth_username_availability_get: {
+        parameters: {
+            query: {
+                u: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsernameAvailability"];
                 };
             };
             /** @description Validation Error */

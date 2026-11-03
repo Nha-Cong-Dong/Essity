@@ -8,8 +8,8 @@ to it cannot change what this ran), ordered by `created_at, id`; clashes get `_2
 is logged: names come from emails (ADR-0013).
 
 Downgrade drops both columns, so a username or full name a user chose is lost; upgrading again
-makes names from emails. No server default: run this migration and start the new app together (an old app
-cannot sign anyone up once `username` is NOT NULL).
+makes names from emails. No server default: run this migration and start the new app together
+(an old app cannot sign anyone up once `username` is NOT NULL).
 
 Revision ID: 0035
 Revises: 0034
