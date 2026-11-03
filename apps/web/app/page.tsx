@@ -1,12 +1,19 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { LandingRedirect } from "@/components/landing-redirect";
+import { LandingEntry } from "@/components/landing/landing-entry";
 
-// The proxy sends a visitor without a session to /login before this runs.
+export const metadata: Metadata = {
+  title: "Essity",
+  description:
+    "Tối nay ôn gì, đã có app lo. Trợ lí học tập thông minh. Quản lí lịch ôn tập hiệu quả với thuật toán FSRS.",
+};
+
+// T0.15: "/" is the only public page of the app (proxy.ts lets it through); see LandingEntry.
 export default function Home() {
   return (
     <Suspense fallback={null}>
-      <LandingRedirect />
+      <LandingEntry />
     </Suspense>
   );
 }

@@ -23,8 +23,20 @@ function redirectedTo(response: Response): string | null {
 describe("proxy (T1.12, W3: an optimistic cookie check only)", () => {
   it("AC7: sends a private page to /login without a session cookie", () => {
     expect(redirectedTo(visit("/today"))).toBe("/login");
-    expect(redirectedTo(visit("/"))).toBe("/login");
     expect(redirectedTo(visit("/subjects/42"))).toBe("/login");
+  });
+
+  it("T0.15: only / is public of the app's own pages; the landing is for anonymous visitors", () => {
+    expect(visit("/").status).toBe(200);
+    expect(redirectedTo(visit("/"))).toBeNull();
+    expect(redirectedTo(visit("/today"))).toBe("/login");
+    expect(redirectedTo(visit("/subjects/new"))).toBe("/login");
+    expect(redirectedTo(visit("/today/"))).toBe("/login");
+    expect(redirectedTo(visit("//today"))).toBe("/login");
+  });
+
+  it("T0.15: / stays reachable with a cookie: app/page.tsx redirects a live session", () => {
+    expect(redirectedTo(visit("/", { cookie: "tok" }))).toBeNull();
   });
 
   it("F7: never carries the page along (no ?next=, so no open redirect)", () => {
