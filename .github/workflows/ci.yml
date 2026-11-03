@@ -154,7 +154,7 @@ jobs:
         env:
           PGPASSWORD: ci-only-password
         run: |
-          psql -h localhost -U core -d core_test -v ON_ERROR_STOP=1             -v app_user=core_app -v app_password=ci-only-app-password             -v eraser_login=core_eraser_login -v eraser_password=ci-only-eraser-password             -f ../../infra/postgres/roles.sql
+          psql -h localhost -U core -d core_test -v ON_ERROR_STOP=1 -v refresh=1             -v app_user=core_app -v app_password=ci-only-app-password             -v eraser_login=core_eraser_login -v eraser_password=ci-only-eraser-password             -f ../../infra/postgres/roles.sql
       - name: Migrations on an empty database
         if: matrix.service == 'core-api'
         env:
