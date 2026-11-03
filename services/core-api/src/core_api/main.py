@@ -17,6 +17,7 @@ from core_api.api import (
     health,
     me,
     outline,
+    outline_chat,
     ping,
     practice,
     practice_types,
@@ -94,6 +95,7 @@ app.include_router(drafts.router)
 app.include_router(stats.router)
 app.include_router(suggestions.router)
 app.include_router(commands.router)
+app.include_router(outline_chat.router)
 app.include_router(export.router)
 # Outermost middleware: the request span is open while log_requests writes its line.
 FastAPIInstrumentor.instrument_app(app, excluded_urls="healthz", exclude_spans=["receive", "send"])

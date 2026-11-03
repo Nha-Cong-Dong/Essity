@@ -58,3 +58,22 @@ def test_only_subject_ends_on_sunday() -> None:
 def test_unclear_never_guesses(command: str, reason: str) -> None:
     # US-18 AC3 (unclear), AC6 (unsupported: delete, reset, account).
     assert parse(command) == {"kind": "unclear", "reason": reason}
+
+
+def test_leave_out_sections_by_sentence() -> None:
+    # E3: "bỏ ..." names sections by title words or by number.
+    sections = [
+        {"id": str(uuid.uuid4()), "title": "1.1 Giới thiệu"},
+        {"id": str(uuid.uuid4()), "title": "1.2 Mô hình OSI"},
+        {"id": str(uuid.uuid4()), "title": "Phụ lục A"},
+    ]
+    request = ParseCommandRequest.model_validate(body("bỏ phần phụ lục", sections=sections))
+    labels = Labels.of(request)
+    llm = build_llm_request(request, labels, run_id=uuid.uuid4(), attempt=1, nonce="n0nce")
+    result = check_output(fake_parse(llm), labels, TODAY_D).model_dump(mode="json")
+    assert result["kind"] == "section_exclude" and result["sections"] == [str(sections[2]["id"])]
+    again = ParseCommandRequest.model_validate(body("bỏ mục 1.2", sections=sections))
+    labels = Labels.of(again)
+    llm = build_llm_request(again, labels, run_id=uuid.uuid4(), attempt=1, nonce="n0nce")
+    result = check_output(fake_parse(llm), labels, TODAY_D).model_dump(mode="json")
+    assert result["sections"] == [str(sections[1]["id"])]
