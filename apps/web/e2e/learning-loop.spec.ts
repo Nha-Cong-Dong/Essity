@@ -20,7 +20,7 @@ type Stored = { unit_id: string; version: number; due: string };
 
 /** One fake core: a clock, the suggestion rule, the submission and its cards, and what Lưu stored. */
 async function fakeCore(page: Page) {
-  const state = { now: FIRST_DAY, studied: false, submitted: [] as unknown[], uploads: 0, saved: [] as Stored[] };
+  const state = { now: FIRST_DAY, studied: false, submitted: [] as unknown[], complete: false, uploads: 0, saved: [] as Stored[] };
   const day = () => state.now.toISOString().slice(0, 10);
   const nextDay = () => new Date(state.now.getTime() + DAY_MS).toISOString().slice(0, 10);
   const cards = [
@@ -62,12 +62,19 @@ async function fakeCore(page: Page) {
       state.uploads += 1;
       return json(route, { url: "/storage-fake", method: "PUT", headers: {}, expires_at: "2099-01-01T00:00:00Z" }, 201);
     }
-    if (path === "/api/submissions") {
-      state.submitted.push(body);
+    if (path === `/api/sessions/${SESSION}/pieces`) {
+      if (request.method() === "POST") {
+        state.submitted.push(body);
+        return json(route, { id: `p${state.submitted.length}`, position: state.submitted.length - 1, text: body.text, file_count: body.files.length, created_at: "2026-11-04T00:00:00Z" }, 201);
+      }
+      return json(route, { pieces: [], submitted: state.complete });
+    }
+    if (path === `/api/sessions/${SESSION}/complete`) {
+      state.complete = true;
       return json(route, { submission_id: "s", session_id: SESSION, status: "queued", mentions: [] }, 201);
     }
     if (path === `/api/sessions/${SESSION}/drafts` && request.method() === "GET") {
-      const ready = state.submitted.length > 0;
+      const ready = state.complete;
       return json(route, { drafts: ready ? cards : [], submission_status: ready ? "done" : "processing" });
     }
     if (path === `/api/sessions/${SESSION}/drafts/save`) {
@@ -104,13 +111,14 @@ test("the loop: suggestion, sentence, photo, cards, Lưu", async ({ page }) => {
     buffer: Buffer.from("abc"),
   });
   await expect(page.getByText("Đã tải", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Gửi" }).click();
+  await page.getByRole("button", { name: "Ghi lại" }).click();
+  await expect(page.getByText("Đã học trong buổi")).toBeVisible();
+  await page.getByRole("button", { name: "Hoàn thành" }).click();
   await expect(page.getByRole("button", { name: "Đúng rồi, lưu" })).toBeVisible({ timeout: 15_000 });
   expect(core.uploads).toBe(1);
   expect(core.submitted).toEqual([
     {
-      session_id: SESSION,
-      description: "Hôm nay học cửa sổ trượt.",
+      text: "Hôm nay học cửa sổ trượt.",
       mentions: [],
       files: [{ sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", mime: "image/png", size_bytes: 3 }],
     },

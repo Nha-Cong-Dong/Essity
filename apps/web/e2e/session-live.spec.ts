@@ -38,9 +38,15 @@ async function fakeCore(page: Page, { stale = false }: { stale?: boolean } = {})
       seen.uploads.push(body);
       return json(route, { url: "/storage-fake", method: "PUT", headers: {}, expires_at: "2099-01-01T00:00:00Z" }, 201);
     }
-    if (url.pathname === "/api/submissions") {
+    if (url.pathname === `/api/sessions/${SESSION}/pieces`) {
+      if (request.method() === "POST") {
+        seen.submitted.push(body);
+        return json(route, { id: `p${seen.submitted.length}`, position: seen.submitted.length - 1, text: body.text, file_count: body.files.length, created_at: "2026-11-04T00:00:00Z" }, 201);
+      }
+      return json(route, { pieces: [], submitted });
+    }
+    if (url.pathname === `/api/sessions/${SESSION}/complete`) {
       submitted = true;
-      seen.submitted.push(body);
       return json(route, { submission_id: "s", session_id: SESSION, status: "queued", mentions: [] }, 201);
     }
     if (url.pathname === `/api/sessions/${SESSION}/drafts` && request.method() === "GET") {
@@ -80,7 +86,9 @@ async function open(page: Page, width = 390) {
 
 async function sendSentence(page: Page) {
   await page.getByRole("combobox").fill("Hôm nay học cửa sổ trượt.");
-  await page.getByRole("button", { name: "Gửi" }).click();
+  await page.getByRole("button", { name: "Ghi lại" }).click();
+  await expect(page.getByText("Đã học trong buổi")).toBeVisible();
+  await page.getByRole("button", { name: "Hoàn thành" }).click();
   await expect(page.getByText("Đang chờ đọc bài nộp…")).toBeVisible();
   await expect(page.getByRole("button", { name: "Đúng rồi, lưu" })).toBeVisible({ timeout: 15_000 });
 }
@@ -100,14 +108,14 @@ test.describe("study session on the real screen", () => {
     await expect(page.getByText("Buổi học tự do")).toBeVisible();
   });
 
-  // US-02 AC1, AC14; US-02b AC6, AC7, AC9. Red when: the sentence does not reach /api/submissions, the
+  // US-02 AC1, AC14; US-02b AC6, AC7, AC9. Red when: the sentence does not reach /pieces, the
   // cards do not appear, an edit is not sent with the version it saw, Lưu does not send both cards
   // with their versions, or the screen does not end in "Học tiếp hay dừng?".
   test("main flow: sentence, cards, edit one, Lưu, Học tiếp hay dừng?", async ({ page }) => {
     const seen = await fakeCore(page);
     await open(page);
     await sendSentence(page);
-    expect(seen.submitted).toEqual([{ session_id: SESSION, description: "Hôm nay học cửa sổ trượt.", mentions: [] }]);
+    expect(seen.submitted).toEqual([{ text: "Hôm nay học cửa sổ trượt.", mentions: [], files: [] }]);
 
     await page.getByRole("button", { name: "Sửa thẻ Cửa sổ trượt" }).click();
     await page.getByLabel("Nội dung thẻ Cửa sổ trượt").fill("Bên gửi giữ rwnd. Thêm ý mới.");
@@ -141,13 +149,14 @@ test.describe("study session on the real screen", () => {
     ]);
     await expect(page.getByText("Đã tải", { exact: true })).toBeVisible();
     await expect(page.getByText(/Định dạng này chưa dùng được/)).toBeVisible();
-    await page.getByRole("button", { name: "Gửi" }).click();
+    await page.getByRole("button", { name: "Ghi lại" }).click();
+  await expect(page.getByText("Đã học trong buổi")).toBeVisible();
+  await page.getByRole("button", { name: "Hoàn thành" }).click();
     await expect(page.getByRole("button", { name: "Đúng rồi, lưu" })).toBeVisible({ timeout: 15_000 });
     expect(seen.uploads).toHaveLength(1);
     expect(seen.submitted).toEqual([
       {
-        session_id: SESSION,
-        description: "",
+        text: "",
         mentions: [],
         files: [{ sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", mime: "image/png", size_bytes: 3 }],
       },

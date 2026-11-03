@@ -180,8 +180,13 @@ export function SessionScreen(props: SessionScreenProps) {
       setProblem(SUBMIT_COPY.network);
       return;
     }
-    if (subjectId) rememberPendingSession({ sessionId: api.sessionId, subjectId, subject });
-    window.location.assign(subjectId ? `/subjects/${subjectId}` : stopHref);
+    if (!subjectId) {
+      // The preview has no subject page to go to: the same screen shows the reading and the cards.
+      send({ type: "send" });
+      return;
+    }
+    rememberPendingSession({ sessionId: api.sessionId, subjectId, subject });
+    window.location.assign(`/subjects/${subjectId}`);
   }
 
   const uploading = files.filter((f) => f.state === "uploading").length;
