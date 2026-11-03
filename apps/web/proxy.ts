@@ -7,7 +7,10 @@ import { designPreviewAllowed, isDesignPreview } from "@/lib/design-preview";
 // the cookie is still a live session, and whether the email is verified, the page itself asks
 // core-api (lib/session.ts). Never sends /login back to the app, so a dead cookie cannot loop.
 
+// "/" is the public landing (T0.15). With a session cookie the page itself sends the visitor on
+// (app/page.tsx), so the proxy never decides where "/" leads. Every other page keeps its guard.
 export const PUBLIC_PAGES: ReadonlySet<string> = new Set([
+  "/",
   "/login",
   "/register",
   "/check-email",
