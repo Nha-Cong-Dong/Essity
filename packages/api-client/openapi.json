@@ -607,6 +607,25 @@
         "title": "CommandOut",
         "type": "object"
       },
+      "CompleteIn": {
+        "additionalProperties": false,
+        "properties": {
+          "section_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Id"
+          }
+        },
+        "title": "CompleteIn",
+        "type": "object"
+      },
       "ConfirmRequest": {
         "additionalProperties": false,
         "properties": {
@@ -7448,6 +7467,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CompleteIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "content": {
