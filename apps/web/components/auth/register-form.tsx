@@ -79,7 +79,8 @@ export function RegisterForm() {
     // itself answers 409 if the name was taken after all.
     const result = await getAvailability(value);
     if (latestName.current !== value || !result || result.available) return;
-    setProblem("username", authMessage(result.reason === "username_reserved" ? "username_reserved" : "username_taken"));
+    const code = { reserved: "username_reserved", invalid: "username_invalid" }[result.reason ?? ""] ?? "username_taken";
+    setProblem("username", authMessage(code));
   }
 
   function checkEmail(value: string) {

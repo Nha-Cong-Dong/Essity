@@ -41,6 +41,13 @@ describe("POST /api/auth/register (T1.13)", () => {
     expect(calls[1].body).toEqual({ ...SIGN_UP, display_name: "Minh Anh" });
   });
 
+  it("D7: a name over 60 characters comes back as display_name_invalid (422)", async () => {
+    fakeCoreApi(() => Response.json({ detail: "display_name_too_long" }, { status: 422 }));
+    const response = await POST(browserPost("/api/auth/register", { ...SIGN_UP, display_name: "x".repeat(61) }));
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({ error: "display_name_invalid" });
+  });
+
   it("AC5: a taken username is said (409), a refused one says why (422)", async () => {
     fakeCoreApi(() => Response.json({ detail: "username_taken" }, { status: 409 }));
     const taken = await POST(browserPost("/api/auth/register", SIGN_UP));

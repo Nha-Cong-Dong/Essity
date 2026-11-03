@@ -130,13 +130,33 @@ describe("RegisterForm (AC1, AC5)", () => {
   });
 
   it("on blur, a well-formed name is checked and a taken one says 'Tên này đã có người dùng.'", async () => {
-    const calls = fakeFetch(() => Response.json({ available: false, reason: "username_taken" }));
+    const calls = fakeFetch(() => Response.json({ available: false, reason: "taken" }));
     render(<RegisterForm />);
     const field = screen.getByLabelText("Tên đăng nhập");
     fireEvent.change(field, { target: { value: "an.nguyen" } });
     fireEvent.blur(field);
     expect(await screen.findByText("Tên này đã có người dùng.")).toBeTruthy();
     expect(calls[0].url).toBe("/api/auth/username-available?username=an.nguyen");
+  });
+
+  it("a reserved name is told apart from a taken one", async () => {
+    fakeFetch(() => Response.json({ available: false, reason: "reserved" }));
+    render(<RegisterForm />);
+    const field = screen.getByLabelText("Tên đăng nhập");
+    fireEvent.change(field, { target: { value: "admin" } });
+    fireEvent.blur(field);
+    expect(await screen.findByText("Tên này không dùng được. Chọn tên khác.")).toBeTruthy();
+  });
+
+  it("a rate-limited availability check does not block the form", async () => {
+    fakeFetch(() => Response.json({ error: "rate_limited" }, { status: 429 }));
+    render(<RegisterForm />);
+    const field = screen.getByLabelText("Tên đăng nhập");
+    fireEvent.change(field, { target: { value: "an.nguyen" } });
+    fireEvent.blur(field);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(field.getAttribute("aria-invalid")).toBeNull();
+    expect((screen.getByRole("button", { name: "Tạo tài khoản" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("a failed availability check says nothing", async () => {

@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 
 import { onlyPasswordTooLong, passwordReason } from "@/lib/auth-errors";
 import { cookieOptions, PENDING_EMAIL_COOKIE, PENDING_EMAIL_MAX_AGE } from "@/lib/cookies";
-import { type components, coreClientFor } from "@/lib/core-client";
+import { coreClientFor } from "@/lib/core-client";
 import { withOrigin } from "@/lib/csrf";
 import { errorResponse, rateLimited, readFields, unavailable } from "@/lib/http";
-
-type RegisterBody = components["schemas"]["RegisterBody"];
 
 // T1.13, T1.24: sign-up. core-api answers 202 whether or not the email has an account (AC5), so this
 // always goes on to /check-email, remembering the email in a cookie rather than the URL (F1).
@@ -19,8 +17,8 @@ export const POST = withOrigin(async (request) => {
   });
   if (fields === null) return errorResponse("invalid_request", 400);
   const { display_name: displayName, ...signUp } = fields;
-  // display_name (D7) joins the typed body with T1.23's api-client; blank means "use the username".
-  const body = (displayName?.trim() ? { ...signUp, display_name: displayName.trim() } : signUp) as RegisterBody;
+  // D7: blank means "use the username"; core-api trims and caps at 60.
+  const body = displayName?.trim() ? { ...signUp, display_name: displayName.trim() } : signUp;
 
   let result;
   try {
@@ -44,6 +42,7 @@ export const POST = withOrigin(async (request) => {
       return errorResponse(onlyPasswordTooLong(detail) ? "too_long" : "invalid_email", 422);
     }
     if (detail === "username_invalid" || detail === "username_reserved") return errorResponse(detail, 422);
+    if (detail === "display_name_too_long") return errorResponse("display_name_invalid", 422);
     return errorResponse(passwordReason(detail), 422);
   }
   // D2: a username is not a secret, so "taken" is said (the email never is, AC5).

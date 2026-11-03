@@ -67,3 +67,31 @@ test("AC1: /register has username, email, password, then the optional name last,
   await field.fill("An.Nguyen");
   await expect(field).toHaveValue("an.nguyen");
 });
+
+test("D7: sign-up with Họ và tên sends display_name and moves on to /check-email", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  let sent: Record<string, unknown> | undefined;
+  await page.route("**/api/auth/username-available**", (route) =>
+    route.fulfill({ json: { available: true, reason: null } }),
+  );
+  await page.route("**/api/auth/register", async (route) => {
+    sent = route.request().postDataJSON();
+    await route.fulfill({ json: { next: "/check-email" } });
+  });
+  await page.goto("/register");
+  await settled(page);
+  await page.getByLabel("Tên đăng nhập").fill("an.nguyen");
+  await page.getByLabel("Email").fill("an@gmail.com");
+  await page.locator("#password").fill("matkhau-dai-123");
+  await page.getByLabel("Họ và tên (không bắt buộc)").fill(" Nguyễn Văn An ");
+  await Promise.all([
+    page.waitForRequest("**/api/auth/register"),
+    page.getByRole("button", { name: "Tạo tài khoản" }).click(),
+  ]);
+  expect(sent).toEqual({
+    username: "an.nguyen",
+    email: "an@gmail.com",
+    password: "matkhau-dai-123",
+    display_name: "Nguyễn Văn An",
+  });
+});

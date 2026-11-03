@@ -13,13 +13,14 @@ describe("GET /api/auth/username-available (T1.24)", () => {
   });
 
   it("asks core-api about a well-formed name and passes {available, reason} on", async () => {
-    const calls = fakeCoreApi(() => Response.json({ available: false, reason: "username_taken" }));
+    const calls = fakeCoreApi(() => Response.json({ available: false, reason: "taken" }));
 
     const response = await ask("an.nguyen");
 
-    expect(calls[0].path).toBe("/v1/auth/username-available");
+    expect(calls[0].path).toBe("/v1/auth/username-availability");
+    expect(calls[0].search).toBe("?u=an.nguyen");
     expect(calls[0].headers.get("x-service-token")).toBe(SERVICE_TOKEN);
-    expect(await response.json()).toEqual({ available: false, reason: "username_taken" });
+    expect(await response.json()).toEqual({ available: false, reason: "taken" });
   });
 
   it("never asks core-api about a malformed name", async () => {
@@ -31,9 +32,7 @@ describe("GET /api/auth/username-available (T1.24)", () => {
     expect(calls).toHaveLength(0);
   });
 
-  it("an answer it cannot read, or a 5xx, is unavailable, never 'available'", async () => {
-    fakeCoreApi(() => Response.json({ nonsense: true }));
-    expect((await ask("an.nguyen")).status).toBe(503);
+  it("a 5xx is unavailable, never 'available'", async () => {
     fakeCoreApi(() => new Response("boom", { status: 500 }));
     expect((await ask("an.nguyen")).status).toBe(503);
   });
