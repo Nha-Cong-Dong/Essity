@@ -63,6 +63,11 @@ class ObjectStorage(Protocol):
 
     def delete(self, key: str) -> None: ...
 
+    def delete_prefix(self, prefix: str) -> int:
+        """Delete every object whose key starts with `prefix`; return how many. The caller ends
+        the prefix with "/" so a neighbour (`users/<a>` and `users/<a>x`) is never matched."""
+        ...
+
     def write(self, key: str, data: bytes, *, content_type: str) -> None:
         """Store a small file core-api itself makes (a grading request, T4.19)."""
         ...
@@ -224,6 +229,32 @@ class S3Storage:
             self._internal.delete_object(Bucket=self._bucket, Key=key)
         except (ClientError, BotoCoreError) as error:
             raise StorageUnavailableError(_reason(error)) from None
+
+    def delete_prefix(self, prefix: str) -> int:
+        """Delete every object under `prefix`, a page of up to 1000 at a time (T6.3).
+
+        An empty prefix is refused: it would empty the bucket. A bucket that is not there fails
+        closed (StorageUnavailableError), like `delete`.
+        """
+        if not prefix.endswith("/"):
+            raise ValueError("a prefix to delete must end with '/'")
+        deleted = 0
+        try:
+            for page in self._internal.get_paginator("list_objects_v2").paginate(
+                Bucket=self._bucket, Prefix=prefix
+            ):
+                keys = [{"Key": item["Key"]} for item in page.get("Contents", []) if "Key" in item]
+                if not keys:
+                    continue
+                result = self._internal.delete_objects(
+                    Bucket=self._bucket, Delete={"Objects": keys, "Quiet": True}
+                )
+                if result.get("Errors"):
+                    raise StorageUnavailableError("storage refused to delete some objects")
+                deleted += len(keys)
+        except (ClientError, BotoCoreError) as error:
+            raise StorageUnavailableError(_reason(error)) from None
+        return deleted
 
     def write(self, key: str, data: bytes, *, content_type: str) -> None:
         try:

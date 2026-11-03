@@ -86,6 +86,17 @@ class FakeStorage:
         self.deleted.append(key)
         self.objects.pop(key, None)
 
+    def delete_prefix(self, prefix: str) -> int:
+        if self.down or self.delete_fails:
+            raise StorageUnavailableError("storage unreachable (test)")
+        if not prefix.endswith("/"):
+            raise ValueError("a prefix to delete must end with '/'")
+        doomed = [key for key in self.objects if key.startswith(prefix)]
+        for key in doomed:
+            self.objects.pop(key)
+            self.deleted.append(key)
+        return len(doomed)
+
 
 def _hex(checksum_b64: str | None) -> str | None:
     return None if checksum_b64 is None else base64.b64decode(checksum_b64).hex()
