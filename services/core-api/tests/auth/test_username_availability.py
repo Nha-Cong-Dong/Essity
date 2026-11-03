@@ -14,6 +14,7 @@ from core_api.api import auth
 from core_api.domain.auth.passwords import hash_password
 from core_api.repositories.user import UserRepository
 from core_api.security.client_ip import CLIENT_IP_HEADER
+from core_api.security.rate_limit import RateLimiter, RateLimiterUnavailableError
 from ips import fresh_ip
 
 CHECK = "/v1/auth/username-availability"
@@ -72,3 +73,14 @@ def test_ac6_it_is_limited_per_ip_and_needs_no_session(client: TestClient) -> No
 
 def test_a_control_character_in_the_name_is_422(client: TestClient) -> None:
     assert client.get(CHECK, params={"u": "ab\x00c"}).status_code == 422
+
+
+def test_ac5_a_failing_hold_lookup_is_503_not_available(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Red when: the endpoint swallows a Redis error and answers "available".
+    def broken(self: RateLimiter, *args: object) -> bool:
+        raise RateLimiterUnavailableError
+
+    monkeypatch.setattr(RateLimiter, "is_reserved", broken)
+    assert client.get(CHECK, params={"u": fresh_username()}).status_code == 503
