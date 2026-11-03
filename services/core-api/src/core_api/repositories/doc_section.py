@@ -24,6 +24,8 @@ class NewSection:
     weight: float
     unit: str
     source: str
+    # Left out by default (front matter, preface, index...); not an edit of the learner's.
+    excluded: bool = False
 
 
 class DocSectionRepository(UserScopedRepository[DocSection]):
@@ -132,6 +134,7 @@ class DocSectionRepository(UserScopedRepository[DocSection]):
                 weight=node.weight,
                 unit=node.unit,
                 source=node.source,
+                excluded=node.excluded,
             )
             row.id = uuid.uuid4()
             self.add(row)

@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ai_service.docx import DocxContent
+from ai_service.tasks.outline_exclusion import FRONT_MATTER_TITLE, is_non_content_title
 from ai_service.tasks.outline_nodes import (
     CHUNK_PAGES,
     MAX_LEVEL,
@@ -23,8 +24,6 @@ from ai_service.tasks.outline_nodes import (
     outline_body,
     tiles,
 )
-
-FRONT_MATTER_TITLE = "Front matter"
 
 
 @dataclass
@@ -71,6 +70,10 @@ def _tree(entries: list[_Entry]) -> list[OutlineNode]:
         leaf_start.append(position)
         position += weight
     for order, (title, level, chars) in enumerate(drafts):
+        # Only the top section carries the flag; what is under it follows (core-api).
+        gone = level == 0 and (
+            (order == 0 and title == FRONT_MATTER_TITLE) or is_non_content_title(title)
+        )
         if chars is not None:
             start, weight = leaf_start[order], weights[order]
         else:
@@ -89,6 +92,7 @@ def _tree(entries: list[_Entry]) -> list[OutlineNode]:
                 weight=weight,
                 unit="est_page",
                 source="headings",
+                excluded=gone,
             )
         )
     return nodes

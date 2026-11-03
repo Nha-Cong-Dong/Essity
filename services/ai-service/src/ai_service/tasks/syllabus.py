@@ -39,6 +39,7 @@ from ai_service.llm.client import AuditUnavailableError, LlmClient
 from ai_service.llm.types import LlmRequest
 from ai_service.pdf import OutlineEntry, PageText
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
+from ai_service.tasks.outline_exclusion import FRONT_MATTER_TITLE, is_non_content_title
 
 _log = logging.getLogger(__name__)
 
@@ -57,7 +58,6 @@ MAX_OUTPUT_CHARS = 100_000
 TOC_SEARCH_PAGES = 30
 TOC_READ_PAGES = 3
 MAX_TOC_PAGE_CHARS = 12_000
-FRONT_MATTER_TITLE = "Front matter"
 
 Source = Literal["bookmarks", "regex", "llm_toc", "chunk10"]
 
@@ -88,6 +88,8 @@ class SyllabusNode:
     weight: int
     unit: Literal["page"] = "page"
     source: Source = "chunk10"
+    # Left out of the exam outline until the learner brings it back (T7.2b).
+    excluded: bool = False
 
     @property
     def temporary(self) -> bool:
@@ -191,7 +193,8 @@ def _tree(headings: Sequence[_Heading], page_count: int, source: Source) -> list
     front-matter leaf; a heading whose first child starts after it keeps its own first pages as
     a child with its own title, so the leaves always tile 1..page_count."""
     items: list[_Heading] = list(headings)
-    if items[0][2] > 0:
+    front = items[0][2] > 0
+    if front:
         items.insert(0, (FRONT_MATTER_TITLE, 0, 0))
     n = len(items)
     drafts: list[tuple[str, int, int, int]] = []  # title, level, start, end (exclusive)
@@ -204,18 +207,23 @@ def _tree(headings: Sequence[_Heading], page_count: int, source: Source) -> list
         drafts.append((title, level, start, end))
         if index + 1 < n and items[index + 1][1] > level and items[index + 1][2] > start:
             drafts.append((title, level + 1, start, items[index + 1][2]))
-    return [
-        SyllabusNode(
-            title=title,
-            level=level,
-            ord=order,
-            page_start=start + 1,
-            page_end=end,
-            weight=end - start,
-            source=source,
+    nodes: list[SyllabusNode] = []
+    for order, (title, level, start, end) in enumerate(drafts):
+        # Only the top section carries the flag; what is under it follows (core-api).
+        gone = level == 0 and ((order == 0 and front) or is_non_content_title(title))
+        nodes.append(
+            SyllabusNode(
+                title=title,
+                level=level,
+                ord=order,
+                page_start=start + 1,
+                page_end=end,
+                weight=end - start,
+                source=source,
+                excluded=gone,
+            )
         )
-        for order, (title, level, start, end) in enumerate(drafts)
-    ]
+    return nodes
 
 
 def _from_bookmarks(outline: Sequence[OutlineEntry], page_count: int) -> list[_Heading] | None:
@@ -409,6 +417,7 @@ def outline_file(nodes: Sequence[SyllabusNode]) -> dict[str, Any]:
                 "page_end": node.page_end,
                 "weight": node.weight,
                 "source": _SECTION_SOURCE[node.source],
+                "excluded": node.excluded,
             }
             for node, parent in zip(nodes, parents, strict=True)
         ],

@@ -82,6 +82,8 @@ class _OutlineNode(BaseModel):
     page_end: Annotated[int, Field(ge=1, le=100_000)]
     weight: Annotated[float, Field(ge=0, allow_inf_nan=False)]
     source: Literal["bookmark", "heading", "llm_toc", "chunk10"]
+    # Left out of the exam outline until the learner brings it back (T7.2b); older files lack it.
+    excluded: bool = False
 
 
 class _OutlineFile(BaseModel):
@@ -119,6 +121,7 @@ def parse_outline(raw: bytes, page_count: int) -> tuple[str, list[NewSection]] |
             weight=n.weight,
             unit=parsed.unit,
             source=n.source,
+            excluded=n.excluded,
         )
         for n in nodes
     ]

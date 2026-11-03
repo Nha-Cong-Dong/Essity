@@ -53,8 +53,15 @@ def test_docx_heading_with_text_and_children_keeps_own_text_as_first_child() -> 
 
 def test_docx_front_matter_before_first_heading() -> None:
     nodes = build_docx_outline(read_docx(make_docx([(None, "intro"), (1, "Ch"), (None, "t")])))
-    assert [n.title for n in nodes] == ["Front matter", "Ch"]
+    assert [n.title for n in nodes] == ["Phần đầu sách", "Ch"]
+    assert [n.excluded for n in nodes] == [True, False]  # T7.2b
     assert tiles(nodes, 2)
+
+
+def test_docx_named_preface_is_excluded() -> None:  # T7.2b
+    data = make_docx([(1, "Lời nói đầu"), (None, "x"), (1, "Chương 1"), (None, "t")])
+    nodes = build_docx_outline(read_docx(data))
+    assert [(n.title, n.excluded) for n in nodes] == [("Lời nói đầu", True), ("Chương 1", False)]
 
 
 def test_docx_heading_levels_that_jump_are_repaired() -> None:

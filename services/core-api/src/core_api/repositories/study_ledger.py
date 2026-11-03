@@ -50,11 +50,11 @@ class StudyLedgerRepository(UserScopedRepository[StudyLedger]):
                 children[s.parent_id].append(s)
             for kids in children.values():
                 kids.sort(key=lambda s: (s.ord, str(s.id)))
-            stack = list(reversed(children[None]))
+            stack = [(r, r.excluded) for r in reversed(children[None])]
             while stack:
-                s = stack.pop()
+                s, gone = stack.pop()
                 if s.id in children:
-                    stack.extend(reversed(children[s.id]))
+                    stack.extend((k, gone or k.excluded) for k in reversed(children[s.id]))
                 else:
                     out[s.subject_id].append(
                         Leaf(
@@ -62,7 +62,7 @@ class StudyLedgerRepository(UserScopedRepository[StudyLedger]):
                             title=s.title,
                             weight=s.weight,
                             unit=UNIT_LABELS.get(s.unit, s.unit),
-                            excluded=s.excluded,
+                            excluded=gone,
                             covered_weight=s.studied_weight,
                             prerequisites=prerequisites.get(s.id, ()),
                         )

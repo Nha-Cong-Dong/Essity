@@ -63,7 +63,7 @@ def test_bookmarks_become_the_tree() -> None:
     nodes = _syllabus(make_pdf(pages, bookmarks=marks), ask)
     assert {n.source for n in nodes} == {"bookmarks"}
     assert [(n.title, n.level) for n in nodes] == [
-        ("Front matter", 0),
+        ("Phần đầu sách", 0),
         ("Chapter A", 0),
         ("A.1", 1),
         ("A.2", 1),
@@ -110,7 +110,7 @@ def test_chapter_lines_without_bookmarks() -> None:
     nodes = _syllabus(make_pdf(_plain(12, **texts)), ask)
     assert {n.source for n in nodes} == {"regex"}
     assert [(n.title, n.page_start) for n in nodes] == [
-        ("Front matter", 1),
+        ("Phần đầu sách", 1),
         ("Chuong 1 Mo dau", 4),
         ("Chapter 2 Next", 8),
     ]
@@ -315,3 +315,40 @@ def test_a_negative_offset_is_applied() -> None:
     nodes = build_syllabus(10, [], pages, FakeAsk(reply))
     # printed 1 is file page 5, so printed 3 is file page 7
     assert [n.page_start for n in nodes if n.title == "Results"] == [7]
+
+
+def test_front_matter_leaf_is_vietnamese_and_excluded() -> None:  # T7.2b
+    marks = (Bookmark("Chapter A", 2), Bookmark("Chapter B", 8))
+    nodes = _syllabus(make_pdf(_plain(12), bookmarks=marks), FakeAsk("{}"))
+    assert [(n.title, n.excluded) for n in nodes] == [
+        ("Phần đầu sách", True),
+        ("Chapter A", False),
+        ("Chapter B", False),
+    ]
+
+
+def test_named_non_content_sections_are_excluded_on_the_top_node_only() -> None:  # T7.2b
+    marks = (
+        Bookmark("Preface", 0, (Bookmark("Why this book", 0), Bookmark("How to use", 1))),
+        Bookmark("Chapter 1", 3, (Bookmark("1.1", 3), Bookmark("1.2", 5))),
+        Bookmark("Index", 9),
+    )
+    nodes = _syllabus(make_pdf(_plain(12), bookmarks=marks), FakeAsk("{}"))
+    flags = {n.title: n.excluded for n in nodes}
+    assert flags == {
+        "Preface": True,
+        "Why this book": False,
+        "How to use": False,
+        "Chapter 1": False,
+        "1.1": False,
+        "1.2": False,
+        "Index": True,
+    }
+
+
+def test_outline_file_carries_the_excluded_flag() -> None:  # T7.2b
+    from ai_service.tasks.syllabus import outline_file
+
+    marks = (Bookmark("Chapter A", 2), Bookmark("Chapter B", 8))
+    nodes = _syllabus(make_pdf(_plain(12), bookmarks=marks), FakeAsk("{}"))
+    assert [n["excluded"] for n in outline_file(nodes)["nodes"]] == [True, False, False]
