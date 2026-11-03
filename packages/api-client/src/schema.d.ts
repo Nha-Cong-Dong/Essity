@@ -1106,6 +1106,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subjects/{subject_id}/outline/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Outline Chat */
+        post: operations["outline_chat_v1_subjects__subject_id__outline_chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subjects/{subject_id}/practice-types": {
         parameters: {
             query?: never;
@@ -2089,6 +2106,32 @@ export interface components {
             method: "PUT";
             /** Url */
             url: string;
+        };
+        /** OutlineChatIn */
+        OutlineChatIn: {
+            /** Command Id */
+            command_id?: string | null;
+            /** Screen Session Id */
+            screen_session_id?: string | null;
+            /** Text */
+            text: string;
+        };
+        /** OutlineChatOut */
+        OutlineChatOut: {
+            /**
+             * Affected
+             * @default 0
+             */
+            affected: number;
+            /** Command Id */
+            command_id?: string | null;
+            /** Reply */
+            reply: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "applied" | "unclear" | "failed";
         };
         /** OutlineDocumentOut */
         OutlineDocumentOut: {
@@ -5211,6 +5254,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OutlineOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    outline_chat_v1_subjects__subject_id__outline_chat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OutlineChatIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutlineChatOut"];
                 };
             };
             /** @description Validation Error */
