@@ -18,6 +18,8 @@ SELECT format('ALTER ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSR
 SELECT 'CREATE ROLE core_eraser NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS'
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'core_eraser') \gexec
 
+SELECT 'DO $x$ BEGIN RAISE EXCEPTION ''roles.sql: eraser_login must not be app_user, postgres or the owner''; END $x$'
+WHERE :'eraser_login' <> '' AND :'eraser_login' IN (:'app_user', 'postgres', 'core') \gexec
 SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD %L',
               :'eraser_login', :'eraser_password')
 WHERE :'eraser_login' <> ''

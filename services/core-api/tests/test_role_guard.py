@@ -85,6 +85,19 @@ def test_t222_a_member_of_the_owner_role_is_refused(owner_engine: Engine) -> Non
         assert_app_role(probe)
 
 
+def test_t222b_a_member_of_a_superuser_role_is_refused(owner_engine: Engine) -> None:
+    # Red when: the guard checks rolsuper of the login itself only (`GRANT <superuser> TO login`
+    # gives a NOSUPERUSER login the privileges of the role). Needs a superuser owner (CI).
+    with owner_engine.connect() as connection:
+        superuser = connection.scalar(
+            text("SELECT rolname FROM pg_roles WHERE rolsuper AND rolname = current_user")
+        )
+    if superuser is None:
+        pytest.skip("the owner is not a superuser here (it is in CI)")
+    with probe_login(owner_engine, superuser) as probe, pytest.raises(UnsafeDatabaseRoleError):
+        assert_app_role(probe)
+
+
 def test_t222_a_member_of_core_eraser_with_another_name_is_refused(owner_engine: Engine) -> None:
     with probe_login(owner_engine, "core_eraser") as probe, pytest.raises(UnsafeDatabaseRoleError):
         assert_app_role(probe)
