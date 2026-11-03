@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, type ReactNode, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
 import { AUTH_LINK, AuthField, AuthNote, PasswordField } from "@/components/auth/fields";
 import { GoogleSection } from "@/components/auth/google-button";
@@ -62,6 +62,14 @@ export function RegisterForm() {
   const [retryAfter, setRetryAfter] = useState<number>();
   const [problems, setProblems] = useState<Partial<Record<Field, string>>>({});
   const latestName = useRef("");
+  const formRef = useRef<HTMLFormElement>(null);
+  const [failed, setFailed] = useState(0);
+
+  // After a refused sign-up focus goes to the first field in error: a screen reader then reads that
+  // field and, through aria-describedby, its sentence (a server error is not a live region).
+  useEffect(() => {
+    if (failed > 0) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [failed]);
 
   const setProblem = (field: Field, message: string | undefined) =>
     setProblems((now) => ({ ...now, [field]: message }));
@@ -113,6 +121,7 @@ export function RegisterForm() {
     setBusy(false);
     setServerError(result.error);
     setRetryAfter(result.retryAfter);
+    setFailed((n) => n + 1);
   }
 
   const serverField = fieldOf(serverError);
@@ -123,7 +132,7 @@ export function RegisterForm() {
   return (
     <>
       <GoogleSection label="Đăng ký bằng Google" />
-      <form method="post" onSubmit={submit} className="flex flex-col gap-5" noValidate aria-busy={busy || undefined}>
+      <form ref={formRef} method="post" onSubmit={submit} className="flex flex-col gap-5" noValidate aria-busy={busy || undefined}>
         {serverError === "rate_limited" && <AuthNote>{rateLimitMessage(retryAfter)}</AuthNote>}
         {generalError && <AuthNote id="register-error">{authMessage(serverError)}</AuthNote>}
         <Hinted id="username" hint={USERNAME_HINT} error={message("username")}>

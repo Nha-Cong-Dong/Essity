@@ -177,7 +177,7 @@ describe("pending sign-up email (F1)", () => {
       browserPost("/api/auth/resend", undefined, { cookies: { [PENDING_EMAIL_COOKIE]: value } }),
     );
 
-    expect(calls[0].body).toMatchObject({ email });
+    expect(calls[0].body).toEqual({ email });
   });
 
   it("resend without session or cookie asks core-api nothing", async () => {

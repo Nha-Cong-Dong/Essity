@@ -69,6 +69,13 @@ describe("LoginForm (AC5, AC6)", () => {
     expect((screen.getByRole("button", { name: "Đăng nhập" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("a wrong sign-in moves focus to the identifier field", async () => {
+    fakeFetch(() => Response.json({ error: "invalid_credentials" }, { status: 401 }));
+    render(<LoginForm />);
+    signIn();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(IDENTIFIER)));
+  });
+
   it("while sending the fields are readOnly (not disabled) and the form is aria-busy", async () => {
     let finish: (reply: Response) => void = () => {};
     fakeFetch(() => new Promise<Response>((resolve) => (finish = resolve)));
@@ -195,6 +202,27 @@ describe("RegisterForm (AC1, AC5)", () => {
       password: "password-marker-123",
       display_name: "Nguyễn An",
     });
+  });
+
+  it("a refused sign-up moves focus to the first field in error, which names its error", async () => {
+    fakeFetch(() => Response.json({ error: "username_taken" }, { status: 409 }));
+    render(<RegisterForm />);
+    fireEvent.change(screen.getByLabelText("Tên đăng nhập"), { target: { value: "an.nguyen" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
+    const field = screen.getByLabelText("Tên đăng nhập");
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    expect(document.getElementById(field.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      "Tên này đã có người dùng.",
+    );
+  });
+
+  it("a Họ và tên over the limit gets focus and its sentence", async () => {
+    fakeFetch(() => Response.json({ error: "display_name_invalid" }, { status: 422 }));
+    render(<RegisterForm />);
+    fireEvent.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
+    const field = screen.getByLabelText("Họ và tên (không bắt buộc)");
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    expect(document.getElementById("name-error")?.textContent).toBe("Họ và tên dài tối đa 60 ký tự.");
   });
 
   it("AC6: a 429 shows the minutes from Retry-After", async () => {

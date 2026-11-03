@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { AUTH_LINK, AuthField, AuthNote, PasswordField } from "@/components/auth/fields";
 import { GoogleSection } from "@/components/auth/google-button";
@@ -18,6 +18,13 @@ export function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [lockedFor, setLockedFor] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [failed, setFailed] = useState(0);
+
+  // After a refused sign-in focus goes to the first field marked invalid, which reads the error.
+  useEffect(() => {
+    if (failed > 0) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [failed]);
 
   // AC6: after a 429 the button stays locked until Retry-After has passed.
   useEffect(() => {
@@ -45,6 +52,7 @@ export function LoginForm() {
     }
     setBusy(false);
     setError(result.error);
+    setFailed((n) => n + 1);
     if (result.error === "rate_limited") setLockedFor(result.retryAfter ?? 15 * 60);
   }
 
@@ -54,6 +62,7 @@ export function LoginForm() {
     <>
       <GoogleSection label="Đăng nhập bằng Google" />
       <form
+        ref={formRef}
         method="post"
         onSubmit={submit}
         className="flex flex-col gap-5"

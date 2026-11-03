@@ -23,6 +23,19 @@ describe("GET /api/auth/username-available (T1.24)", () => {
     expect(await response.json()).toEqual({ available: false, reason: "taken" });
   });
 
+  it("forwards the user's IP in x-client-ip, from X-Forwarded-For behind one proxy hop (AC6)", async () => {
+    vi.stubEnv("WEB_TRUSTED_PROXY_HOPS", "1");
+    const calls = fakeCoreApi(() => Response.json({ available: true, reason: null }));
+
+    await GET(
+      new Request("http://localhost:3000/api/auth/username-available?username=an.nguyen", {
+        headers: { "x-forwarded-for": "203.0.113.7", "x-client-ip": "9.9.9.9" },
+      }),
+    );
+
+    expect(calls[0].headers.get("x-client-ip")).toBe("203.0.113.7");
+  });
+
   it("never asks core-api about a malformed name", async () => {
     const calls = fakeCoreApi(() => Response.json({ available: true, reason: null }));
 
