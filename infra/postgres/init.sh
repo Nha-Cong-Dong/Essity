@@ -20,3 +20,6 @@ REVOKE ALL ON DATABASE :"core_db" FROM PUBLIC;
 REVOKE ALL ON DATABASE :"ai_db" FROM PUBLIC;
 REVOKE ALL ON DATABASE :"core_test_db" FROM PUBLIC;
 SQL
+
+# Roles of T2.22 (core_app, core_eraser): the same script `just db-roles` runs on an old volume.
+sh /opt/roles/roles.sh

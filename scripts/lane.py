@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any
 
 import flow
-from agent_env import DATABASE_URL, REDIS_URL, ensure_database
+from agent_env import DATABASE_URL, REDIS_URL, ensure_database, ensure_roles
 from wt_remove import check_removable, sweep_leftover, unlink_links
 
 LANES = range(1, 6)
@@ -200,6 +200,7 @@ def up(
     install_branch_guard(repo)
     if create_db:
         # the superuser creates them (`core` has no CREATEDB), see agent_env.ensure_database
+        ensure_roles()
         ensure_database(f"core_test_l{lane}")
         ensure_database(f"ai_test_l{lane}")
     for note in [*(sync(path) if sync else []), *(node(path) if node else [])]:

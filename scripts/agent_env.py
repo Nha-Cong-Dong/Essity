@@ -9,9 +9,11 @@ Creates `core_test_<agent>` on the Compose Postgres if it is missing (the superu
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 from with_lock import acquire, default_lock_dir
@@ -91,6 +93,42 @@ def ensure_database(name: str) -> None:
         raise SystemExit(f"agent_env: could not create {name} (is `just up` running?)")
 
 
+ROLES_SQL = Path(__file__).resolve().parents[1] / "infra" / "postgres" / "roles.sql"
+
+
+def ensure_roles_command(env: Mapping[str, str]) -> list[str]:
+    """psql feeding roles.sql to the Compose Postgres; defaults match `.env.example`."""
+
+    def value(name: str, default: str) -> str:
+        return env.get(name, default)
+
+    variables = {
+        "app_user": value("CORE_APP_DB_USER", "core_app"),
+        "app_password": value("CORE_APP_DB_PASSWORD", "change-me-local"),
+        "eraser_login": value("CORE_ERASER_LOGIN", "core_eraser_login"),
+        "eraser_password": value("CORE_ERASER_PASSWORD", "change-me-local"),
+    }
+    command = ["docker", "exec", "-i", POSTGRES_CONTAINER, "psql", "-v", "ON_ERROR_STOP=1"]
+    command += ["-U", "postgres", "-d", "postgres"]
+    for key, item in variables.items():
+        command += ["-v", f"{key}={item}"]
+    return [*command, "-f", "-"]
+
+
+def ensure_roles() -> None:
+    """core_app and core_eraser (T2.22) are cluster-wide; idempotent, as `just db-roles`."""
+    result = subprocess.run(
+        ensure_roles_command(os.environ),
+        input=ROLES_SQL.read_text(encoding="utf-8"),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        sys.stderr.write(result.stderr)
+        raise SystemExit("agent_env: could not create the T2.22 roles (run `just db-roles`)")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="agent_env.py")
     parser.add_argument("agent", nargs="?")
@@ -107,6 +145,7 @@ def main(argv: list[str]) -> int:
     if not args.agent:
         parser.error("agent name required")
     if not args.no_create:
+        ensure_roles()
         ensure_database(database_name(args.agent))
     redis = redis_db(args.agent, registry)
     print("\n".join(env_lines(args.agent, args.shell, redis)))
