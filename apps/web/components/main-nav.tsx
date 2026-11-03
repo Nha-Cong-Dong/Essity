@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 export const NAV = [
   { href: "/today", label: "Hôm nay" },
   { href: "/subjects", label: "Môn học" },
+  { href: "/kho-kien-thuc", label: "Kho kiến thức" },
   { href: "/stats", label: "Thống kê" },
 ] as const;
 
