@@ -7,8 +7,10 @@ The caller (the grading path, T8.4) commits and turns a "forgot" answer into `in
 import uuid
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core_api.db.models import User
 from core_api.domain.mastery import (
     DEFAULT_CONFIG,
     MasteryConfig,
@@ -53,6 +55,15 @@ def record_grade(
     arrives late must give the same state a replay gives (US-06 AC7, US-16 AC10). The time of the
     review is the attempt's `submitted_at`, never the time of this call: a regrade made now must
     not move an old attempt in the history (as `overriding.py` does for cards)."""
+    # The user row first, the lock `optimize_fsrs` takes, so a grade during the weekly fit waits
+    # and rebuilds with the new parameters (T5.9c). NO KEY UPDATE, as `grading.record_grade`:
+    # FOR UPDATE would deadlock with an exam PATCH.
+    session.execute(
+        select(User)
+        .where(User.id == user_id)
+        .with_for_update(key_share=True)
+        .execution_options(populate_existing=True)  # the job may have committed new parameters
+    ).all()
     states = PracticeStateRepository(session, user_id)
     log = PracticeLogRepository(session, user_id)
     states.hold_question(question_id)

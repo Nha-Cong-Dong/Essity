@@ -25,6 +25,7 @@ from core_api.domain.scheduling.practice import PracticeState, replay_ratings, v
 from core_api.repositories.base import AppendOnlyRepository, UserScopedRepository
 from core_api.repositories.practice_removal import PracticeRemovalRepository
 from core_api.repositories.question import QuestionNotFoundError
+from core_api.repositories.user_scheduler import scheduler_for_id
 
 REBUILD_BATCH = 1000
 _MEMORY_FIELDS = ("phase", "step", "stability", "difficulty", "due", "last_review")
@@ -194,12 +195,13 @@ class PracticeStateRepository(UserScopedRepository[PracticeStateRow]):
             PracticeRemovalRepository(self.session, self.user_id).latest(question_ids).items()
         ):
             removed[question_id] = event.at if event.removed else None
+        scheduler = scheduler_for_id(self.session, self.user_id)  # the ACTIVE parameters (T5.9c)
         by_question: dict[uuid.UUID, list[LoggedReview]] = {}
         for review in PracticeLogRepository(self.session, self.user_id).effective(question_ids):
             by_question.setdefault(review.question_id, []).append(review)
         rows: list[dict[str, object]] = []
         for question_id, reviews in by_question.items():
-            state = replay_ratings((r.rating, r.reviewed_at) for r in reviews)
+            state = replay_ratings(((r.rating, r.reviewed_at) for r in reviews), scheduler)
             assert state is not None
             memory = state.memory
             rows.append(
