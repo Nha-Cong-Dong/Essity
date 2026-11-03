@@ -41,8 +41,9 @@ from core_api.messaging.outbox import enqueue_event
 
 ERASE_USER_SWEEP = "erase_user_sweep"
 KEPT_EVENT = "user.deleted.v1"
-# Presigned uploads last at most 15 minutes (s3_presign_seconds <= 900) and an ai-service task
-# is cut off well before that; 20 minutes covers both.
+# Presigned uploads last at most 15 minutes (s3_presign_seconds <= 900); 20 minutes covers them.
+# No total limit bounds an ai-service task (only each LLM call has a timeout), so a task that
+# runs longer can still write after the sweep: run the same command again (runbook db-roles §4).
 SWEEP_DELAY = {"minutes": 20}
 # The streams events travel on; an envelope there can carry study content (notes, object keys).
 STREAMS = ("events.core", "events.ai")
@@ -155,8 +156,7 @@ def scrub_stream(redis: Redis, stream: str, user_id: uuid.UUID) -> int:
         doomed = [
             entry_id
             for entry_id, fields in entries
-            if needle in fields.get(b"envelope", b"").lower()
-            and _event_type(fields.get(b"envelope", b"")) != KEPT_EVENT
+            if _is_removable(fields.get(b"envelope", b""), needle)
         ]
         if doomed:
             redis.xdel(stream, *doomed)
@@ -166,15 +166,20 @@ def scrub_stream(redis: Redis, stream: str, user_id: uuid.UUID) -> int:
         cursor = f"({entries[-1][0].decode()}"
 
 
-def _event_type(envelope: bytes) -> str | None:
+def _is_removable(envelope: bytes, needle: bytes) -> bool:
+    """An entry of the user (its envelope's `user_id`), not their `user.deleted.v1`. An entry
+    that does not parse is removed if it names the user anywhere. Another user's entry that
+    merely mentions this uuid (in a note) stays: it still has to be processed."""
     try:
         parsed: Any = json.loads(envelope)
     except ValueError:
-        return None
+        return needle in envelope.lower()
     if not isinstance(parsed, dict):
-        return None
-    event_type = cast(dict[str, Any], parsed).get("event_type")
-    return event_type if isinstance(event_type, str) else None
+        return needle in envelope.lower()
+    fields = cast(dict[str, Any], parsed)
+    if fields.get("event_type") == KEPT_EVENT:
+        return False
+    return str(fields.get("user_id", "")).lower().encode() == needle
 
 
 def _delete_user_row(

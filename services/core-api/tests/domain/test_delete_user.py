@@ -500,3 +500,56 @@ def test_t63_the_job_refuses_a_user_that_exists(
     with pytest.raises(EraseRefused):
         job.erase_user_sweep({"user_id": str(a.user_id)})
     assert storage.objects
+
+
+def test_t63_scrub_keeps_an_entry_of_another_user_that_only_mentions_the_uuid(
+    streams: Streams,
+) -> None:
+    # Red when: the scrub matches the uuid anywhere in the envelope, so a note of B that happens
+    # to contain A's id is deleted before it is ever processed.
+    mine, other = uuid.uuid4(), uuid.uuid4()
+    envelope = json.dumps(
+        {"event_type": "session.confirmed.v1", "user_id": str(other), "payload": {"n": str(mine)}}
+    )
+    streams.redis.xadd(streams.core, {"envelope": envelope})
+    streams.add(streams.core, mine)
+    streams.redis.xadd(streams.core, {"envelope": "broken " + str(mine).upper()})
+
+    assert scrub_stream(streams.redis, streams.core, mine) == 2
+    assert streams.users_in(streams.core) == [(str(other), "session.confirmed.v1")]
+
+
+class OtherDatabase:
+    """An app engine that reports another database than the eraser's."""
+
+    def connect(self) -> "OtherDatabase":
+        return self
+
+    def __enter__(self) -> "OtherDatabase":
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        return None
+
+    def scalar(self, *args: object) -> str:
+        return "some_other_database"
+
+
+def test_t63_an_eraser_and_an_app_on_different_databases_are_refused(
+    engine: Engine, eraser_engine: Engine, storage: FakeStorage, streams: Streams, a: World
+) -> None:
+    # Red when: the check that both logins talk to the same database is dropped; the row is
+    # then deleted on one side while the other is cleaned up.
+    with pytest.raises(EraseRefused, match="different databases"):
+        erase_user(
+            eraser_engine=eraser_engine,
+            app_engine=cast(Engine, OtherDatabase()),
+            storage=storage,
+            redis=streams.redis,
+            user_id=a.user_id,
+            now=NOW,
+            confirm_email=email_of(engine, a.user_id),
+            dead_stream=streams.dead,
+            streams=streams.names,
+        )
+    assert rows_of(engine, a.user_id)["user"] == 1
