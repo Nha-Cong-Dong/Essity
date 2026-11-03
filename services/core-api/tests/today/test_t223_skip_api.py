@@ -4,7 +4,6 @@ does to selection is in test_t223_skip_selection.py, to an open session in
 test_t223_skip_session.py."""
 
 import uuid
-from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -260,12 +259,26 @@ def test_t223_a_session_of_an_earlier_day_only_gets_the_skip(
 ) -> None:
     space, headers, ids = ready(db_session, 2)
     session = start(client, headers).json()
-    row = db_session.get(ReviewSession, uuid.UUID(session["id"]))
-    assert row is not None
-    db_session.execute(text("ALTER TABLE review_session DISABLE TRIGGER review_session_guard"))
-    row.learning_day = row.learning_day - timedelta(days=1)
-    db_session.flush()
-    db_session.execute(text("ALTER TABLE review_session ENABLE TRIGGER review_session_guard"))
+    # The guard (rightly) refuses to move a session to another day, and core_app cannot switch it
+    # off (T2.22): so the earlier day's session is a copy of the new one, items and all.
+    earlier = str(uuid.uuid4())
+    db_session.execute(
+        text(
+            "INSERT INTO review_session (id, user_id, learning_day, started_at, subject_id)"
+            " SELECT :new, user_id, learning_day - 1, started_at, subject_id"
+            " FROM review_session WHERE id = :old"
+        ),
+        {"new": earlier, "old": session["id"]},
+    )
+    db_session.execute(
+        text(
+            "INSERT INTO review_session_item (id, user_id, review_session_id, position,"
+            " question_id) SELECT gen_random_uuid(), user_id, :new, position, question_id"
+            " FROM review_session_item WHERE review_session_id = :old"
+        ),
+        {"new": earlier, "old": session["id"]},
+    )
+    session = {**session, "id": earlier}
     unit = unit_of(db_session, space, ids[0])
     response = skip(client, headers, unit, session["id"])
     assert response.status_code == 200 and response.json() == {"session_id": None, "next": None}

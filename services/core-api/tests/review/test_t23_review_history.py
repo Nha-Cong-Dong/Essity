@@ -10,7 +10,7 @@ from types import FunctionType
 from typing import Any
 
 import pytest
-from sqlalchemy import inspect, text
+from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -37,6 +37,7 @@ from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.unit import KnowledgeUnitRepository, UnitNotFoundError
 from core_api.repositories.user import UserRepository
 from isolation import assert_isolated
+from truncate import truncate_refused_by_trigger
 
 RUN = uuid.uuid4()
 NOW = datetime(2026, 10, 23, 1, 0, tzinfo=UTC)
@@ -220,8 +221,8 @@ def test_t223_an_open_session_cannot_change_its_subject(
 @pytest.mark.parametrize(
     "table", ["grade", "grade_unit", "review_log", "attempt", "review_session"]
 )
-def test_t23_truncate_rejected(db_session: Session, history: History, table: str) -> None:
-    refused_by_trigger(db_session, f"TRUNCATE {table} CASCADE")
+def test_t23_truncate_rejected(owner_engine: Engine, table: str) -> None:
+    truncate_refused_by_trigger(owner_engine, f"{table} CASCADE")
 
 
 def test_t23_on_conflict_do_update_rejected_on_review_log(
@@ -247,13 +248,8 @@ def test_t23_owner_cannot_delete_history_rows_directly(
     )
 
 
-def test_t23_user_with_history_cannot_be_deleted_until_t222(
-    db_session: Session, history: History
-) -> None:
-    # Plan D1: no way around the triggers yet, not even deleting the account; T2.22 opens one
-    # for a database role of its own, core_eraser. Red when: a delete path slips through first.
-    refused_by_trigger(db_session, 'DELETE FROM "user" WHERE id = :user', user=history.user.id)
-    refused_by_trigger(db_session, 'TRUNCATE "user" CASCADE')
+# T2.22: the old "nobody can delete a user with history" test became tests/db/test_roles.py
+# (core_app is refused, a member of core_eraser erases).
 
 
 def test_t23_unit_with_history_cannot_be_deleted(db_session: Session, history: History) -> None:

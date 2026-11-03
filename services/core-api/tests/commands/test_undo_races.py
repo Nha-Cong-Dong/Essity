@@ -20,6 +20,7 @@ from core_api.repositories.user import UserRepository
 from core_api.services import practice
 from core_api.services.commands import CommandRequest, CommandService, UndoOutcome
 from core_api.services.outline import OutlineService
+from erasure import erase_user
 from races import finished, in_thread, wait_for_lock
 
 Committed = tuple[uuid.UUID, uuid.UUID, uuid.UUID]
@@ -137,7 +138,7 @@ def test_apply_vs_undo_lock_order_no_deadlock(engine: Engine, committed: Committ
 
 
 @pytest.fixture
-def committed_practice(engine: Engine) -> Iterator[Committed]:
+def committed_practice(engine: Engine, eraser_engine: Engine) -> Iterator[Committed]:
     """`committed`, whose cleanup also lets the append-only practice log go."""
     with Session(engine, expire_on_commit=False) as setup:
         user = UserRepository(setup).create(f"race-{uuid.uuid4().hex[:8]}@example.com")
@@ -148,12 +149,7 @@ def committed_practice(engine: Engine) -> Iterator[Committed]:
     try:
         yield ids
     finally:
-        with engine.begin() as connection:
-            for table in ("command_log", "practice_removal_log"):
-                connection.execute(text(f"ALTER TABLE {table} DISABLE TRIGGER USER"))
-            connection.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": ids[0]})
-            for table in ("command_log", "practice_removal_log"):
-                connection.execute(text(f"ALTER TABLE {table} ENABLE TRIGGER USER"))
+        erase_user(eraser_engine, ids[0])
 
 
 def test_ac5_undo_practice_waits_for_screen_and_sees_its_rev(

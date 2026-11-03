@@ -20,6 +20,7 @@ from core_api.repositories.practice_attempt import (
     QuestionNotFoundError,
 )
 from core_api.repositories.user import UserRepository
+from erasure import erase_user
 from practice_rows import Practice
 from races import finished, in_thread, wait_for_lock
 
@@ -124,7 +125,7 @@ def test_other_user_and_review_attempts_are_not_found(
 
 
 @pytest.fixture
-def committed(engine: Engine) -> Iterator[tuple[uuid.UUID, uuid.UUID]]:
+def committed(engine: Engine, eraser_engine: Engine) -> Iterator[tuple[uuid.UUID, uuid.UUID]]:
     with Session(engine) as session:
         user = UserRepository(session).create(f"t84-draft-{uuid.uuid4()}@example.com")
         session.flush()
@@ -132,21 +133,7 @@ def committed(engine: Engine) -> Iterator[tuple[uuid.UUID, uuid.UUID]]:
         ids = (user.id, question.id)
         session.commit()
     yield ids
-    with engine.begin() as connection:
-        names = list(
-            connection.execute(
-                text(
-                    "SELECT DISTINCT c.relname FROM pg_trigger t JOIN pg_class c ON c.oid ="
-                    " t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace"
-                    " WHERE NOT t.tgisinternal AND n.nspname = 'public'"
-                )
-            ).scalars()
-        )
-        for name in names:
-            connection.execute(text(f'ALTER TABLE "{name}" DISABLE TRIGGER USER'))
-        connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": ids[0]})
-        for name in names:
-            connection.execute(text(f'ALTER TABLE "{name}" ENABLE TRIGGER USER'))
+    erase_user(eraser_engine, ids[0])
 
 
 def test_two_concurrent_opens_make_one_draft(

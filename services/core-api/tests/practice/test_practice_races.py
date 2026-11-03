@@ -18,6 +18,7 @@ from core_api.domain.scheduling.practice import replay_ratings
 from core_api.repositories.practice import PracticeStateRepository
 from core_api.repositories.user import UserRepository
 from core_api.services.practice import record_grade, remove
+from erasure import erase_user
 from practice_rows import Practice, day
 from races import finished, in_thread, wait_for_lock
 
@@ -30,7 +31,7 @@ class Ready:
 
 
 @pytest.fixture
-def ready(engine: Engine) -> Iterator[Ready]:
+def ready(engine: Engine, eraser_engine: Engine) -> Iterator[Ready]:
     with Session(engine) as session:
         user = UserRepository(session).create(f"t83-race-{uuid.uuid4()}@example.com")
         session.flush()
@@ -41,20 +42,7 @@ def ready(engine: Engine) -> Iterator[Ready]:
         made = Ready(user.id, question.id, [grade.id for grade in grades])
         session.commit()
     yield made
-    with engine.begin() as connection:
-        tables = connection.execute(
-            text(
-                "SELECT DISTINCT c.relname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid"
-                " JOIN pg_namespace n ON n.oid = c.relnamespace"
-                " WHERE NOT t.tgisinternal AND n.nspname = 'public'"
-            )
-        ).scalars()
-        names = list(tables)
-        for name in names:
-            connection.execute(text(f'ALTER TABLE "{name}" DISABLE TRIGGER USER'))
-        connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": made.user_id})
-        for name in names:
-            connection.execute(text(f'ALTER TABLE "{name}" ENABLE TRIGGER USER'))
+    erase_user(eraser_engine, made.user_id)
 
 
 def record(session: Session, ready: Ready, n: int) -> DomainState:

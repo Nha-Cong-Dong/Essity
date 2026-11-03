@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from core_api.db.models import ReviewSession
 from core_api.repositories.review import ReviewSessionRepository
 from core_api.repositories.user import UserRepository
+from erasure import erase_user
 from races import finished, in_thread, wait_for_lock
 
 NOW = datetime(2026, 11, 2, 13, 0, tzinfo=UTC)
@@ -21,16 +22,13 @@ DAY = date(2026, 11, 2)
 
 
 @pytest.fixture
-def user_id(engine: Engine) -> Iterator[uuid.UUID]:
+def user_id(engine: Engine, eraser_engine: Engine) -> Iterator[uuid.UUID]:
     with Session(engine) as session:
         user = UserRepository(session).create(f"t29-race-{uuid.uuid4()}@example.com")
         session.commit()
         made = user.id
     yield made
-    with engine.begin() as connection:
-        connection.execute(text("ALTER TABLE review_session DISABLE TRIGGER review_session_guard"))
-        connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": made})
-        connection.execute(text("ALTER TABLE review_session ENABLE TRIGGER review_session_guard"))
+    erase_user(eraser_engine, made)
 
 
 # Red when: the index or the ON CONFLICT is missing, so both tabs make a session (or the second

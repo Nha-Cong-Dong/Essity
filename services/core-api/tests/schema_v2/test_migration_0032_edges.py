@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from core_api.repositories.command_log import CommandLogRepository
 from core_api.repositories.study_filter import FilterState, StudyFilterRepository
 from core_api.repositories.user import UserRepository
+from erasure import erase_user
 from races import finished, in_thread, wait_for_lock
 from v2_rows import World, make_subject
 
@@ -29,27 +30,8 @@ class Ready:
     command_id: uuid.UUID
 
 
-def drop_user(engine: Engine, user_id: uuid.UUID) -> None:
-    with engine.begin() as connection:
-        names = list(
-            connection.execute(
-                text(
-                    "SELECT DISTINCT c.relname FROM pg_trigger t"
-                    " JOIN pg_class c ON c.oid = t.tgrelid"
-                    " JOIN pg_namespace n ON n.oid = c.relnamespace"
-                    " WHERE NOT t.tgisinternal AND n.nspname = 'public'"
-                )
-            ).scalars()
-        )
-        for name in names:
-            connection.execute(text(f'ALTER TABLE "{name}" DISABLE TRIGGER USER'))
-        connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": user_id})
-        for name in names:
-            connection.execute(text(f'ALTER TABLE "{name}" ENABLE TRIGGER USER'))
-
-
 @pytest.fixture
-def ready(engine: Engine) -> Iterator[Ready]:
+def ready(engine: Engine, eraser_engine: Engine) -> Iterator[Ready]:
     with Session(engine) as session:
         user = UserRepository(session).create(f"t92b-race-{uuid.uuid4()}@example.com")
         session.flush()
@@ -67,7 +49,7 @@ def ready(engine: Engine) -> Iterator[Ready]:
         made = Ready(user.id, subject.id, row.command_id)
         session.commit()
     yield made
-    drop_user(engine, made.user_id)
+    erase_user(eraser_engine, made.user_id)
 
 
 def pid_of(session: Session) -> int:
@@ -167,7 +149,9 @@ def test_mark_undone_keeps_revisions_written_at_insert(world: World) -> None:
     assert (done.status, done.undo_revs_json) == ("undone", {"section:a": 2})
 
 
-def test_downgrade_brings_back_a_working_0025_guard(engine: Engine, alembic_cfg: Config) -> None:
+def test_downgrade_brings_back_a_working_0025_guard(
+    engine: Engine, eraser_engine: Engine, alembic_cfg: Config
+) -> None:
     # Red when: the downgrade leaves the 0032 guard (it reads NEW.command_id, gone with the
     # column, so every undo fails) or a guard that lets a row change other than by undoing.
     user = uuid.uuid4()
@@ -198,4 +182,4 @@ def test_downgrade_brings_back_a_working_0025_guard(engine: Engine, alembic_cfg:
         try:
             command.upgrade(alembic_cfg, "head")
         finally:
-            drop_user(engine, user)
+            erase_user(eraser_engine, user)

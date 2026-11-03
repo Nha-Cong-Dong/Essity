@@ -92,9 +92,9 @@ def test_constraint_names_follow_the_naming_convention() -> None:
 
 
 @pytest.fixture
-def probe_table(engine: Engine) -> Iterator[None]:
+def probe_table(owner_engine: Engine) -> Iterator[None]:
     """A real, committed table: these tests check what get_session commits."""
-    with engine.begin() as connection:
+    with owner_engine.begin() as connection:
         # Unique, but checked only at COMMIT: lets a test make the commit itself fail.
         connection.execute(
             text(
@@ -104,7 +104,7 @@ def probe_table(engine: Engine) -> Iterator[None]:
         )
         connection.execute(text("TRUNCATE probe_request"))
     yield
-    with engine.begin() as connection:
+    with owner_engine.begin() as connection:
         connection.execute(text("DROP TABLE probe_request"))
 
 

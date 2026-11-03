@@ -7,7 +7,7 @@ from datetime import timedelta
 from typing import Any
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import Engine, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from core_api.db.models import (
@@ -18,6 +18,7 @@ from core_api.db.models import (
     Question,
     UnitEdge,
 )
+from truncate import truncate_refused_by_trigger
 from v2_rows import (
     NOW,
     World,
@@ -152,7 +153,10 @@ def test_practice_log_refuses_update_delete_truncate(world: World) -> None:
     row = add(world, log(world, question, grade_id))
     refused_sql(world, "UPDATE practice_log SET rating = 1 WHERE id = :id", id=row.id)
     refused_sql(world, "DELETE FROM practice_log WHERE id = :id", id=row.id)
-    refused_sql(world, "TRUNCATE practice_log")
+
+
+def test_practice_log_refuses_truncate(owner_engine: Engine) -> None:
+    truncate_refused_by_trigger(owner_engine, "practice_log")
 
 
 def test_practice_log_triggers_are_the_review_log_refusal(world: World) -> None:

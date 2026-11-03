@@ -23,6 +23,7 @@ from core_api.repositories.review import (
 )
 from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.user import UserRepository
+from erasure import erase_user
 from races import finished, in_thread, wait_for_lock
 
 NOW = datetime(2026, 11, 4, 13, 0, tzinfo=UTC)
@@ -42,7 +43,7 @@ class Ready:
 
 
 @pytest.fixture
-def ready(engine: Engine) -> Iterator[Ready]:
+def ready(engine: Engine, eraser_engine: Engine) -> Iterator[Ready]:
     with Session(engine) as session:
         user = UserRepository(session).create(f"t215-submit-{uuid.uuid4()}@example.com")
         session.flush()
@@ -60,12 +61,7 @@ def ready(engine: Engine) -> Iterator[Ready]:
         made = Ready(user.id, review.id, attempt.id)
         session.commit()
     yield made
-    with engine.begin() as connection:
-        for table, trigger in GUARDS:
-            connection.execute(text(f"ALTER TABLE {table} DISABLE TRIGGER {trigger}"))
-        connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": made.user_id})
-        for table, trigger in GUARDS:
-            connection.execute(text(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}"))
+    erase_user(eraser_engine, made.user_id)
 
 
 # (a) Red when: stop counts before taking its lock, so an answer being submitted is not counted

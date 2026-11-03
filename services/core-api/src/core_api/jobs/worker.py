@@ -19,6 +19,7 @@ from procrastinate.app import WorkerOptions
 
 import core_api.jobs.registry  # noqa: F401  # pyright: ignore[reportUnusedImport]  # registers kinds
 from core_api.config import get_settings
+from core_api.db.role_guard import check_app_role
 from core_api.jobs.app import app, libpq_conninfo
 from core_api.logging import configure_logging
 from core_api.telemetry import configure_tracing
@@ -67,6 +68,7 @@ def run(main: Coroutine[Any, Any, None]) -> None:
 def main() -> None:
     settings = get_settings()
     configure_logging(SERVICE, settings.log_level)
+    check_app_role(settings)
     provider = configure_tracing(SERVICE)
     conninfo = libpq_conninfo(settings.database_url.get_secret_value())
     _log.info("worker starting")

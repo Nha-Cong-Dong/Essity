@@ -12,10 +12,13 @@ from cmd_world import SESSION, CmdWorld, Parser
 from core_api.db.models import User
 from core_api.repositories.user import UserRepository
 from core_api.services.commands import CommandRequest, CommandService
+from erasure import erase_user
 
 
 @pytest.fixture
-def committed(engine: Engine) -> Iterator[tuple[uuid.UUID, uuid.UUID, uuid.UUID]]:
+def committed(
+    engine: Engine, eraser_engine: Engine
+) -> Iterator[tuple[uuid.UUID, uuid.UUID, uuid.UUID]]:
     """A committed user with a subject, one leaf section and one draft card."""
     with Session(engine, expire_on_commit=False) as setup:
         user: User = UserRepository(setup).create(f"race-{uuid.uuid4().hex[:8]}@example.com")
@@ -26,10 +29,7 @@ def committed(engine: Engine) -> Iterator[tuple[uuid.UUID, uuid.UUID, uuid.UUID]
     try:
         yield ids
     finally:
-        with engine.begin() as connection:
-            connection.execute(text("ALTER TABLE command_log DISABLE TRIGGER USER"))
-            connection.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": ids[0]})
-            connection.execute(text("ALTER TABLE command_log ENABLE TRIGGER USER"))
+        erase_user(eraser_engine, ids[0])
 
 
 def apply_once(

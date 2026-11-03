@@ -24,6 +24,7 @@ from core_api.repositories.auth_session import AuthSessionRepository
 from core_api.repositories.user import UserRepository
 from core_api.security.client_ip import CLIENT_IP_HEADER
 from core_api.security.service_token import SERVICE_TOKEN_HEADER
+from erasure import erase_user
 from fake_storage import FakeStorage
 from ips import fresh_ip
 
@@ -34,7 +35,7 @@ Committed = tuple[uuid.UUID, uuid.UUID, dict[str, str]]  # user, card, auth head
 
 
 @pytest.fixture
-def committed(engine: Engine) -> Iterator[Committed]:
+def committed(engine: Engine, eraser_engine: Engine) -> Iterator[Committed]:
     with Session(engine, expire_on_commit=False) as setup:
         user = UserRepository(setup).create(f"race-{uuid.uuid4().hex[:8]}@example.com")
         user.email_verified_at = datetime.now(UTC)
@@ -46,10 +47,7 @@ def committed(engine: Engine) -> Iterator[Committed]:
     try:
         yield ids
     finally:
-        with engine.begin() as connection:
-            connection.execute(text("ALTER TABLE command_log DISABLE TRIGGER USER"))
-            connection.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": ids[0]})
-            connection.execute(text("ALTER TABLE command_log ENABLE TRIGGER USER"))
+        erase_user(eraser_engine, ids[0])
 
 
 @pytest.fixture

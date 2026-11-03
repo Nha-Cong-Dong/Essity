@@ -20,6 +20,7 @@ from cmd_world import SESSION, CmdWorld, Parser
 from core_api.db.models import User
 from core_api.repositories.user import UserRepository
 from core_api.services.commands import ApplyOutcome, CommandRequest, CommandService
+from erasure import erase_user
 
 
 @dataclass(frozen=True)
@@ -33,7 +34,7 @@ class Ids:
 
 
 @pytest.fixture
-def world(engine: Engine) -> Iterator[Ids]:
+def world(engine: Engine, eraser_engine: Engine) -> Iterator[Ids]:
     with Session(engine, expire_on_commit=False) as setup:
         user: User = UserRepository(setup).create(f"lock-{uuid.uuid4().hex[:8]}@example.com")
         setup.flush()
@@ -43,12 +44,7 @@ def world(engine: Engine) -> Iterator[Ids]:
     try:
         yield ids
     finally:
-        with engine.begin() as connection:
-            connection.execute(text("ALTER TABLE command_log DISABLE TRIGGER USER"))
-            connection.execute(text("ALTER TABLE practice_removal_log DISABLE TRIGGER USER"))
-            connection.execute(text('DELETE FROM "user" WHERE id = :u'), {"u": ids.user})
-            connection.execute(text("ALTER TABLE practice_removal_log ENABLE TRIGGER USER"))
-            connection.execute(text("ALTER TABLE command_log ENABLE TRIGGER USER"))
+        erase_user(eraser_engine, ids.user)
 
 
 def apply_once(engine: Engine, user_id: uuid.UUID, ops: list[dict[str, object]]) -> object:

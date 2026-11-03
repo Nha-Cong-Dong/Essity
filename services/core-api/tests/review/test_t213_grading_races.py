@@ -31,6 +31,7 @@ from core_api.repositories.review import (
 from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.unit import AnchorRepository, KnowledgeUnitRepository
 from core_api.repositories.user import UserRepository
+from erasure import erase_user
 from grader_stub import Stub
 from races import finished, in_thread, wait_for_lock
 
@@ -56,7 +57,7 @@ class Ready:
 
 
 @pytest.fixture
-def ready(engine: Engine) -> Iterator[Ready]:
+def ready(engine: Engine, eraser_engine: Engine) -> Iterator[Ready]:
     with Session(engine) as session:
         user = UserRepository(session).create(f"t213-race-{uuid.uuid4()}@example.com")
         session.flush()
@@ -83,12 +84,7 @@ def ready(engine: Engine) -> Iterator[Ready]:
         ready = Ready(user.id, subject.id, unit.id, made)
         session.commit()
     yield ready
-    with engine.begin() as connection:
-        for table, trigger in GUARDS:
-            connection.execute(text(f"ALTER TABLE {table} DISABLE TRIGGER {trigger}"))
-        connection.execute(text('DELETE FROM "user" WHERE id = :id'), {"id": ready.user_id})
-        for table, trigger in GUARDS:
-            connection.execute(text(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}"))
+    erase_user(eraser_engine, ready.user_id)
 
 
 def correct(unit_id: uuid.UUID) -> CheckedGrade:
