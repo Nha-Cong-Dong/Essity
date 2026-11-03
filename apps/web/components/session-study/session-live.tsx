@@ -41,6 +41,7 @@ export function SessionLive({
       api={api}
       footer={subjectId ? <UnitsBySection subjectId={subjectId} /> : undefined}
       subject={subject}
+      subjectId={subjectId}
       stopHref={stopHref}
       docs={docs}
       suggestion={suggestion}

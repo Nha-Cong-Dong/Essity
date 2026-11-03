@@ -61,8 +61,17 @@ export function toDraft(card: CoreDraft, docs: readonly DocRef[]): Draft {
   };
 }
 
+/** F2: one piece the learner wrote down ("Ghi lại"), kept at once. */
+export type Piece = { id: string; position: number; text: string; fileCount: number };
+
 export type SessionApi = {
   sessionId: string;
+  /** F2: the pieces kept so far. */
+  pieces(): Promise<ApiResult<{ pieces: Piece[]; submitted: boolean }>>;
+  /** F2: "Ghi lại": keep one piece now. */
+  addPiece(text: string, mentions: readonly Mention[], files?: readonly FileRef[]): Promise<ApiResult<Piece>>;
+  /** F3: "Hoàn thành": every piece goes in as one submission, the worker makes the cards. */
+  complete(): Promise<ApiResult<{ status: Phase }>>;
   submit(text: string, mentions: readonly Mention[], files?: readonly FileRef[]): Promise<ApiResult<{ status: Phase }>>;
   /** T7.12c: one file to storage; the last state is "ready" (what the submission names) or "failed". */
   upload(file: File, onState: (state: FileState) => void): Promise<void>;
@@ -102,8 +111,24 @@ export function createSessionApi(sessionId: string, docs: readonly DocRef[], fet
   const card = (json: Record<string, unknown>) => toDraft(json as unknown as CoreDraft, docs);
   const list = (json: Record<string, unknown>) => (json.drafts as CoreDraft[]).map((d) => toDraft(d, docs));
 
+  type CorePiece = { id: string; position: number; text: string; file_count: number };
+  const piece = (p: CorePiece): Piece => ({ id: p.id, position: p.position, text: p.text, fileCount: p.file_count });
+
   return {
     sessionId,
+    pieces: () =>
+      run(`/api/sessions/${sessionId}/pieces`, "GET", undefined, (json) => ({
+        pieces: (json.pieces as CorePiece[]).map(piece),
+        submitted: json.submitted === true,
+      })),
+    addPiece: (text, mentions, files = []) =>
+      run(
+        `/api/sessions/${sessionId}/pieces`,
+        "POST",
+        { text, mentions: mentions.map((m) => ({ document_id: m.docId, start: m.start, end: m.end })), files },
+        (json) => piece(json as unknown as CorePiece),
+      ),
+    complete: () => run(`/api/sessions/${sessionId}/complete`, "POST", undefined, (json) => ({ status: readStatus(String(json.status)) })),
     async submit(text, mentions, files = []) {
       const body = { session_id: sessionId, description: text, mentions: mentions.map((m) => ({ document_id: m.docId, start: m.start, end: m.end })), ...(files.length > 0 ? { files } : {}) };
       const { status, json } = await call("/api/submissions", "POST", body);

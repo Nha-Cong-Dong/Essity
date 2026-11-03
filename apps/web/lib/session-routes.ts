@@ -39,6 +39,7 @@ const CODES = new Set([
   "unit_not_found",
   "not_indexed",
   "session_confirmed",
+  "too_many_pieces",
   "session_not_found",
   "size_mismatch",
   "storage_quota_exceeded",
