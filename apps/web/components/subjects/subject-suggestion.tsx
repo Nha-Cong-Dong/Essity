@@ -59,6 +59,7 @@ export function SubjectSuggestion({
   preview = false,
   practiceLink = true,
   nothingDue = false,
+  reviewButton = true,
 }: {
   subjectId: string;
   subjectName: string;
@@ -71,6 +72,8 @@ export function SubjectSuggestion({
   practiceLink?: boolean;
   /** T7.19 F3: today's review holds nothing of this subject. */
   nothingDue?: boolean;
+  /** D6: the review button lives in the stack beside this block; the page turns it off here. */
+  reviewButton?: boolean;
 }) {
   const [answer, setAnswer] = useState<SuggestionState | null>(null);
   const [failed, setFailed] = useState(false);
@@ -163,9 +166,11 @@ export function SubjectSuggestion({
       )}
       {showExtras && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line pt-3">
-          <StartButton variant="secondary" subjectId={subjectId} preview={preview} nothingDue={nothingDue}>
-            Ôn riêng môn này
-          </StartButton>
+          {reviewButton && (
+            <StartButton variant="secondary" subjectId={subjectId} preview={preview} nothingDue={nothingDue}>
+              Ôn riêng môn này
+            </StartButton>
+          )}
           {learnedOut && practiceLink && (
             <Button render={<a href={`/subjects/${subjectId}/practice`} />} nativeButton={false} variant="quiet">
               {COPY.practice}

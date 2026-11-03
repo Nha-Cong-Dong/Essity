@@ -39,7 +39,15 @@ def test_t711_fields_unchanged_and_enums_closed(client: TestClient, db_session: 
     assert V1_KEYS <= set(body) and "practice" in body
     assert set(body["review"]) == {"items", "minutes", "next_due_day", "new_saved_today"}
     for item in body["review"]["items"]:
-        assert set(item) == {"question_id", "subject_id", "why", "reason", "item_kind"}
+        assert set(item) == {
+            "question_id",
+            "subject_id",
+            "why",
+            "reason",
+            "item_kind",
+            "front",
+            "back",
+        }
         assert item["reason"]["kind"] in {"review", "new"}
     assert {i["item_kind"] for i in body["review"]["items"]} == {"card", "practice"}
 

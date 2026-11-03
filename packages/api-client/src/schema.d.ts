@@ -2602,6 +2602,10 @@ export interface components {
         };
         /** ReviewItemOut */
         ReviewItemOut: {
+            /** Back */
+            back?: string | null;
+            /** Front */
+            front?: string | null;
             /**
              * Item Kind
              * @default card

@@ -23,6 +23,7 @@ export function SubjectScreenBlock({
       resolve={() => fetchSubjectSuggestion(subjectId)}
       practiceLink={false}
       nothingDue={nothingDue}
+      reviewButton={false}
     />
   );
 }

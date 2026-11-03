@@ -204,3 +204,13 @@ def test_t28_learning_day_follows_the_clock(
     assert today(client, headers)["learning_day"] == date(2026, 10, 24).isoformat()
     set_now(datetime(2026, 10, 24, 21, 0, tzinfo=FROZEN_NOW.tzinfo))  # 04:00
     assert today(client, headers)["learning_day"] == date(2026, 10, 25).isoformat()
+
+
+# Hackathon D6. Red when: a review item carries no question text for the subject screen's stack.
+def test_d6_review_items_carry_front_and_back(client: TestClient, db_session: Session) -> None:
+    user, headers = signed_in(db_session)
+    space = Space(db_session, user)
+    mmt = space.subject()
+    space.question(mmt, "TCP")
+    items = today(client, headers)["review"]["items"]
+    assert [(i["front"], i["back"]) for i in items] == [("TCP?", "a")]

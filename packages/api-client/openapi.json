@@ -3268,6 +3268,28 @@
       },
       "ReviewItemOut": {
         "properties": {
+          "back": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Back"
+          },
+          "front": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Front"
+          },
           "item_kind": {
             "default": "card",
             "enum": [
