@@ -52,7 +52,7 @@
   --sticker: light-dark(var(--hl), var(--hl-edge));
   --sticker-edge: var(--on-hong);
   --dot: var(--rose-300);
-  --cam: light-dark(#985a26, #e0a36a); /* the mockup's orange for 'suggested', landing only */
+  --cam: light-dark(#8f5322, #e0a36a); /* the mockup's orange for 'suggested', landing only */
 
   min-height: 100svh;
   background: var(--bg);
