@@ -1,0 +1,29 @@
+step: tester
+verdict: pass
+sha: db30d26
+by: feature-tester (Opus)
+at: 2026-11-03
+round: 1
+open_orange: 0
+tokens: null
+summary: >
+  AC1/AC5/AC6/D2/D3/D4/D6/ADR-0013 đều có test; 40 đột biến trên 7 file 🔴, 31 bị giết, 2 tương đương,
+  7 sống được bù bằng tests/auth/test_username_edges.py (11 test, giết cả 7). Không test mới nào đỏ: không lỗi src.
+mutations: {killed: 31, survived: 0, compensated: 7, equivalent: 2}
+mutation_table:
+  - "A10 identifier/email: email thắng khi gửi cả hai -> sống -> bù test_d3_identifier_wins_over_the_old_email_field"
+  - "A15 bộ đếm 20/định danh theo text thô -> sống -> bù test_ac6_the_per_name_counter_uses_the_normalized_name_across_ips"
+  - "A22 USERNAME_HOLD 7 ngày -> 60 s -> sống -> bù test_p1_the_hold_lasts_as_long_as_an_unverified_account"
+  - "H1 reserve bỏ nx (gia hạn mỗi lần) -> sống -> bù test_p1_reserving_again_keeps_the_first_end"
+  - "H2 reserve nuốt RedisError (fail open) -> sống -> bù test_p1_reserve_with_unreachable_redis_raises"
+  - "H3 is_reserved trả False khi Redis lỗi -> sống -> bù test_p1_is_reserved_with_unreachable_redis_raises (test API cũ monkeypatch cả hàm nên không thấy)"
+  - "R3 get_by_username không chuẩn hóa -> sống -> bù test_repository_finds_a_username_whatever_the_case_and_spaces"
+  - "A7 bỏ strip/lower ở login, A8 luôn normalize_username: tương đương (normalize_email == strip+lower)"
+  - "31 bị giết: A1-5,A9,A12-14,A16-20,U1-6,U8,U9,U11,P1-3,R1,R2,AU1,G1,G2 (chi tiết tên test trong log E:/DevCache/mut-t123/out.txt)"
+tests_added:
+  - services/core-api/tests/auth/test_username_edges.py (11 test: hold fail-closed x2, hold nx, hold TTL = UNVERIFIED_LIFETIME, hold theo tên chuẩn hóa, identifier thắng email, tên A + mật khẩu B, tài khoản xóa mềm, bộ đếm 20 qua IP với biến thể chữ, repo chuẩn hóa, hai đăng ký đồng thời trong hai transaction thật)
+runs: "4 file T1.23 102 passed; test mới 11 passed; 2 test thread/TTL lặp 10 lần xanh; ruff check, ruff format --check, pyright file mới sạch"
+notes:
+  - "Chập chờn 1 lần: tests/auth/test_login.py::test_ac6_twenty_failures_per_email_across_ips_block_any_ip đỏ khi chạy chung test_username_login (dưới đột biến tương đương A7); chạy lại sạch 8/8. Nghi qua ranh cửa sổ 15 phút (lớp R48 timing), không do T1.23."
+  - "Không commit/push: vai tester cấm commit; người gọi commit file test."
+git_status: "chỉ ?? services/core-api/tests/auth/test_username_edges.py; git diff src rỗng"

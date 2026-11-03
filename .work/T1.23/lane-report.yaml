@@ -1,0 +1,9 @@
+task: T1.23
+lane: L1
+status: done
+head_sha: 3dba350
+step: final-HEAD checks done (ruff, format, pyright, collect-only, alembic single head 0035, api-client regenerated, core batches 1-7 green)
+tests: {cmd: "core_batches 1-7 (batch 6 run per-dir: its grouping hits a conftest basename clash, sessions+drafts)", passed: 3600, failed: 0}
+blockers: ["apps/web register route.ts:17 fails typecheck until T1.24 sends username (card forbids touching web)", "batch 6 of core_batches.py collection clash (sessions vs drafts conftest) is in the script, not this task"]
+decisions: ["backfill username from email in Python (row_number cannot avoid existing _2) (Coder)", "username hold in Redis 7d closes email probing via 409 (Coder+reviewer)", "phone dropped, display_name D7, availability endpoint D8 (owner/lead)"]
+next: "orchestrator: final review + PM; merge T1.23 before or with T1.24"
