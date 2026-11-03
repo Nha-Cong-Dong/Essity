@@ -21,6 +21,7 @@ type Source = {
   highlight: [number, number] | null;
   file_url: string | null;
   image_url: string | null;
+  note_image_urls: string[];
 };
 
 function Marked({ text, range }: { text: string; range: [number, number] }) {
@@ -40,7 +41,8 @@ function SourceItem({ s }: { s: Source }) {
   const [imageFailed, setImageFailed] = useState(false);
   const fail = useCallback(() => setPdfFailed(true), []);
   const usePdf = s.file_url !== null && s.page_no !== null && !pdfFailed;
-  const useImage = !usePdf && s.image_url !== null && !imageFailed;
+  const images = s.image_url !== null ? [s.image_url] : s.note_image_urls;
+  const useImage = !usePdf && images.length > 0 && !imageFailed;
   const excerpt =
     s.page_text && s.highlight ? (
       <Marked text={s.page_text} range={s.highlight} />
@@ -56,8 +58,12 @@ function SourceItem({ s }: { s: Source }) {
       {usePdf && s.file_url && s.page_no ? <PdfPage url={s.file_url} page={s.page_no} quote={s.quote} onFail={fail} /> : null}
       {useImage ? (
         <div className="flex flex-col gap-3 min-[640px]:flex-row">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={s.image_url ?? ""} alt={`Trang ${s.page_no} của tài liệu gốc`} className="max-w-full min-[640px]:w-1/2" onError={() => setImageFailed(true)} />
+          <div className="flex flex-col gap-2 min-[640px]:w-1/2">
+            {images.map((src) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={src} src={src} alt={s.page_no ? `Trang ${s.page_no} của tài liệu gốc` : "Ảnh vở ghi"} className="max-w-full" onError={() => setImageFailed(true)} />
+            ))}
+          </div>
           <p className="m-0 whitespace-pre-wrap text-body text-ink-soft">
             <mark className="rounded-sm bg-hong/25 px-0.5 text-ink">{s.quote}</mark>
           </p>

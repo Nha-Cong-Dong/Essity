@@ -21,7 +21,7 @@ export function matchBoxes(items: { str: string; box: Box }[], quote: string): B
       hay += " ";
       owner.push(-1);
     }
-    for (const _ of piece) owner.push(i);
+    for (let k = 0; k < piece.length; k++) owner.push(i);
     hay += piece;
   });
   const needle = fold(quote);

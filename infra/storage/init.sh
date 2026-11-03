@@ -9,8 +9,8 @@ else
   echo "bucket $S3_BUCKET created"
 fi
 
-# T4.6: the browser PUTs a PDF straight to the bucket from the web origin (ADR-0012), so the
+# T4.6, G4: the browser PUTs a PDF straight to the bucket from the web origin (ADR-0012), so the
 # bucket answers that origin's CORS preflight. Applied on every run: it replaces the old rules.
-cors="{\"CORSRules\":[{\"AllowedOrigins\":[\"$WEB_ORIGIN\"],\"AllowedMethods\":[\"PUT\"],\"AllowedHeaders\":[\"*\"],\"ExposeHeaders\":[\"ETag\"],\"MaxAgeSeconds\":600}]}"
+cors="{\"CORSRules\":[{\"AllowedOrigins\":[\"$WEB_ORIGIN\"],\"AllowedMethods\":[\"PUT\",\"GET\",\"HEAD\"],\"AllowedHeaders\":[\"*\"],\"ExposeHeaders\":[\"ETag\",\"Content-Length\",\"Content-Range\",\"Accept-Ranges\"],\"MaxAgeSeconds\":600}]}"
 aws --endpoint-url "$S3_ENDPOINT" s3api put-bucket-cors --bucket "$S3_BUCKET" --cors-configuration "$cors"
-echo "bucket $S3_BUCKET allows PUT from $WEB_ORIGIN"
+echo "bucket $S3_BUCKET allows PUT (upload) and GET (source pages, G4) from $WEB_ORIGIN"
