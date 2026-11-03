@@ -52,7 +52,7 @@ describe("design rules", () => {
     const CENTRED = new Set([
       path.join("components", "shells.tsx"),
       path.join("components", "session-study", "session-screen.tsx"),
-      path.join("components", "practice", "practice-screen.tsx"),
+      // The answer box keeps its centred column: it is drawn inside the focus frames (practice-live, review).
       path.join("components", "practice", "practice-answer.tsx"),
     ]);
     const pages = UI.filter(
