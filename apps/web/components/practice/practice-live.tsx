@@ -185,7 +185,7 @@ export function PracticeLive({
   );
 
   return (
-    <div ref={root} className="mx-auto w-full max-w-180">
+    <div ref={root} className="w-full max-w-180">
       <a href={`/subjects/${subjectId}`} className="text-meta text-ink-soft underline wrap-anywhere">
         ← {subjectName}
       </a>

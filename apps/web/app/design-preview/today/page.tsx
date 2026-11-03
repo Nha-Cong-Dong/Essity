@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { TodayV2Screen } from "@/components/today-v2/today-v2-screen";
 import { TODAY_STATES } from "@/lib/fixtures/today-v2";
 
@@ -17,9 +17,9 @@ async function Fixture({ searchParams }: { searchParams: Promise<{ state?: strin
   const today = TODAY_STATES[state] ?? TODAY_STATES.busy;
   return (
     <AppShell current="/today" account={<AccountMenu email="xem-thu@example.com" />}>
-      <div className="mx-auto w-full max-w-280">
+      <PageColumn width="full">
         <TodayV2Screen today={today} preview />
-      </div>
+      </PageColumn>
     </AppShell>
   );
 }

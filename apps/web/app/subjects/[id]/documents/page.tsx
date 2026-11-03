@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
 import { DocumentList, DocumentsFrame } from "@/components/documents/document-list";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { type Document, listDocuments } from "@/lib/documents";
 import { CoreStatusError } from "@/lib/subjects";
@@ -50,7 +50,7 @@ async function Documents({ params }: { params: Promise<{ id: string }> }) {
 export default function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<div aria-busy="true" className="mx-auto h-80 w-full max-w-220 rounded-sheet bg-sunken" />}>
+      <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
         <Documents params={params} />
       </Suspense>
     </AppShell>

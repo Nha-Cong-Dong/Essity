@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { StatsLoading, StatsScreen } from "@/components/stats/stats-screen";
 import { errorName, logError } from "@/lib/log";
 import { requireVerifiedSession } from "@/lib/session";
@@ -47,11 +47,11 @@ export default function StatsPage(props: { searchParams: Promise<{ subject?: str
         </Suspense>
       }
     >
-      <div className="mx-auto w-full max-w-280">
+      <PageColumn width="full">
         <Suspense fallback={<StatsLoading />}>
           <Stats {...props} />
         </Suspense>
-      </div>
+      </PageColumn>
     </AppShell>
   );
 }

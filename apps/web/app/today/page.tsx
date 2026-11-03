@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { TodayV2Failed, TodayV2Loading, TodayV2Screen } from "@/components/today-v2/today-v2-screen";
 import { errorName, logError } from "@/lib/log";
 import { requireVerifiedSession } from "@/lib/session";
@@ -45,11 +45,11 @@ export default function TodayPage() {
         </Suspense>
       }
     >
-      <div className="mx-auto w-full max-w-280">
+      <PageColumn width="full">
         <Suspense fallback={<TodayV2Loading />}>
           <Today />
         </Suspense>
-      </div>
+      </PageColumn>
     </AppShell>
   );
 }

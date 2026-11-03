@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { SubjectEntryRow } from "@/components/subjects/subject-entry-row";
 import { SubjectScreenBlock } from "@/components/subjects/subject-screen";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
@@ -53,7 +53,7 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
     graphCards: graph && graph.cards.length,
   });
   return (
-    <div className="mx-auto flex w-full max-w-280 flex-col gap-6">
+    <PageColumn width="full" className="flex flex-col gap-6">
       <a href="/subjects" className="text-small">
         Môn học
       </a>
@@ -64,14 +64,14 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
       </p>
       <SubjectScreenBlock subjectId={subject.id} subjectName={subject.name} state={state} nothingDue={nothingDue} />
       <SubjectEntryRow entries={entries} />
-    </div>
+    </PageColumn>
   );
 }
 
 export default function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<div aria-busy="true" className="mx-auto h-64 w-full max-w-280 rounded-sheet bg-sunken" />}>
+      <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-64 rounded-sheet bg-sunken" />}>
         <Subject params={params} />
       </Suspense>
     </AppShell>

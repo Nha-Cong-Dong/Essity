@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { AccountSlot } from "@/components/account-slot";
 import { AUTH_LINK } from "@/components/auth/fields";
 import { NhanVo, NotebookCover } from "@/components/notebook";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { NewSubjectForm } from "@/components/subjects/new-subject-form";
 import { exampleFor } from "@/lib/exam-date";
 import { requireVerifiedSession } from "@/lib/session";
@@ -23,7 +23,7 @@ async function NewSubject() {
 export default function NewSubjectPage() {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <div className="mx-auto flex w-full max-w-160 flex-col gap-4">
+      <PageColumn width="read" className="flex flex-col gap-4">
         <a href="/subjects" className={AUTH_LINK}>
           Môn học
         </a>
@@ -34,7 +34,7 @@ export default function NewSubjectPage() {
             </Suspense>
           </NhanVo>
         </NotebookCover>
-      </div>
+      </PageColumn>
     </AppShell>
   );
 }

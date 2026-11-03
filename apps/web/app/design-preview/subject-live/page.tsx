@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { SubjectEntryRow } from "@/components/subjects/subject-entry-row";
 import { SubjectScreenBlock } from "@/components/subjects/subject-screen";
 import { entryRow } from "@/lib/subject-entries";
@@ -35,7 +35,7 @@ async function Fixture({ searchParams }: { searchParams: Promise<{ state?: strin
   const { state = "not-suggested" } = await searchParams;
   return (
     <AppShell current="/subjects" account={<AccountMenu email="xem-thu@example.com" />}>
-      <div className="mx-auto flex w-full max-w-280 flex-col gap-6">
+      <PageColumn width="full" className="flex flex-col gap-6">
         <h1 className="m-0 font-display text-title wrap-anywhere">{SUBJECT_FIXTURE.name}</h1>
         <SubjectScreenBlock
           subjectId={SUBJECT_FIXTURE.id}
@@ -43,7 +43,7 @@ async function Fixture({ searchParams }: { searchParams: Promise<{ state?: strin
           state={SUBJECT_STATES[state] ?? SUBJECT_STATES["not-suggested"]}
         />
         <SubjectEntryRow entries={ENTRIES} />
-      </div>
+      </PageColumn>
     </AppShell>
   );
 }

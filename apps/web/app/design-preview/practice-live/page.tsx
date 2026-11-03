@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { AccountMenu } from "@/components/account-menu";
 import { PracticeLive } from "@/components/practice/practice-live";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { LIVE_LIST, LIVE_SUBJECT, LIVE_TYPES } from "@/lib/fixtures/practice-live";
 
 export const metadata: Metadata = { title: "Design preview: luyện tập thật · Essity" };
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Design preview: luyện tập thật
 export default function PracticeLivePreview() {
   return (
     <AppShell current="/subjects" account={<AccountMenu email="xem-thu@example.com" />}>
-      <div className="mx-auto w-full max-w-280">
+      <PageColumn width="full">
         <PracticeLive
           subjectId={LIVE_SUBJECT.id}
           subjectName={LIVE_SUBJECT.name}
@@ -21,7 +21,7 @@ export default function PracticeLivePreview() {
           types={LIVE_TYPES}
           listPath="/design-preview/practice-live"
         />
-      </div>
+      </PageColumn>
     </AppShell>
   );
 }

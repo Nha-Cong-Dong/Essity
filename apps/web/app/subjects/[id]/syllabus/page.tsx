@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { SyllabusLive } from "@/components/syllabus/syllabus-live";
 import { loadOutline } from "@/lib/outline";
@@ -28,7 +28,7 @@ async function Syllabus({ params }: { params: Promise<{ id: string }> }) {
   }
   if (outline === null) {
     return (
-      <div className="mx-auto w-full max-w-(--col-session)">
+      <PageColumn width="session">
         <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
           <p className="m-0 font-semibold">Không tải được đề cương.</p>
           <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
@@ -36,20 +36,20 @@ async function Syllabus({ params }: { params: Promise<{ id: string }> }) {
             Thử lại
           </a>
         </div>
-      </div>
+      </PageColumn>
     );
   }
   return (
-    <div className="mx-auto w-full max-w-(--col-session)">
+    <PageColumn width="session">
       <SyllabusLive subjectId={subject.id} subjectName={subject.name} initial={outline} />
-    </div>
+    </PageColumn>
   );
 }
 
 export default function SyllabusPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<div aria-busy="true" className="mx-auto h-80 w-full max-w-(--col-session) rounded-sheet bg-sunken" />}>
+      <Suspense fallback={<PageColumn width="session" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
         <Syllabus params={params} />
       </Suspense>
     </AppShell>

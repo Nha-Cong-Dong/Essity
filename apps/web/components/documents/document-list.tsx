@@ -1,4 +1,5 @@
 import { Marker } from "@/components/notebook";
+import { PageColumn } from "@/components/shells";
 
 // T4.9 (US-01): a subject's documents with their processing state (screens-html/screens/subject.html,
 // ".docs"). Sentences from the mockup are final; the failure ones are placeholders (risk register R09).
@@ -91,7 +92,7 @@ export function DocumentList({ subjectId, docs }: { subjectId: string; docs: Lis
 
 export function DocumentsFrame({ name, children }: { name: string; children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex w-full max-w-220 flex-col">
+    <PageColumn width="full" className="flex flex-col">
       <a href="/subjects" className="mb-4 self-start text-small underline">
         Môn học
       </a>
@@ -99,6 +100,6 @@ export function DocumentsFrame({ name, children }: { name: string; children: Rea
         <Marker>{name}</Marker>
       </h1>
       {children}
-    </div>
+    </PageColumn>
   );
 }

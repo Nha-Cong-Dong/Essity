@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { LogSession } from "@/components/log-session";
 import { PageFold } from "@/components/motifs";
+import { PageColumn } from "@/components/shells";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { Sheet } from "@/components/ui/sheet";
 import { requireVerifiedSession } from "@/lib/session";
@@ -29,7 +30,7 @@ export async function NewSessionEntry({
   if (target) redirect(target);
   const saved = typeof session === "string" && isSubjectId(session) ? session : undefined;
   return (
-    <div className="mx-auto w-full max-w-220">
+    <PageColumn width="full">
       <a href={`/subjects/${subject.id}/documents`} className="inline-flex items-center gap-1 text-meta text-ink-soft">
         ← {subject.name}
       </a>
@@ -37,6 +38,6 @@ export async function NewSessionEntry({
         <PageFold />
         <LogSession subjectId={subject.id} subjectName={subject.name} savedSessionId={saved} />
       </Sheet>
-    </div>
+    </PageColumn>
   );
 }

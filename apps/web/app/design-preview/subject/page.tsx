@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { SubjectBlock } from "./block";
 import { SUBJECT_FIXTURE, SUBJECT_LONG, SUBJECT_STATES } from "@/lib/fixtures/today-v2";
 
@@ -19,7 +19,7 @@ async function Fixture({ searchParams }: { searchParams: Query }) {
   const suggestion = SUBJECT_STATES[state] ?? SUBJECT_STATES.suggested;
   return (
     <AppShell current="/subjects" account={<AccountMenu email="xem-thu@example.com" />}>
-      <div className="mx-auto flex w-full max-w-280 flex-col gap-6">
+      <PageColumn width="full" className="flex flex-col gap-6">
         <a href="/subjects" className="text-small">
           Môn học
         </a>
@@ -28,7 +28,7 @@ async function Fixture({ searchParams }: { searchParams: Query }) {
           Thi ngày {subject.exam_date} (còn {subject.days} ngày)
         </p>
         <SubjectBlock subjectId={subject.id} subjectName={subject.name} state={suggestion} />
-      </div>
+      </PageColumn>
     </AppShell>
   );
 }

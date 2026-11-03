@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { AccountMenu } from "@/components/account-menu";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { TodayScreen } from "@/components/today/today-screen";
 import type { Today } from "@/lib/today";
 
@@ -45,9 +45,9 @@ const TODAY: Today = {
 export default function TodayLayoutFixture() {
   return (
     <AppShell current="/today" account={<AccountMenu email="xem-thu@example.com" />}>
-      <div className="mx-auto w-full max-w-280">
+      <PageColumn width="full">
         <TodayScreen today={TODAY} />
-      </div>
+      </PageColumn>
     </AppShell>
   );
 }
