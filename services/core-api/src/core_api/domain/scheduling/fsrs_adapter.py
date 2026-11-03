@@ -17,7 +17,12 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
 from fsrs import Card, Rating, Scheduler, State
-from fsrs.scheduler import DEFAULT_PARAMETERS
+
+# Re-exported (explicit `as`): this is the only module that imports py-fsrs, and T5.9 fits
+# parameters within these bounds.
+from fsrs.scheduler import DEFAULT_PARAMETERS as DEFAULT_PARAMETERS
+from fsrs.scheduler import LOWER_BOUNDS_PARAMETERS as LOWER_BOUNDS_PARAMETERS
+from fsrs.scheduler import UPPER_BOUNDS_PARAMETERS as UPPER_BOUNDS_PARAMETERS
 
 from core_api.domain.mastery import PracticeRating
 from core_api.domain.scheduling.rating import ReviewRating

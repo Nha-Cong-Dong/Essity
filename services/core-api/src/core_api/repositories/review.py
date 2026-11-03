@@ -32,6 +32,7 @@ from core_api.db.models import (
 )
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
 from core_api.domain.scheduling.fsrs_adapter import Phase
+from core_api.domain.scheduling.params import active_parameters
 from core_api.domain.scheduling.rating import ReviewRating, Verdict
 from core_api.domain.scheduling.replay import replay
 from core_api.domain.today import MAX_QUESTIONS, RECALL_LEVEL
@@ -580,6 +581,7 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         user = self.session.get(User, self.user_id)
         assert user is not None
         tz = ZoneInfo(user.timezone)
+        parameters = active_parameters(user.fsrs_params, user.fsrs_params_version)
         units = select(KnowledgeUnit.id).where(KnowledgeUnit.user_id == self.user_id)
         if subject_id is not None:
             units = units.where(KnowledgeUnit.subject_id == subject_id)
@@ -592,7 +594,7 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         )
         rows: list[dict[str, object]] = []
         for (unit_id, facet, exam_day), reviews in groupby(
-            self._current_reviews(subject_id, unit_ids),
+            self.current_reviews(subject_id, unit_ids),
             key=lambda row: (row[0], row[1], row[4]),
         ):
             state = replay(
@@ -600,6 +602,7 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
                 exam_day=exam_day,
                 tz=tz,
                 day_start_hour=user.day_start_hour,
+                parameters=parameters,
             )
             assert state is not None
             rows.append(
@@ -633,7 +636,7 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
         self.session.expire_all()
         return len(rows)
 
-    def _current_reviews(
+    def current_reviews(
         self, subject_id: uuid.UUID | None, unit_ids: Sequence[uuid.UUID] | None = None
     ) -> Sequence[tuple[uuid.UUID, str, int, datetime, date]]:
         """(unit, facet, rating, reviewed_at, exam date) of every review that counts: the rows of

@@ -42,6 +42,7 @@ from core_api.domain.grading import (
     build_request,
     check_response,
 )
+from core_api.domain.scheduling.params import active_parameters
 from core_api.domain.scheduling.rating import Verdict, rating_for
 from core_api.domain.scheduling.replay import schedule_review
 from core_api.domain.today import RECALL_LEVEL
@@ -239,6 +240,7 @@ def record_grade(session: Session, user: User, attempt: Attempt, checked: Checke
     logs = ReviewLogRepository(session, user.id)
     states = MemoryStateRepository(session, user.id)
     tz = ZoneInfo(user.timezone)
+    parameters = active_parameters(user.fsrs_params, user.fsrs_params_version)
     reviewed_at = attempt.submitted_at
     late: list[uuid.UUID] = []
     for unit_id in unit_ids:
@@ -258,6 +260,7 @@ def record_grade(session: Session, user: User, attempt: Attempt, checked: Checke
                 exam_day=exam_day,
                 tz=tz,
                 day_start_hour=user.day_start_hour,
+                parameters=parameters,
             ),
         )
     if late:

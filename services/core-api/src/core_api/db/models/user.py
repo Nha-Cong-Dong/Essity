@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import CheckConstraint, DateTime, SmallInteger, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -32,7 +33,9 @@ class User(CreatedAt, Base):
         SmallInteger, server_default=text(str(DEFAULT_DAY_START_HOUR))
     )
     # Per-user FSRS parameters once the optimizer has run (ADR-0009); empty = FSRS defaults.
-    fsrs_params: Mapped[list[float] | None] = mapped_column(JSONB)
+    # {"versions": [...]}, the history of fitted parameters; the active one is
+    # `fsrs_params_version` (T5.9, domain.scheduling.params).
+    fsrs_params: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     fsrs_params_version: Mapped[int | None]
     # Empty = the user has not agreed to their data being used for evals.
     eval_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

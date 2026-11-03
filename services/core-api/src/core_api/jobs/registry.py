@@ -9,6 +9,7 @@ from core_api.jobs import (
     document_cleanup,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     job_health,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     note_cleanup,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    optimize_fsrs,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     outbox_cleanup,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     practice_grade_retry,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     propose_unit_edges,  # noqa: F401  # pyright: ignore[reportUnusedImport]
