@@ -1350,6 +1350,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/units/{unit_id}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Card Sources
+         * @description Errors: 404 `unit_not_found` (another user's, or its subject was deleted).
+         */
+        get: operations["card_sources_v1_units__unit_id__sources_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1520,6 +1540,45 @@ export interface components {
             start_label: string | null;
             /** Start Page */
             start_page: number;
+        };
+        /** CardSourceOut */
+        CardSourceOut: {
+            /**
+             * Anchor Id
+             * Format: uuid
+             */
+            anchor_id: string;
+            /** Document Id */
+            document_id: string | null;
+            /** Document Name */
+            document_name: string | null;
+            /** Mark End */
+            mark_end: number | null;
+            /** Mark Start */
+            mark_start: number | null;
+            /** Page No */
+            page_no: number | null;
+            /** Page Text */
+            page_text: string | null;
+            /** Quote */
+            quote: string;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+        };
+        /** CardSourcesOut */
+        CardSourcesOut: {
+            /** Sources */
+            sources: components["schemas"]["CardSourceOut"][];
+            /** Title */
+            title: string;
+            /**
+             * Unit Id
+             * Format: uuid
+             */
+            unit_id: string;
         };
         /**
          * CommandIn
@@ -5645,6 +5704,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    card_sources_v1_units__unit_id__sources_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardSourcesOut"];
+                };
             };
             /** @description Validation Error */
             422: {
