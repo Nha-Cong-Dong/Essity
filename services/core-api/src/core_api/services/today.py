@@ -30,7 +30,7 @@ from core_api.domain.practice_mix import (
     practice_seconds,
     split_practice,
 )
-from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler, MemoryState, Phase
+from core_api.domain.scheduling.fsrs_adapter import MemoryState, Phase
 from core_api.domain.today import DueUnit, PlannedQuestion, TodayPlan, compose_today, exam_weight
 from core_api.domain.today_v2 import TodayInputs, TodayV2, compose, review_from_plan
 from core_api.jobs.regenerate_review_question import enqueue_review_question
@@ -41,10 +41,10 @@ from core_api.repositories.review import (
 )
 from core_api.repositories.subject import SubjectRepository
 from core_api.repositories.today import CARD_SOURCE, PracticeCandidate, TodayRepository
+from core_api.repositories.user_scheduler import scheduler_for, scheduler_for_id
 from core_api.services.suggestions import subject_inputs
 
 _log = logging.getLogger("core_api.today")
-_SCHEDULER = FsrsScheduler()
 NEW_CARD_RISK = 0.5  # a card never asked: between a fresh and a nearly forgotten one
 
 
@@ -93,6 +93,7 @@ def compose_mixed(
     Two passes: the v1 composer picks the cards (it keeps the new-card floor and the exam quota,
     T2.23); the mix then shares the cap, and when it cuts cards the composer picks again for the
     places left. Without a due practice question the answer is the v1 plan, unchanged."""
+    scheduler = scheduler_for(user)
     tz = ZoneInfo(user.timezone)
     day = learning_day(now, tz, user.day_start_hour)
     listed = SubjectRepository(session, user.id).list_with_exams()
@@ -114,6 +115,7 @@ def compose_mixed(
             day_start_hour=user.day_start_hour,
             unasked=unasked,
             room=room,
+            scheduler=scheduler,
         )
 
     plan = pick_cards()
@@ -139,9 +141,9 @@ def compose_mixed(
         held = states.get(item.question_id, [])
         if item.kind == "new" or not held:
             return MixedEntry(item.question_id, item.subject_id, "card", NEW_CARD_RISK, None, None)
-        recall = min(_SCHEDULER.retrievability(st, now) for st in held)
+        recall = min(scheduler.retrievability(st, now) for st in held)
         weight = exam_weight(exams.get(item.subject_id), day)
-        reason = explain(held, now)
+        reason = explain(held, now, scheduler)
         return MixedEntry(
             item.question_id,
             item.subject_id,
@@ -155,7 +157,7 @@ def compose_mixed(
     for question_id in due_ids:
         c = by_id[question_id]
         assert c.state is not None
-        recall = _SCHEDULER.retrievability(c.state, now)
+        recall = scheduler.retrievability(c.state, now)
         weight = exam_weight(exams.get(c.subject_id), day)
         last = c.state.last_review
         days = max(0, (now - last).days)
@@ -210,13 +212,15 @@ def build_v2(
 ) -> TodayV2:
     """The v2 parts for this plan. `units`: every scheduled unit the plan was composed from; the
     reason of a due question is read from their schedules (no query per question)."""
+    scheduler = scheduler_for(user)
     tz = ZoneInfo(user.timezone)
     day = learning_day(now, tz, user.day_start_hour)
     states: dict[uuid.UUID, list[MemoryState]] = defaultdict(list)
     for unit in units:
         states[unit.question_id].append(unit.state)
     reasons: dict[uuid.UUID, Reason] = {
-        item.question_id: explain(states.get(item.question_id, []), now) for item in plan.items
+        item.question_id: explain(states.get(item.question_id, []), now, scheduler)
+        for item in plan.items
     }
     review = review_from_plan(plan, reasons, new_saved_today=reads.saved_on(day))
     subjects, names = subject_inputs(session, user)
@@ -328,6 +332,6 @@ def practice_reason(
     )
     return Reason(
         kind="review",
-        retrievability=_SCHEDULER.retrievability(state, now),
+        retrievability=scheduler_for_id(session, user_id).retrievability(state, now),
         days_since_last=max(0, (now - row.last_review).days),
     )

@@ -27,11 +27,11 @@ from core_api.domain.progress import (
     readiness,
     study_weeks,
 )
-from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler, Phase
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
+from core_api.domain.scheduling.fsrs_adapter import Phase
 from core_api.repositories.base import UserScopedRepository
+from core_api.repositories.user_scheduler import scheduler_for_id
 
-_SCHEDULER = FsrsScheduler()
 Q1_NOTE = "Q1 tạm"  # the readiness definition is temporary (PRD §8.1)
 
 
@@ -105,6 +105,7 @@ class ProgressRepository(UserScopedRepository[MemoryState]):
             )
             .where(KnowledgeUnit.user_id == self.user_id, KnowledgeUnit.status == "canonical")
         ).all()
+        scheduler = scheduler_for_id(self.session, self.user_id)
         units: dict[uuid.UUID, list[UnitProgress]] = {}
         skipped: dict[uuid.UUID, int] = {}
         for subject_id, skipped_at, memory in rows:
@@ -121,7 +122,7 @@ class ProgressRepository(UserScopedRepository[MemoryState]):
                     due=memory.due,
                     last_review=memory.last_review,
                 )
-                recall = _SCHEDULER.retrievability(state, now)
+                recall = scheduler.retrievability(state, now)
                 units.setdefault(subject_id, []).append(UnitProgress(True, recall))
         return units, skipped
 

@@ -212,7 +212,10 @@ def _queued(
 def record_grade(session: Session, user: User, attempt: Attempt, checked: CheckedGrade) -> Grade:
     """Write a grade and the schedule it moves, in the caller's transaction (T2.13 steps 5–7).
     Locks: the subject FOR SHARE (a moved exam replays first, or waits for this), then the units
-    by id. A review older than the unit's last one replays the unit (PLAN T2.13 25/10)."""
+    by id. A review older than the unit's last one replays the unit (PLAN T2.13 25/10).
+    The user row is locked first, the lock `optimize_fsrs` takes: a grade during the weekly fit
+    waits for it and then reads the new parameters (T5.9b)."""
+    session.refresh(user, with_for_update=True)
     question = QuestionRepository(session, user.id).get(attempt.question_id)
     assert question is not None and attempt.submitted_at is not None
     subjects = SubjectRepository(session, user.id)

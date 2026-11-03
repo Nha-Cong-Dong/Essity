@@ -99,6 +99,7 @@ def compose_today(
     unasked: Mapping[uuid.UUID, int] | None = None,
     exclude: frozenset[uuid.UUID] = frozenset(),
     room: int | None = None,
+    scheduler: FsrsScheduler = _SCHEDULER,
 ) -> TodayPlan:
     """Today's session from every scheduled unit (due or not), the new questions and each
     subject's exam day. `unasked`: units never asked by subject (exam quota, backlog); `exclude`:
@@ -111,7 +112,7 @@ def compose_today(
     due = [unit for unit in scheduled if unit.state.due < end_of_today]
 
     def risk(unit: DueUnit) -> float:
-        recall = _SCHEDULER.retrievability(unit.state, now)
+        recall = scheduler.retrievability(unit.state, now)
         return recall * exam_weight(exams.get(unit.subject_id), today)
 
     ranked = sorted((u for u in due if u.question_id not in exclude), key=risk)

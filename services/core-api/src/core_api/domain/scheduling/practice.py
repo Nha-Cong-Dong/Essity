@@ -136,9 +136,14 @@ def replay(
     return state
 
 
-def is_known(state: PracticeState, now: datetime, config: MasteryConfig = DEFAULT_CONFIG) -> bool:
+def is_known(
+    state: PracticeState,
+    now: datetime,
+    config: MasteryConfig = DEFAULT_CONFIG,
+    scheduler: FsrsScheduler = _SCHEDULER,
+) -> bool:
     """ "Thuộc": retrievability at `now` >= 90% and the last attempt correct (US-16 AC7 family)."""
-    return is_learned(_SCHEDULER.retrievability(state.memory, now), state.last_verdict, config)
+    return is_learned(scheduler.retrievability(state.memory, now), state.last_verdict, config)
 
 
 def is_due(state: PracticeState, now: datetime, *, tz: ZoneInfo, day_start_hour: int) -> bool:

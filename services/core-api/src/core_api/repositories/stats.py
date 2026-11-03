@@ -26,15 +26,15 @@ from core_api.db.models import (
 from core_api.domain.mastery import PracticeVerdict
 from core_api.domain.readiness import Card, Ready, Section
 from core_api.domain.readiness import readiness as question_readiness
-from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler, Phase
 from core_api.domain.scheduling.fsrs_adapter import MemoryState as State
+from core_api.domain.scheduling.fsrs_adapter import Phase
 from core_api.domain.scheduling.practice import verdict_of
 from core_api.domain.stats import ActivityEvent, BankQuestion, Leaf
 from core_api.repositories.base import UserScopedRepository
 from core_api.repositories.practice import PracticeLogRepository
 from core_api.repositories.progress import ProgressRepository
+from core_api.repositories.user_scheduler import scheduler_for_id
 
-_SCHEDULER = FsrsScheduler()
 _LIVE_CARD = ("canonical",)
 # A question that is not a pipeline review question: the learner's practice bank.
 _BANK_SOURCES = ("bank", "generated")
@@ -118,9 +118,10 @@ class StatsRepository(UserScopedRepository[MemoryState]):
                 KnowledgeUnit.skipped_at.is_(None),
             )
         ).all()
+        scheduler = scheduler_for_id(self.session, self.user_id)
         out: dict[uuid.UUID, list[float]] = {}
         for subject_id, memory in rows:
-            out.setdefault(subject_id, []).append(_SCHEDULER.retrievability(_state(memory), now))
+            out.setdefault(subject_id, []).append(scheduler.retrievability(_state(memory), now))
         return out
 
     def bank(self, now: datetime) -> dict[uuid.UUID, list[BankQuestion]]:
@@ -175,10 +176,11 @@ class StatsRepository(UserScopedRepository[MemoryState]):
                 (Question.source != "generated") | Question.kept_at.is_not(None),
             )
         ).all()
+        scheduler = scheduler_for_id(self.session, self.user_id)
         out: dict[uuid.UUID, list[BankQuestion]] = {}
         for qid, subject_id, type_name in questions:
             state = states.get(qid)
-            recall = None if state is None else _SCHEDULER.retrievability(_state(state), now)
+            recall = None if state is None else scheduler.retrievability(_state(state), now)
             ready = isinstance(question_readiness(links.get(qid, []), sections, cards), Ready)
             out.setdefault(subject_id, []).append(
                 BankQuestion(

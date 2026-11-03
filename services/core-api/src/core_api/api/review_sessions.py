@@ -33,6 +33,7 @@ from core_api.repositories.review import (
 )
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
 from core_api.repositories.today import TodayRepository
+from core_api.repositories.user_scheduler import scheduler_for_id
 from core_api.services.today import compose_mixed, is_practice, practice_reason, session_steps
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
@@ -207,7 +208,11 @@ def current_out(
     reason = (
         practice_reason(session, user_id, step.question.id, now)
         if practice
-        else explain(TodayRepository(session, user_id).schedules_of(step.question.id), now)
+        else explain(
+            TodayRepository(session, user_id).schedules_of(step.question.id),
+            now,
+            scheduler_for_id(session, user_id),
+        )
     )
     return CurrentOut(
         ungraded=ungraded,
