@@ -6,7 +6,7 @@ import { StartButton } from "@/components/today/start-button";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { studyHref } from "@/lib/session-study/entry";
-import { type Pace, paceLine, TODAY_V2_COPY as COPY } from "@/lib/today-v2";
+import { type Pace, TODAY_V2_COPY as COPY } from "@/lib/today-v2";
 
 // T7.13a (US-15 AC6, AC7; DESIGN §6.5 "Khối gợi ý hôm nay"): the suggestion block on a subject
 // screen, from a typed value, no API. "Gợi ý cho hôm nay" asks `resolve` (T7.13: the suggestions
@@ -28,7 +28,7 @@ function Suggested({ id, subjectId, subjectName, next }: { id: string; subjectId
   return (
     <>
       <h2 id={id} className="m-0 font-display text-lead wrap-anywhere">
-        {next.label ? `Hôm nay nên học: mục ${next.label}` : "Hôm nay nên học"}
+        {next.label ? `Nội dung hôm nay: mục ${next.label}` : "Nội dung hôm nay"}
       </h2>
       <p className="m-0 text-read wrap-anywhere">
         {next.title}
@@ -36,9 +36,6 @@ function Suggested({ id, subjectId, subjectName, next }: { id: string; subjectId
       </p>
       <p className="m-0 text-body wrap-anywhere">
         {next.reason}
-      </p>
-      <p className="m-0 text-meta text-ink-soft">
-        {paceLine(next.pace)}
       </p>
       <div className="mt-2">
         <Button
@@ -174,9 +171,9 @@ export function SubjectSuggestion({
               {COPY.practice}
             </Button>
           )}
-          {!noTextbook && shown.kind !== "exam_over" && (
+          {!noTextbook && shown.kind !== "exam_over" && shown.kind !== "suggested" && (
             <Button render={<a href={`/subjects/${subjectId}/sessions/new`} />} nativeButton={false} variant="quiet">
-              Học tự do
+              Học tự do môn này
             </Button>
           )}
         </div>

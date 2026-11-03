@@ -15,6 +15,12 @@ import { CoreStatusError } from "@/lib/subjects";
 import { loadGraph } from "@/lib/graph-load";
 import { loadOutline } from "@/lib/outline";
 import { loadQuestionList } from "@/lib/question-list";
+import { SubjectOutlineAside } from "@/components/subjects/subject-outline-aside";
+import { SubjectStatsBlock } from "@/components/subjects/subject-stats-block";
+import { CoverageBar } from "@/components/stats/stat-tile";
+import { getStats } from "@/lib/stats-api";
+import { outlineView } from "@/lib/syllabus/api";
+import { progress } from "@/lib/syllabus/tree";
 import { entryRow } from "@/lib/subject-entries";
 import { getSuggestions, getToday } from "@/lib/today";
 import { suggestionState } from "@/lib/today-adapt";
@@ -47,11 +53,17 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
     loadQuestionList(subject.id).catch(() => null),
     loadGraph(subject.id, null).catch(() => null),
   ]);
+  const stats = await getStats(subject.id)
+    .then((r) => r.view.subjects.find((x) => x.id === subject.id) ?? null)
+    .catch(() => null);
+  const view = outline === null ? null : outlineView(outline);
+  const prog = view?.kind === "ready" ? progress(view.nodes) : null;
   const entries = entryRow(subject.id, {
     outline,
     questions: questions && { ready: questions.ready, total: questions.total },
     graphCards: graph && graph.cards.length,
   });
+  const rowEntries = entries.filter((e) => e.key !== "syllabus" && e.key !== "stats");
   return (
     <PageColumn width="full" className="flex flex-col gap-6">
       <a href="/subjects" className="text-small">
@@ -59,11 +71,25 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
       </a>
       <h1 className="m-0 font-display text-title wrap-anywhere">{subject.name}</h1>
       <p className="m-0 text-read text-ink-soft">
-        Thi {dayLabel(subject.exam_date)}
+        Thi vào {dayLabel(subject.exam_date)}
         {subject.days_until_exam >= 0 ? ` (còn ${subject.days_until_exam} ngày)` : " (đã qua)"}
       </p>
-      <SubjectScreenBlock subjectId={subject.id} subjectName={subject.name} state={state} nothingDue={nothingDue} />
-      <SubjectEntryRow entries={entries} />
+      {prog !== null && prog.total > 0 && (
+        <div className="flex flex-col gap-1" data-subject-progress>
+          <p className="m-0 text-meta text-ink-soft">
+            Tiến độ: đã học {prog.done}/{prog.total} mục
+          </p>
+          <CoverageBar percent={(prog.done / prog.total) * 100} />
+        </div>
+      )}
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <SubjectScreenBlock subjectId={subject.id} subjectName={subject.name} state={state} nothingDue={nothingDue} />
+          {stats !== null && <SubjectStatsBlock stats={stats} />}
+          <SubjectEntryRow entries={rowEntries} />
+        </div>
+        {view?.kind === "ready" && <SubjectOutlineAside nodes={view.nodes} subjectId={subject.id} />}
+      </div>
     </PageColumn>
   );
 }
