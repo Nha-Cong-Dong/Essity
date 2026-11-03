@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export const NAV = [
   { href: "/today", label: "Hôm nay" },
   { href: "/subjects", label: "Môn học" },
-  { href: "/kho-kien-thuc", label: "Kho" },
+  { href: "/kho-kien-thuc", label: "Kho kiến thức" },
   { href: "/stats", label: "Thống kê" },
 ] as const;
 
@@ -42,7 +42,13 @@ export function MainNav({ current }: { current?: NavItem }) {
             "aria-[current=page]:[--focus:var(--bg)] aria-[current=page]:focus-visible:-outline-offset-4",
           )}
         >
-          {item.label}
+          {item.label.startsWith("Kho") ? (
+            <>
+              Kho<span className="max-[767px]:hidden">{item.label.slice(3)}</span>
+            </>
+          ) : (
+            item.label
+          )}
         </a>
       ))}
     </nav>
