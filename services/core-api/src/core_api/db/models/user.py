@@ -20,11 +20,21 @@ class User(CreatedAt, Base):
         # Normalized in code (domain.email); the database refuses anything else, so two rows can
         # never differ only by case.
         CheckConstraint("email = lower(email)", name="email_lowercase"),
+        # Normalized in code (domain.auth.username); the shape is repeated here so no path can
+        # store a name the rules refuse (US-12 D2).
+        CheckConstraint(
+            "username = lower(username) AND username ~ '^[a-z][a-z0-9_.]{2,19}$'"
+            " AND position('..' in username) = 0",
+            name="username_format",
+        ),
         CheckConstraint("day_start_hour BETWEEN 0 AND 23", name="day_start_hour_range"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(320), unique=True)  # 320: longest valid address
+    username: Mapped[str] = mapped_column(String(20), unique=True)
+    # Contact only (D4): E.164 `+84...`, not unique, never a login key, never logged.
+    phone: Mapped[str | None] = mapped_column(String(16))
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Empty for accounts that only sign in with Google (M5). argon2id hash otherwise (T1.7).
     password_hash: Mapped[str | None] = mapped_column(Text)
