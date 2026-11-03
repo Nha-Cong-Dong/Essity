@@ -25,6 +25,7 @@ from core_api.api import (
     review_sessions,
     session_confirm,
     session_notes,
+    session_pieces,
     sessions,
     stats,
     subjects,
@@ -89,6 +90,7 @@ app.include_router(units.router)
 app.include_router(graph.router)
 app.include_router(sessions.router)
 app.include_router(session_confirm.router)
+app.include_router(session_pieces.router)
 app.include_router(session_notes.router)
 app.include_router(submissions.router)
 app.include_router(drafts.router)

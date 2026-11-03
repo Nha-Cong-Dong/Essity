@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -15,7 +16,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core_api.db.base import Base, UserOwned, not_blank, one_of
@@ -298,3 +299,28 @@ class StudyLedger(UserOwned, Base):
     section_id: Mapped[uuid.UUID | None]
     units_saved: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SessionPiece(UserOwned, Base):
+    """One piece of a study session (F2, 04/11): what the learner wrote down when they pressed
+    "Ghi lại". Kept at once, so the page can list what was studied so far. "Hoàn thành" turns all
+    the pieces into one submission. `files` and `mentions` hold the request's own shapes."""
+
+    __tablename__ = "session_piece"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["session_id", "user_id"],
+            ["study_session.id", "study_session.user_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("session_id", "position"),
+        CheckConstraint("position >= 0", name="position_from_zero"),
+    )
+
+    session_id: Mapped[uuid.UUID]
+    position: Mapped[int] = mapped_column(Integer)
+    body: Mapped[str] = mapped_column("text", Text, server_default=text("''"))
+    files: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
+    mentions: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb")
+    )

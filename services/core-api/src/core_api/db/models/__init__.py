@@ -28,6 +28,7 @@ from core_api.db.models.study_filter import StudyFilter
 from core_api.db.models.study_session import (
     NoteFile,
     NoteUpload,
+    SessionPiece,
     SessionRange,
     StudyLedger,
     StudySession,
@@ -73,6 +74,7 @@ __all__ = [
     "ReviewLog",
     "ReviewSession",
     "ReviewSessionItem",
+    "SessionPiece",
     "SessionRange",
     "StudyLedger",
     "StudySession",

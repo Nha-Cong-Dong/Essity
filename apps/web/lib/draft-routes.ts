@@ -113,3 +113,13 @@ export function readSave(body: unknown): { units: { unit_id: string; version: nu
   }
   return { units: found };
 }
+
+export type PieceBody = { text: string; mentions: SubmitBody["mentions"]; files: UploadFile[] };
+
+/** F2: one piece of a study session ("Ghi lại"): the words, their `@` mentions and the files. */
+export function readPiece(body: unknown): PieceBody | null {
+  if (!isObject(body) || !exactly(body, ["text", "mentions", "files"])) return null;
+  const read = readSubmit({ session_id: "00000000-0000-0000-0000-000000000000", description: body.text, mentions: body.mentions, files: body.files });
+  if (read === null) return null;
+  return { text: read.description, mentions: read.mentions, files: read.files };
+}

@@ -8,7 +8,8 @@ import { FocusShell } from "@/components/shells";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { FileRow, Suggestion } from "@/lib/fixtures/session-study";
 import { type FileRef, rowStateOf } from "@/lib/session-study/files";
-import type { SessionApi } from "@/lib/session-study/api";
+import type { Piece, SessionApi } from "@/lib/session-study/api";
+import { rememberPendingSession } from "@/lib/session-study/pending";
 import { type Draft, draftsReducer } from "@/lib/session-study/drafts";
 import type { DocRef, Mention } from "@/lib/session-study/mention";
 import { type Round, roundReducer } from "@/lib/session-study/round";
@@ -41,6 +42,10 @@ export type SessionInitial = {
 
 export type SessionScreenProps = {
   subject: string;
+  /** F3: where the "cards are ready" toast leads (the subject's area of the knowledge store). */
+  subjectId?: string;
+  /** The preview: "Hoàn thành" stays on this screen, which then shows the reading and the cards. */
+  stayOnComplete?: boolean;
   stopHref: string;
   docs: DocRef[];
   suggestion: Suggestion;
@@ -97,7 +102,11 @@ function Suggest({ suggestion, id }: { suggestion: Suggestion; id: string }) {
 }
 
 export function SessionScreen(props: SessionScreenProps) {
-  const { subject, stopHref, docs, initial, api, footer } = props;
+  const { subject, subjectId, stopHref, docs, initial, api, footer } = props;
+  const pieceMode = typeof api?.addPiece === "function";
+  const [pieces, setPieces] = useState<Piece[]>([]);
+  const [recording, setRecording] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [round, send] = useReducer(roundReducer, initial.round);
   const [drafts, dispatch] = useReducer(draftsReducer, initial.drafts);
   const [text, setText] = useState(initial.text);
@@ -127,6 +136,60 @@ export function SessionScreen(props: SessionScreenProps) {
   useEffect(() => {
     if (round.focus) document.getElementById(`session-h-${round.focus}`)?.focus();
   }, [round]);
+
+  // F2: the pieces kept so far come from core-api (a reopened page shows them again).
+  useEffect(() => {
+    if (!pieceMode || !api) return;
+    void api.pieces().then((found) => {
+      if (found.ok) setPieces(found.data.pieces);
+    });
+  }, [api, pieceMode]);
+
+  async function record() {
+    if (!api || recording || uploading > 0) return;
+    if (text.trim() === "" && usableFiles === 0) {
+      setProblem(SUBMIT_COPY.nothing);
+      return;
+    }
+    setProblem(null);
+    setRecording(true);
+    const handed = new Map<string, FileRef>();
+    for (const row of files) {
+      const ref = row.state === "done" ? refs.current.get(row.id) : undefined;
+      if (ref) handed.set(ref.sha256, ref);
+    }
+    const result = await api.addPiece(text, mentions, [...handed.values()]);
+    setRecording(false);
+    if (!result.ok) {
+      setProblem(result.error === "text_too_long" ? SUBMIT_COPY.tooLong : SUBMIT_COPY.network);
+      return;
+    }
+    setPieces((rows) => [...rows, result.data]);
+    setText("");
+    setMentions([]);
+    setFiles([]);
+    refs.current.clear();
+    blobs.current.clear();
+    say("Đã ghi lại một phần.");
+  }
+
+  async function complete() {
+    if (!api || completing || pieces.length === 0) return;
+    setCompleting(true);
+    const result = await api.complete();
+    if (!result.ok) {
+      setCompleting(false);
+      setProblem(SUBMIT_COPY.network);
+      return;
+    }
+    if (!subjectId || props.stayOnComplete) {
+      // The preview has no subject page to go to: the same screen shows the reading and the cards.
+      send({ type: "send" });
+      return;
+    }
+    rememberPendingSession({ sessionId: api.sessionId, subjectId, subject });
+    window.location.assign(`/subjects/${subjectId}`);
+  }
 
   const uploading = files.filter((f) => f.state === "uploading").length;
   const usableFiles = files.filter((f) => f.state === "done").length;
@@ -357,9 +420,9 @@ export function SessionScreen(props: SessionScreenProps) {
                   className="max-[480px]:w-full"
                   aria-disabled={uploading > 0 || undefined}
                   aria-describedby={uploading > 0 ? "session-send-why" : undefined}
-                  onClick={submit}
+                  onClick={pieceMode ? () => void record() : submit}
                 >
-                  Gửi
+                  {pieceMode ? (recording ? "Đang ghi…" : "Ghi lại") : "Gửi"}
                 </Button>
                 {uploading > 0 && (
                   <span id="session-send-why">
@@ -367,6 +430,25 @@ export function SessionScreen(props: SessionScreenProps) {
                   </span>
                 )}
               </div>
+              {pieceMode && pieces.length > 0 && (
+                <section aria-label="Đã học trong buổi" className="flex flex-col gap-3 border-t border-line pt-5">
+                  <h3 className="m-0 font-display text-lead">Đã học trong buổi</h3>
+                  <ol className="m-0 flex list-none flex-col gap-2 p-0">
+                    {pieces.map((p, index) => (
+                      <li key={p.id} className="rounded-control bg-sunken p-3 text-body wrap-anywhere">
+                        <span className="text-meta text-ink-soft">Phần {index + 1}</span>
+                        <p className="m-0 whitespace-pre-line">
+                          {p.text || `${p.fileCount} file`}
+                          {p.text && p.fileCount > 0 ? ` (+${p.fileCount} file)` : ""}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                  <Button type="button" aria-disabled={completing || undefined} onClick={() => void complete()}>
+                    {completing ? "Đang hoàn thành…" : "Hoàn thành"}
+                  </Button>
+                </section>
+              )}
               {isFree ? null : (
                 <button
                   type="button"
