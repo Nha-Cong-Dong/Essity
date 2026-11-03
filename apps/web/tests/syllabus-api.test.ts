@@ -7,11 +7,11 @@ import { applyMark, applyRange, excludeToggle } from "@/lib/syllabus/tree";
 type Section = OutlineOut["sections"][number];
 const sec = (over: Partial<Section> & { id: string }): Section => ({
   parent_id: null, title: over.id, first_page: 1, last_page: 10, weight: 10, unit: "page", source: "bookmark",
-  excluded: false, excluded_effective: false, progress: 0, studied: false, children: [], ...over,
+  excluded: false, excluded_effective: false, progress: 0, studied: false, learned: false, children: [], ...over,
 });
 const out = (sections: Section[], over: Partial<OutlineOut> = {}): OutlineOut => ({
   subject_id: "s", document: { id: "d", page_count: 100, short_name: "Giáo trình" }, progress: 0, reason: null,
-  temporary: false, sections, ...over,
+  temporary: false, remaining_chapters: 0, sections, ...over,
 });
 const view = (o: OutlineOut) => {
   const v = outlineView(o);

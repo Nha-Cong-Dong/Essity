@@ -2109,6 +2109,8 @@ export interface components {
             progress: number;
             /** Reason */
             reason: ("no_textbook" | "not_indexed" | "no_outline") | null;
+            /** Remaining Chapters */
+            remaining_chapters: number;
             /** Sections */
             sections: components["schemas"]["SectionOut"][];
             /**
@@ -2134,6 +2136,8 @@ export interface components {
         PaceOut: {
             /** Days Left */
             days_left: number | null;
+            /** Remaining Chapters */
+            remaining_chapters: number;
             /** Remaining Leaves */
             remaining_leaves: number;
             /** Remaining Weight */
@@ -2167,6 +2171,18 @@ export interface components {
              * @enum {string}
              */
             core_api: "ok" | "unavailable";
+        };
+        /** PlannedUnitOut */
+        PlannedUnitOut: {
+            /** Chapter Title */
+            chapter_title: string | null;
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
+            /** Title */
+            title: string;
         };
         /** PracticeLineOut */
         PracticeLineOut: {
@@ -2539,6 +2555,8 @@ export interface components {
             id: string;
             /** Last Page */
             last_page: number | null;
+            /** Learned */
+            learned: boolean;
             /** Parent Id */
             parent_id: string | null;
             /** Progress */
@@ -2824,6 +2842,8 @@ export interface components {
              * @enum {string}
              */
             kind: "next_leaf" | "review_practice" | "free_session";
+            /** Nothing Today */
+            nothing_today: boolean;
             pace: components["schemas"]["PaceOut"];
             /** Partial */
             partial: boolean;
@@ -2831,6 +2851,8 @@ export interface components {
             reason: string;
             /** Remaining */
             remaining: number | null;
+            /** Remaining Chapters */
+            remaining_chapters: number;
             /** Section Id */
             section_id: string | null;
             /** Section Title */
@@ -2844,6 +2866,8 @@ export interface components {
             subject_name: string;
             /** Unit */
             unit: string | null;
+            /** Units */
+            units: components["schemas"]["PlannedUnitOut"][];
         };
         /** SuggestionsOut */
         SuggestionsOut: {

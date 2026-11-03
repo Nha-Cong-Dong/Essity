@@ -223,7 +223,7 @@ def build_v2(
         for item in plan.items
     }
     review = review_from_plan(plan, reasons, new_saved_today=reads.saved_on(day))
-    subjects, names = subject_inputs(session, user)
+    subjects, names = subject_inputs(session, user, day)
     inputs = TodayInputs(
         now=now,
         tz=tz,

@@ -19,10 +19,17 @@ router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
 class PaceOut(BaseModel):
     remaining_leaves: int
+    remaining_chapters: int
     remaining_weight: float
     unit: str | None
     days_left: int | None
     text: str
+
+
+class PlannedUnitOut(BaseModel):
+    section_id: uuid.UUID
+    title: str
+    chapter_title: str | None
 
 
 class SuggestionOut(BaseModel):
@@ -36,6 +43,11 @@ class SuggestionOut(BaseModel):
     unit: str | None
     reason: str
     pace: PaceOut
+    # E1/E2: today's leaf sections (may be empty); web shows "Học tự do" only when
+    # `nothing_today` (leaves remain, none due) or the subject has nothing to study.
+    units: list[PlannedUnitOut]
+    nothing_today: bool
+    remaining_chapters: int
 
 
 class EmptyOut(BaseModel):
@@ -67,8 +79,15 @@ def suggestion_out(s: Suggestion, name: str) -> SuggestionOut:
         remaining=s.remaining_weight,
         unit=s.unit,
         reason=reason_line(s),
+        units=[
+            PlannedUnitOut(section_id=u.id, title=u.title, chapter_title=u.chapter_title)
+            for u in s.units
+        ],
+        nothing_today=s.nothing_today,
+        remaining_chapters=s.pace.remaining_chapters,
         pace=PaceOut(
             remaining_leaves=s.pace.remaining_leaves,
+            remaining_chapters=s.pace.remaining_chapters,
             remaining_weight=s.pace.remaining_weight,
             unit=s.pace.unit,
             days_left=s.pace.days_left,

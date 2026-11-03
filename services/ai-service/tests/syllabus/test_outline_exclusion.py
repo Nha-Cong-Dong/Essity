@@ -14,7 +14,7 @@ from ai_service.tasks.outline_exclusion import is_non_content_title
         "Acknowledgments", "About the Authors", "Index", "Subject Index", "Bibliography",
         "References", "Lời nói đầu", "Loi noi dau", "Lời giới thiệu", "Mục lục",
         "MỤC LỤC", "Tài liệu tham khảo", "Danh mục tài liệu tham khảo", "Chỉ mục", "Trang bìa",
-        "Lời cảm ơn", "1. Preface", "iv Index", "Contents:",
+        "Lời cảm ơn", "1. Preface", "iv Index", "Contents:", "Appendix A", "Phụ lục A", "Phụ lục",
     ],
 )  # fmt: skip
 def test_non_content_titles_are_recognised(title: str) -> None:
@@ -25,7 +25,7 @@ def test_non_content_titles_are_recognised(title: str) -> None:
     "title",
     [
         "Chapter 1", "Introduction", "Index numbers", "References and citation styles",
-        "Appendix A", "Phụ lục A", "Phụ lục", "Glossary", "Chương 1: Mục lục hóa", "Cover letters",
+        "Glossary", "Chương 1: Mục lục hóa", "Cover letters",
         "Contents of a stomach", "", "Bìa cứng",
     ],
 )  # fmt: skip

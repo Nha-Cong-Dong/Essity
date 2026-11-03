@@ -21,10 +21,11 @@ const ENTRIES = entryRow(SUBJECT_FIXTURE.id, {
     progress: 0.5,
     reason: null,
     temporary: false,
+    remaining_chapters: 1,
     sections: ["1", "2"].map((id, i) => ({
       id, parent_id: null, title: id, first_page: 1, last_page: 10, weight: 10, unit: "page" as const,
       source: "bookmark" as const, excluded: false, excluded_effective: false, progress: i === 0 ? 1 : 0,
-      studied: i === 0, children: [],
+      studied: i === 0, learned: i === 0, children: [],
     })),
   },
   questions: { ready: 5, total: 9 },
