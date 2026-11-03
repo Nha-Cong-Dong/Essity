@@ -7,11 +7,18 @@ rebuild-practice-state --user-email EMAIL
 seed-demo --user-email EMAIL
     Give one user a made-up subject to review by hand with the fake grader (T2.16, plan D-10).
     Local and test only.
+erase-user --user-id UUID [--confirm-email EMAIL]
+    Erase everything of one user (T6.3, runbook db-roles §4). Connects as the `core_eraser`
+    login given in CORE_ERASER_DATABASE_URL, and as the app. The email is required while the
+    user exists; omit it to run an erase again for a user that is gone. Safe to run again.
 """
 
 import argparse
+import os
 import sys
+import uuid
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -36,6 +43,9 @@ def _parser() -> argparse.ArgumentParser:
     practice.add_argument("--user-email", required=True)
     demo = commands.add_parser("seed-demo", help="give one user a demo subject (local, test only)")
     demo.add_argument("--user-email", required=True)
+    erase = commands.add_parser("erase-user", help="erase everything of one user (T6.3)")
+    erase.add_argument("--user-id", required=True, type=uuid.UUID)
+    erase.add_argument("--confirm-email")
     return parser
 
 
@@ -65,9 +75,56 @@ def run(session: Session, argv: Sequence[str], *, environment: str | None = None
     return 0
 
 
+def erase(argv: Sequence[str]) -> int:
+    """`erase-user`: two connections and Redis and the store, so it does not take a session."""
+    from core_api.clients.redis import get_redis
+    from core_api.clients.storage import S3Storage
+    from core_api.db.engine import create_db_engine
+    from core_api.domain.delete_user import EraseRefused, erase_user
+
+    args = _parser().parse_args(argv)
+    url = os.environ.get("CORE_ERASER_DATABASE_URL")
+    if not url:
+        print("CORE_ERASER_DATABASE_URL is not set (see runbook db-roles §4)", file=sys.stderr)
+        return 1
+    eraser = create_db_engine(url, pool_size=1, max_overflow=0)
+    try:
+        result = erase_user(
+            eraser_engine=eraser,
+            app_engine=get_engine(),
+            storage=S3Storage.from_settings(get_settings()),
+            redis=get_redis(),
+            user_id=args.user_id,
+            now=datetime.now(UTC),
+            confirm_email=args.confirm_email,
+        )
+    except EraseRefused as refused:
+        print(f"refused: {refused}", file=sys.stderr)
+        return 1
+    except Exception as error:
+        # The class only: a driver message can carry a host, a login or a statement (ADR-0013).
+        print(
+            f"erase stopped: {type(error).__name__}. Run the same command again to finish.",
+            file=sys.stderr,
+        )
+        return 2
+    finally:
+        eraser.dispose()
+    print(
+        f"erased: user row {'deleted' if result.user_existed else 'already gone'}, "
+        f"{result.outbox_rows} outbox rows, {result.objects} objects, "
+        f"{result.dead_entries + result.stream_entries} stream entries; "
+        "a second pass is queued for 20 minutes from now"
+    )
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    arguments = sys.argv[1:] if argv is None else argv
+    if arguments[:1] == ["erase-user"]:
+        return erase(arguments)
     with Session(get_engine()) as session:
-        status = run(session, sys.argv[1:] if argv is None else argv)
+        status = run(session, arguments)
         if status == 0:
             session.commit()
         return status
