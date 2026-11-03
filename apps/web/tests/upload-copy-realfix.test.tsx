@@ -25,3 +25,15 @@ it("note-only card without a photo has no photo hint", () => {
   render(<ConfirmCard card={card} saving={false} onSave={() => {}} onSentence={() => {}} onRanges={() => {}} />);
   expect(screen.queryByText(/sau khi bạn bấm Lưu/)).toBeNull();
 });
+
+// H2: three tabs, one per kind of material. Red when: a tab goes missing or switching shows two panels.
+it("H2: has the three tabs and shows one panel at a time", async () => {
+  const { fireEvent } = await import("@testing-library/react");
+  render(<UploadStep name="MMT" subjectId="9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b" />);
+  const names = screen.getAllByRole("tab").map((t) => t.textContent);
+  expect(names).toEqual(["Giáo trình chính", "Giáo trình phụ", "Bộ câu hỏi"]);
+  expect(screen.getAllByRole("tabpanel")).toHaveLength(1);
+  fireEvent.click(screen.getByRole("tab", { name: "Bộ câu hỏi" }));
+  expect(screen.getByRole("tab", { name: "Bộ câu hỏi" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getAllByRole("tabpanel")).toHaveLength(1);
+});
