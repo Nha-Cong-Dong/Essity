@@ -63,8 +63,8 @@ const QA: ReadonlyArray<{ q: string; mark: ReactNode; a: ReactNode }> = [
     mark: <path pathLength={1} d="M20 3 L23 16 L36 20 L23 24 L20 37 L17 24 L4 20 L17 16 Z" />,
     a: (
       <>
-        <span className={styles.key}>Tên môn, ngày thi</span> và tài liệu: giáo trình, slide (PDF) hoặc ảnh vở ghi. Từ bài
-        nộp đầu tiên, app tách thẻ kiến thức cho bạn duyệt, rồi soạn câu ôn từ đó.
+        <span className={styles.key}>Tên môn, ngày thi và giáo trình chính</span>, vì có giáo trình app mới lập được mục
+        lục. Đề thi mẫu và ảnh vở thêm lúc nào cũng được.
       </>
     ),
   },
@@ -111,28 +111,55 @@ const QA: ReadonlyArray<{ q: string; mark: ReactNode; a: ReactNode }> = [
     ),
     a: (
       <>
-        Phiên hôm nay vẫn <span className={styles.key}>tối đa 20 câu</span>, khoảng 30 phút. Nếu không kịp trước ngày
-        thi, app nói rõ cần thêm bao nhiêu phiên.
+        Mở lại là app <span className={styles.key}>gợi ý đúng chỗ bạn dừng</span>.
+      </>
+    ),
+  },
+  {
+    q: "Sửa nhanh thế nào?",
+    mark: (
+      <>
+        <path pathLength={1} d="M8 32 L10 24 L28 6 L34 12 L16 30 Z" />
+        <path pathLength={1} d="M24 10 L30 16" />
+      </>
+    ),
+    a: (
+      <>
+        Gõ một dòng vào ô lệnh ở đầu trang, ví dụ “mục 3.3 tôi học rồi”. App cho thấy{" "}
+        <span className={styles.key}>đúng thay đổi</span>, kèm nút Hoàn tác.
       </>
     ),
   },
 ];
 
+const TOC: ReadonlyArray<readonly [string, string, string, string?]> = [
+  ["3.1", "Địa chỉ IP", "✓ Đã học", "nxR1"],
+  ["3.2", "Chia mạng con", "✓ Đã học"],
+  ["3.3", "Định tuyến", "→ Tiếp theo", "nxNext"],
+  ["3.4", "Chuyển mạch", ""],
+];
+
+const KINDS: ReadonlyArray<readonly [string, string, string?]> = [
+  ["Tính toán", "Chia mạng 192.168.1.0/24 thành 4 mạng con.", "→ Gợi ý: liên quan tới Định tuyến"],
+  ["Giải thích", "Vì sao TCP dùng bắt tay ba bước?"],
+  ["So sánh", "So sánh TCP và UDP."],
+];
+
 const STEPS: ReadonlyArray<{ grow: string; delay?: string; seg: string; segSub: string; h: string; p: string }> = [
   {
     grow: "1.3",
-    seg: "Một bài nộp",
-    segSub: "sau buổi học",
-    h: "Nộp bài sau buổi học",
-    p: "Ảnh vở, tài liệu hoặc vài dòng gõ tay, kèm một câu mô tả nếu bạn muốn.",
+    seg: "Bài học",
+    segSub: "ảnh vở hoặc vài dòng",
+    h: "Nộp bài học",
+    p: "Gửi ảnh vở hoặc vài dòng. App tóm thành ý chính, bạn xem và bấm lưu.",
   },
   {
     grow: "2",
     delay: "90ms",
-    seg: "Thẻ nháp",
-    segSub: "bạn duyệt rồi lưu",
-    h: "Bạn duyệt thẻ kiến thức",
-    p: "App tách bài thành thẻ, gắn với trang nguồn. Bạn sửa rồi lưu, câu ôn được soạn từ đó.",
+    seg: "App làm",
+    segSub: "trong lúc bạn nghỉ",
+    h: "App soạn câu hỏi",
+    p: "Câu hỏi bám vào các ý bạn đã lưu, gắn với đúng trang giáo trình.",
   },
   {
     grow: "3.2",
@@ -235,6 +262,69 @@ export function Landing() {
               </li>
             ))}
           </ol>
+        </section>
+
+        <section className={`${styles.nx} ${styles.wrap}`} id="hoc-gi-tiep" aria-labelledby="h-nx-a" data-once>
+          <div className={`${styles.grid}`}>
+            <div className={styles.nxText}>
+              <h2 id="h-nx-a" data-reveal>
+                Học gì tiếp, đã có gợi ý
+              </h2>
+              <p data-reveal style={vars({ "--d": "90ms" })}>
+                Tải giáo trình chính lên, app lập mục lục môn học. Mỗi lần mở, app gợi ý mục nên học tiếp và nói rõ vì sao.
+              </p>
+            </div>
+            <div className={styles.nxPic} data-reveal style={vars({ "--d": "140ms" })}>
+              <p className={styles.sr}>
+                Mục lục môn Mạng máy tính: mục 3.1 và 3.2 đã học, mục 3.3 được gợi ý học tiếp, mục 3.4 chưa học. Gợi ý, bạn
+                chọn.
+              </p>
+              <div className={styles.nxCard} aria-hidden="true">
+                <div className={styles.nxCardH}>
+                  <b>Mạng máy tính</b>
+                  <span className={styles.nxTag}>Gợi ý, bạn chọn</span>
+                </div>
+                <ul className={styles.nxToc}>
+                  {TOC.map(([n, t, st, cls]) => (
+                    <li key={n} className={cls ? styles[cls] : undefined}>
+                      <span className={styles.nxN}>{n}</span>
+                      <span>{t}</span>
+                      <span className={styles.nxS}>{st}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className={`${styles.nx} ${styles.nxB} ${styles.wrap}`} id="luyen-dang-de" aria-labelledby="h-nx-b" data-once>
+          <div className={`${styles.grid}`}>
+            <div className={styles.nxText}>
+              <h2 id="h-nx-b" data-reveal>
+                Luyện đúng dạng đề
+              </h2>
+              <p data-reveal style={vars({ "--d": "90ms" })}>
+                Tải đề thi mẫu, app tách từng câu, gom theo dạng và gợi ý câu nên luyện trước dựa trên bản đồ kiến thức của bạn. Mỗi câu chấm theo từng ý và chỉ ra nguồn.
+              </p>
+            </div>
+            <div className={styles.nxPic} data-reveal style={vars({ "--d": "140ms" })}>
+              <p className={styles.sr}>Ba dạng câu; câu tính toán đứng đầu, được gợi ý luyện trước vì liên quan tới mục Định tuyến</p>
+              <div className={styles.nxCard} aria-hidden="true">
+                <ul className={styles.nxKinds}>
+                  {KINDS.map(([chip, q, why]) => (
+                    <li key={chip} className={why ? styles.nxPick : undefined}>
+                      <span className={styles.nxChip}>{chip}</span>
+                      <span className={styles.nxQ}>
+                        {q}
+                        {why ? <span className={styles.nxWhy}>{why}</span> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section className={`${styles.faq} ${styles.wrap}`} id="hoi-dap" aria-labelledby="h-faq" data-once>

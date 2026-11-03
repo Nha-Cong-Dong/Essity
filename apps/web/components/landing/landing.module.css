@@ -52,6 +52,7 @@
   --sticker: light-dark(var(--hl), var(--hl-edge));
   --sticker-edge: var(--on-hong);
   --dot: var(--rose-300);
+  --cam: light-dark(#985a26, #e0a36a); /* the mockup's orange for 'suggested', landing only */
 
   min-height: 100svh;
   background: var(--bg);
@@ -912,6 +913,167 @@
   }
   100% {
     opacity: 0;
+  }
+}
+
+/* ============================== What to study next / question types (T0.16) ============================== */
+.nx {
+  padding-top: var(--gap);
+}
+.nx h2 {
+  display: inline;
+  padding: 0 0.08em;
+  font-size: var(--fs-h2);
+  background-image: linear-gradient(var(--stroke), var(--stroke));
+  background-repeat: no-repeat;
+  background-size: 100% 40%;
+  background-position: 0 88%;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.nxText {
+  grid-column: 1 / span 5;
+  align-self: center;
+}
+.nxText p {
+  margin-top: 28px;
+  max-width: 34ch;
+}
+.nxPic {
+  grid-column: 7 / span 6;
+  position: relative;
+}
+.nxB .nxText {
+  grid-column: 8 / span 5;
+  grid-row: 1;
+}
+.nxB .nxPic {
+  grid-column: 1 / span 6;
+  grid-row: 1;
+}
+.nxCard {
+  background: color-mix(in srgb, var(--hong) 7%, var(--bg));
+  border-radius: var(--r-tile);
+  padding: 24px;
+}
+.nxCardH {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+.nxCardH b {
+  font: 650 var(--fs-mid) / 1.2 var(--display);
+  letter-spacing: -0.01em;
+}
+.nxTag {
+  font: italic 500 14px / 1.3 var(--text);
+  color: var(--ink-soft);
+}
+.nxToc,
+.nxKinds {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.nxToc li {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 16px;
+}
+.nxN {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+.nxS {
+  font-size: 14px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.nxToc li.nxNext {
+  background: color-mix(in srgb, var(--cam) 16%, var(--bg));
+  box-shadow: inset 0 0 0 1.5px var(--cam);
+  font-weight: 600;
+}
+.nxToc li.nxNext .nxS {
+  color: var(--cam);
+  font-weight: 600;
+}
+.nxKinds li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+.nxKinds li.nxPick {
+  background: color-mix(in srgb, var(--cam) 12%, var(--bg));
+  box-shadow: inset 0 0 0 1.5px var(--cam);
+}
+.nxWhy {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cam);
+}
+.nxChip {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hong) 10%, var(--bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hong) 35%, var(--line));
+  font: 600 14px / 1 var(--text);
+  color: var(--ink);
+}
+.nxQ {
+  font-size: 16px;
+  line-height: 1.4;
+}
+@media (max-width: 900px) {
+  .nxText,
+  .nxB .nxText {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+  .nxPic,
+  .nxB .nxPic {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    margin-top: 32px;
+  }
+  .nxText p {
+    max-width: 44ch;
+  }
+}
+@media (max-width: 700px) {
+  .nxCard {
+    padding: 16px;
+  }
+  .nxToc li {
+    min-height: 40px;
+    padding: 0 12px;
+    gap: 10px;
+  }
+  .nxToc li.nxR1 {
+    display: none;
+  }
+  .nxCardH {
+    padding-bottom: 10px;
   }
 }
 

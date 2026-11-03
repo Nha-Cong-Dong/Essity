@@ -41,6 +41,19 @@ test("the grading demo answers from the page itself: no request to the API", asy
   expect(calls).toEqual([]);
 });
 
+test("v2 sections come in order, the FAQ has five questions and the new figures carry text labels", async ({ page }) => {
+  await page.goto("/");
+  const ids = await page.evaluate(() => [...document.querySelectorAll("main section[id]")].map((s) => s.id));
+  expect(ids.indexOf("hoc-gi-tiep")).toBeGreaterThan(ids.indexOf("cach-hoat-dong"));
+  expect(ids.indexOf("luyen-dang-de")).toBeGreaterThan(ids.indexOf("hoc-gi-tiep"));
+  expect(ids.indexOf("hoi-dap")).toBeGreaterThan(ids.indexOf("luyen-dang-de"));
+  await expect(page.locator("#hoi-dap dt")).toHaveCount(5);
+  await expect(page.getByText("Sửa nhanh thế nào?")).toBeVisible();
+  await expect(page.locator("#hoc-gi-tiep")).toContainText("✓ Đã học");
+  await expect(page.locator("#hoc-gi-tiep")).toContainText("→ Tiếp theo");
+  await expect(page.locator("#luyen-dang-de")).toContainText("→ Gợi ý: liên quan tới Định tuyến");
+});
+
 test("anonymous /today still goes to /login", async ({ page }) => {
   await page.goto("/today");
   await expect(page).toHaveURL(/\/login$/);
