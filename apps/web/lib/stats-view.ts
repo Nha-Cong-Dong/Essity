@@ -22,7 +22,25 @@ export type ViewSubject = {
   skippedCards: number;
 };
 
-export type StatsView = { today: string; subjects: ViewSubject[]; cells: GridCell[] };
+export type Totals = {
+  unitsLearned: number;
+  unitsTotal: number;
+  sessions: number;
+  cardsSaved: number;
+  cardsReviewed: number;
+  practiceDone: number;
+};
+
+export const NO_TOTALS: Totals = {
+  unitsLearned: 0,
+  unitsTotal: 0,
+  sessions: 0,
+  cardsSaved: 0,
+  cardsReviewed: 0,
+  practiceDone: 0,
+};
+
+export type StatsView = { today: string; subjects: ViewSubject[]; cells: GridCell[]; totals?: Totals };
 
 type StatsOut = components["schemas"]["StatsOut"];
 
@@ -32,6 +50,14 @@ const clampLevel = (n: number): GridCell["level"] =>
 export function toStatsData(out: StatsOut): StatsView {
   return {
     today: out.today,
+    totals: {
+      unitsLearned: out.totals.units_learned,
+      unitsTotal: out.totals.units_total,
+      sessions: out.totals.sessions,
+      cardsSaved: out.totals.cards_saved,
+      cardsReviewed: out.totals.cards_reviewed,
+      practiceDone: out.totals.practice_done,
+    },
     subjects: out.subjects.map((s) => {
       const page = s.syllabus.by_unit.find((u) => u.unit === "page");
       return {

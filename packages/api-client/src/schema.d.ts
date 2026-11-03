@@ -2673,6 +2673,7 @@ export interface components {
              * Format: date
              */
             today: string;
+            totals: components["schemas"]["TotalsOut"];
         };
         /** StoppedOut */
         StoppedOut: {
@@ -2937,6 +2938,21 @@ export interface components {
         TokenBody: {
             /** Token */
             token: string;
+        };
+        /** TotalsOut */
+        TotalsOut: {
+            /** Cards Reviewed */
+            cards_reviewed: number;
+            /** Cards Saved */
+            cards_saved: number;
+            /** Practice Done */
+            practice_done: number;
+            /** Sessions */
+            sessions: number;
+            /** Units Learned */
+            units_learned: number;
+            /** Units Total */
+            units_total: number;
         };
         /** TypeCountOut */
         TypeCountOut: {

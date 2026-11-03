@@ -144,6 +144,7 @@ def activity_grid(
     tz: ZoneInfo,
     day_start_hour: int,
     subject_id: uuid.UUID | None = None,
+    year: bool = False,
 ) -> list[GridCell]:
     """Every learning day from the first subject creation (or first activity, if earlier) to the
     exam date (today when there is none). Days after today are empty. `subject_id` filters."""
@@ -158,6 +159,8 @@ def activity_grid(
     start = min(learning_day(s.created_at, tz, day_start_hour) for s in chosen)
     if daily:
         start = min(start, min(daily))
+    if year:  # the whole last year (53 week columns), whatever the subjects' age
+        start = min(start, today - timedelta(days=364))
     exams = [s.exam_date for s in chosen if s.exam_date is not None]
     exam_days = set(exams)
     end = max([today, *exams]) if exams else today

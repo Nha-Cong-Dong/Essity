@@ -1,30 +1,19 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
-import { daysLeftText, percentOf } from "@/lib/stats";
-import type { StatsView, ViewSubject } from "@/lib/stats-view";
+import type { GridCell } from "@/lib/stats";
+import { NO_TOTALS, type StatsView } from "@/lib/stats-view";
 
 import { ActivityGrid } from "./activity-grid";
-import { MiniNotebook, StatTile } from "./stat-tile";
 
 // T9.5a (US-10 AC1-AC7, AC10; DESIGN §6.13, .work/T9.5a/design-decisions.md): the Thống kê screen
 // from typed fixtures, no API. A read-only screen: the normal state has no primary button. A
 // primary appears only where there is nothing to read (error, nothing yet, or a scope with no day
 // recorded): at most one per state. No verdict, no ranking, no comparison anywhere.
-
-const ALL = "";
-
-function examLine(s: ViewSubject): string {
-  if (s.examOn === null || s.daysLeft === null) return "Chưa đặt ngày thi";
-  const [y, m, d] = s.examOn.split("-");
-  const date = `${Number(d)}/${Number(m)}/${y}`;
-  return s.daysLeft < 0 ? `Thi ${date} · đã qua` : `Thi ${date} · ${daysLeftText(s.daysLeft)}`;
-}
 
 function Skeleton() {
   return (
@@ -37,107 +26,49 @@ function Skeleton() {
   );
 }
 
-function BankTile({ s, open }: { s: ViewSubject; open: boolean }) {
-  if (s.bank === null) {
-    return (
-      <StatTile
-        label="Bộ câu hỏi"
-        value="Chưa có bộ câu hỏi."
-        note={
-          <a href={`/subjects/${s.id}/upload`} className="underline">
-            Tải bộ câu hỏi
-          </a>
-        }
-      />
-    );
-  }
-  const ready = s.bank.reduce((n, t) => n + t.ready, 0);
-  const practiced = s.bank.reduce((n, t) => n + t.practiced, 0);
-  const mastered = s.bank.reduce((n, t) => n + t.mastered, 0);
+function Kpi({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <StatTile
-      label="Bộ câu hỏi"
-      value={`Đã thuộc ${mastered} / ${ready} câu sẵn sàng`}
-      note={`${practiced} câu đã luyện`}
-      percent={percentOf(mastered, ready)}
-    >
-      <details open={open} className="mt-1">
-        <summary className="flex min-h-11 cursor-pointer items-center text-meta underline decoration-line-strong decoration-[1.5px] underline-offset-[5px]">
-          Theo dạng câu
-        </summary>
-        <table className="w-full [border-collapse:collapse] text-meta">
-          <thead>
-            <tr>
-              <th scope="col" className="py-1 pr-2 text-left font-semibold">
-                Dạng câu
-              </th>
-              <th scope="col" className="py-1 pr-2 text-end font-semibold">
-                Sẵn sàng
-              </th>
-              <th scope="col" className="py-1 pr-2 text-end font-semibold">
-                Đã luyện
-              </th>
-              <th scope="col" className="py-1 text-end font-semibold">
-                Đã thuộc
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {s.bank.map((t) => (
-              <tr key={t.type} className="border-t border-line">
-                <th scope="row" data-user className="py-1 pr-2 text-left font-normal wrap-anywhere">
-                  {t.type}
-                </th>
-                <td className="py-1 pr-2 text-end tabular-nums">{t.ready}</td>
-                <td className="py-1 pr-2 text-end tabular-nums">{t.practiced}</td>
-                <td className="py-1 text-end tabular-nums">{t.mastered}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
-    </StatTile>
+    <Sheet className="min-w-0" data-kpi>
+      <p className="m-0 text-meta text-ink-soft">{label}</p>
+      <p className="m-0 mt-1 text-title tabular-nums">{value}</p>
+      {note && <p className="m-0 mt-1 text-meta text-ink-soft">{note}</p>}
+    </Sheet>
   );
 }
 
-function SubjectBlock({ s, open }: { s: ViewSubject; open: boolean }) {
-  const { studied, leaves, pagesDone, pages } = s.syllabus;
+/** Work per week (cards saved + questions answered) for the last 12 weeks, oldest first. */
+export function weeklyTrend(cells: GridCell[], weeks = 12): number[] {
+  const last = cells.length === 0 ? 0 : cells[cells.length - 1].column;
+  const out = Array.from({ length: weeks }, () => 0);
+  for (const c of cells) {
+    const slot = c.column - (last - weeks + 1);
+    if (slot >= 0 && slot < weeks) out[slot] += c.cardsSaved + c.questionsAnswered;
+  }
+  return out;
+}
+
+function Trend({ cells }: { cells: GridCell[] }) {
+  const weeks = weeklyTrend(cells);
+  const top = Math.max(...weeks, 1);
   return (
-    <Sheet data-subject-block={s.id} className="@container">
-      <div className="flex items-start gap-4">
-        <MiniNotebook />
-        <div className="min-w-0">
-          <h2 data-user className="m-0 text-read font-semibold wrap-anywhere">
-            {s.name}
-          </h2>
-          <p className="m-0 text-meta text-ink-soft">
-            {examLine(s)}
-            {s.skippedCards > 0 && ` · Đã bỏ qua ${s.skippedCards} thẻ`}
-          </p>
-        </div>
+    <Sheet className="min-w-0" aria-labelledby="trend-h" role="region">
+      <h2 id="trend-h" className="m-0 mb-1 text-read font-semibold">
+        12 tuần gần đây
+      </h2>
+      <p className="m-0 mb-3 text-meta text-ink-soft">Thẻ đã lưu và câu đã làm theo từng tuần.</p>
+      <div className="flex h-28 items-end gap-1.5" data-trend>
+        {weeks.map((n, i) => (
+          <div key={i} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${n}`}>
+            <div
+              className="w-full rounded-t-sm bg-spine"
+              style={{ height: `${n === 0 ? 2 : Math.max((n / top) * 100, 6)}%`, opacity: n === 0 ? 0.3 : 1 }}
+            />
+          </div>
+        ))}
       </div>
-      <div className="mt-6 grid grid-cols-1 gap-6 @min-[480px]:grid-cols-3">
-        {leaves === 0 ? (
-          <StatTile label="Đề cương đã học" value="Chưa có đề cương để tính." />
-        ) : (
-          <StatTile
-            label="Đề cương đã học"
-            value={`${studied}/${leaves} mục`}
-            note={`${pagesDone}/${pages} trang`}
-            percent={percentOf(studied, leaves)}
-          />
-        )}
-        <BankTile s={s} open={open} />
-        {s.retention === null ? (
-          <StatTile label="Độ vững nhớ" value="Chưa có thẻ để tính." />
-        ) : (
-          <StatTile
-            label="Độ vững nhớ"
-            value={`${Math.round(s.retention * 100)}%`}
-            note="thẻ còn nhớ tốt hôm nay"
-            percent={Math.round(s.retention * 100)}
-          />
-        )}
+      <div className="mt-1 flex justify-between text-meta text-ink-soft">
+        <span>12 tuần trước</span>
+        <span>Tuần này</span>
       </div>
     </Sheet>
   );
@@ -170,13 +101,9 @@ export function StatsLoading() {
 
 export type StatsMode = "ready" | "loading" | "error";
 
-/**
- * `view.cells` is already the grid of the chosen scope (the page asks core-api, or the preview
- * builds it); `subject` is the validated ?subject= id, "" for all subjects.
- */
+/** Overall statistics only (I1): totals, a 12-week trend and the year heatmap (I2). */
 export function StatsScreen({
   view,
-  subject = ALL,
   mode = "ready",
 }: {
   view: StatsView;
@@ -184,23 +111,11 @@ export function StatsScreen({
   mode?: StatsMode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
-  const subjects = [...view.subjects].sort((a, b) =>
-    (a.examOn ?? "9999").localeCompare(b.examOn ?? "9999"),
-  );
-  const chosen = subjects.find((s) => s.id === subject);
-  const scope = chosen ? [chosen] : subjects;
+  const subjects = view.subjects;
   const cells = view.cells;
+  const t = view.totals ?? NO_TOTALS;
   const examBy: Record<string, string[]> = {};
-  for (const s of scope) if (s.examOn) (examBy[s.examOn] ??= []).push(s.name);
-
-  function setSubject(id: string) {
-    const next = new URLSearchParams(params.toString());
-    if (id === ALL) next.delete("subject");
-    else next.set("subject", id);
-    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
-  }
+  for (const s of subjects) if (s.examOn) (examBy[s.examOn] ??= []).push(s.name);
 
   if (mode === "loading") return <StatsLoading />;
   if (mode === "error") {
@@ -227,63 +142,54 @@ export function StatsScreen({
     );
   }
 
-  const scopeHasDays = cells.some((c) => c.cardsSaved + c.questionsAnswered > 0);
+  const hasDays = cells.some((c) => c.cardsSaved + c.questionsAnswered > 0);
   return (
     <>
       <div className="flex flex-col gap-4 min-[768px]:flex-row min-[768px]:items-end min-[768px]:justify-between">
         <div>
           <h1 className="m-0 text-title">Thống kê</h1>
-          <a href="#activity" className="mt-1 inline-flex min-h-11 items-center text-meta underline">
-            Hoạt động theo ngày
-          </a>
+          <p className="m-0 mt-1 text-meta text-ink-soft">Tổng quan việc học của bạn, mọi môn cộng lại.</p>
         </div>
-        <div className="flex flex-col gap-3 min-[768px]:flex-row min-[768px]:items-end">
-          <div className="flex min-w-0 flex-col gap-1 min-[768px]:w-72">
-            <label htmlFor="stats-subject" className="text-meta text-ink-soft">
-              Môn
-            </label>
-            <Select id="stats-subject" value={chosen?.id ?? ALL} onChange={(e) => setSubject(e.target.value)}>
-              <option value={ALL}>Tất cả môn</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Button
-            render={<a href="/api/export" download />}
-            nativeButton={false}
-            variant="secondary"
-            className="max-sm:w-full"
-          >
-            Tải dữ liệu (CSV)
-          </Button>
-        </div>
+        <Button
+          render={<a href="/api/export" download />}
+          nativeButton={false}
+          variant="secondary"
+          className="max-sm:w-full"
+        >
+          Tải dữ liệu (CSV)
+        </Button>
       </div>
 
-      <div className="mt-8 grid gap-(--bento-gap) [grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))]">
-        {scope.map((s) => (
-          <SubjectBlock key={s.id} s={s} open={scope.length === 1} />
-        ))}
+      <div
+        className="mt-8 grid gap-(--bento-gap) [grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))]"
+        data-totals
+      >
+        <Kpi
+          label="Nội dung đã học"
+          value={`${t.unitsLearned}`}
+          note={`/ ${t.unitsTotal} mục · ${t.sessions} buổi học`}
+        />
+        <Kpi label="Thẻ đã ôn" value={`${t.cardsReviewed}`} note={`${t.cardsSaved} thẻ đã lưu`} />
+        <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
+      </div>
+
+      <div className="mt-(--bento-gap)">
+        <Trend cells={cells} />
       </div>
 
       <Sheet id="activity" className="mt-(--bento-gap) min-w-0" aria-labelledby="activity-h" role="region">
         <h2 id="activity-h" className="m-0 mb-4 text-read font-semibold">
-          Hoạt động theo ngày
+          Hoạt động cả năm
         </h2>
-        {scopeHasDays ? null : (
+        {hasDays ? null : (
           <div className="mb-4 flex flex-col items-start gap-3">
-            <p className="m-0">
-              Chưa có ngày nào học. Ô sẽ đậm lên khi bạn lưu thẻ hoặc làm câu hỏi.
-            </p>
+            <p className="m-0">Chưa có ngày nào học. Ô sẽ đậm lên khi bạn lưu thẻ hoặc làm câu hỏi.</p>
             <Button render={<a href="/today" />} nativeButton={false}>
               Vào buổi học
             </Button>
           </div>
         )}
         <ActivityGrid
-          key={chosen?.id ?? ALL}
           cells={cells}
           today={view.today}
           subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}

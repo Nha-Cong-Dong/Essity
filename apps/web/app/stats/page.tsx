@@ -23,21 +23,20 @@ async function Account() {
 
 const EMPTY = { today: "", subjects: [], cells: [] };
 
-async function Stats({ searchParams }: { searchParams: Promise<{ subject?: string | string[] }> }) {
+async function Stats() {
   await connection();
   await requireVerifiedSession();
-  const { subject } = await searchParams;
   let stats: Awaited<ReturnType<typeof getStats>>;
   try {
-    stats = await getStats(typeof subject === "string" ? subject : undefined);
+    stats = await getStats();
   } catch (error) {
     logError("core-api call failed", { route: "stats", error: errorName(error) });
     return <StatsScreen view={EMPTY} mode="error" />;
   }
-  return <StatsScreen view={stats.view} subject={stats.subject} />;
+  return <StatsScreen view={stats.view} />;
 }
 
-export default function StatsPage(props: { searchParams: Promise<{ subject?: string | string[] }> }) {
+export default function StatsPage() {
   return (
     <AppShell
       current="/stats"
@@ -49,7 +48,7 @@ export default function StatsPage(props: { searchParams: Promise<{ subject?: str
     >
       <PageColumn width="full">
         <Suspense fallback={<StatsLoading />}>
-          <Stats {...props} />
+          <Stats />
         </Suspense>
       </PageColumn>
     </AppShell>

@@ -202,7 +202,9 @@ def test_grid_counts_cards_and_answers_future_empty_exam_marked(
     answer(db_session, alice, question.id, NOW + timedelta(days=5))  # clock skew: still empty
     body = stats(client, headers)
     cells = {c["day"]: c for c in body["grid"]}
-    assert min(cells) == "2026-10-18"
+    assert min(cells) == "2025-10-21"  # I2: the grid is the whole last year
+    assert body["totals"]["cards_saved"] == 2
+    assert body["totals"]["practice_done"] + body["totals"]["cards_reviewed"] >= 2
     assert cells["2026-10-19"]["cards_saved"] == 2
     assert cells["2026-10-19"]["questions_answered"] == 1
     assert cells["2026-10-19"]["subjects"] == [{"id": str(subject.id), "name": subject.name}]

@@ -3691,9 +3691,13 @@
             "format": "date",
             "title": "Today",
             "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/TotalsOut"
           }
         },
         "required": [
+          "totals",
           "today",
           "subjects",
           "grid"
@@ -4404,6 +4408,44 @@
           "token"
         ],
         "title": "TokenBody",
+        "type": "object"
+      },
+      "TotalsOut": {
+        "properties": {
+          "cards_reviewed": {
+            "title": "Cards Reviewed",
+            "type": "integer"
+          },
+          "cards_saved": {
+            "title": "Cards Saved",
+            "type": "integer"
+          },
+          "practice_done": {
+            "title": "Practice Done",
+            "type": "integer"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "units_learned": {
+            "title": "Units Learned",
+            "type": "integer"
+          },
+          "units_total": {
+            "title": "Units Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "units_learned",
+          "units_total",
+          "sessions",
+          "cards_saved",
+          "cards_reviewed",
+          "practice_done"
+        ],
+        "title": "TotalsOut",
         "type": "object"
       },
       "TypeCountOut": {
