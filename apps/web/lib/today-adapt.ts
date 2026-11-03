@@ -25,7 +25,7 @@ const paceOf = (s: SuggestionApi): Pace => ({
 });
 
 /** "3.2 TCP flow control" -> label "3.2", title "TCP flow control"; no number: no label. */
-function splitTitle(raw: string | null): { label: string; title: string } {
+export function splitTitle(raw: string | null): { label: string; title: string } {
   const text = (raw ?? "").trim();
   const match = /^(\d+(?:\.\d+)*)[.)]?\s+(.*)$/u.exec(text) ?? /^(\d+(?:\.\d+)*)$/u.exec(text);
   if (!match) return { label: "", title: text };
@@ -33,7 +33,7 @@ function splitTitle(raw: string | null): { label: string; title: string } {
 }
 
 function nextOf(s: SuggestionApi): NextSuggestion {
-  return { ...splitTitle(s.section_title), pages: null, reason: s.reason, pace: paceOf(s) };
+  return { ...splitTitle(s.section_title), sectionId: s.section_id, pages: null, reason: s.reason, pace: paceOf(s) };
 }
 
 /** One suggestion, in the shape the subject block shows it. */
@@ -47,7 +47,7 @@ function learnItem(s: SuggestionApi): LearnItem {
   if (s.kind === "free_session") return { subject, state: "no_textbook" };
   if (s.kind === "review_practice") return { subject, state: "finished" };
   const { label, title } = splitTitle(s.section_title);
-  return { subject, state: "next", section: { label, title, pages: null }, reason: s.reason, pace: paceOf(s) };
+  return { subject, state: "next", section: { label, title, pages: null, id: s.section_id }, reason: s.reason, pace: paceOf(s) };
 }
 
 export function toTodayV2(today: TodayApi): TodayV2 {

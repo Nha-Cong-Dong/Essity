@@ -87,7 +87,8 @@ test("US-15 AC6: Hôm nay -> Gợi ý cho hôm nay -> Vào buổi học", async 
   await page.goto("/design-preview/today?state=learn");
   await settled(page);
   const enter = page.getByRole("button", { name: /^Vào buổi học · Mạng máy tính/ });
-  await expect(enter).toHaveAttribute("href", `/subjects/${SUBJECT}/sessions/new`);
+  // T7.19 F2: "Vào buổi học" is the study session, never the free one ("Học tự do" is /sessions/new).
+  await expect(enter).toHaveAttribute("href", new RegExp(`^/subjects/${SUBJECT}/sessions/study`));
 
   let asked = 0;
   await page.route(`**/api/subjects/${SUBJECT}/suggestion`, (route) => {
@@ -101,7 +102,7 @@ test("US-15 AC6: Hôm nay -> Gợi ý cho hôm nay -> Vào buổi học", async 
   await expect(page.getByText("còn 12 mục, 20 ngày")).toBeVisible();
   expect(asked).toBe(1);
   const study = page.getByRole("button", { name: /^Vào buổi học/ });
-  await expect(study).toHaveAttribute("href", `/subjects/${SUBJECT}/sessions/new`);
+  await expect(study).toHaveAttribute("href", `/subjects/${SUBJECT}/sessions/study?section=${SUGGESTION.suggestion.section_id}`);
   await study.click();
   await page.waitForURL(/\/login/); // the study route is guarded: no session, so the sign-in page
 });

@@ -234,9 +234,14 @@ describe("states", () => {
     expect(error.container.querySelector(PRIMARY)?.textContent).toBe("Thử lại");
   });
 
-  it("empty says the grid arrives after the first week", () => {
-    render(<StatsScreen state="empty" />);
-    expect(screen.getByText("Thống kê hiện sau tuần học đầu tiên. Nộp bài ở một buổi học để bắt đầu.")).toBeTruthy();
+  // T7.19 F6. Red when: with no subject the one primary leads to a study session that cannot start.
+  it("empty with no subject says the grid arrives after the first week and offers Tạo môn", () => {
+    const { container } = render(<StatsScreen state="empty" />);
+    expect(screen.getByText("Thống kê hiện sau tuần học đầu tiên. Tạo một môn rồi nộp bài ở buổi học đầu tiên để bắt đầu.")).toBeTruthy();
+    const primary = container.querySelector("a.btn, a") as HTMLAnchorElement;
+    expect(primary.textContent).toBe("Tạo môn");
+    expect(primary.getAttribute("href")).toBe("/subjects/new");
+    expect(screen.queryByText("Vào buổi học")).toBeNull();
   });
 });
 

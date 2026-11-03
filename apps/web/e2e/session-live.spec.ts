@@ -86,6 +86,20 @@ async function sendSentence(page: Page) {
 }
 
 test.describe("study session on the real screen", () => {
+  // T7.19 F2. Red when: a session opened from a suggestion shows the free session (the section is lost),
+  // or a session with no section stops saying it is free.
+  test("opened from a suggestion it is for that section; without one it is free", async ({ page }) => {
+    const SECTION = "5f0c0000-0000-4000-8000-000000000001";
+    await page.setViewportSize({ width: 390, height: 900 });
+    expect((await page.goto(`${PAGE}?section=${SECTION}`))?.status()).toBe(200);
+    await settled(page);
+    await expect(page.getByText("Hôm nay nên học: mục 3.2 TCP flow control")).toBeVisible();
+    await expect(page.getByText("Buổi học tự do")).toHaveCount(0);
+    await page.goto(PAGE);
+    await settled(page);
+    await expect(page.getByText("Buổi học tự do")).toBeVisible();
+  });
+
   // US-02 AC1, AC14; US-02b AC6, AC7, AC9. Red when: the sentence does not reach /api/submissions, the
   // cards do not appear, an edit is not sent with the version it saw, Lưu does not send both cards
   // with their versions, or the screen does not end in "Học tiếp hay dừng?".

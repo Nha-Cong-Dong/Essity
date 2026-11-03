@@ -19,13 +19,13 @@ export async function NewSessionEntry({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ session?: string | string[]; v1?: string | string[] }>;
+  searchParams: Promise<{ session?: string | string[]; v1?: string | string[]; section?: string | string[] }>;
 }) {
   await connection();
   await requireVerifiedSession();
   const subject = await subjectForUpload((await params).id);
-  const { session, v1 } = await searchParams;
-  const target = newSessionTarget(subject.id, session, v1);
+  const { session, v1, section } = await searchParams;
+  const target = newSessionTarget(subject.id, session, v1, section);
   if (target) redirect(target);
   const saved = typeof session === "string" && isSubjectId(session) ? session : undefined;
   return (

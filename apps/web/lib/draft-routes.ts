@@ -19,6 +19,8 @@ export type SubmitBody = {
   description: string;
   mentions: { document_id: string; start: number; end: number }[];
   files: UploadFile[];
+  /** T7.19 F1: the sentence again as the note, when there is no file (core-api needs a note or a file). */
+  text?: string;
 };
 
 /** The description is the learner's sentence (2000 characters, T7.6) and its `@` mentions. */
@@ -41,7 +43,9 @@ export function readSubmit(body: unknown): SubmitBody | null {
     if (file === null) return null;
     read.push(file);
   }
-  return { session_id, description, mentions: found, files: read };
+  // Words alone are a note: core-api refuses a submission with neither text nor a file.
+  const note = read.length === 0 && description.trim() !== "" ? { text: description } : {};
+  return { session_id, description, mentions: found, files: read, ...note };
 }
 
 export type Edit = { version: number; title?: string; content?: string };
@@ -57,9 +61,18 @@ export async function readEdit(request: Request): Promise<Edit | null> {
   return body;
 }
 
-export async function readAdd(request: Request): Promise<{ title: string; content: string; kind: "concept" } | null> {
-  const body = await readFields(request, { title: { kind: "string" }, content: { kind: "string" } }, { maxBytes: 32 * 1024 });
-  return body === null ? null : { ...body, kind: "concept" };
+export async function readAdd(
+  request: Request,
+): Promise<{ title: string; content: string; kind: "concept"; section_id?: string } | null> {
+  const body = await readFields(
+    request,
+    { title: { kind: "string" }, content: { kind: "string" }, section_id: { kind: "string", optional: true } },
+    { maxBytes: 32 * 1024 },
+  );
+  if (body === null) return null;
+  // T7.19 F2: the section a suggested session is for; only an id goes on to core-api.
+  if (body.section_id !== undefined && !isSubjectId(body.section_id)) return null;
+  return { ...body, kind: "concept" };
 }
 
 export type SplitBody = { version: number; parts: { title: string; content: string; anchor_ids: string[] }[] };

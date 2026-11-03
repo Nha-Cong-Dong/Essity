@@ -63,7 +63,7 @@ const POLL_MS = 2500;
 export const SUBMIT_COPY = {
   network: "Chưa gửi được, mạng đang chập chờn. Câu của bạn vẫn được giữ, thử gửi lại.",
   tooLong: "Câu mô tả dài quá. Rút gọn bớt rồi gửi lại.",
-  nothing: "Viết vài dòng mô tả buổi học rồi gửi.",
+  nothing: "Chưa có gì để gửi. Viết vài dòng hoặc thêm file rồi gửi.",
   mention: "Chưa hiểu một chỗ @ trong câu. Xem chỗ được đánh dấu rồi gửi lại.",
   saveFailed: "Chưa lưu được.",
   saveConflict: "Có thẻ đã đổi ở nơi khác. Tải lại thẻ trước khi lưu.",

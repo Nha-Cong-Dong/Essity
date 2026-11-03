@@ -12,7 +12,7 @@ import { v1Fallback } from "@/lib/session-study/entry";
 // and goes to its page (T7.18: core-api answers the open draft again when there is one, so
 // reopening continues it, US-02 AC1). Reached by a link, never
 // prefetched (the page is dynamic), so one open makes one empty session at most.
-export async function StartStudy({ params }: { params: Promise<{ id: string }> }): Promise<ReactNode> {
+export async function StartStudy({ params, section }: { params: Promise<{ id: string }>; section?: string | null }): Promise<ReactNode> {
   await connection();
   await requireVerifiedSession();
   const subject = await subjectForUpload((await params).id);
@@ -24,5 +24,6 @@ export async function StartStudy({ params }: { params: Promise<{ id: string }> }
   // Submissions off in core-api (404): the v1 flow still works, so go there (T7.17).
   if (response.status === 404) redirect(v1Fallback(subject.id));
   if (!data) throw new Error(`core-api answered submission-drafts with ${response.status}`);
-  redirect(`/subjects/${subject.id}/sessions/${data.session_id}`);
+  // T7.19 F2: the suggestion's section follows the learner into the session.
+  redirect(`/subjects/${subject.id}/sessions/${data.session_id}${section ? `?section=${section}` : ""}`);
 }

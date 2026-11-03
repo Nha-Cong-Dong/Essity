@@ -16,7 +16,7 @@ import { loadGraph } from "@/lib/graph-load";
 import { loadOutline } from "@/lib/outline";
 import { loadQuestionList } from "@/lib/question-list";
 import { entryRow } from "@/lib/subject-entries";
-import { getSuggestions } from "@/lib/today";
+import { getSuggestions, getToday } from "@/lib/today";
 import { suggestionState } from "@/lib/today-adapt";
 import type { SuggestionState } from "@/components/subjects/subject-suggestion";
 
@@ -38,6 +38,10 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
     state = subject.days_until_exam < 0 ? { kind: "exam_over" } : { kind: "not_suggested" };
   }
   // Each source stands alone: one that fails drops its own entry, never the page (DESIGN §6.5 item 4).
+  // T7.19 F3: "Ôn riêng môn này" is a dead end when today's review holds nothing of this subject.
+  const nothingDue = await getToday()
+    .then((today) => today.in_progress === null && !today.review.items.some((item) => item.subject_id === subject.id))
+    .catch(() => false);
   const [outline, questions, graph] = await Promise.all([
     loadOutline(subject.id).catch(() => null),
     loadQuestionList(subject.id).catch(() => null),
@@ -58,7 +62,7 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
         Thi {dayLabel(subject.exam_date)}
         {subject.days_until_exam >= 0 ? ` (còn ${subject.days_until_exam} ngày)` : " (đã qua)"}
       </p>
-      <SubjectScreenBlock subjectId={subject.id} subjectName={subject.name} state={state} />
+      <SubjectScreenBlock subjectId={subject.id} subjectName={subject.name} state={state} nothingDue={nothingDue} />
       <SubjectEntryRow entries={entries} />
     </div>
   );

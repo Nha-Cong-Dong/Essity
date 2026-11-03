@@ -17,7 +17,7 @@ export type LearnItem =
   | {
       subject: NamedSubject;
       state: "next";
-      section: { label: string; title: string; pages: string | null };
+      section: { label: string; title: string; pages: string | null; id?: string | null };
       reason: string;
       pace: Pace;
     }
