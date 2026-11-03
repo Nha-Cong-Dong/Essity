@@ -18,7 +18,7 @@ const SUBJECT = "c3d4e5f6-7a8b-4c9d-8e1f-2a3b4c5d6e7f";
 // T7.19 F2: `?section=` is a session opened from a suggestion (shows that section); none is free.
 const FOR_SECTION = {
   kind: "section",
-  text: "Hôm nay nên học: mục 3.2 TCP flow control",
+  text: "Nội dung học tập: 3.2 TCP flow control",
   reason: "Mục chưa học đầu tiên trong đề cương.",
   pace: "còn 12 mục, 20 ngày",
 } as const;

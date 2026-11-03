@@ -18,7 +18,7 @@ export type Suggestion = { kind: "section"; text: string; reason: string; pace: 
 
 export const SUGGESTION: Suggestion = {
   kind: "section",
-  text: "Hôm nay nên học: mục 3.2 TCP flow control (tr. 52-58)",
+  text: "Nội dung học tập: 3.2 TCP flow control (tr. 52-58)",
   reason: "Mục kế tiếp trong đề cương. Còn 12 mục (86 trang), 20 ngày.",
   pace: "Mục 3.2 chưa học. Mục 3.1 đã xong hôm kia.",
 };

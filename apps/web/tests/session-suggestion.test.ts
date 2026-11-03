@@ -19,7 +19,7 @@ describe("sessionSuggestion", () => {
   it("is the suggested section when the section is today's suggestion for the subject", () => {
     expect(sessionSuggestion(all([one()]), A, SEC)).toEqual({
       kind: "section",
-      text: "Hôm nay nên học: mục 3.2 TCP flow control",
+      text: "Nội dung học tập: 3.2 TCP flow control",
       reason: "Mục chưa học đầu tiên.",
       pace: "còn 12 mục, 20 ngày",
     });
