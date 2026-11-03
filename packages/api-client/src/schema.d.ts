@@ -2920,11 +2920,17 @@ export interface components {
             document_id: string | null;
             /** Document Name */
             document_name: string | null;
+            /** File Url */
+            file_url?: string | null;
             /** Highlight */
             highlight: [
                 number,
                 number
             ] | null;
+            /** Image Url */
+            image_url?: string | null;
+            /** Note Image Urls */
+            note_image_urls?: string[];
             /** Page No */
             page_no: number | null;
             /** Page Text */
