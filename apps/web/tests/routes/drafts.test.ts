@@ -76,6 +76,17 @@ describe("draft routes (T7.12)", () => {
     expect(calls).toHaveLength(1);
   });
 
+  // T7.19 F2. Red when: the section of a card added by hand is lost, or something that is not an id goes on.
+  it("an added card carries its section only when it is an id", async () => {
+    const calls = fakeCoreApi(() => Response.json({ id: OTHER }, { status: 201 }));
+    const ok = await add(browserPost("/x", { title: "T", content: "C", section_id: OTHER }, SIGNED_IN), params());
+    expect(ok.status).toBe(201);
+    expect(calls[0].body).toMatchObject({ title: "T", content: "C", kind: "concept", section_id: OTHER });
+    const bad = await add(browserPost("/x", { title: "T", content: "C", section_id: "../x" }, SIGNED_IN), params());
+    expect(bad.status).toBe(400);
+    expect(calls).toHaveLength(1);
+  });
+
   // T7.19 F1. Red when: a note with only words is handed over without them as the note, or a blank
   // sentence becomes a note, or a note with files also repeats the sentence as a second file.
   it("submissions make the sentence the note only when there is no file and it is not blank", async () => {

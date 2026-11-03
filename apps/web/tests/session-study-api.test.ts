@@ -114,6 +114,16 @@ describe("createSessionApi", () => {
     expect(await down.edit("u1", 1, { title: "x" })).toMatchObject({ ok: false, status: 0, error: "network" });
   });
 
+  // T7.19 F2. Red when: a card added in a session opened from a suggestion is not put in its section.
+  it("adds a card to the suggested section, and to none for a free session", async () => {
+    const SEC = "5f0c0000-0000-4000-8000-000000000001";
+    const { fn, calls } = fakeFetch(() => Response.json(core()));
+    await createSessionApi(SID, DOCS, fn, SEC).add("T", "C");
+    await createSessionApi(SID, DOCS, fn).add("T", "C");
+    expect(calls[0].body).toEqual({ title: "T", content: "C", section_id: SEC });
+    expect(calls[1].body).toEqual({ title: "T", content: "C" });
+  });
+
   it("discards, undoes, adds, merges, splits and saves through the routes", async () => {
     const { fn, calls } = fakeFetch((url) => (url.endsWith("/save") ? Response.json({ saved: ["u1"] }) : url.endsWith("/split") ? Response.json({ drafts: [core({ id: "a" }), core({ id: "b" })], submission_status: null }) : Response.json(core())));
     const api = createSessionApi(SID, DOCS, fn);

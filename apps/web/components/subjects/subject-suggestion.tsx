@@ -5,13 +5,14 @@ import { useEffect, useRef, useState } from "react";
 import { StartButton } from "@/components/today/start-button";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { studyHref } from "@/lib/session-study/entry";
 import { type Pace, paceLine, TODAY_V2_COPY as COPY } from "@/lib/today-v2";
 
 // T7.13a (US-15 AC6, AC7; DESIGN §6.5 "Khối gợi ý hôm nay"): the suggestion block on a subject
 // screen, from a typed value, no API. "Gợi ý cho hôm nay" asks `resolve` (T7.13: the suggestions
 // endpoint) and shows the answer in the same shape as a suggestion that was there already.
 
-export type NextSuggestion = { label: string; title: string; pages: string | null; reason: string; pace: Pace };
+export type NextSuggestion = { sectionId?: string | null; label: string; title: string; pages: string | null; reason: string; pace: Pace };
 
 export type SuggestionState =
   | { kind: "suggested"; next: NextSuggestion }
@@ -41,7 +42,7 @@ function Suggested({ id, subjectId, subjectName, next }: { id: string; subjectId
       </p>
       <div className="mt-2">
         <Button
-          render={<a href={`/subjects/${subjectId}/sessions/new`} />}
+          render={<a href={studyHref(subjectId, next.sectionId)} />}
           nativeButton={false}
           aria-label={`${COPY.enter} · ${subjectName}`}
           className={FULL}

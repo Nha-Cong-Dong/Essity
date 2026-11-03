@@ -61,9 +61,18 @@ export async function readEdit(request: Request): Promise<Edit | null> {
   return body;
 }
 
-export async function readAdd(request: Request): Promise<{ title: string; content: string; kind: "concept" } | null> {
-  const body = await readFields(request, { title: { kind: "string" }, content: { kind: "string" } }, { maxBytes: 32 * 1024 });
-  return body === null ? null : { ...body, kind: "concept" };
+export async function readAdd(
+  request: Request,
+): Promise<{ title: string; content: string; kind: "concept"; section_id?: string } | null> {
+  const body = await readFields(
+    request,
+    { title: { kind: "string" }, content: { kind: "string" }, section_id: { kind: "string", optional: true } },
+    { maxBytes: 32 * 1024 },
+  );
+  if (body === null) return null;
+  // T7.19 F2: the section a suggested session is for; only an id goes on to core-api.
+  if (body.section_id !== undefined && !isSubjectId(body.section_id)) return null;
+  return { ...body, kind: "concept" };
 }
 
 export type SplitBody = { version: number; parts: { title: string; content: string; anchor_ids: string[] }[] };

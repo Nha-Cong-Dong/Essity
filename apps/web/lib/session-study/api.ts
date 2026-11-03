@@ -77,7 +77,7 @@ export type SessionApi = {
   save(cards: { id: string; version: number }[]): Promise<ApiResult<string[]>>;
 };
 
-export function createSessionApi(sessionId: string, docs: readonly DocRef[], fetchFn: typeof fetch = fetch): SessionApi {
+export function createSessionApi(sessionId: string, docs: readonly DocRef[], fetchFn: typeof fetch = fetch, sectionId?: string): SessionApi {
   async function call(path: string, method: string, body?: unknown): Promise<{ status: number; json: Record<string, unknown> }> {
     try {
       const response = await fetchFn(path, {
@@ -122,7 +122,7 @@ export function createSessionApi(sessionId: string, docs: readonly DocRef[], fet
     edit: (id, version, patch) => run(`/api/drafts/${id}`, "PATCH", { version, ...patch }, card),
     discard: (id) => run(`/api/drafts/${id}`, "DELETE", undefined, card),
     undo: (id) => run(`/api/drafts/${id}/undo`, "POST", undefined, card),
-    add: (title, content) => run(`/api/sessions/${sessionId}/drafts`, "POST", { title, content }, card),
+    add: (title, content) => run(`/api/sessions/${sessionId}/drafts`, "POST", { title, content, ...(sectionId ? { section_id: sectionId } : {}) }, card),
     merge: (ids) => run(`/api/sessions/${sessionId}/drafts/merge`, "POST", { unit_ids: ids }, card),
     split: (id, version, parts) =>
       run(`/api/drafts/${id}/split`, "POST", { version, parts: parts.map((p) => ({ title: p.title, content: p.content, anchor_ids: [] })) }, list),

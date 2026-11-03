@@ -67,6 +67,15 @@ describe("subject block (T7.13)", () => {
     expect(go).toHaveBeenCalledWith("/review/6b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e");
   });
 
+  // T7.19 F2. Red when: "Vào buổi học" goes to the free session, or "Học tự do" carries the section.
+  it("F2: the suggestion opens the session of its section; Học tự do stays free", () => {
+    const SEC = "5f0c0000-0000-4000-8000-000000000001";
+    show({ state: { kind: "suggested", next: { ...NEXT, sectionId: SEC } } });
+    const enter = screen.getByRole("button", { name: /Vào buổi học/ });
+    expect(enter.getAttribute("href")).toBe(`/subjects/${ID}/sessions/study?section=${SEC}`);
+    expect(screen.getByRole("button", { name: "Học tự do" }).getAttribute("href")).toBe(`/subjects/${ID}/sessions/new`);
+  });
+
   // T7.19 F3. Red when: a 409 "nothing to review" silently sends the learner to /today, or the
   // button stays pressable with no reason.
   it("F3: nothing due is said on the button's spot, not a silent redirect", async () => {

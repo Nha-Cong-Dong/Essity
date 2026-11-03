@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { studyHref } from "@/lib/session-study/entry";
 import { paceLine, TODAY_V2_COPY as COPY, type LearnItem } from "@/lib/today-v2";
 
 // T7.13a (US-15 AC1, AC7; DESIGN §6.2 "Học gì tiếp"): one subject's block. The cover, name and
@@ -36,7 +37,7 @@ export function NextStudyCard({ item, primary }: { item: LearnItem; primary: boo
           <PaceLine pace={item.pace} />
           <div className="mt-2">
             <Button
-              render={<a href={`${base}/sessions/new`} />}
+              render={<a href={studyHref(item.subject.id, item.section.id)} />}
               nativeButton={false}
               variant={primary ? "primary" : "secondary"}
               aria-label={label(COPY.enter)}

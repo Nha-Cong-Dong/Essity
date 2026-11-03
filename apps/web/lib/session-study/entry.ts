@@ -8,10 +8,19 @@ export function newSessionTarget(
   subjectId: string,
   session: string | string[] | undefined,
   v1?: string | string[],
+  section?: string | string[],
 ): string | null {
   if (v1 === "1") return null;
   if (typeof session === "string" && isSubjectId(session)) return null;
-  return `/subjects/${subjectId}/sessions/study`;
+  return studyHref(subjectId, sectionParam(section));
 }
+
+/** T7.19 F2: the one id a `?section=` query holds (the section a suggestion opened the session for). */
+export const sectionParam = (value: string | string[] | undefined): string | null =>
+  typeof value === "string" && isSubjectId(value) ? value : null;
+
+/** The study session's start; a suggestion's section rides along, "Học tự do" has none. */
+export const studyHref = (subjectId: string, sectionId?: string | null): string =>
+  `/subjects/${subjectId}/sessions/study${sectionId && isSubjectId(sectionId) ? `?section=${sectionId}` : ""}`;
 
 export const v1Fallback = (subjectId: string): string => `/subjects/${subjectId}/sessions/new?v1=1`;
