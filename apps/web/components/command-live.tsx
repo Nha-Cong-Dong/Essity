@@ -5,6 +5,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 import { CommandBar } from "@/components/command-bar";
+import { OutlineChat } from "@/components/syllabus/syllabus-chat";
 import { liveCommands } from "@/lib/command-client";
 
 // T9.3 (US-18; DESIGN §6.14): the command bar of a subject, live. The layout of /subjects/[id]
@@ -45,5 +46,9 @@ export function CommandLive({ subjectId }: { subjectId: string }) {
   );
 
   if (slot === null || !SYLLABUS.test(pathname)) return null;
+  // The foot of the outline screen is the plain-language chat (E3), not the command bar.
+  if (slot.matches(BOTTOM)) {
+    return createPortal(<OutlineChat subjectId={subjectId} onChanged={() => router.refresh()} />, slot);
+  }
   return createPortal(<CommandBar example={EXAMPLE} run={live.run} undo={live.undo} />, slot);
 }
