@@ -128,3 +128,20 @@ test("US-03 AC7: the preview's Bắt đầu never calls the API", async ({ page 
   await page.getByRole("button", { name: "Bắt đầu" }).click();
   expect(calls).toEqual([]);
 });
+
+// T7.13b (DESIGN §6.5 item 4): the entry row opens Đề cương and Đồ thị from the subject page.
+test("T7.13b: the subject page's entry row opens Đề cương and Đồ thị", async ({ page }) => {
+  await page.goto("/design-preview/subject-live?state=not-suggested");
+  await settled(page);
+  const row = page.locator("[data-entry-row]");
+  await expect(row.getByText("đã học 1/2 mục")).toBeVisible();
+  await expect(row.getByText("5 câu sẵn sàng")).toBeVisible();
+  await expect(row.locator("[data-entry=graph]")).toHaveAttribute("href", `/subjects/${SUBJECT}/graph`);
+  await expect(row.locator("[data-entry=stats]")).toHaveAttribute("href", `/stats?subject=${SUBJECT}`);
+  await row.locator("[data-entry=syllabus]").click();
+  await page.waitForURL(new RegExp(`/subjects/${SUBJECT}/syllabus|/login`)); // guarded: no session here
+  await page.goBack();
+  await settled(page);
+  await row.locator("[data-entry=graph]").click();
+  await page.waitForURL(new RegExp(`/subjects/${SUBJECT}/graph|/login`));
+});
