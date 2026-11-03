@@ -15,6 +15,7 @@ permissions:
 jobs:
   changes:
     name: Detect changes
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -62,6 +63,7 @@ jobs:
     name: ${{ matrix.service }}
     needs: changes
     if: needs.changes.outputs.python != '[]'
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -177,6 +179,7 @@ jobs:
     name: web
     needs: changes
     if: needs.changes.outputs.web == 'true'
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -256,6 +259,7 @@ jobs:
     name: image ${{ matrix.image }}
     needs: changes
     if: needs.changes.outputs.images != '[]'
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -295,6 +299,7 @@ jobs:
 
   boundaries:
     name: Repo checks
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -308,6 +313,7 @@ jobs:
 
   secrets:
     name: Secret scan
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     env:
       GITLEAKS_VERSION: 8.30.1
