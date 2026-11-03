@@ -46,6 +46,9 @@ class FakeStorage:
             },
         )
 
+    def presign_get(self, key: str, *, expires_in: int) -> str:
+        return f"https://files.example/bucket/{key}?X-Amz-Expires={expires_in}&X-Amz-Signature=g"
+
     def put(self, key: str, body: bytes, checksum_b64: str | None) -> None:
         self.objects[key] = (body, checksum_b64)
 

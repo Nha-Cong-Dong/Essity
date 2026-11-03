@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from accounts import signed_in
 from core_api.api.deps import get_storage
 from core_api.api.vault import find_highlight
-from core_api.db.models import Anchor, QuestionUnit, StudySession
+from core_api.db.models import Anchor, NoteFile, QuestionUnit, StudySession
 from core_api.grading import units_of
 from fake_storage import FakeStorage
 from v2_rows import RUN, make_document, make_question, make_subject, make_unit
@@ -123,9 +123,32 @@ def test_g4_source_highlights_the_passage(client: TestClient, db_session: Sessio
     doc = next(r for r in rows if r["source"] == "document")
     start, end = doc["highlight"]
     assert doc["page_text"][start:end] == "bắt tay\nba bước"
+    assert "X-Amz-Expires=600" in doc["file_url"] and doc["image_url"] is None
     assert next(r for r in rows if r["source"] == "notes")["page_text"] is None
+    assert next(r for r in rows if r["source"] == "notes")["file_url"] is None
 
 
 def test_find_highlight():
     assert find_highlight("abc def", "def") == (4, 7)
     assert find_highlight("abc def", "xyz") is None
+
+
+def test_g4_notes_source_lists_the_session_photos(client: TestClient, db_session: Session):
+    user, headers, _, study, unit = _world(db_session)
+    sha = "ab" * 32
+    for n, mime in enumerate(("image/jpeg", "application/pdf")):
+        digest = f"{n}{sha[1:]}"
+        db_session.add(
+            NoteFile(
+                user_id=user.id,
+                session_id=study.id,
+                object_key=f"users/{user.id}/sessions/{study.id}/notes/{digest}.x",
+                sha256=digest,
+                mime=mime,
+                size_bytes=5,
+            )
+        )
+    db_session.commit()
+    rows = client.get(f"/v1/vault/cards/{unit.id}/sources", headers=headers).json()
+    notes = next(r for r in rows if r["source"] == "notes")
+    assert len(notes["note_image_urls"]) == 1 and "X-Amz-Expires=600" in notes["note_image_urls"][0]

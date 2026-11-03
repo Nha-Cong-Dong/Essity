@@ -3949,6 +3949,17 @@
             ],
             "title": "Document Name"
           },
+          "file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Url"
+          },
           "highlight": {
             "anyOf": [
               {
@@ -3969,6 +3980,24 @@
               }
             ],
             "title": "Highlight"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "note_image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Note Image Urls",
+            "type": "array"
           },
           "page_no": {
             "anyOf": [

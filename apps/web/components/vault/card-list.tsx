@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+
+import { PdfPage } from "@/components/vault/pdf-page";
 
 import { Button } from "@/components/ui/button";
 import type { VaultCard } from "@/lib/vault-api";
@@ -17,6 +19,9 @@ type Source = {
   page_text: string | null;
   quote: string;
   highlight: [number, number] | null;
+  file_url: string | null;
+  image_url: string | null;
+  note_image_urls: string[];
 };
 
 function Marked({ text, range }: { text: string; range: [number, number] }) {
@@ -26,6 +31,46 @@ function Marked({ text, range }: { text: string; range: [number, number] }) {
       <mark className="rounded-sm bg-hong/25 px-0.5 text-ink">{text.slice(range[0], range[1])}</mark>
       {text.slice(range[1])}
     </>
+  );
+}
+
+function SourceItem({ s }: { s: Source }) {
+  // The original page first (PDF, drawn by pdf.js with the passage marked), then the page picture
+  // (slides, scans) beside the excerpt, then plain text: each step only when the one before fails.
+  const [pdfFailed, setPdfFailed] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const fail = useCallback(() => setPdfFailed(true), []);
+  const usePdf = s.file_url !== null && s.page_no !== null && !pdfFailed;
+  const images = s.image_url !== null ? [s.image_url] : s.note_image_urls;
+  const useImage = !usePdf && images.length > 0 && !imageFailed;
+  const excerpt =
+    s.page_text && s.highlight ? (
+      <Marked text={s.page_text} range={s.highlight} />
+    ) : (
+      <mark className="rounded-sm bg-hong/25 px-0.5 text-ink">{s.quote}</mark>
+    );
+  return (
+    <li className="rounded-control bg-sunken p-3">
+      <p className="m-0 mb-1 text-body font-medium">
+        {s.source === "notes" ? "Vở ghi" : (s.document_name ?? "Tài liệu")}
+        {s.page_no ? ` · trang ${s.page_no}` : ""}
+      </p>
+      {usePdf && s.file_url && s.page_no ? <PdfPage url={s.file_url} page={s.page_no} quote={s.quote} onFail={fail} /> : null}
+      {useImage ? (
+        <div className="flex flex-col gap-3 min-[640px]:flex-row">
+          <div className="flex flex-col gap-2 min-[640px]:w-1/2">
+            {images.map((src) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={src} src={src} alt={s.page_no ? `Trang ${s.page_no} của tài liệu gốc` : "Ảnh vở ghi"} className="max-w-full" onError={() => setImageFailed(true)} />
+            ))}
+          </div>
+          <p className="m-0 whitespace-pre-wrap text-body text-ink-soft">
+            <mark className="rounded-sm bg-hong/25 px-0.5 text-ink">{s.quote}</mark>
+          </p>
+        </div>
+      ) : null}
+      {!usePdf && !useImage ? <p className="m-0 whitespace-pre-wrap text-body text-ink-soft">{excerpt}</p> : null}
+    </li>
   );
 }
 
@@ -47,19 +92,7 @@ function SourcePanel({ cardId }: { cardId: string }) {
   return (
     <ul className="m-0 flex list-none flex-col gap-3 p-0">
       {rows.map((s) => (
-        <li key={s.anchor_id} className="rounded-control bg-sunken p-3">
-          <p className="m-0 mb-1 text-body font-medium">
-            {s.source === "notes" ? "Vở ghi" : (s.document_name ?? "Tài liệu")}
-            {s.page_no ? ` · trang ${s.page_no}` : ""}
-          </p>
-          <p className="m-0 whitespace-pre-wrap text-body text-ink-soft">
-            {s.page_text && s.highlight ? (
-              <Marked text={s.page_text} range={s.highlight} />
-            ) : (
-              <mark className="rounded-sm bg-hong/25 px-0.5 text-ink">{s.quote}</mark>
-            )}
-          </p>
-        </li>
+        <SourceItem key={s.anchor_id} s={s} />
       ))}
     </ul>
   );

@@ -21,6 +21,7 @@ from core_api.db.models import (
     Anchor,
     Document,
     KnowledgeUnit,
+    NoteFile,
     StudySession,
     Subject,
     UnitRevision,
@@ -30,6 +31,8 @@ from core_api.db.session import DbSession
 router = APIRouter(prefix="/v1/vault", dependencies=[Depends(verified_user)])
 
 PAGE_TEXT_MAX_BYTES = 8_000_000
+READ_URL_SECONDS = 600
+MAX_NOTE_IMAGES = 4
 
 
 class VaultSubjectOut(BaseModel):
@@ -88,6 +91,11 @@ class SourceOut(BaseModel):
     quote: str
     # [start, end) of the quote inside `page_text`; None when it cannot be found there
     highlight: tuple[int, int] | None
+    # Short-lived read URLs (G4): the original PDF, and the page's picture (slides, scans).
+    file_url: str | None = None
+    image_url: str | None = None
+    # Photos of the session's notes (a notes source): shown beside the excerpt.
+    note_image_urls: list[str] = Field(default_factory=list)
 
 
 def _error(code: int, detail: str) -> HTTPException:
@@ -343,7 +351,7 @@ def card_sources(
 ) -> list[SourceOut]:
     """ "Nguồn" on the card: for each anchor the page's extracted text with the cited passage's
     position, so the screen can mark it (a real PDF highlight is for later)."""
-    _own_card(session, user.id, card_id)
+    unit = _own_card(session, user.id, card_id)
     anchors = session.scalars(
         select(Anchor)
         .where(Anchor.user_id == user.id, Anchor.unit_id == card_id)
@@ -357,6 +365,30 @@ def card_sources(
         )
     }
     out: list[SourceOut] = []
+
+    def presign(key: str | None) -> str | None:
+        if key is None:
+            return None
+        try:
+            return storage.presign_get(key, expires_in=READ_URL_SECONDS)
+        except Exception:  # noqa: BLE001 - the screen falls back to the page text
+            return None
+
+    note_keys: list[str] = []
+    if unit.session_id is not None and any(a.source == "notes" for a in anchors):
+        note_keys = list(
+            session.scalars(
+                select(NoteFile.object_key)
+                .where(
+                    NoteFile.user_id == user.id,
+                    NoteFile.session_id == unit.session_id,
+                    NoteFile.mime.like("image/%"),
+                )
+                .order_by(NoteFile.created_at)
+                .limit(MAX_NOTE_IMAGES)
+            )
+        )
+    note_urls = [u for u in (presign(k) for k in note_keys) if u is not None]
     for a in anchors:
         document = documents.get(a.document_id) if a.document_id else None
         text = (
@@ -374,6 +406,13 @@ def card_sources(
                 page_text=text,
                 quote=a.quote_text,
                 highlight=find_highlight(text, a.quote_text) if text else None,
+                file_url=presign(document.object_key)
+                if document is not None and document.format == "pdf"
+                else None,
+                note_image_urls=note_urls if a.source == "notes" else [],
+                image_url=presign(f"{document.thumbnails_prefix}/{a.page_no}.png")
+                if document is not None and document.thumbnails_prefix and a.page_no
+                else None,
             )
         )
     return out
