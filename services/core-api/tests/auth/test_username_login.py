@@ -100,7 +100,11 @@ def test_ac5_an_unknown_name_still_runs_the_dummy_hash(
     client: TestClient, monkeypatch: pytest.MonkeyPatch, kind: str
 ) -> None:
     calls: list[str] = []
-    monkeypatch.setattr(auth, "dummy_verify", lambda password: calls.append(password))
+
+    def counting(password: str) -> None:
+        calls.append(password)
+
+    monkeypatch.setattr(auth, "dummy_verify", counting)
     unknown = fresh_username() if kind == "username" else f"x-{uuid.uuid4().hex[:8]}@example.com"
     assert sign_in(client, "identifier", unknown, WRONG)[0] == 401
     assert calls == [WRONG]
@@ -113,6 +117,17 @@ def test_ac6_five_failures_per_username_and_ip_then_429(
     statuses = [sign_in(client, "identifier", user.username, WRONG)[0] for _ in range(5)]
     assert statuses == [401] * 5
     assert sign_in(client, "identifier", user.username)[0] == 429
+
+
+def test_ac6_spelling_variants_of_one_username_share_one_counter(
+    client: TestClient, db_session: Session
+) -> None:
+    # Red when: the raw text, not the normalized name, is the rate-limit key.
+    user = make_user(db_session)
+    variants = [user.username, user.username.upper(), f" {user.username} ", user.username.title()]
+    for typed in variants + [user.username]:
+        assert sign_in(client, "identifier", typed, WRONG)[0] == 401
+    assert sign_in(client, "identifier", f"  {user.username.upper()}")[0] == 429
 
 
 def test_ac6_twenty_failures_per_username_across_ips_block_any_ip(

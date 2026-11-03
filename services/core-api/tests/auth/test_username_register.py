@@ -18,6 +18,7 @@ from accounts import fresh_username
 from core_api.db.models import User
 from core_api.domain.auth.passwords import hash_password
 from core_api.repositories.user import EmailTakenError, UsernameTakenError, UserRepository
+from core_api.security.rate_limit import RateLimiter, RateLimiterUnavailableError
 
 REGISTER = "/v1/auth/register"
 PASSWORD = "ngựa vằn ăn cỏ buổi sáng"
@@ -162,6 +163,22 @@ def test_d2_losing_a_race_for_a_username_is_409_not_500(
 
     monkeypatch.setattr(UserRepository, "username_taken", never_taken)
     assert post(client, username=name) == (409, {"detail": "username_taken"})
+
+
+@pytest.mark.parametrize("method", ["is_reserved", "reserve"])
+def test_ac5_a_failing_username_hold_refuses_instead_of_letting_the_name_through(
+    client: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch, method: str
+) -> None:
+    # Red when: the hold swallows a Redis error (fail open), which would free the name again.
+    def broken(self: RateLimiter, *args: object) -> bool:
+        raise RateLimiterUnavailableError
+
+    owner = UserRepository(db_session).create(new_email(), hash_password(OWNER_PASSWORD))
+    db_session.flush()
+    monkeypatch.setattr(RateLimiter, method, broken)
+    email = owner.email if method == "reserve" else new_email()
+    body = {"email": email, "password": PASSWORD, "username": fresh_username()}
+    assert client.post(REGISTER, json=body).status_code == 503
 
 
 def test_repository_tells_apart_which_constraint_was_broken(db_session: Session) -> None:
