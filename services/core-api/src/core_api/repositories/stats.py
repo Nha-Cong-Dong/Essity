@@ -19,6 +19,7 @@ from core_api.db.models import (
     QuestionSection,
     QuestionType,
     ReviewSession,
+    StudySession,
     Subject,
     UnitRevision,
     UnitSection,
@@ -197,6 +198,42 @@ class StatsRepository(UserScopedRepository[MemoryState]):
                 )
             )
         return out
+
+    def totals(self) -> tuple[int, int, int, int]:
+        """Overall (all subjects, not per subject): confirmed study sessions, cards saved,
+        review answers on cards, practice-bank answers."""
+        sessions = self.session.scalar(
+            select(func.count())
+            .select_from(StudySession)
+            .where(StudySession.user_id == self.user_id, StudySession.status == "confirmed")
+        )
+        cards_saved = self.session.scalar(
+            select(func.count())
+            .select_from(UnitRevision)
+            .join(KnowledgeUnit, KnowledgeUnit.id == UnitRevision.unit_id)
+            .where(
+                UnitRevision.user_id == self.user_id,
+                UnitRevision.rev == 1,
+                UnitRevision.origin == "user",
+                KnowledgeUnit.user_id == self.user_id,
+                KnowledgeUnit.status.in_(_LIVE_CARD),
+            )
+        )
+        per_source: dict[str, int] = {}
+        for source, n in self.session.execute(
+            select(Question.source, func.count())
+            .join(Attempt, Attempt.question_id == Question.id)
+            .where(
+                Attempt.user_id == self.user_id,
+                Attempt.status == "submitted",
+                Question.user_id == self.user_id,
+            )
+            .group_by(Question.source)
+        ).all():
+            per_source[str(source)] = int(n)
+        practice = sum(n for src, n in per_source.items() if src in _BANK_SOURCES)
+        reviewed = sum(n for src, n in per_source.items() if src not in _BANK_SOURCES)
+        return int(sessions or 0), int(cards_saved or 0), int(reviewed), int(practice)
 
     def events(self) -> list[ActivityEvent]:
         """Cards saved (a card's learner revision, rev 1) and questions answered (submitted

@@ -224,3 +224,11 @@ def test_grid_size_and_intensity_property(
     assert len(cells) == length + 1
     assert all(0 <= c.level <= 4 and c.cards_saved >= 0 for c in cells)
     assert all(0 <= c.row <= 6 for c in cells)
+
+
+def test_grid_year_covers_53_weeks_for_a_new_subject():  # I2 (whole year, not just since creation)
+    today = date(2026, 11, 3)
+    cells = activity_grid([span(date(2026, 11, 1))], [], today, UTC_TZ, 4, year=True)
+    assert cells[0].day == today - timedelta(days=364)
+    assert cells[-1].day == today
+    assert cells[-1].column >= 52

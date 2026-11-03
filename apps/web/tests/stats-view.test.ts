@@ -10,6 +10,7 @@ type Out = components["schemas"]["StatsOut"];
 const SUBJECT = "0b8f1d2e-0000-4000-8000-000000000001";
 const OUT: Out = {
   today: "2026-10-30",
+  totals: { units_learned: 1, units_total: 2, sessions: 1, cards_saved: 1, cards_reviewed: 1, practice_done: 1 },
   subjects: [
     {
       id: SUBJECT,
