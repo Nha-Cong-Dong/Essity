@@ -30,13 +30,14 @@ describe("entryRow", () => {
   it("DESIGN §6.5: entries without data are left out; Thống kê stays, without a number", () => {
     const none = outline([], { document: null, reason: "no_textbook" });
     const e = entryRow(ID, { outline: none, questions: { ready: 0, total: 0 }, graphCards: 0 });
-    expect(keys(e)).toEqual(["stats"]);
+    expect(keys(e)).toEqual(["stats", "graph"]);
     expect(e[0]).toMatchObject({ href: `/stats?subject=${ID}`, note: null });
+    expect(e[1]).toMatchObject({ key: "graph", note: "chưa có thẻ" });
   });
 
   // Red when: a failed read (null) breaks the row or shows a made-up number.
   it("a source that failed to load drops only its entry", () => {
-    expect(keys(entryRow(ID, { outline: null, questions: null, graphCards: null }))).toEqual(["stats"]);
+    expect(keys(entryRow(ID, { outline: null, questions: null, graphCards: null }))).toEqual(["stats", "graph"]);
   });
 
   // Red when: the count or the links of Luyện tập / Đồ thị are wrong.
