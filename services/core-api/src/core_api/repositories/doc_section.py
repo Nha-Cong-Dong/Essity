@@ -5,12 +5,38 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
 
 from core_api.db.models import DocSection, KnowledgeUnit, UnitSection
 from core_api.repositories.base import UserScopedRepository
 
 # unit.status values that count as a card the learner owns (not a draft, not retired).
 _LIVE_CARD = ("canonical",)
+
+
+def excluded_effective_ids(
+    session: Session, user_id: uuid.UUID, subject_id: uuid.UUID
+) -> set[uuid.UUID]:
+    """Sections of the subject that are excluded or sit under an excluded ancestor (T7.2c)."""
+    rows = session.execute(
+        select(DocSection.id, DocSection.parent_id, DocSection.excluded).where(
+            DocSection.user_id == user_id, DocSection.subject_id == subject_id
+        )
+    ).all()
+    parent = {r.id: r.parent_id for r in rows}
+    flagged = {r.id for r in rows if r.excluded}
+
+    def gone(section_id: uuid.UUID) -> bool:
+        seen: set[uuid.UUID] = set()
+        node: uuid.UUID | None = section_id
+        while node is not None and node not in seen:
+            if node in flagged:
+                return True
+            seen.add(node)
+            node = parent.get(node)
+        return False
+
+    return {i for i in parent if gone(i)}
 
 
 @dataclass(frozen=True)

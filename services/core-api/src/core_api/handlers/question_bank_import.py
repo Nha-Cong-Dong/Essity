@@ -25,6 +25,7 @@ from core_api.db.models import DocSection, Document, QuestionType
 from core_api.domain.question_bank import MSG_FAILED, MSG_NOTHING, MSG_PENDING_AI
 from core_api.handlers.question_bank_parsed import known_payload, store_parsed
 from core_api.jobs.queue import enqueue_job
+from core_api.repositories.doc_section import excluded_effective_ids
 
 QUESTION_BANK_IMPORT = "question_bank_import"
 # The import waits this long before it tries again when there is still no turn.
@@ -105,6 +106,7 @@ def leaf_sections(session: Session, user_id: uuid.UUID, subject_id: uuid.UUID) -
     parents = select(DocSection.parent_id).where(
         DocSection.user_id == user_id, DocSection.parent_id.is_not(None)
     )
+    gone = excluded_effective_ids(session, user_id, subject_id)
     return list(
         session.scalars(
             select(DocSection)
@@ -113,8 +115,8 @@ def leaf_sections(session: Session, user_id: uuid.UUID, subject_id: uuid.UUID) -
                 DocSection.user_id == user_id,
                 DocSection.subject_id == subject_id,
                 Document.role == "textbook",
-                DocSection.excluded.is_(False),
                 DocSection.id.not_in(parents),
+                DocSection.id.not_in(gone),
             )
             .order_by(DocSection.document_id, DocSection.ord, DocSection.id)
             .limit(MAX_SECTIONS)
