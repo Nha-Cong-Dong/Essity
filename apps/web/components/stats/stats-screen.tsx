@@ -217,10 +217,10 @@ export function StatsScreen({
         <h1 className="m-0 text-title">Thống kê</h1>
         <div className="mt-8 flex flex-col items-start gap-4">
           <p className="m-0 max-w-xl text-read">
-            Thống kê hiện sau tuần học đầu tiên. Nộp bài ở một buổi học để bắt đầu.
+            Thống kê hiện sau tuần học đầu tiên. Tạo một môn rồi nộp bài ở buổi học đầu tiên để bắt đầu.
           </p>
-          <Button render={<a href="/today" />} nativeButton={false}>
-            Vào buổi học
+          <Button render={<a href="/subjects/new" />} nativeButton={false}>
+            Tạo môn
           </Button>
         </div>
       </>
