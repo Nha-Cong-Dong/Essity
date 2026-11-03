@@ -473,7 +473,7 @@ export function PracticeScreen({
         <div id="danh-sach" className="mt-6">
           {state === "empty-ready" ? (
             <>
-              <p className="m-0">Chưa có câu sẵn sàng. Câu sẽ sẵn sàng khi bạn học xong mục của nó.</p>
+              <p className="m-0">Chưa có câu hỏi nào sẵn sàng, hãy kết nối thêm kiến thức để mở khóa câu hỏi nhé!</p>
               <Button
                 render={<a href={`/subjects/${SUBJECT.id}/sessions/new`} />}
                 nativeButton={false}

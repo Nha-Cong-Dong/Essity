@@ -189,7 +189,7 @@ describe("other states", () => {
 
   it("empty-ready and importing use the §6.12 words", () => {
     const { unmount } = render(<PracticeScreen state="empty-ready" />);
-    expect(screen.getByText("Chưa có câu sẵn sàng. Câu sẽ sẵn sàng khi bạn học xong mục của nó.")).toBeTruthy();
+    expect(screen.getByText("Chưa có câu hỏi nào sẵn sàng, hãy kết nối thêm kiến thức để mở khóa câu hỏi nhé!")).toBeTruthy();
     unmount();
     render(<PracticeScreen state="importing" />);
     expect(screen.getByRole("status").textContent).toMatch(/Đang tách câu từ .+…/);

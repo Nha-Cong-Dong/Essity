@@ -111,13 +111,13 @@ describe("postOnce (F8)", () => {
 });
 
 describe("signOut (review cdbaa25 #1)", () => {
-  it("leaves for /login once web has cleared the cookie", async () => {
+  it("leaves for / (landing) once web has cleared the cookie", async () => {
     const assign = vi.fn();
 
     const ok = await signOut({ post: async () => ({ status: 200, data: { next: "/login" } }), assign });
 
     expect(ok).toBe(true);
-    expect(assign).toHaveBeenCalledWith("/login");
+    expect(assign).toHaveBeenCalledWith("/");
   });
 
   // T2.15. Red when: answers kept on a shared computer outlive the session that typed them.
@@ -142,12 +142,12 @@ describe("signOut (review cdbaa25 #1)", () => {
   });
 
   // Red when: signOut follows whatever `next` the logout route carries (review plan R3).
-  it("turns a next it does not know into /login", async () => {
+  it("ignores a next it does not know and goes to /", async () => {
     const assign = vi.fn();
 
     await signOut({ post: async () => ({ status: 200, data: { next: "//evil.example" } }), assign });
 
-    expect(assign).toHaveBeenCalledWith("/login");
+    expect(assign).toHaveBeenCalledWith("/");
   });
 
   it("goes where web says (F2: /register after \"Sai email?\")", async () => {

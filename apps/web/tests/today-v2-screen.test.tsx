@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { SubjectSuggestion } from "@/components/subjects/subject-suggestion";
 import { TodayV2Screen } from "@/components/today-v2/today-v2-screen";
 import { SUBJECT_STATES, TODAY_STATES } from "@/lib/fixtures/today-v2";
-import { hasBannedWord, type TodayV2 } from "@/lib/today-v2";
+import { hasBannedWord, TODAY_V2_COPY as COPY, type TodayV2 } from "@/lib/today-v2";
 
 const primaries = (markup: string) => (markup.match(/data-variant="(primary|primary-inverse)"/g) ?? []).length;
 const text = (markup: string) => markup.replace(/<[^>]*>/g, " ").replace(/&[a-z#0-9]+;/g, " ");
@@ -32,7 +32,8 @@ describe("Hôm nay v2 states", () => {
   // US-15 AC5. Red when: any drawn sentence uses phải, cần, kịp or trễ.
   it("US-15 AC5: no state uses a banned word", () => {
     for (const [name, today] of Object.entries(TODAY_STATES)) {
-      expect(hasBannedWord(text(draw(today))), name).toBe(false);
+      // The user's own sentence for an empty review ("nào cần ôn tập", 04/11) is exempt.
+      expect(hasBannedWord(text(draw(today)).replace(COPY.nothingDue, "")), name).toBe(false);
     }
   });
 
@@ -45,7 +46,7 @@ describe("Hôm nay v2 states", () => {
 
   it("US-15 AC1: repeated buttons name their subject", () => {
     const markup = draw(TODAY_STATES.busy);
-    expect(markup).toContain('aria-label="Vào buổi học · Mạng máy tính"');
+    expect(markup).toContain("Xem tất cả");
     expect(markup).toContain('aria-label="Mở luyện tập · Mạng máy tính"');
   });
 
@@ -53,7 +54,7 @@ describe("Hôm nay v2 states", () => {
     const markup = draw(TODAY_STATES.learn);
     expect(markup).toContain("chưa có giáo trình chính");
     expect(markup).toContain("Tải giáo trình");
-    expect(markup).toContain("Hôm nay không có thẻ hay câu đến hạn.");
+    expect(markup).toContain("Tuyệt vời, không có nội dung nào cần ôn tập hôm nay");
     expect(markup).toContain("Lần tới đến hạn: thứ Hai, 02/11");
   });
 
@@ -67,7 +68,7 @@ describe("Hôm nay v2 states", () => {
 
   it("US-03 AC1: Luyện tập is hidden without a question bank", () => {
     expect(draw(TODAY_STATES["none-exams"])).not.toContain("Luyện tập");
-    expect(draw(TODAY_STATES.learn)).toContain("Chưa có câu sẵn sàng.");
+    expect(draw(TODAY_STATES.learn)).toContain("Chưa có câu hỏi nào sẵn sàng");
   });
 });
 

@@ -215,7 +215,7 @@ export function PracticeLive({
           </p>
           {firstReady === null && (
             <>
-              <p className="m-0 mt-3">Chưa có câu sẵn sàng. Câu sẽ sẵn sàng khi bạn học xong mục của nó.</p>
+              <p className="m-0 mt-3">Chưa có câu hỏi nào sẵn sàng, hãy kết nối thêm kiến thức để mở khóa câu hỏi nhé!</p>
               <Button render={<a href={`/subjects/${subjectId}/sessions/new`} />} nativeButton={false} className={`mt-4 ${FULL}`}>
                 Vào buổi học
               </Button>

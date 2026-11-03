@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { studyHref } from "@/lib/session-study/entry";
 import { paceLine, TODAY_V2_COPY as COPY, type LearnItem } from "@/lib/today-v2";
 
 // T7.13a (US-15 AC1, AC7; DESIGN §6.2 "Học gì tiếp"): one subject's block. The cover, name and
@@ -13,7 +12,7 @@ export function PaceLine({ pace }: { pace: Extract<LearnItem, { state: "next" }>
   );
 }
 
-export function NextStudyCard({ item, primary }: { item: LearnItem; primary: boolean }) {
+export function NextStudyCard({ item }: { item: LearnItem; primary?: boolean }) {
   const nameId = `learn-${item.subject.id}`;
   const base = `/subjects/${item.subject.id}`;
   const label = (text: string) => `${text} · ${item.subject.name}`;
@@ -31,21 +30,7 @@ export function NextStudyCard({ item, primary }: { item: LearnItem; primary: boo
             Mục {item.section.label} {item.section.title}
             {item.section.pages ? ` · ${item.section.pages}` : ""}
           </p>
-          <p className="m-0 text-body wrap-anywhere">
-            {item.reason}
-          </p>
           <PaceLine pace={item.pace} />
-          <div className="mt-2">
-            <Button
-              render={<a href={studyHref(item.subject.id, item.section.id)} />}
-              nativeButton={false}
-              variant={primary ? "primary" : "secondary"}
-              aria-label={label(COPY.enter)}
-              className="max-sm:w-full"
-            >
-              {COPY.enter}
-            </Button>
-          </div>
         </>
       )}
       {item.state === "no_textbook" && (

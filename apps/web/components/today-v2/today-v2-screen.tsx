@@ -1,5 +1,7 @@
 import { Marker } from "@/components/notebook";
 import { Sticker } from "@/components/motifs";
+import { LearnActions } from "@/components/today-v2/learn-actions";
+import { MascotPlaceholder } from "@/components/mascot-placeholder";
 import { NextStudyCard } from "@/components/today-v2/next-study-card";
 import { StartButton } from "@/components/today/start-button";
 import { Button } from "@/components/ui/button";
@@ -108,6 +110,7 @@ export function ReviewTile({
         <h2 id="today-review" className="sr-only">
           {COPY.review}
         </h2>
+        <MascotPlaceholder />
         <p className="m-0 font-display text-lead">
           {COPY.nothingDue}
         </p>
@@ -204,6 +207,7 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
           </nav>
         </div>
       )}
+      <LearnActions items={items} primary={primary && first >= 0} />
     </Sheet>
   );
 }
@@ -215,9 +219,10 @@ function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2[
         {COPY.practice}
       </h2>
       {practice.state === "none_ready" ? (
-        <p className="m-0 mt-3 text-read text-ink-soft">
-          {COPY.practiceNone}
-        </p>
+        <div className="mt-3 flex items-center gap-4">
+          <MascotPlaceholder />
+          <p className="m-0 text-read text-ink-soft">{COPY.practiceNone}</p>
+        </div>
       ) : (
         <ul className="m-0 mt-4 flex list-none flex-col gap-4 p-0">
           {practice.rows.map((row, index) => (
