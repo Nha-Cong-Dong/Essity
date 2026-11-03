@@ -13,6 +13,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
+from accounts import user_insert
 from core_api.db.models import KnowledgeUnit, Outbox, StudyLedger, Submission
 from v2_rows import (
     NOW,
@@ -277,7 +278,7 @@ def test_downgrade_refuses_while_a_saved_event_is_in_the_outbox(
     user_id = uuid.uuid4()
     with engine.begin() as c:
         c.execute(
-            text('INSERT INTO "user" (id, email) VALUES (:i, :e)'),
+            user_insert(c, "i", "e"),
             {"i": user_id, "e": f"{user_id}@example.com"},
         )
         c.execute(
@@ -344,7 +345,7 @@ def test_tester_downgrade_refuses_while_new_learner_data_exists(
     ids = {"u": user, "s": subject, "st": study, "k": unit}
     with engine.begin() as c:
         c.execute(
-            text('INSERT INTO "user" (id, email) VALUES (:u, :e)'),
+            user_insert(c, "u", "e"),
             {"u": user, "e": f"{user}@example.com"},
         )
         c.execute(text("INSERT INTO subject (id, user_id, name) VALUES (:s, :u, 'Mạng')"), ids)

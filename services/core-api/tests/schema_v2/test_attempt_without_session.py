@@ -12,6 +12,7 @@ from alembic.config import Config
 from sqlalchemy import Engine, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
+from accounts import user_insert
 from erasure import erase_user
 from v2_rows import World, make_question
 
@@ -142,7 +143,7 @@ def test_downgrade_refuses_while_a_practice_attempt_exists(
     user, subject, question = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
     with engine.begin() as c:
         c.execute(
-            text('INSERT INTO "user" (id, email) VALUES (:i, :e)'),
+            user_insert(c, "i", "e"),
             {"i": user, "e": f"{user}@example.com"},
         )
         c.execute(

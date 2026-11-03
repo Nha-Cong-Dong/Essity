@@ -9,6 +9,8 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, text
 
+from accounts import user_insert
+
 RUN = uuid.uuid4()
 NEW_TABLES = (
     "doc_section",
@@ -36,7 +38,7 @@ def seed_old_rows(engine: Engine, unit_status: str = "active") -> uuid.UUID:
     key = f"users/{user}/subjects/{subject}/raw/{sha}.pdf"
     with engine.begin() as connection:
         connection.execute(
-            text('INSERT INTO "user" (id, email) VALUES (:id, :email)'),
+            user_insert(connection, "id", "email"),
             {"id": user, "email": f"{user}@example.com"},
         )
         connection.execute(
