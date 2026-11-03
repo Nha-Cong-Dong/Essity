@@ -38,8 +38,8 @@ async function Source({ params }: { params: Promise<{ cardId: string }> }) {
   }
   return (
     <PageColumn width="read">
-      <a href="/kho-kien-thuc" className="inline-flex min-h-11 items-center text-meta underline">
-        Về Kho kiến thức
+      <a href="/today" className="inline-flex min-h-11 items-center text-meta underline">
+        Về hôm nay
       </a>
       <h1 className="mt-2 mb-4">{data.title}</h1>
       {data.sources.length === 0 ? (
