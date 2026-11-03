@@ -553,3 +553,50 @@ def test_t63_an_eraser_and_an_app_on_different_databases_are_refused(
             streams=streams.names,
         )
     assert rows_of(engine, a.user_id)["user"] == 1
+
+
+def test_t63_the_sweep_waits_longer_than_the_longest_upload_url(engine: Engine) -> None:
+    # Red when: SWEEP_DELAY is cut below the longest presigned upload the settings allow
+    # (s3_presign_seconds <= 900): an upload signed just before the erase lands after the sweep.
+    from annotated_types import Le
+
+    from core_api.config import Settings
+
+    metadata = Settings.model_fields["s3_presign_seconds"].metadata
+    longest = next(item.le for item in metadata if isinstance(item, Le))
+    assert timedelta(**SWEEP_DELAY) > timedelta(seconds=float(cast(Any, longest)))
+
+
+def test_t63_a_storage_failure_leaves_the_event_and_the_sweep_queued(
+    engine: Engine,
+    eraser_engine: Engine,
+    storage: FakeStorage,
+    streams: Streams,
+    a: World,
+) -> None:
+    # Red when: objects are deleted before the event and the sweep are committed, so a store
+    # that is down leaves ai-service unaware and nothing scheduled to finish the job (plan D2).
+    objects_for(storage, a.user_id)
+    storage.delete_fails = True
+    with pytest.raises(StorageUnavailableError):
+        erase(engine, eraser_engine, storage, streams, a.user_id, email_of(engine, a.user_id))
+
+    assert outbox_types(engine, a.user_id) == ["user.deleted.v1"]
+    assert [job.task_name for job in jobs_of(engine, a.user_id)] == [ERASE_USER_SWEEP]
+
+
+def test_t63_scrub_removes_odd_envelopes_of_the_user(streams: Streams) -> None:
+    # Red when: an envelope that is JSON but not an object, or one whose user_id is written in
+    # upper case, is kept although it names the erased user.
+    mine, other = uuid.uuid4(), uuid.uuid4()
+    streams.redis.xadd(streams.core, {"envelope": json.dumps([str(mine), "notes"])})
+    upper: dict[str, Any] = {
+        "event_type": "session.confirmed.v1",
+        "user_id": str(mine).upper(),
+        "payload": {},
+    }
+    streams.redis.xadd(streams.core, {"envelope": json.dumps(upper)})
+    streams.add(streams.core, other)
+
+    assert scrub_stream(streams.redis, streams.core, mine) == 2
+    assert streams.users_in(streams.core) == [(str(other), "session.confirmed.v1")]

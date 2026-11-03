@@ -118,3 +118,23 @@ def test_t63_cli_errors_never_print_the_connection_string_or_password(
     assert status == 2
     assert "OperationalError" in captured.err
     assert secret not in captured.out + captured.err + caplog.text
+
+
+def test_t63_cli_errors_never_print_the_login_or_the_host(
+    eraser_url: str,
+    eraser_engine: Engine,
+    world: World,
+    storage: FakeStorage,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Red when: the driver's message is printed; it names the login and the server (ADR-0013),
+    # even though it never carries the password itself.
+    head, tail = eraser_url.rsplit("@", 1)
+    monkeypatch.setenv("CORE_ERASER_DATABASE_URL", f"{head.rsplit(':', 1)[0]}:wrong-pw@{tail}")
+    status = cli.main(["erase-user", "--user-id", str(world.user_id), "--confirm-email", "x@y.z"])
+    err = capsys.readouterr().err
+    assert status == 2
+    login, host = eraser_engine.url.username, eraser_engine.url.host
+    assert login and host
+    assert login not in err and host not in err
