@@ -1,8 +1,7 @@
 // T0.15: the public landing at "/". Anonymous visitors see it; every other page still sends them
-// to /login; a signed-in cookie leaves "/" for the app. The demo is client-side only.
+// to /login; the demo is client-side only. A signed-in cookie leaving "/" is covered by
+// tests/landing-route.test.tsx and tests/proxy.test.ts (the __Host- cookie cannot be set over http here).
 import { expect, type Page, test } from "@playwright/test";
-
-const COOKIE = "__Host-essity_session";
 
 async function hydrated(page: Page) {
   await page.waitForFunction(() => {
@@ -45,10 +44,4 @@ test("the grading demo answers from the page itself: no request to the API", asy
 test("anonymous /today still goes to /login", async ({ page }) => {
   await page.goto("/today");
   await expect(page).toHaveURL(/\/login$/);
-});
-
-test("with a session cookie / is not the landing: the app takes over", async ({ page, context }) => {
-  await context.addCookies([{ name: COOKIE, value: "not-a-real-session", url: "http://127.0.0.1:3100", secure: true }]);
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Tối nay ôn gì/ })).toHaveCount(0);
 });

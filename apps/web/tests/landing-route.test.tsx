@@ -11,10 +11,10 @@ vi.mock("@/components/landing-redirect", () => ({
   LandingRedirect: () => "redirecting",
 }));
 
-const { default: Home } = await import("@/app/page");
+const { LandingEntry } = await import("@/components/landing/landing-entry");
 const { SESSION_COOKIE } = await import("@/lib/cookies");
 
-const html = async () => renderToStaticMarkup(await Home());
+const html = async () => renderToStaticMarkup(await LandingEntry());
 
 describe("/ (T0.15)", () => {
   beforeEach(() => {
