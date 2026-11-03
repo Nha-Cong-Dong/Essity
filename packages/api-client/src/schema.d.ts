@@ -1944,6 +1944,8 @@ export interface components {
         Me: {
             /** Day Start Hour */
             day_start_hour: number;
+            /** Display Name */
+            display_name: string | null;
             /** Email */
             email: string;
             /** Email Verified */
@@ -1957,6 +1959,8 @@ export interface components {
             id: string;
             /** Timezone */
             timezone: string;
+            /** Username */
+            username: string;
         };
         /**
          * MentionIn
@@ -2382,12 +2386,12 @@ export interface components {
         };
         /** RegisterBody */
         RegisterBody: {
+            /** Display Name */
+            display_name?: string | null;
             /** Email */
             email: string;
             /** Password */
             password: string;
-            /** Phone */
-            phone?: string | null;
             /** Username */
             username: string;
         };

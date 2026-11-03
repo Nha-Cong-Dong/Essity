@@ -25,7 +25,6 @@ from core_api.domain.auth.passwords import (
     validate_password,
     verify_password,
 )
-from core_api.domain.auth.phone import PhoneInvalidError, normalize_phone
 from core_api.domain.auth.sessions import SESSION_MAX
 from core_api.domain.auth.tokens import TokenPurpose
 from core_api.domain.auth.username import (
@@ -49,6 +48,8 @@ from core_api.security.rate_limit import (
     RateLimiter,
     get_rate_limiter,
 )
+
+DISPLAY_NAME_MAX = 60  # D7
 
 router = APIRouter(prefix="/v1/auth")
 
@@ -100,7 +101,7 @@ class RegisterBody(EmailBody):
     password: str = Field(max_length=1024)
     # Shape is checked in the handler, so each refusal gets its own reason (D2, D4).
     username: Annotated[DbText, Field(max_length=64)]
-    phone: Annotated[DbText, Field(max_length=64)] | None = None
+    display_name: Annotated[DbText, Field(max_length=200)] | None = None
 
 
 @router.post("/register", status_code=202)
@@ -118,10 +119,9 @@ def register(
         username = validate_username(normalize_username(body.username))
     except UsernameRejectedError as exc:
         raise HTTPException(status_code=422, detail=exc.problem.value) from None
-    try:
-        phone = normalize_phone(body.phone) if body.phone else None
-    except PhoneInvalidError:
-        raise HTTPException(status_code=422, detail="phone_invalid") from None
+    display_name = (body.display_name or "").strip() or None  # empty means none (D7)
+    if display_name is not None and len(display_name) > DISPLAY_NAME_MAX:
+        raise HTTPException(status_code=422, detail="display_name_too_long")
     limiter.enforce(REGISTER_PER_IP, client_ip(request, get_settings().web_token))
     users = UserRepository(session)
     # Whatever the email: a name that is taken is taken (a username is not a secret, D2).
@@ -130,7 +130,7 @@ def register(
     limiter.enforce_cooldown(EMAIL_COOLDOWN, email)
     password_hash = hash_password(body.password)  # hashed either way: same response time
     try:
-        user = users.create(email, password_hash, username=username, phone=phone)
+        user = users.create(email, password_hash, username=username, display_name=display_name)
         kind = EmailKind.VERIFY_EMAIL
     except UsernameTakenError:  # lost a race with another sign-up for the same name
         raise HTTPException(status_code=409, detail="username_taken") from None
@@ -176,7 +176,7 @@ def verify_email(body: TokenBody, session: DbSession) -> dict[str, str]:
 class LoginBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    # An email or a username (D3), never a phone number. `email` is the old name of this field,
+    # An email or a username (D3), no other key. `email` is the old name of this field,
     # accepted until the web form sends `identifier` (T1.24), then removed.
     identifier: LoginEmail | None = None
     email: LoginEmail | None = None
@@ -220,7 +220,7 @@ def login_pair_key(identifier: str, ip: str) -> str:
 
 
 def _find_login_user(users: UserRepository, identifier: str) -> User | None:
-    """An `@` means an email, anything else a username (D3); a phone number matches neither."""
+    """An `@` means an email, anything else a username (D3); nothing else is a key."""
     if "@" in identifier:
         return users.get_by_email(identifier)
     return users.get_by_username(identifier)

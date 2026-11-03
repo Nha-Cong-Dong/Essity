@@ -38,35 +38,40 @@ class UserRepository:
         timezone: str = DEFAULT_TIMEZONE,
         *,
         username: str | None = None,
-        phone: str | None = None,
+        display_name: str | None = None,
     ) -> User:
-        """Insert the account. `username` and `phone` must already be validated and normalized
-        by the caller (domain.auth); without a username one is made from the email (accounts that
-        did not choose one: tests, and Google sign-in later)."""
+        """Insert the account. `username` and `display_name` must already be validated and
+        normalized by the caller (domain.auth); without a username one is made from the email
+        (accounts that did not choose one: tests, and Google sign-in later)."""
         try:
             ZoneInfo(timezone)
         except (ZoneInfoNotFoundError, ValueError) as exc:
             raise ValueError(f"unknown time zone: {timezone!r}") from exc
         email = normalize_email(email)
         if username is not None:
-            return self._insert(email, password_hash, timezone, username, phone)
+            return self._insert(email, password_hash, timezone, username, display_name)
         taken: set[str] = set()
         while True:
             candidate = username_from_email(email, taken)
             try:
-                return self._insert(email, password_hash, timezone, candidate, phone)
+                return self._insert(email, password_hash, timezone, candidate, display_name)
             except UsernameTakenError:
                 taken.add(candidate)
 
     def _insert(
-        self, email: str, password_hash: str | None, timezone: str, username: str, phone: str | None
+        self,
+        email: str,
+        password_hash: str | None,
+        timezone: str,
+        username: str,
+        display_name: str | None,
     ) -> User:
         user = User(
             email=email,
             password_hash=password_hash,
             timezone=timezone,
             username=username,
-            phone=phone,
+            display_name=display_name,
         )
         # A savepoint, so a duplicate leaves the caller's transaction usable.
         try:

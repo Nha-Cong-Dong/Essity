@@ -15,6 +15,9 @@ router = APIRouter(prefix="/v1")
 class Me(BaseModel):
     id: uuid.UUID
     email: str
+    username: str
+    # The full name given at sign-up, or null: clients then show the username (D7).
+    display_name: str | None
     email_verified: bool
     timezone: str
     day_start_hour: int
@@ -27,6 +30,8 @@ def me(user: CurrentUser, session: DbSession) -> Me:
     return Me(
         id=user.id,
         email=user.email,
+        username=user.username,
+        display_name=user.display_name,
         email_verified=user.email_verified_at is not None,
         timezone=user.timezone,
         day_start_hour=user.day_start_hour,

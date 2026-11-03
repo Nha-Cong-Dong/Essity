@@ -1,13 +1,14 @@
-"""user_username_phone
+"""user_username
 
-T1.23 (US-12 D1-D4, D6): `user.username` (required, lowercase, unique) and `user.phone`
-(optional, contact only: not unique, not a login key). Existing accounts get a username made from
+T1.23 (US-12 D1-D3, D6, D7): `user.username` (required, lowercase, unique) and
+`user.display_name` (optional full name, 1-60 characters). A phone number was dropped from the task
+(owner, 03/11): it waits for an SMS provider. Existing accounts get a username made from
 the part of their email before the `@` (`username_from_email`, written out here so a later change
 to it cannot change what this ran), ordered by `created_at, id`; clashes get `_2`, `_3`. Nothing
 is logged: names come from emails (ADR-0013).
 
-Downgrade drops both columns, so a username a user chose is lost; upgrading again makes names
-from emails. No server default: run this migration and start the new app together (an old app
+Downgrade drops both columns, so a username or full name a user chose is lost; upgrading again
+makes names from emails. No server default: run this migration and start the new app together (an old app
 cannot sign anyone up once `username` is NOT NULL).
 
 Revision ID: 0035
@@ -56,7 +57,7 @@ def make_username(email: str, taken: set[str]) -> str:
 
 def upgrade() -> None:
     op.add_column("user", sa.Column("username", sa.String(length=20), nullable=True))
-    op.add_column("user", sa.Column("phone", sa.String(length=16), nullable=True))
+    op.add_column("user", sa.Column("display_name", sa.Text(), nullable=True))
     connection = op.get_bind()
     rows = connection.execute(sa.text('SELECT id, email FROM "user" ORDER BY created_at, id')).all()
     taken: set[str] = set()
@@ -75,10 +76,16 @@ def upgrade() -> None:
         "username = lower(username) AND username ~ '^[a-z][a-z0-9_.]{2,19}$'"
         " AND position('..' in username) = 0",
     )
+    op.create_check_constraint(
+        "display_name_length",
+        "user",
+        "display_name IS NULL OR char_length(display_name) BETWEEN 1 AND 60",
+    )
 
 
 def downgrade() -> None:
+    op.drop_constraint(op.f("ck_user_display_name_length"), "user", type_="check")
     op.drop_constraint(op.f("ck_user_username_format"), "user", type_="check")
     op.drop_constraint(op.f("uq_user_username"), "user", type_="unique")
-    op.drop_column("user", "phone")
+    op.drop_column("user", "display_name")
     op.drop_column("user", "username")

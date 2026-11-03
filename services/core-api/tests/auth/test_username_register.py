@@ -1,8 +1,8 @@
-"""T1.23 (part 2): `POST /v1/auth/register` with a username and an optional contact phone.
+"""T1.23 (part 2): `POST /v1/auth/register` with a username and an optional full name.
 
-Rules under test: US-12 AC1 + D2 (username shape, case, taken -> 409), D4 (phone normalized,
-shared between accounts), AC5 (an email that already has an account never shows, not even through
-which usernames stay free: review P1), ADR-0013 (no phone or username in the logs).
+Rules under test: US-12 AC1 + D2 (username shape, case, taken -> 409), D7 (full name trimmed,
+1-60 characters, empty is none), AC5 (an email that already has an account never shows, not even
+through which usernames stay free: review P1), ADR-0013 (no username in the logs).
 """
 
 import uuid
@@ -35,37 +35,51 @@ def post(client: TestClient, **fields: object) -> tuple[int, dict[str, str]]:
     return response.status_code, response.json()
 
 
-def test_ac1_register_stores_the_username_lowercase_and_the_phone_as_e164(
+def test_ac1_register_stores_the_username_lowercase_and_the_trimmed_full_name(
     client: TestClient, db_session: Session
 ) -> None:
     email = new_email()
-    assert post(client, email=email, username="  Bob.Smith ", phone="0912 345 678")[0] == 202
+    assert (
+        post(client, email=email, username="  Bob.Smith ", display_name="  Bob Smith  ")[0] == 202
+    )
     user = UserRepository(db_session).get_by_email(email)
     assert user is not None
-    assert (user.username, user.phone) == ("bob.smith", "+84912345678")
+    assert (user.username, user.display_name) == ("bob.smith", "Bob Smith")
 
 
-def test_d4_the_phone_is_optional(client: TestClient, db_session: Session) -> None:
-    email = new_email()
-    assert post(client, email=email)[0] == 202
-    user = UserRepository(db_session).get_by_email(email)
-    assert user is not None and user.phone is None
-
-
-def test_d4_two_accounts_can_share_a_phone(client: TestClient, db_session: Session) -> None:
-    assert post(client, phone="0912345678")[0] == 202
-    assert post(client, phone="+84912345678")[0] == 202
-    phones = db_session.scalars(select(User.phone).where(User.phone == "+84912345678")).all()
-    assert len(phones) == 2
-
-
-@pytest.mark.parametrize("phone", ["12345", "0212345678", "+85912345678", "abc"])
-def test_d4_a_bad_phone_is_refused_and_creates_nothing(
-    client: TestClient, db_session: Session, phone: str
+@pytest.mark.parametrize("given", [None, "", "   "])
+def test_d7_the_full_name_is_optional_and_empty_is_null(
+    client: TestClient, db_session: Session, given: str | None
 ) -> None:
     email = new_email()
-    assert post(client, email=email, phone=phone) == (422, {"detail": "phone_invalid"})
-    assert UserRepository(db_session).get_by_email(email) is None
+    fields: dict[str, object] = {"email": email}
+    if given is not None:
+        fields["display_name"] = given
+    assert post(client, **fields)[0] == 202
+    user = UserRepository(db_session).get_by_email(email)
+    assert user is not None and user.display_name is None
+
+
+def test_d7_sixty_characters_pass_and_sixty_one_are_refused(
+    client: TestClient, db_session: Session
+) -> None:
+    ok_email, bad_email = new_email(), new_email()
+    assert post(client, email=ok_email, display_name="n" * 60)[0] == 202
+    refused = post(client, email=bad_email, display_name="n" * 61)
+    assert refused == (422, {"detail": "display_name_too_long"})
+    assert UserRepository(db_session).get_by_email(bad_email) is None
+    assert UserRepository(db_session).get_by_email(ok_email) is not None
+
+
+def test_d7_a_full_name_with_a_control_character_is_422(client: TestClient) -> None:
+    assert post(client, display_name="bad\x00name")[0] == 422
+
+
+def test_d7_the_database_refuses_an_empty_or_long_full_name(db_session: Session) -> None:
+    users = UserRepository(db_session)
+    for bad in ("", "n" * 61):
+        with pytest.raises(IntegrityError):
+            users.create(new_email(), display_name=bad)
 
 
 @pytest.mark.parametrize(
@@ -115,17 +129,17 @@ def test_ac5_a_taken_email_with_a_free_username_answers_like_a_new_email(
     assert taken == fresh == (202, {"status": "check_email"})
 
 
-def test_ac5_a_taken_email_does_not_overwrite_the_owners_username_or_phone(
+def test_ac5_a_taken_email_does_not_overwrite_the_owners_username_or_name(
     client: TestClient, db_session: Session
 ) -> None:
     owner = UserRepository(db_session).create(
-        new_email(), hash_password(OWNER_PASSWORD), phone="+84912345678"
+        new_email(), hash_password(OWNER_PASSWORD), display_name="Chu That"
     )
     db_session.flush()
-    before = (owner.username, owner.phone, owner.password_hash)
-    assert post(client, email=owner.email, phone="0988888888")[0] == 202
+    before = (owner.username, owner.display_name, owner.password_hash)
+    assert post(client, email=owner.email, display_name="Ke Gian")[0] == 202
     db_session.refresh(owner)
-    assert (owner.username, owner.phone, owner.password_hash) == before
+    assert (owner.username, owner.display_name, owner.password_hash) == before
 
 
 def test_ac5_a_taken_email_still_holds_the_username_it_asked_for(
@@ -204,12 +218,12 @@ def test_repository_makes_a_name_from_the_email_and_avoids_clashes(db_session: S
     assert (one.username, two.username) == (local, f"{local}_2")
 
 
-def test_adr0013_neither_the_phone_nor_the_username_reaches_the_logs(
+def test_adr0013_the_username_does_not_reach_the_logs(
     client: TestClient, log_output: Callable[[], str]
 ) -> None:
     name = "secretname" + uuid.uuid4().hex[:6]
-    assert post(client, username=name, phone="0912345678")[0] == 202
-    assert post(client, username=name, phone="0912345678")[0] == 409
+    assert post(client, username=name)[0] == 202
+    assert post(client, username=name)[0] == 409
     output = log_output()
-    for secret in (name, "912345678", "0912345678"):
+    for secret in (name,):
         assert secret not in output

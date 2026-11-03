@@ -1,7 +1,7 @@
 """T1.23 (part 3): `POST /v1/auth/login` by username or email (D3).
 
 Rules under test: D3 (identifier with `@` is an email, otherwise a username; a phone number is
-not accepted; the old `email` field still works), AC5 (one 401, the same work for every kind of
+not a key; the old `email` field still works), AC5 (one 401, the same work for every kind of
 failure), AC6 + ADR-0020 (limits by identifier+IP and by identifier), ADR-0013 (no identifier in
 the logs, only a keyed hash).
 """
@@ -28,12 +28,11 @@ WRONG = "không phải mật khẩu này"
 BAD = (401, {"detail": "invalid_credentials"})
 
 
-def make_user(session: Session, *, username: str | None = None, phone: str | None = None) -> User:
+def make_user(session: Session, *, username: str | None = None) -> User:
     user = UserRepository(session).create(
         f"lg-{uuid.uuid4().hex[:12]}@example.com",
         hash_password(PASSWORD),
         username=username or fresh_username(),
-        phone=phone,
     )
     user.email_verified_at = user.created_at
     session.flush()
@@ -79,7 +78,7 @@ def test_d3_the_identifier_is_trimmed_and_lowercased(
 
 def test_d3_a_phone_number_is_not_a_login_key(client: TestClient, db_session: Session) -> None:
     # Red when: the phone is looked up as an identifier.
-    make_user(db_session, phone="+84912345678")
+    make_user(db_session)
     for typed in ("+84912345678", "0912345678", "84912345678"):
         assert sign_in(client, "identifier", typed) == BAD
 
@@ -163,9 +162,8 @@ def test_adr0013_what_was_typed_is_logged_only_as_a_keyed_hash(
     # The login box may hold a username or a password typed in the wrong place.
     typed = "hunter" + uuid.uuid4().hex[:8]
     assert sign_in(client, "identifier", typed, WRONG)[0] == 401
-    user = make_user(db_session, phone="+84912345678")
+    user = make_user(db_session)
     assert sign_in(client, "identifier", user.username, WRONG)[0] == 401
     output = log_output()
     assert typed not in output and user.username not in output
-    assert "912345678" not in output
     assert hash_ip(typed) in output

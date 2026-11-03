@@ -27,14 +27,18 @@ class User(CreatedAt, Base):
             " AND position('..' in username) = 0",
             name="username_format",
         ),
+        CheckConstraint(
+            "display_name IS NULL OR char_length(display_name) BETWEEN 1 AND 60",
+            name="display_name_length",
+        ),
         CheckConstraint("day_start_hour BETWEEN 0 AND 23", name="day_start_hour_range"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(320), unique=True)  # 320: longest valid address
     username: Mapped[str] = mapped_column(String(20), unique=True)
-    # Contact only (D4): E.164 `+84...`, not unique, never a login key, never logged.
-    phone: Mapped[str | None] = mapped_column(String(16))
+    # Optional full name (D7), trimmed, 1-60 characters; clients show the username when null.
+    display_name: Mapped[str | None] = mapped_column(Text)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Empty for accounts that only sign in with Google (M5). argon2id hash otherwise (T1.7).
     password_hash: Mapped[str | None] = mapped_column(Text)

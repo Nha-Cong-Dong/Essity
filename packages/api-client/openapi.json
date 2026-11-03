@@ -1674,6 +1674,17 @@
             "title": "Day Start Hour",
             "type": "integer"
           },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -1694,11 +1705,17 @@
           "timezone": {
             "title": "Timezone",
             "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "email",
+          "username",
+          "display_name",
           "email_verified",
           "timezone",
           "day_start_hour",
@@ -2892,6 +2909,18 @@
       "RegisterBody": {
         "additionalProperties": false,
         "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
           "email": {
             "maxLength": 320,
             "pattern": "^\\s*[^@\\s]+@[^@\\s]+\\.[^@\\s]+\\s*$",
@@ -2902,18 +2931,6 @@
             "maxLength": 1024,
             "title": "Password",
             "type": "string"
-          },
-          "phone": {
-            "anyOf": [
-              {
-                "maxLength": 64,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Phone"
           },
           "username": {
             "maxLength": 64,

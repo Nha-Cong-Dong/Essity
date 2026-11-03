@@ -1,8 +1,7 @@
-"""T1.23 (part 1): pure rules for usernames (D2) and contact phone numbers (D4)."""
+"""T1.23 (part 1): pure rules for usernames (D2)."""
 
 import pytest
 
-from core_api.domain.auth.phone import PhoneInvalidError, normalize_phone
 from core_api.domain.auth.username import (
     RESERVED,
     UsernameProblem,
@@ -67,27 +66,3 @@ def test_d6_username_from_email(email: str, taken: list[str], expected: str) -> 
     result = username_from_email(email, taken)
     assert result == expected
     assert validate_username(result) == result
-
-
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
-        ("0912345678", "+84912345678"),
-        ("84912345678", "+84912345678"),
-        ("+84912345678", "+84912345678"),
-        ("0912 345 678", "+84912345678"),
-        ("0912-345-678", "+84912345678"),
-        ("0312345678", "+84312345678"),
-    ],
-)
-def test_d4_phone_normalizes_to_e164(raw: str, expected: str) -> None:
-    assert normalize_phone(raw) == expected
-
-
-@pytest.mark.parametrize(
-    "raw",
-    ["", "123", "0212345678", "091234567", "09123456789", "+85912345678", "abc", "0912345678x"],
-)
-def test_d4_phone_rejects_invalid(raw: str) -> None:
-    with pytest.raises(PhoneInvalidError):
-        normalize_phone(raw)

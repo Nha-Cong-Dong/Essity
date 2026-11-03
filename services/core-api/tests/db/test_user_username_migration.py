@@ -58,15 +58,15 @@ def test_0035_backfills_usernames_without_losing_accounts(
         with owner_engine.connect() as connection:
             rows = {
                 email: connection.execute(
-                    text('SELECT username, phone, password_hash FROM "user" WHERE id = :id'),
+                    text('SELECT username, display_name, password_hash FROM "user" WHERE id = :id'),
                     {"id": ids[email]},
                 ).one()
                 for email, _ in CASES
             }
         for email, expected in CASES:
-            username, phone, password_hash = rows[email]
+            username, display_name, password_hash = rows[email]
             assert username == expected, email
-            assert phone is None and password_hash == "kept-hash"
+            assert display_name is None and password_hash == "kept-hash"
     finally:
         command.upgrade(alembic_cfg, "head")
         with owner_engine.begin() as connection:
@@ -145,8 +145,8 @@ def test_adr0024_core_app_writes_the_new_columns_and_the_eraser_deletes_the_row(
     with engine.begin() as connection:
         user_id = connection.execute(
             text(
-                'INSERT INTO "user" (id, email, username, phone)'
-                " VALUES (gen_random_uuid(), :email, :name, '+84912345678') RETURNING id"
+                'INSERT INTO "user" (id, email, username, display_name)'
+                " VALUES (gen_random_uuid(), :email, :name, 'Ten Day Du') RETURNING id"
             ),
             {"email": email, "name": f"r{uuid.uuid4().hex[:10]}"},
         ).scalar_one()
