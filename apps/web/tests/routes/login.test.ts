@@ -5,7 +5,7 @@ import { PENDING_EMAIL_COOKIE, SESSION_COOKIE } from "@/lib/session";
 
 import { browserPost, fakeCoreApi, SERVICE_TOKEN, setCookies } from "../helpers";
 
-const CREDENTIALS = { email: "a@example.com", password: "password-marker-5f1c" };
+const CREDENTIALS = { identifier: "a@example.com", password: "password-marker-5f1c" };
 const SESSION_TOKEN = "session-token-marker-9d2e";
 
 function loginOk({ verified = true, expiresInSeconds = 90 * 24 * 3600 } = {}) {
@@ -142,10 +142,10 @@ describe("POST /api/auth/login (T1.12)", () => {
     expect(await response.json()).toEqual({ error: "unavailable" });
   });
 
-  it("refuses a body that is not an email and a password", async () => {
+  it("refuses a body that is not an identifier and a password", async () => {
     const calls = fakeCoreApi(() => new Response(null, { status: 500 }));
 
-    const response = await POST(browserPost("/api/auth/login", { email: 1 }));
+    const response = await POST(browserPost("/api/auth/login", { identifier: 1 }));
 
     expect(response.status).toBe(400);
     expect(calls).toHaveLength(0);

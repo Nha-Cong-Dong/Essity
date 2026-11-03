@@ -1609,9 +1609,28 @@
         "additionalProperties": false,
         "properties": {
           "email": {
-            "maxLength": 320,
-            "title": "Email",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "identifier": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identifier"
           },
           "password": {
             "maxLength": 1024,
@@ -1620,7 +1639,6 @@
           }
         },
         "required": [
-          "email",
           "password"
         ],
         "title": "LoginBody",
@@ -1656,6 +1674,17 @@
             "title": "Day Start Hour",
             "type": "integer"
           },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -1676,11 +1705,17 @@
           "timezone": {
             "title": "Timezone",
             "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "email",
+          "username",
+          "display_name",
           "email_verified",
           "timezone",
           "day_start_hour",
@@ -2874,6 +2909,18 @@
       "RegisterBody": {
         "additionalProperties": false,
         "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
           "email": {
             "maxLength": 320,
             "pattern": "^\\s*[^@\\s]+@[^@\\s]+\\.[^@\\s]+\\s*$",
@@ -2884,11 +2931,17 @@
             "maxLength": 1024,
             "title": "Password",
             "type": "string"
+          },
+          "username": {
+            "maxLength": 64,
+            "title": "Username",
+            "type": "string"
           }
         },
         "required": [
           "email",
-          "password"
+          "password",
+          "username"
         ],
         "title": "RegisterBody",
         "type": "object"
@@ -4647,6 +4700,36 @@
         "title": "UploadUrl",
         "type": "object"
       },
+      "UsernameAvailability": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "taken",
+                  "reserved",
+                  "invalid"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "available",
+          "reason"
+        ],
+        "title": "UsernameAvailability",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -5305,6 +5388,47 @@
           }
         },
         "summary": "Register"
+      }
+    },
+    "/v1/auth/username-availability": {
+      "get": {
+        "description": "Whether `u` can be taken now: no session needed, the same rules as sign-up (D2, D8).\n\nA name held by a sign-up with an existing email is \"taken\" here too (review P1).",
+        "operationId": "username_availability_v1_auth_username_availability_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "u",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "title": "U",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsernameAvailability"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Username Availability"
       }
     },
     "/v1/auth/verify-email": {

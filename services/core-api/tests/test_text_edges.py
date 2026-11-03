@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from accounts import fresh_username
 from core_api.db.models import AuthSession, User
 from core_api.domain.auth.passwords import hash_password
 from core_api.repositories.user import UserRepository
@@ -76,7 +77,8 @@ def test_register_email_with_a_format_character_is_not_refused_as_control(
 ) -> None:
     """Catches: the control check widened to category Cf at the route (only Cc is refused)."""
     response = client.post(
-        "/v1/auth/register", json={"email": f"a{char}{new_email()}", "password": PASSWORD}
+        "/v1/auth/register",
+        json={"email": f"a{char}{new_email()}", "password": PASSWORD, "username": fresh_username()},
     )
     assert response.status_code == 202
 
@@ -87,7 +89,12 @@ def test_register_with_a_control_character_creates_no_user(
     """Catches: the check moved after the insert (a refused sign-up would leave a row)."""
     prefix = f"edge-{uuid.uuid4().hex[:12]}"
     response = client.post(
-        "/v1/auth/register", json={"email": f"{prefix}\x00@example.com", "password": PASSWORD}
+        "/v1/auth/register",
+        json={
+            "email": f"{prefix}\x00@example.com",
+            "password": PASSWORD,
+            "username": fresh_username(),
+        },
     )
     assert response.status_code == 422
     assert db_session.scalars(select(User.id).where(User.email.like(f"{prefix}%"))).first() is None

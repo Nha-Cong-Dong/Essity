@@ -15,9 +15,10 @@ beforeEach(() => go.mockReset());
 async function signUp(reply: Response) {
   vi.stubGlobal("fetch", vi.fn(async () => reply));
   render(<RegisterForm />);
+  fireEvent.change(screen.getByLabelText("Tên đăng nhập"), { target: { value: "an.nguyen" } });
   fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@example.com" } });
   fireEvent.change(screen.getByLabelText("Mật khẩu"), { target: { value: "password-marker-123" } });
-  fireEvent.click(screen.getByRole("button", { name: "Đăng ký" }));
+  fireEvent.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
 }
 
 describe("RegisterForm next", () => {

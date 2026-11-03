@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AuthCard } from "@/components/auth/auth-card";
+import { AuthLayout } from "@/components/auth/auth-layout";
 import { RedirectIfSignedIn } from "@/components/auth/redirect-if-signed-in";
 import { RegisterForm } from "@/components/auth/register-form";
 
@@ -9,11 +9,11 @@ export const metadata: Metadata = { title: "Đăng ký · Essity" };
 
 export default function RegisterPage() {
   return (
-    <AuthCard title="Đăng ký">
+    <AuthLayout title="Tạo tài khoản">
       <Suspense fallback={null}>
         <RedirectIfSignedIn />
       </Suspense>
       <RegisterForm />
-    </AuthCard>
+    </AuthLayout>
   );
 }

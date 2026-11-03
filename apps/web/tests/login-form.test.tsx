@@ -13,7 +13,7 @@ afterEach(cleanup);
 async function signIn(next: string) {
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({ next })));
   render(<LoginForm />);
-  fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@example.com" } });
+  fireEvent.change(screen.getByLabelText("Tên đăng nhập hoặc email"), { target: { value: "a@example.com" } });
   fireEvent.change(screen.getByLabelText("Mật khẩu"), { target: { value: "password-marker" } });
   fireEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
 }

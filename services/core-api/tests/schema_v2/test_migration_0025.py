@@ -11,6 +11,7 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, text
 
+from accounts import user_insert
 from erasure import erase_user
 
 NEW_TABLES = ("practice_state", "practice_log", "command_log", "unit_edge")
@@ -89,7 +90,7 @@ def seed_user(engine: Engine) -> tuple[uuid.UUID, uuid.UUID]:
     user, subject = uuid.uuid4(), uuid.uuid4()
     with engine.begin() as connection:
         connection.execute(
-            text('INSERT INTO "user" (id, email) VALUES (:id, :e)'),
+            user_insert(connection, "id", "e"),
             {"id": user, "e": f"{user}@example.com"},
         )
         connection.execute(

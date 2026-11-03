@@ -13,6 +13,7 @@ from alembic.config import Config
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
+from accounts import user_insert
 from core_api.repositories.command_log import CommandLogRepository
 from core_api.repositories.study_filter import FilterState, StudyFilterRepository
 from core_api.repositories.user import UserRepository
@@ -157,7 +158,7 @@ def test_downgrade_brings_back_a_working_0025_guard(
     user = uuid.uuid4()
     with engine.begin() as c:
         c.execute(
-            text('INSERT INTO "user" (id, email) VALUES (:u, :e)'),
+            user_insert(c, "u", "e"),
             {"u": user, "e": f"{user}@example.com"},
         )
     try:

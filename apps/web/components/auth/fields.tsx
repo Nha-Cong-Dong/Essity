@@ -76,9 +76,10 @@ export function PasswordField({ id, label, describedBy, invalid, className, chil
 }
 
 /** A `--partial` box above a form: rate limited, link expired... Never red. */
-export function AuthNote({ children }: { children: ReactNode }) {
+export function AuthNote({ children, id }: { children: ReactNode; id?: string }) {
   return (
     <p
+      id={id}
       role="alert"
       className="m-0 flex items-start gap-2.5 rounded-control bg-[color-mix(in_srgb,var(--partial)_12%,var(--sheet))] px-4 py-3 text-body"
     >

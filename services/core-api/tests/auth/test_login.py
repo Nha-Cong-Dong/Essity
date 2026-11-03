@@ -339,8 +339,8 @@ def test_concurrent_failures_are_counted_before_hashing(
 ) -> None:
     # A burst of requests must not all pass a check before any of them is counted.
     user = make_user(db_session)
-    pair = RateLimit(f"test-{uuid.uuid4().hex}", 1, auth.LOGIN_PER_EMAIL_IP.window)
-    monkeypatch.setattr(auth, "LOGIN_PER_EMAIL_IP", pair)
+    pair = RateLimit(f"test-{uuid.uuid4().hex}", 1, auth.LOGIN_PER_IDENTIFIER_IP.window)
+    monkeypatch.setattr(auth, "LOGIN_PER_IDENTIFIER_IP", pair)
     seen: list[bool] = []
 
     def verify_while_another_request_arrives(password_hash: str, password: str) -> bool:

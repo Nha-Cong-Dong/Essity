@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from accounts import fresh_username
 from core_api.api import auth
 from core_api.db.models import AuthSession, User
 from core_api.domain.auth.passwords import hash_password
@@ -31,7 +32,9 @@ def new_email() -> str:
 
 
 def body_for(path: str, email: str) -> dict[str, str]:
-    return {"email": email, "password": PASSWORD} if path.endswith("register") else {"email": email}
+    if path.endswith("register"):
+        return {"email": email, "password": PASSWORD, "username": fresh_username()}
+    return {"email": email}
 
 
 def post_raw(client: TestClient, path: str, raw: bytes) -> int:
@@ -100,7 +103,7 @@ def test_email_is_checked_as_it_is_stored(client: TestClient, db_session: Sessio
     """Reviewer plan #3: Python's strip() drops \\x1c-\\x1f and \\x85 too, so a trailing one is
     accepted and stored without it, while the same character inside the address is a 422."""
     email = new_email()
-    sent = {"email": f"{email}\x1f", "password": PASSWORD}
+    sent = {"email": f"{email}\x1f", "password": PASSWORD, "username": fresh_username()}
     assert client.post("/v1/auth/register", json=sent).status_code == 202
     assert db_session.scalars(select(User.email).where(User.email == email)).one() == email
 
@@ -140,8 +143,14 @@ def test_login_with_a_malformed_but_clean_email_is_still_401(client: TestClient)
     [
         ("/v1/auth/login", b'{"email": "a\\ud800b@example.com", "password": "long enough one"}'),
         ("/v1/auth/login", b'{"email": "a@example.com", "password": "long \\ud800 enough"}'),
-        ("/v1/auth/register", b'{"email": "a\\ud800b@example.com", "password": "long enough"}'),
-        ("/v1/auth/register", b'{"email": "a@example.com", "password": "long \\ud800 enough"}'),
+        (
+            "/v1/auth/register",
+            b'{"email": "a\\ud800b@example.com", "password": "long enough", "username": "abc"}',
+        ),
+        (
+            "/v1/auth/register",
+            b'{"email": "a@example.com", "password": "long \\ud800 enough", "username": "abc"}',
+        ),
         ("/v1/auth/verify-email/resend", b'{"email": "a\\ud800b@example.com"}'),
         ("/v1/auth/password-reset", b'{"email": "a\\ud800b@example.com"}'),
         ("/v1/auth/verify-email", b'{"token": "ab\\ud800c"}'),
@@ -161,7 +170,10 @@ def test_password_with_nul_is_accepted_at_register_and_login(
 ) -> None:
     email, password = new_email(), "ngựa vằn\x00ăn cỏ buổi sáng"
     assert (
-        client.post("/v1/auth/register", json={"email": email, "password": password}).status_code
+        client.post(
+            "/v1/auth/register",
+            json={"email": email, "password": password, "username": fresh_username()},
+        ).status_code
         == 202
     )
     user = db_session.scalars(select(User).where(User.email == email)).one()
@@ -184,7 +196,7 @@ def test_token_with_nul_is_an_ordinary_bad_token(client: TestClient) -> None:
     ("path", "body"),
     [
         ("/v1/auth/login", {"email": "a@example.com", "password": PASSWORD}),
-        ("/v1/auth/register", {"email": "a@example.com", "password": PASSWORD}),
+        ("/v1/auth/register", {"email": "a@example.com", "password": PASSWORD, "username": "abc"}),
         ("/v1/auth/verify-email/resend", {"email": "a@example.com"}),
         ("/v1/auth/password-reset", {"email": "a@example.com"}),
         ("/v1/auth/verify-email", {"token": "abc"}),

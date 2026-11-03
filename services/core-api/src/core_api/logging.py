@@ -93,6 +93,7 @@ ALLOWED_FIELDS = frozenset(
         "jobs_stalled",
         "event",  # security events (security/audit.py)
         "ip_hash",  # keyed hash, never the IP itself
+        "identifier_hash",  # keyed hash of what was typed in the login field (T1.23)
         "llm_call_id",  # ai-service: the audit row holding the call itself (ADR-0013)
         "provider",  # anthropic | fake
         # Events (T4.2 outbox relay, T4.4 consumer): ids, counts and class names, never a payload.

@@ -10,6 +10,7 @@ from alembic.config import Config
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
+from accounts import user_insert
 from core_api.db.models import User
 from v2_rows import make_document, make_section, make_subject, make_unit
 
@@ -18,7 +19,7 @@ def _user(engine: Engine) -> uuid.UUID:
     user = uuid.uuid4()
     with engine.begin() as c:
         c.execute(
-            text('INSERT INTO "user" (id, email) VALUES (:u, :e)'),
+            user_insert(c, "u", "e"),
             {"u": user, "e": f"{user}@example.com"},
         )
     return user

@@ -5,20 +5,59 @@ import { PENDING_EMAIL_COOKIE, SESSION_COOKIE } from "@/lib/session";
 
 import { browserPost, fakeCoreApi, SERVICE_TOKEN, setCookies } from "../helpers";
 
-const SIGN_UP = { email: "minhanh@sv.edu.vn", password: "password-marker-7a3b" };
+const SIGN_UP = { username: "minh.anh", email: "minhanh@sv.edu.vn", password: "password-marker-7a3b" };
 
 describe("POST /api/auth/register (T1.13)", () => {
   beforeEach(() => {
     vi.stubEnv("WEB_TO_CORE_TOKEN", SERVICE_TOKEN);
   });
 
-  it("AC1: sends exactly the two fields to core-api", async () => {
+  it("AC1: sends exactly username, email and password to core-api", async () => {
     const calls = fakeCoreApi(() => Response.json({ status: "check_email" }, { status: 202 }));
 
-    await POST(browserPost("/api/auth/register", { ...SIGN_UP, extra: "ignored" }));
+    await POST(browserPost("/api/auth/register", SIGN_UP));
 
     expect(calls[0].path).toBe("/v1/auth/register");
     expect(calls[0].body).toEqual(SIGN_UP);
+  });
+
+  // AC1 (T1.24, D4): no phone and no other key is passed on; the browser's JSON is never forwarded.
+  it("AC1: refuses a body with a key it does not know (a phone number)", async () => {
+    const calls = fakeCoreApi(() => Response.json({ status: "check_email" }, { status: 202 }));
+
+    const response = await POST(browserPost("/api/auth/register", { ...SIGN_UP, phone: "0901234567" }));
+
+    expect(response.status).toBe(400);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("D7: a blank Họ và tên is not sent; a filled one is, trimmed", async () => {
+    const calls = fakeCoreApi(() => Response.json({ status: "check_email" }, { status: 202 }));
+
+    await POST(browserPost("/api/auth/register", { ...SIGN_UP, display_name: "   " }));
+    await POST(browserPost("/api/auth/register", { ...SIGN_UP, display_name: " Minh Anh " }));
+
+    expect(calls[0].body).toEqual(SIGN_UP);
+    expect(calls[1].body).toEqual({ ...SIGN_UP, display_name: "Minh Anh" });
+  });
+
+  it("D7: a name over 60 characters comes back as display_name_invalid (422)", async () => {
+    fakeCoreApi(() => Response.json({ detail: "display_name_too_long" }, { status: 422 }));
+    const response = await POST(browserPost("/api/auth/register", { ...SIGN_UP, display_name: "x".repeat(61) }));
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({ error: "display_name_invalid" });
+  });
+
+  it("AC5: a taken username is said (409), a refused one says why (422)", async () => {
+    fakeCoreApi(() => Response.json({ detail: "username_taken" }, { status: 409 }));
+    const taken = await POST(browserPost("/api/auth/register", SIGN_UP));
+    expect(taken.status).toBe(409);
+    expect(await taken.json()).toEqual({ error: "username_taken" });
+
+    fakeCoreApi(() => Response.json({ detail: "username_reserved" }, { status: 422 }));
+    const reserved = await POST(browserPost("/api/auth/register", SIGN_UP));
+    expect(reserved.status).toBe(422);
+    expect(await reserved.json()).toEqual({ error: "username_reserved" });
   });
 
   it("AC5: always goes to /check-email on 202, whether or not the account existed", async () => {

@@ -44,6 +44,14 @@ class Cooldown:
 
 
 @dataclass(frozen=True)
+class Hold:
+    """A key kept for a while: `reserve` sets it, `is_reserved` asks."""
+
+    name: str
+    period: timedelta
+
+
+@dataclass(frozen=True)
 class RateLimitResult:
     allowed: bool
     retry_after_seconds: int  # until the current window ends
@@ -131,6 +139,24 @@ class RateLimiter:
         except RedisError as exc:
             raise RateLimiterUnavailableError from exc
         raise RateLimitedError(max(remaining, 1))
+
+    def _hold_key(self, rule: Hold, key: str) -> str:
+        return f"{KEY_PREFIX}:{rule.name}:{hashlib.sha256(key.encode()).hexdigest()}"
+
+    def reserve(self, rule: Hold, key: str) -> None:
+        """Keep `key` for `rule.period` (set when absent; an existing hold keeps its end)."""
+        try:
+            self.redis.set(
+                self._hold_key(rule, key), 1, nx=True, ex=int(rule.period.total_seconds())
+            )
+        except RedisError as exc:
+            raise RateLimiterUnavailableError from exc
+
+    def is_reserved(self, rule: Hold, key: str) -> bool:
+        try:
+            return bool(self.redis.exists(self._hold_key(rule, key)))
+        except RedisError as exc:
+            raise RateLimiterUnavailableError from exc
 
     def enforce(self, rule: RateLimit, key: str) -> None:
         """Count one attempt; raise RateLimitedError (HTTP 429) when over the limit."""

@@ -7,7 +7,6 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { AuthCard } from "@/components/auth/auth-card";
 import { GridCorner, Sticker } from "@/components/motifs";
 
 const CSS = readFileSync(path.resolve(import.meta.dirname, "../app/globals.css"), "utf-8");
@@ -52,14 +51,3 @@ describe("motifs are decoration (§4.10 rule 7)", () => {
   });
 });
 
-describe("account screens (§4.10 rule 3)", () => {
-  const markup = () => renderToStaticMarkup(h(AuthCard, { title: "Đăng nhập", children: "form" }));
-
-  it("carry the grid in two opposite corners and the pen sticker: two motifs, no dog-ear (UI-1b)", () => {
-    // The grid in two corners counts as the one background motif.
-    const kinds = new Set(markup().match(/data-motif="[^"]+"/g) ?? []);
-    expect([...kinds].sort()).toEqual(['data-motif="grid"', 'data-motif="sticker"']);
-    expect(markup()).toMatch(/motif-grid[^"]*\btl\b/);
-    expect(markup()).toMatch(/motif-grid[^"]*\bbr\b/);
-  });
-});
