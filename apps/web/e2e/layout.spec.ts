@@ -136,7 +136,7 @@ test("smoke: the fixture renders, hydrates and breaks no CSP rule", async ({ pag
   });
   await open(page, 390);
   await expect(rows(page)).toHaveCount(ROWS);
-  await expect(nav(page).getByRole("link")).toHaveText(["Hôm nay", "Môn học", "Thống kê"]);
+  await expect(nav(page).getByRole("link")).toHaveText(["Hôm nay", "Môn học", "Kho", "Thống kê"]);
   // Hydrated: "Sửa" opens the edit form only once React runs.
   await page.getByRole("button", { name: "Sửa Mạng máy tính" }).click();
   await expect(page.getByLabel("Môn")).toBeVisible();
