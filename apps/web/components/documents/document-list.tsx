@@ -9,6 +9,7 @@ export type ListedDocument = {
   page_count: number | null;
   unreadable_pages: number[];
   failure_reason: string | null;
+  role?: string;
 };
 
 const SHOWN_PAGES = 8;
@@ -58,7 +59,14 @@ export function DocumentList({ subjectId, docs }: { subjectId: string; docs: Lis
           <li key={doc.id} className="flex flex-col gap-1 rounded-sheet bg-sunken p-4">
             <span className="min-w-0 text-section font-semibold wrap-anywhere">
               {doc.status === "indexed" ? (
-                <a href={`/subjects/${subjectId}/documents/${doc.id}`} className="underline">
+                <a
+                  href={
+                    doc.role === "textbook"
+                      ? `/subjects/${subjectId}/syllabus`
+                      : `/subjects/${subjectId}/documents/${doc.id}`
+                  }
+                  className="underline"
+                >
                   {doc.short_name}
                 </a>
               ) : (

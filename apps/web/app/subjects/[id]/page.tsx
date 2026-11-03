@@ -5,12 +5,17 @@ import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
 import { AppShell } from "@/components/shells";
+import { SubjectEntryRow } from "@/components/subjects/subject-entry-row";
 import { SubjectScreenBlock } from "@/components/subjects/subject-screen";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { dayLabel } from "@/lib/today-copy";
 import { requireVerifiedSession } from "@/lib/session";
 import { errorName, logError } from "@/lib/log";
 import { CoreStatusError } from "@/lib/subjects";
+import { loadGraph } from "@/lib/graph-load";
+import { loadOutline } from "@/lib/outline";
+import { loadQuestionList } from "@/lib/question-list";
+import { entryRow } from "@/lib/subject-entries";
 import { getSuggestions } from "@/lib/today";
 import { suggestionState } from "@/lib/today-adapt";
 import type { SuggestionState } from "@/components/subjects/subject-suggestion";
@@ -32,6 +37,17 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
     logError("core-api call failed", { route: "today", error: errorName(error) });
     state = subject.days_until_exam < 0 ? { kind: "exam_over" } : { kind: "not_suggested" };
   }
+  // Each source stands alone: one that fails drops its own entry, never the page (DESIGN §6.5 item 4).
+  const [outline, questions, graph] = await Promise.all([
+    loadOutline(subject.id).catch(() => null),
+    loadQuestionList(subject.id).catch(() => null),
+    loadGraph(subject.id, null).catch(() => null),
+  ]);
+  const entries = entryRow(subject.id, {
+    outline,
+    questions: questions && { ready: questions.ready, total: questions.total },
+    graphCards: graph && graph.cards.length,
+  });
   return (
     <div className="mx-auto flex w-full max-w-280 flex-col gap-6">
       <a href="/subjects" className="text-small">
@@ -43,6 +59,7 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
         {subject.days_until_exam >= 0 ? ` (còn ${subject.days_until_exam} ngày)` : " (đã qua)"}
       </p>
       <SubjectScreenBlock subjectId={subject.id} subjectName={subject.name} state={state} />
+      <SubjectEntryRow entries={entries} />
     </div>
   );
 }
