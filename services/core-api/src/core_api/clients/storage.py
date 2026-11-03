@@ -33,6 +33,10 @@ from core_api.config import Settings
 
 if TYPE_CHECKING:  # boto3-stubs is a dev-only group: never import it at runtime
     from mypy_boto3_s3 import S3Client
+    from mypy_boto3_s3.type_defs import ObjectIdentifierTypeDef
+
+
+_DELETE_BATCH = 25  # keys per DeleteObjects call (see delete_prefix)
 
 
 class StorageUnavailableError(Exception):
@@ -243,15 +247,21 @@ class S3Storage:
             for page in self._internal.get_paginator("list_objects_v2").paginate(
                 Bucket=self._bucket, Prefix=prefix
             ):
-                keys = [{"Key": item["Key"]} for item in page.get("Contents", []) if "Key" in item]
+                keys: list[ObjectIdentifierTypeDef] = [
+                    {"Key": item["Key"]} for item in page.get("Contents", []) if "Key" in item
+                ]
                 if not keys:
                     continue
-                result = self._internal.delete_objects(
-                    Bucket=self._bucket, Delete={"Objects": keys, "Quiet": True}
-                )
-                if result.get("Errors"):
-                    raise StorageUnavailableError("storage refused to delete some objects")
-                deleted += len(keys)
+                # Small batches: one 1000-key call outlives the 1 s read timeout on slow stores
+                # (measured 12 s), so a big user could never finish. Each batch makes progress.
+                for start in range(0, len(keys), _DELETE_BATCH):
+                    batch = keys[start : start + _DELETE_BATCH]
+                    result = self._internal.delete_objects(
+                        Bucket=self._bucket, Delete={"Objects": batch, "Quiet": True}
+                    )
+                    if result.get("Errors"):
+                        raise StorageUnavailableError("storage refused to delete some objects")
+                    deleted += len(batch)
         except (ClientError, BotoCoreError) as error:
             raise StorageUnavailableError(_reason(error)) from None
         return deleted
