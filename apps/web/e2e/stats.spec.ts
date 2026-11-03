@@ -41,12 +41,12 @@ for (const width of WIDTHS) {
     }
 
     // Red when: a block's contents spill out of it, or the long name leaves its block.
-    test("US-10 AC1: many-subjects: every block keeps its contents inside", async ({ page }) => {
+    test("US-10 AC1: many-subjects: every total tile keeps its contents inside", async ({ page }) => {
       await open(page, width, "/design-preview/stats?state=many-subjects");
-      for (const block of await page.locator("[data-subject-block]").all()) {
+      for (const block of await page.locator("[data-kpi]").all()) {
         const outer = await box(block);
         expect(outer.x + outer.width).toBeLessThanOrEqual(width + 0.5);
-        for (const child of await block.locator("h2, p, dt, dd, table, a").all()) {
+        for (const child of await block.locator("p").all()) {
           if (!(await child.isVisible())) continue;
           expect(inside(await box(child), outer)).toBe(true);
         }
@@ -92,13 +92,13 @@ for (const width of WIDTHS) {
 }
 
 // Red when: cells touch each other (WCAG 2.5.8 spacing) with a mouse, or are not square.
-test("US-10 AC4: mouse cells are 16 px with 6 px between them", async ({ page }) => {
+test("US-10 AC4: mouse cells are 16 px with 4 px between them", async ({ page }) => {
   await open(page, 1440, "/design-preview/stats?state=full-year");
   const a = await box(page.locator('[data-day="2026-10-26"]'));
   const b = await box(page.locator('[data-day="2026-10-27"]'));
   expect(a.width).toBeCloseTo(16, 0);
   expect(a.height).toBeCloseTo(16, 0);
-  expect(b.y - (a.y + a.height)).toBeCloseTo(6, 0);
+  expect(b.y - (a.y + a.height)).toBeCloseTo(4, 0);
 });
 
 test("US-10 AC4: tapping a day pins it and the panel names it", async ({ page }) => {
@@ -109,9 +109,14 @@ test("US-10 AC4: tapping a day pins it and the panel names it", async ({ page })
   await expect(page.locator("[data-day-detail]")).toContainText("Thứ tư, 28/10");
 });
 
-test("US-10 AC4: ?subject= filters the blocks", async ({ page }) => {
-  await open(page, 1440, "/design-preview/stats?state=many-subjects&subject=0b8f1d2e-0000-4000-8000-000000000002");
-  await expect(page.locator("[data-subject-block]")).toHaveCount(1);
+// I1, I2. Red when: a per-subject block or filter comes back, or a weekday label is missing.
+test("I1, I2: overall totals only, and all seven weekday labels on the year grid", async ({ page }) => {
+  await open(page, 1440, "/design-preview/stats?state=full-year");
+  await expect(page.locator("[data-subject-block]")).toHaveCount(0);
+  await expect(page.locator("#stats-subject")).toHaveCount(0);
+  await expect(page.locator("[data-kpi]")).toHaveCount(3);
+  const grid = page.locator("[data-activity-grid]");
+  for (const day of ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]) await expect(grid).toContainText(day);
 });
 
 // T9.5. Red when: the third nav item is missing, or the current page is not marked "Thống kê".
@@ -137,10 +142,10 @@ test("US-10: /stats without a session goes to the login page", async ({ page }) 
   await expect(page).toHaveURL(/\/login/);
 });
 
-// Red when: the three tiles of a subject block stay stacked at 480 px of block (director-r2 D6).
-test("US-10 AC1: a wide block shows its three tiles in a row", async ({ page }) => {
+// Red when: the three total tiles stay stacked on a wide screen.
+test("I1: on a wide screen the three total tiles sit in a row", async ({ page }) => {
   await open(page, 1440, "/design-preview/stats?state=full-year");
-  const tiles = await page.locator("[data-subject-block]").first().locator("[data-stat-tile]").all();
+  const tiles = await page.locator("[data-kpi]").all();
   const ys = await Promise.all(tiles.map(async (t) => (await box(t)).y));
   expect(new Set(ys.map(Math.round)).size).toBe(1);
 });
