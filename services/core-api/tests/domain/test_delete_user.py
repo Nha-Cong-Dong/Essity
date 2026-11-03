@@ -600,3 +600,13 @@ def test_t63_scrub_removes_odd_envelopes_of_the_user(streams: Streams) -> None:
 
     assert scrub_stream(streams.redis, streams.core, mine) == 2
     assert streams.users_in(streams.core) == [(str(other), "session.confirmed.v1")]
+
+
+def test_t63_the_confirm_email_may_carry_surrounding_spaces(
+    engine: Engine, eraser_engine: Engine, storage: FakeStorage, streams: Streams, a: World
+) -> None:
+    # Red when: the confirm email is compared without trimming, so an email pasted with a
+    # trailing newline or space refuses the erase of the right person (tester T6.3 round 2, D6).
+    padded = f"  {email_of(engine, a.user_id)}\n"
+    erase(engine, eraser_engine, storage, streams, a.user_id, padded)
+    assert rows_of(engine, a.user_id)["user"] == 0
