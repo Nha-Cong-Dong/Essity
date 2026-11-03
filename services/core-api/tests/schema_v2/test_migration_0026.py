@@ -86,7 +86,10 @@ def test_model_checks_match_the_database(engine: Engine) -> None:
 def seeded(db_session: Session) -> Seeded:
     user, subject, question, review = (uuid.uuid4() for _ in range(4))
     for sql, values in (
-        ('INSERT INTO "user" (id, email) VALUES (:id, :e)', {"id": user, "e": f"{user}@x.org"}),
+        (
+            'INSERT INTO "user" (id, email, username) VALUES (:id, :e, :name)',
+            {"id": user, "e": f"{user}@x.org", "name": f"u{user.hex[:12]}"},
+        ),
         (
             "INSERT INTO subject (id, user_id, name) VALUES (:id, :u, 'Mạng')",
             {"id": subject, "u": user},

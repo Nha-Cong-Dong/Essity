@@ -44,7 +44,7 @@ describe("subject block (T7.13)", () => {
   it("US-15 AC6: the answer shows the section and no reason is asked", async () => {
     show({ resolve: async () => ({ kind: "suggested", next: NEXT }) });
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Gợi ý cho hôm nay" })));
-    expect(screen.getByText("Hôm nay nên học: mục 3.2")).toBeTruthy();
+    expect(screen.getByText("Nội dung hôm nay: mục 3.2")).toBeTruthy();
     expect(screen.queryByText(/không phải ngày/i)).toBeNull();
   });
 
@@ -73,7 +73,7 @@ describe("subject block (T7.13)", () => {
     show({ state: { kind: "suggested", next: { ...NEXT, sectionId: SEC } } });
     const enter = screen.getByRole("button", { name: /Vào buổi học/ });
     expect(enter.getAttribute("href")).toBe(`/subjects/${ID}/sessions/study?section=${SEC}`);
-    expect(screen.getByRole("button", { name: "Học tự do" }).getAttribute("href")).toBe(`/subjects/${ID}/sessions/new`);
+    expect(screen.queryByRole("button", { name: /Học tự do/ })).toBeNull(); // D5: only when nothing is suggested
   });
 
   // T7.19 F3. Red when: a 409 "nothing to review" silently sends the learner to /today, or the

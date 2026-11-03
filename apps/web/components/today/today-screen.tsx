@@ -72,6 +72,32 @@ function AfterSessionTile({ subjects }: { subjects: Today["subjects"] }) {
   );
 }
 
+/** J1: the graph tile is always there; an empty graph leads on to Ghi buổi học. */
+function GraphTile({ subjects }: { subjects: Today["subjects"] }) {
+  const several = subjects.length > 1;
+  return (
+    <Sheet variant="tile" className="min-w-0 min-[901px]:col-span-4" aria-labelledby="today-graph">
+      <h2 id="today-graph" className="m-0 font-display text-lead">
+        {TODAY_COPY.graphTile}
+      </h2>
+      <p className="m-0 mt-2.5 text-ink-soft">{TODAY_COPY.graphHint}</p>
+      <div className="mt-4 flex flex-col items-start gap-2">
+        {subjects.map((subject) => (
+          <Button
+            key={subject.id}
+            render={<a href={`/subjects/${subject.id}/graph`} />}
+            nativeButton={false}
+            variant="quiet"
+            className="wrap-anywhere whitespace-normal"
+          >
+            {several ? `${TODAY_COPY.graphOpen} · ${subject.name}` : TODAY_COPY.graphOpen}
+          </Button>
+        ))}
+      </div>
+    </Sheet>
+  );
+}
+
 function HongTile({ children }: { children: React.ReactNode }) {
   return (
     <Sheet
@@ -202,6 +228,7 @@ export function TodayScreen({ today }: { today: Today }) {
         {today.state !== "all_exams_over" && today.state !== "no_questions" && (
           <AfterSessionTile subjects={today.subjects} />
         )}
+        <GraphTile subjects={today.subjects} />
         {today.backlog && (
           <Sheet
             variant="tile"

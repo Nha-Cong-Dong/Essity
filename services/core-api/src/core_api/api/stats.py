@@ -62,7 +62,17 @@ class GridCellOut(BaseModel):
     questions_answered: int
 
 
+class TotalsOut(BaseModel):
+    units_learned: int
+    units_total: int
+    sessions: int
+    cards_saved: int
+    cards_reviewed: int
+    practice_done: int
+
+
 class StatsOut(BaseModel):
+    totals: TotalsOut
     today: date
     subjects: list[SubjectStatsOut]
     grid: list[GridCellOut]
@@ -77,6 +87,14 @@ def get_stats(
     except UnknownSubjectError:
         raise HTTPException(status_code=404, detail="subject_not_found") from None
     return StatsOut(
+        totals=TotalsOut(
+            units_learned=stats.totals.units_learned,
+            units_total=stats.totals.units_total,
+            sessions=stats.totals.sessions,
+            cards_saved=stats.totals.cards_saved,
+            cards_reviewed=stats.totals.cards_reviewed,
+            practice_done=stats.totals.practice_done,
+        ),
         today=stats.today,
         subjects=[
             SubjectStatsOut(

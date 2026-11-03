@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from accounts import fresh_username
 from core_api.api import auth
 from core_api.db.models import User
 from core_api.domain.auth.passwords import hash_password, verify_password
@@ -31,7 +32,10 @@ def new_email() -> str:
 
 
 def register(client: TestClient, email: str, password: str = PASSWORD) -> tuple[int, object]:
-    response = client.post(REGISTER, json={"email": email, "password": password})
+    response = client.post(
+        REGISTER,
+        json={"email": email, "password": password, "username": fresh_username()},
+    )
     return response.status_code, response.json()
 
 
@@ -150,13 +154,18 @@ def test_a_malformed_address_is_refused(client: TestClient, email: str) -> None:
 def test_ac6_sign_ups_are_limited_per_ip(client: TestClient, client_ip: str) -> None:
     for _ in range(auth.REGISTER_PER_IP.limit):
         assert register(client, new_email())[0] == 202
-    status = client.post(REGISTER, json={"email": new_email(), "password": PASSWORD})
+    status = client.post(
+        REGISTER,
+        json={"email": new_email(), "password": PASSWORD, "username": fresh_username()},
+    )
     assert status.status_code == 429
     assert int(status.headers["Retry-After"]) > 0
     # Another fresh address: Redis is shared across runs, a fixed one would fill up.
     other_ip = {"X-Client-IP": fresh_ip("172.16")}
     response = client.post(
-        REGISTER, json={"email": new_email(), "password": PASSWORD}, headers=other_ip
+        REGISTER,
+        json={"email": new_email(), "password": PASSWORD, "username": fresh_username()},
+        headers=other_ip,
     )
     assert response.status_code == 202
 
@@ -218,9 +227,10 @@ def test_ac8_neither_the_password_nor_the_address_reaches_the_logs(
 @pytest.mark.parametrize(
     "body",
     [
-        {"password": "SECRET-PASSWORD-xyz"},  # no email
-        {"email": "not-an-address", "password": "SECRET-PASSWORD-xyz"},
-        {"email": "a@example.com", "password": "SECRET-PASSWORD-xyz" * 60},  # over 1024
+        {"password": "SECRET-PASSWORD-xyz", "username": "abc"},  # no email
+        {"email": "not-an-address", "password": "SECRET-PASSWORD-xyz", "username": "abc"},
+        {"email": "a@example.com", "password": "SECRET-PASSWORD-xyz" * 60, "username": "abc"},
+        {"email": "a@example.com", "password": "SECRET-PASSWORD-xyz"},  # no username
     ],
 )
 def test_a_malformed_request_never_echoes_the_password(

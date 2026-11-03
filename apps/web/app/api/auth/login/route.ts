@@ -5,10 +5,10 @@ import { coreClientFor } from "@/lib/core-client";
 import { withOrigin } from "@/lib/csrf";
 import { errorResponse, rateLimited, readStrings, unavailable } from "@/lib/http";
 
-// T1.12: signs in through core-api and keeps the session token in an HttpOnly cookie, so the
+// T1.12, T1.24: `identifier` is a username or an email (D3). Signs in through core-api and keeps the session token in an HttpOnly cookie, so the
 // browser's JavaScript never sees it (ADR-0014).
 export const POST = withOrigin(async (request) => {
-  const credentials = await readStrings(request, ["email", "password"]);
+  const credentials = await readStrings(request, ["identifier", "password"]);
   if (credentials === null) return errorResponse("invalid_request", 400);
 
   let result;
@@ -29,7 +29,7 @@ export const POST = withOrigin(async (request) => {
     }
     return next;
   }
-  // AC5: one answer for a wrong email, a wrong password or a malformed email.
+  // AC5: one answer for a wrong username, email or password, or a malformed one.
   if (response.status === 401 || response.status === 422) {
     return errorResponse("invalid_credentials", 401);
   }

@@ -93,10 +93,10 @@ describe("subject suggestion block", () => {
 
   it("US-15 AC6, US-03 AC7: suggested: nên học, pace line, Ôn riêng môn này secondary, Học tự do quiet", () => {
     const markup = draw1("suggested");
-    expect(markup).toContain("Hôm nay nên học: mục 3.2");
-    expect(markup).toContain("còn 12 mục (86 trang), 20 ngày");
+    expect(markup).toContain("Nội dung hôm nay: mục 3.2");
+    expect(markup).not.toContain("còn 12 mục"); // D4: the repeated pace line is gone
     expect(markup).toMatch(/data-variant="secondary"[^>]*>Ôn riêng môn này/);
-    expect(markup).toMatch(/data-variant="quiet"[^>]*>Học tự do/);
+    expect(markup).not.toContain("Học tự do"); // D5
   });
 
   it("US-15 AC6: not suggested: only the secondary Gợi ý cho hôm nay, no excuse text", () => {

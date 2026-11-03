@@ -52,6 +52,14 @@ export default function SyllabusPage({ params }: { params: Promise<{ id: string 
       <Suspense fallback={<PageColumn width="session" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
         <Syllabus params={params} />
       </Suspense>
+      <section
+        aria-label="Chỉnh đề cương bằng lời"
+        className="mt-10 flex max-w-3xl flex-col gap-2 border-t border-line pt-6 has-[[data-command-slot-bottom]:empty]:hidden"
+      >
+        <h2 className="m-0 font-display text-lead">Chưa hài lòng với cách chia đề cương?</h2>
+        <p className="m-0 text-body text-ink-soft">Gõ điều bạn muốn sửa bằng lời của bạn, ví dụ “bỏ chương 5” hoặc “gộp mục 2.1 và 2.2”. Khung này chỉ dùng để chỉnh đề cương.</p>
+        <div data-command-slot-bottom className="empty:hidden" />
+      </section>
     </AppShell>
   );
 }

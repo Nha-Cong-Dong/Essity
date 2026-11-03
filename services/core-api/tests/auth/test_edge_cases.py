@@ -45,11 +45,11 @@ def login(client: TestClient, email: str, password: str, **kwargs: object) -> in
 
 def test_rule_numbers_are_the_ones_the_spec_states() -> None:
     """Catches: any change of a limit or window constant (tests elsewhere read the constant)."""
-    assert (auth.LOGIN_PER_EMAIL_IP.limit, auth.LOGIN_PER_EMAIL_IP.window) == (
+    assert (auth.LOGIN_PER_IDENTIFIER_IP.limit, auth.LOGIN_PER_IDENTIFIER_IP.window) == (
         5,
         timedelta(minutes=15),
     )
-    assert (auth.LOGIN_PER_EMAIL.limit, auth.LOGIN_PER_EMAIL.window) == (
+    assert (auth.LOGIN_PER_IDENTIFIER.limit, auth.LOGIN_PER_IDENTIFIER.window) == (
         20,
         timedelta(minutes=15),
     )

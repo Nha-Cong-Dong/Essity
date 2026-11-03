@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AuthCard } from "@/components/auth/auth-card";
+import { AuthLayout } from "@/components/auth/auth-layout";
 import { ResetPassword } from "@/components/auth/reset-password";
 
 export const metadata: Metadata = { title: "Đặt mật khẩu mới · Essity" };
@@ -9,8 +9,8 @@ export const metadata: Metadata = { title: "Đặt mật khẩu mới · Essity"
 // a third party, so the token in the URL goes nowhere.
 export default function ResetPasswordPage() {
   return (
-    <AuthCard title="Đặt mật khẩu mới">
+    <AuthLayout title="Đặt lại mật khẩu">
       <ResetPassword />
-    </AuthCard>
+    </AuthLayout>
   );
 }

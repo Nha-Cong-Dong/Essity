@@ -21,7 +21,7 @@ import styles from "./stats.module.css";
 // line says it once. The panel under the grid replaces a popover: it cannot be clipped by the
 // scrolling box or hidden under a finger. An empty day is a plain fact, never a lack.
 
-const ROW_LABELS = ["T2", "", "T4", "", "T6", "", ""];
+const ROW_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const MIN_LABEL_GAP = 3; // columns between two month labels
 
 export type GridSubject = { id: string; name: string };
@@ -82,11 +82,11 @@ export function ActivityGrid({
     }
   }
 
-  // Open on today, near the middle, so the wide grid does not start at its oldest week.
+  // Open on today (the right end of the year), so the wide grid shows the latest weeks.
   useEffect(() => {
     const box = scroller.current;
     const el = refs.current.get(start);
-    if (box && el) box.scrollLeft = Math.max(el.offsetLeft - box.clientWidth / 2, 0);
+    if (box && el) box.scrollLeft = Math.max(el.offsetLeft + el.offsetWidth - box.clientWidth + 16, 0);
   }, [start]);
 
   function pin(i: number) {

@@ -22,6 +22,7 @@ from core_api.db.models import (
 from core_api.domain.generated_questions import RUNNING_STALE_SECONDS, TRIGRAM_THRESHOLD
 from core_api.domain.question_hash import content_hash
 from core_api.repositories.base import UserScopedRepository
+from core_api.repositories.doc_section import excluded_effective_ids
 
 # unit.status values that count as a card the learner owns (not a draft, not retired).
 LIVE_CARD = ("canonical",)
@@ -150,11 +151,12 @@ class GeneratedQuestionRepository(UserScopedRepository[Question]):
                 DocSection.user_id == self.user_id,
                 DocSection.id == section_id,
                 DocSection.subject_id == subject_id,
-                DocSection.excluded.is_(False),
                 DocSection.studied_weight > 0,
             )
         ).first()
-        if section is None:
+        if section is None or section_id in excluded_effective_ids(
+            self.session, self.user_id, subject_id
+        ):
             return None
         child = DocSection.__table__.alias("child")
         has_child = self.session.scalar(

@@ -11,8 +11,10 @@ from redis import Redis
 
 from ai_service.clients.storage import ObjectStorage
 from ai_service.db.session import SessionFactory
+from ai_service.handlers.user_deleted import OnUserDeleted
 from ai_service.llm.client import LlmClient
 from ai_service.messaging.consumer import Handler
+from ai_service.messaging.dead_letter import DEAD_STREAM
 from ai_service.tasks.grade_async import GradeAsync
 from ai_service.tasks.index_document import IndexDocument
 from ai_service.tasks.process_session import ProcessSession
@@ -39,4 +41,5 @@ def build_handlers(
             storage=storage, redis=redis, llm=llm, sessions=sessions
         ),
         "unit.saved.v1": OnUnitSaved(),
+        "user.deleted.v1": OnUserDeleted(redis=redis, dead_stream=DEAD_STREAM),
     }

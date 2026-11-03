@@ -7,6 +7,7 @@ refuses kinds missing here, and the worker would fail jobs whose kind it does no
 # Modules that declare handlers; importing them registers their kinds.
 from core_api.jobs import (
     document_cleanup,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    erase_user_sweep,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     job_health,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     note_cleanup,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     optimize_fsrs,  # noqa: F401  # pyright: ignore[reportUnusedImport]

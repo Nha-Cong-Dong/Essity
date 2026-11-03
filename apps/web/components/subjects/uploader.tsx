@@ -89,7 +89,16 @@ function Status({ state }: { state: UploadState }) {
 
 // T7.5 (US-01 AC4): once a file is stored, its role is chosen right under it (DocRole). The first
 // file is the main textbook when the subject has none yet; the rest are supplementary.
-export function Uploader({ subjectId, hasMain = true }: { subjectId: string; hasMain?: boolean }) {
+export function Uploader({
+  subjectId,
+  hasMain = true,
+  fixedRole,
+}: {
+  subjectId: string;
+  hasMain?: boolean;
+  /** H2: the upload tab decides the role of every file put in it. */
+  fixedRole?: Role;
+}) {
   const [rows, setRows] = useState<Row[]>([]);
   const [over, setOver] = useState(false);
   const next = useRef(0);
@@ -101,7 +110,7 @@ export function Uploader({ subjectId, hasMain = true }: { subjectId: string; has
       all.map((row) => {
         if (row.key !== key) return row;
         if (state.kind !== "done" || row.role !== undefined) return { ...row, state };
-        const role: Role = claimed.current ? "supplementary" : "main";
+        const role: Role = fixedRole ?? (claimed.current ? "supplementary" : "main");
         claimed.current = true;
         return { ...row, state, role };
       }),

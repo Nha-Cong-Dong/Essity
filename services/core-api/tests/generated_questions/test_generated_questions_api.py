@@ -301,6 +301,29 @@ def test_an_unstudied_or_excluded_leaf_is_not_found(
     assert ai.payloads == []
 
 
+def test_a_leaf_under_an_excluded_ancestor_is_not_found_until_it_is_brought_back(
+    world: World, ai: FakeLike
+) -> None:
+    # T7.2c (US-13). Red when: "Sinh câu" works for a leaf whose chapter is excluded, or still
+    # refuses after "Đưa lại".
+    leaf = world.leaf()
+    row = world.session.get_one(DocSection, leaf)
+    chapter = make_section(
+        world.session,
+        world.user,
+        world.session.get_one(Document, row.document_id),
+        title="Lời nói đầu",
+        excluded=True,
+    )
+    row.parent_id = chapter.id
+    world.session.flush()
+    assert world.post({"section_id": str(leaf)}).status_code == 404
+    assert ai.payloads == []
+    chapter.excluded = False
+    world.session.flush()
+    assert world.post({"section_id": str(leaf)}).status_code == 200
+
+
 def test_a_section_with_children_is_not_a_leaf(world: World, ai: FakeLike) -> None:
     # US-17 AC1. Red when: a chapter, not a leaf, can be pressed.
     parent = world.leaf()

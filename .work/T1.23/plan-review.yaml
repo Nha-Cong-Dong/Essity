@@ -1,0 +1,41 @@
+step: plan-review
+verdict: pass
+sha: 5030c06  # HEAD worktree L1 lúc soát vòng 2; plan.md đã đổi (bỏ SĐT, D7, D8, P1 bằng Redis hold)
+by: security-reviewer
+at: 2026-11-04
+round: 2
+open_orange: 0
+tokens: null
+summary: |
+  Vòng 2: P1..P8 đều đóng (kiểm bằng plan.md + code/test thật trên 5030c06). P1 (🔴) đóng bằng
+  Redis hold username_hold TTL 7 ngày, 409 xét hàng user lẫn hold, Redis lỗi -> 503; D8 cũng tính
+  hold là "taken". Bỏ SĐT (người dùng 03/11) làm P3 phần phone và test D4 không còn áp dụng.
+  Phần plan cũ còn nhắc phone (plan.md:13-20,36,42) là chữ thừa, bảng Quyết định dòng 77 đã ghi bỏ.
+
+findings:
+  - id: P1
+    status: "đóng"
+    evidence: "plan.md:72 + api/auth.py USERNAME_HOLD, register nhánh EmailTakenError đặt hold nx; test_ac5_a_taken_email_still_holds_the_username_it_asked_for; test_username_edges.py hold fail-closed/nx/TTL; test_ac5_a_name_held_by_a_taken_email_reads_taken (D8)"
+  - id: P2
+    status: "đóng"
+    evidence: "plan.md:73, không có bộ đếm theo user_id"
+  - id: P3
+    status: "đóng"
+    evidence: "logging.py chỉ thêm identifier_hash; phone đã bỏ khỏi schema/API; test_adr0013_* login/register"
+  - id: P4
+    status: "đóng"
+    evidence: "repositories/user.py tách uq_user_email/uq_user_username, lỗi khác raise lại; test_repository_tells_apart_which_constraint_was_broken"
+  - id: P5
+    status: "đóng"
+    evidence: "test_d2_losing_a_race_for_a_username_is_409_not_500 + test_username_edges.py (hai transaction thật)"
+  - id: P6
+    status: "đóng"
+    evidence: "LoginBody.identifier dùng LoginEmail (EMAIL_MAX, storable)"
+  - id: P7
+    status: "đóng"
+    evidence: "docstring 0035_user_username.py ghi không log, downgrade mất tên tự chọn/họ tên, không server_default"
+  - id: P8
+    status: "đóng (chấp nhận từ vòng 1)"
+    evidence: "plan.md:58"
+
+rules_vs_tests_missing_or_weak: []

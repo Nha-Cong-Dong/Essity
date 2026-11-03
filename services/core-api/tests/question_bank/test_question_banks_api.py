@@ -315,6 +315,22 @@ def test_an_excluded_section_is_not_offered(world: World, ai: FakeBank) -> None:
     assert [s["title"] for s in ai.payloads[0]["sections"]] == ["3.1 TCP"]
 
 
+def test_children_of_an_excluded_ancestor_are_not_offered_and_come_back(
+    world: World, ai: FakeBank
+) -> None:
+    # T7.2c (US-13). Red when: a leaf under an excluded chapter is sent to the model, or stays
+    # hidden after the chapter is brought back.
+    world.parent.excluded = True
+    world.session.flush()
+    ai.script = reply([bq(1, "TCP là gì và dùng để làm gì?")])
+    world.post()
+    assert ai.payloads[0]["sections"] == []
+    world.parent.excluded = False
+    world.session.flush()
+    world.post()
+    assert [s["title"] for s in ai.payloads[1]["sections"]] == ["3.1 TCP", "3.2 UDP"]
+
+
 # --- AC8: importing again -----------------------------------------------------------------------
 
 

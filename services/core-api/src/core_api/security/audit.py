@@ -36,11 +36,21 @@ def hash_ip(ip: str, key: bytes | None = None) -> str:
     return digest[:IP_HASH_LENGTH]
 
 
-def security_event(event: str, *, email: str | None = None, ip: str | None = None) -> None:
+def security_event(
+    event: str,
+    *,
+    email: str | None = None,
+    identifier: str | None = None,
+    ip: str | None = None,
+) -> None:
     """Log one security event. The user, when known, comes from `set_user_id`."""
     extra: dict[str, str] = {"event": event}
     if email is not None:
         extra["email"] = email
+    if identifier is not None:
+        # What was typed in the login field may be an email, a username, or a password typed in
+        # the wrong box: only a keyed hash is logged (T1.23).
+        extra["identifier_hash"] = hash_ip(identifier)
     if ip is not None:
         extra["ip_hash"] = hash_ip(ip)
     logger.info("security event", extra=extra)

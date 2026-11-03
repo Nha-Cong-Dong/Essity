@@ -212,6 +212,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/username-availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Username Availability
+         * @description Whether `u` can be taken now: no session needed, the same rules as sign-up (D2, D8).
+         *
+         *     A name held by a sign-up with an existing email is "taken" here too (review P1).
+         */
+        get: operations["username_availability_v1_auth_username_availability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/verify-email": {
         parameters: {
             query?: never;
@@ -1922,7 +1944,9 @@ export interface components {
         /** LoginBody */
         LoginBody: {
             /** Email */
-            email: string;
+            email?: string | null;
+            /** Identifier */
+            identifier?: string | null;
             /** Password */
             password: string;
         };
@@ -1942,6 +1966,8 @@ export interface components {
         Me: {
             /** Day Start Hour */
             day_start_hour: number;
+            /** Display Name */
+            display_name: string | null;
             /** Email */
             email: string;
             /** Email Verified */
@@ -1955,6 +1981,8 @@ export interface components {
             id: string;
             /** Timezone */
             timezone: string;
+            /** Username */
+            username: string;
         };
         /**
          * MentionIn
@@ -2380,10 +2408,14 @@ export interface components {
         };
         /** RegisterBody */
         RegisterBody: {
+            /** Display Name */
+            display_name?: string | null;
             /** Email */
             email: string;
             /** Password */
             password: string;
+            /** Username */
+            username: string;
         };
         /** ResetBody */
         ResetBody: {
@@ -2641,6 +2673,7 @@ export interface components {
              * Format: date
              */
             today: string;
+            totals: components["schemas"]["TotalsOut"];
         };
         /** StoppedOut */
         StoppedOut: {
@@ -2906,6 +2939,21 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** TotalsOut */
+        TotalsOut: {
+            /** Cards Reviewed */
+            cards_reviewed: number;
+            /** Cards Saved */
+            cards_saved: number;
+            /** Practice Done */
+            practice_done: number;
+            /** Sessions */
+            sessions: number;
+            /** Units Learned */
+            units_learned: number;
+            /** Units Total */
+            units_total: number;
+        };
         /** TypeCountOut */
         TypeCountOut: {
             /** Count */
@@ -3037,6 +3085,13 @@ export interface components {
             method: "PUT";
             /** Url */
             url: string;
+        };
+        /** UsernameAvailability */
+        UsernameAvailability: {
+            /** Available */
+            available: boolean;
+            /** Reason */
+            reason: ("taken" | "reserved" | "invalid") | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -3478,6 +3533,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    username_availability_v1_auth_username_availability_get: {
+        parameters: {
+            query: {
+                u: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsernameAvailability"];
                 };
             };
             /** @description Validation Error */

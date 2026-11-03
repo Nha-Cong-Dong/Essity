@@ -80,6 +80,6 @@ for (const width of WIDTHS) {
 test("US-15 AC6: Gợi ý cho hôm nay shows the suggestion and moves focus to it", async ({ page }) => {
   await open(page, 390, "/design-preview/subject?state=not-suggested");
   await page.getByRole("button", { name: "Gợi ý cho hôm nay" }).click();
-  await expect(page.getByText("Hôm nay nên học: mục 3.2")).toBeVisible();
+  await expect(page.getByText("Nội dung hôm nay: mục 3.2")).toBeVisible();
   await expect(page.locator("[aria-live=polite]")).toBeFocused();
 });

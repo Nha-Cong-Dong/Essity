@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 
-import { AuthCard } from "@/components/auth/auth-card";
+import { AuthLayout } from "@/components/auth/auth-layout";
 import { AUTH_LINK, AuthField, AuthNote } from "@/components/auth/fields";
 import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ export function ForgotPassword() {
 
   if (sentTo !== undefined) {
     return (
-      <AuthCard title={FORGOT_PASSWORD_SENT.title}>
+      <AuthLayout title={FORGOT_PASSWORD_SENT.title}>
         <p className="m-0 text-body">
           {FORGOT_PASSWORD_SENT.sentTo}{" "}
           <span className="font-medium text-hong">{maskEmail(sentTo)}</span>
@@ -39,11 +39,11 @@ export function ForgotPassword() {
         <a href="/login" className={AUTH_LINK}>
           Quay lại đăng nhập
         </a>
-      </AuthCard>
+      </AuthLayout>
     );
   }
   return (
-    <AuthCard title="Quên mật khẩu">
+    <AuthLayout title="Quên mật khẩu">
       <form method="post" onSubmit={submit} className="flex flex-col gap-5" noValidate>
         {error?.code === "rate_limited" && <AuthNote>{rateLimitMessage(error.retryAfter)}</AuthNote>}
         <p className="m-0">Nhập email bạn dùng để đăng ký. App sẽ gửi link đặt lại mật khẩu.</p>
@@ -58,6 +58,6 @@ export function ForgotPassword() {
           Quay lại đăng nhập
         </a>
       </form>
-    </AuthCard>
+    </AuthLayout>
   );
 }

@@ -78,11 +78,23 @@ def test_me_returns_the_signed_in_user(client: TestClient, db_session: Session) 
     assert response.json() == {
         "id": str(user.id),
         "email": user.email,
+        "username": user.username,
+        "display_name": None,
         "email_verified": True,
         "timezone": user.timezone,
         "day_start_hour": user.day_start_hour,
         "has_subjects": False,
     }
+
+
+def test_d7_me_returns_the_full_name_when_there_is_one(
+    client: TestClient, db_session: Session
+) -> None:
+    user = make_user(db_session)
+    user.display_name = "Nguyễn Văn A"
+    db_session.flush()
+    body = client.get(ME, headers=bearer(sign_in(client, user))).json()
+    assert (body["display_name"], body["username"]) == ("Nguyễn Văn A", user.username)
 
 
 @pytest.mark.parametrize(

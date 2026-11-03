@@ -15,6 +15,7 @@ from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
+from accounts import user_insert
 from core_api.db.base import Base
 from core_api.db.models import CommandLog, User
 from core_api.db.models import PracticeState as PracticeStateRow
@@ -471,7 +472,7 @@ def test_0032_up_down_up_keeps_old_command_rows_and_the_old_guard(
     user = uuid.uuid4()
     with engine.begin() as c:
         c.execute(
-            text('INSERT INTO "user" (id, email) VALUES (:u, :e)'),
+            user_insert(c, "u", "e"),
             {"u": user, "e": f"{user}@example.com"},
         )
     try:

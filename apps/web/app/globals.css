@@ -58,6 +58,8 @@
   --color-hl-edge: var(--hl-edge);
   --color-hl-band: var(--hl-band);
   --color-spine: var(--spine);
+  --color-poster: var(--poster);
+  --color-on-poster: var(--on-poster);
   --color-correct: var(--correct);
   --color-partial: var(--partial);
   --color-pencil: var(--pencil);
@@ -235,6 +237,10 @@
   --hl-stroke: #ffc2da; /* the giant pen stroke: landing only */
   --stroke-line: #7e5568; /* borders on the giant stroke */
   --spine: var(--rose-700);
+  --poster: #a8255f; /* auth screens: the pink poster column (T1.24) */
+  --on-poster: #ffffff;
+  --glow-a: #c2286c;
+  --glow-b: #8e1e50;
   --correct: #23744f;
   --partial: #7a6200;
   --pencil: #625c5a;
@@ -288,6 +294,10 @@
     --hl-stroke: #46202f;
     --stroke-line: #a07e8e;
     --spine: #c8577f;
+    --poster: #5a2443;
+    --on-poster: #f2ecea;
+    --glow-a: #6b2a50;
+    --glow-b: #2c1d27;
     --correct: #6ccb9f;
     --partial: #e6c350;
     --pencil: #ada8a6;
@@ -343,6 +353,10 @@
   --hl-stroke: #46202f;
   --stroke-line: #a07e8e;
   --spine: #c8577f;
+  --poster: #5a2443;
+  --on-poster: #f2ecea;
+  --glow-a: #6b2a50;
+  --glow-b: #2c1d27;
   --correct: #6ccb9f;
   --partial: #e6c350;
   --pencil: #ada8a6;
@@ -549,4 +563,22 @@
       display: none;
     }
   }
+}
+
+/* Auth screens (T1.24): the pink poster beside the form. Fixed values (--poster, --on-poster,
+   --glow-*) so the column keeps its contrast in both palettes; grain is a 9% white noise. */
+.auth-poster {
+  background-color: var(--poster);
+  background-image:
+    radial-gradient(55% 65% at 12% 8%, var(--glow-a) 0%, transparent 62%),
+    radial-gradient(60% 70% at 100% 100%, var(--glow-b) 0%, transparent 65%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.auth-poster-grid {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.16) 1px, transparent 1px);
+  background-size: 32px 32px;
+  -webkit-mask-image: radial-gradient(60% 45% at 100% 100%, #000 0%, transparent 100%);
+  mask-image: radial-gradient(60% 45% at 100% 100%, #000 0%, transparent 100%);
 }

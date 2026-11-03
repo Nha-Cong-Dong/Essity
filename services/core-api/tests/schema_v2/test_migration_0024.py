@@ -8,6 +8,8 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, text
 
+from accounts import user_insert
+
 DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
 
@@ -16,7 +18,7 @@ def seed_note(engine: Engine, mime: str, ext: str) -> uuid.UUID:
     sha = "ab" * 32
     with engine.begin() as connection:
         connection.execute(
-            text('INSERT INTO "user" (id, email) VALUES (:id, :e)'),
+            user_insert(connection, "id", "e"),
             {"id": user, "e": f"{user}@example.com"},
         )
         connection.execute(

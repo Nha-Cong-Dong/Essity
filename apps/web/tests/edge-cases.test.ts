@@ -156,7 +156,7 @@ describe("pending sign-up email (F1)", () => {
     fakeCoreApi(() => new Response(null, { status: 500 }));
 
     const response = await register(
-      browserPost("/api/auth/register", { email: "a@example.com", password: "password-marker-edge" }),
+      browserPost("/api/auth/register", { username: "an.nguyen", email: "a@example.com", password: "password-marker-edge" }),
     );
 
     expect(response.status).toBe(503);
@@ -167,7 +167,7 @@ describe("pending sign-up email (F1)", () => {
     const email = "ten+lop@sv.edu.vn";
     fakeCoreApi(() => Response.json({ status: "check_email" }, { status: 202 }));
     const registered = await register(
-      browserPost("/api/auth/register", { email, password: "password-marker-edge" }),
+      browserPost("/api/auth/register", { username: "an.nguyen", email, password: "password-marker-edge" }),
     );
     const line = setCookies(registered).get(PENDING_EMAIL_COOKIE) ?? "";
     const value = line.slice(line.indexOf("=") + 1, line.indexOf(";"));

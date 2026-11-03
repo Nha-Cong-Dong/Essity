@@ -7,6 +7,7 @@ RustFS locally and in CI; the same file runs against an R2 test bucket when ther
 
 import hashlib
 import time
+import uuid
 from urllib.parse import parse_qs, urlsplit
 
 import httpx2
@@ -196,3 +197,37 @@ def test_wrong_credentials_raise_storage_unavailable(s3_bucket: str, object_key:
         storage.read_start(object_key, 5)
     with pytest.raises(StorageUnavailableError):
         storage.delete(object_key)
+
+
+def test_delete_prefix_removes_everything_under_it_and_only_that(s3_storage: S3Storage):
+    # Red when: a prefix without the trailing slash would match a neighbour (users/<a>x), a page
+    # beyond the first 1000 is left behind, or the count is wrong.
+    owner = uuid.uuid4().hex
+    mine = f"users/{owner}/"
+    for index in range(1005):
+        s3_storage.write(f"{mine}derived/{index}.json", b"{}", content_type="application/json")
+    s3_storage.write(f"users/{owner}-neighbour/raw/x.pdf", b"x", content_type="application/pdf")
+    s3_storage.write(f"users/{uuid.uuid4().hex}/raw/x.pdf", b"x", content_type="application/pdf")
+
+    assert s3_storage.delete_prefix(mine) == 1005
+    assert s3_storage.head(f"{mine}derived/0.json") is None
+    assert s3_storage.head(f"users/{owner}-neighbour/raw/x.pdf") is not None
+    assert s3_storage.delete_prefix(mine) == 0  # again: nothing left, no error
+
+
+@pytest.mark.parametrize("prefix", ["", "users", "users/aaaa"])
+def test_delete_prefix_refuses_a_prefix_without_a_trailing_slash(
+    s3_storage: S3Storage, prefix: str
+):
+    # Red when: "" empties the bucket, or a bare id matches users/<id>x.
+    key = f"users/{uuid.uuid4().hex}/x"
+    s3_storage.write(key, b"x", content_type="text/plain")
+    with pytest.raises(ValueError):
+        s3_storage.delete_prefix(prefix)
+    assert s3_storage.head(key) is not None
+
+
+def test_delete_prefix_on_a_missing_bucket_fails_closed(s3_bucket: str):
+    # Red when: a mistyped bucket reads as "nothing to delete" and the erase reports success.
+    with pytest.raises(StorageUnavailableError):
+        storage_on(f"{s3_bucket}-nope").delete_prefix("users/aaaa/")

@@ -5,7 +5,7 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { AuthCard } from "@/components/auth/auth-card";
+import { AuthLayout } from "@/components/auth/auth-layout";
 import { AuthField, AuthNote, PasswordField } from "@/components/auth/fields";
 import { AppShell } from "@/components/shells";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -126,33 +126,24 @@ describe("account fields: edges", () => {
   });
 });
 
-describe("account screen motifs: edges", () => {
-  const markup = () => html(h(AuthCard, { title: "Đăng nhập", children: "form" }));
+describe("account screen layout: edges (T1.24)", () => {
+  const markup = () => html(h(AuthLayout, { title: "Đăng nhập", children: "form" }));
 
-  // Red when: a third grid corner, a second fold or a second sticker is added: §4.10 rules
-  // (two opposite corners, one sticker per screen).
-  it("exactly two grids, no fold, one sticker", () => {
-    expect(markup().match(/data-motif="grid"/g)).toHaveLength(2);
-    expect(markup().match(/data-motif="fold"/g)).toBeNull();
-    expect(markup().match(/data-motif="sticker"/g)).toHaveLength(1);
+  // Red when: the poster's grid, the notebook picture or a decoration loses aria-hidden.
+  it("the poster grid and the notebook picture are hidden from assistive tech", () => {
+    expect(markup()).toMatch(/<div aria-hidden="true" class="auth-poster-grid/);
+    expect(markup()).toMatch(/<div aria-hidden="true" class="hidden min-\[1024px\]:mt-auto/);
   });
 
-  // Red when: every decorative element loses aria-hidden: count the motifs and their hidden flag together.
-  it("every motif and the sticker's icon are hidden from assistive tech", () => {
-    const motifs = markup().match(/<span[^>]*data-motif="[^"]+"[^>]*>/g) ?? [];
-    expect(motifs).toHaveLength(3);
-    for (const tag of motifs) expect(tag).toContain('aria-hidden="true"');
-    expect(markup()).toMatch(/<svg[^>]*aria-hidden="true"/);
+  // Red when: the heading moves into the poster: the form's own title must be the one h1.
+  it("one h1, in the sheet, not in the poster", () => {
+    expect(markup().match(/<h1/g)).toHaveLength(1);
+    expect(markup()).not.toMatch(/<aside[^>]*>(?:(?!<\/aside>).)*<h1/);
   });
 
-  // Red when: the card wrapper loses `relative z-1`: the grid (z-0, absolute) paints over the form.
-  it("the card sits above the grid", () => {
-    expect(markup()).toMatch(/class="relative z-1 w-full max-w-\[520px\]"/);
-  });
-
-  // Red when: the motifs move inside the title row or the form: motifs must not sit behind text.
-  it("no motif is inside the heading", () => {
-    expect(markup()).not.toMatch(/<h1[^>]*>(?:(?!<\/h1>).)*data-motif/);
+  // Red when: the form column grows past 400px (the mockup's panel).
+  it("the form panel is at most 400px wide", () => {
+    expect(markup()).toMatch(/w-full max-w-\[400px\]/);
   });
 });
 

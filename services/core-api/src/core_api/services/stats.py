@@ -39,7 +39,18 @@ class SubjectStats:
 
 
 @dataclass(frozen=True)
+class Totals:
+    units_learned: int  # outline leaves studied, all subjects
+    units_total: int
+    sessions: int
+    cards_saved: int
+    cards_reviewed: int
+    practice_done: int
+
+
+@dataclass(frozen=True)
 class Stats:
+    totals: Totals
     today: date
     subjects: list[SubjectStats]
     grid: list[GridCell]
@@ -75,8 +86,18 @@ def build_stats(
         today,
         tz,
         user.day_start_hour,
+        year=True,
     )
+    sessions, cards_saved, reviewed, practice = repo.totals()
     return Stats(
+        totals=Totals(
+            units_learned=sum(s.syllabus.studied_leaves for s in subjects),
+            units_total=sum(s.syllabus.leaves for s in subjects),
+            sessions=sessions,
+            cards_saved=cards_saved,
+            cards_reviewed=reviewed,
+            practice_done=practice,
+        ),
         today=today,
         subjects=subjects,
         grid=grid,
