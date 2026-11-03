@@ -15,7 +15,7 @@ function Row({ node, depth }: { node: SyllabusNode; depth: number }) {
         <span
           aria-hidden="true"
           data-ticked={ticked ? "true" : "false"}
-          className={`mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-control border border-line text-[11px] leading-none ${ticked ? "bg-ink text-paper" : ""}`}
+          className={`mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-control border border-line text-meta leading-none ${ticked ? "bg-ink text-paper" : ""}`}
         >
           {ticked ? "✓" : ""}
         </span>

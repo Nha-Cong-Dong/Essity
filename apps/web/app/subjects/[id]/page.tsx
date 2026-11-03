@@ -15,7 +15,7 @@ import { CoreStatusError } from "@/lib/subjects";
 import { loadGraph } from "@/lib/graph-load";
 import { loadOutline } from "@/lib/outline";
 import { loadQuestionList } from "@/lib/question-list";
-import { SubjectOutlineAside } from "@/components/subjects/subject-outline-aside";
+import { SubjectOutlineAside } from "@/components/subjects/subject-chapters-aside";
 import { SubjectStatsBlock } from "@/components/subjects/subject-stats-block";
 import { CoverageBar } from "@/components/stats/stat-tile";
 import { getStats } from "@/lib/stats-api";
