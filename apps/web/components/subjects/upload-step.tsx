@@ -33,7 +33,7 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
             aria-selected={tab === t.role}
             aria-controls={`panel-${t.role}`}
             onClick={() => setTab(t.role)}
-            className={`-mb-px min-h-11 rounded-t-control border-b-2 px-4 text-read font-medium ${
+            className={`-mb-px min-h-11 border-b-2 px-4 text-read font-medium ${
               tab === t.role ? "border-ink bg-rose-100 font-semibold" : "border-transparent text-ink-soft"
             }`}
           >
