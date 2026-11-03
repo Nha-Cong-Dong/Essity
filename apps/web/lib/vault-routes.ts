@@ -15,7 +15,7 @@ export async function forwardCard(
   request: NextRequest,
   id: string,
   method: "GET" | "PATCH" | "DELETE",
-  suffix = "",
+  suffix: "" | "sources" = "",
   body?: { title?: string; content?: string },
 ): Promise<Response> {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
@@ -30,7 +30,7 @@ export async function forwardCard(
   }
   if (body) headers.set("content-type", "application/json");
   try {
-    const response = await coreFetch(`/v1/vault/cards/${id}${suffix}`, {
+    const response = await coreFetch(`/v1/vault/cards/${id}${suffix ? `/${suffix}` : ""}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,

@@ -29,7 +29,7 @@ async function Account() {
   return <AccountMenu email={me.email} />;
 }
 
-const LINK = "block rounded-card bg-surface p-5 text-ink no-underline shadow-card hover:bg-sunken";
+const LINK = "block rounded-sheet bg-sheet p-5 text-ink no-underline shadow-sheet hover:bg-sunken";
 
 type View =
   | { level: "cards"; title: string; cards: VaultCard[] }
@@ -59,7 +59,7 @@ async function Vault({ searchParams }: { searchParams: Promise<Search> }) {
         <a href={subjectId ? `/kho-kien-thuc?subject=${subjectId}` : "/kho-kien-thuc"} className="text-body text-ink-soft">
           ← Các buổi học
         </a>
-        <h1 className="m-0 text-h1">{view.title || "Buổi học"}</h1>
+        <h1 className="m-0 text-title">{view.title || "Buổi học"}</h1>
         <CardList cards={view.cards} />
       </>
     );
@@ -70,7 +70,7 @@ async function Vault({ searchParams }: { searchParams: Promise<Search> }) {
         <a href="/kho-kien-thuc" className="text-body text-ink-soft">
           ← Các môn
         </a>
-        <h1 className="m-0 text-h1">Các buổi học</h1>
+        <h1 className="m-0 text-title">Các buổi học</h1>
         {view.sessions.length === 0 ? (
           <EmptyState title="Môn này chưa có buổi học nào." hint="Ghi một buổi học, thẻ sẽ xuất hiện ở đây." />
         ) : (
@@ -92,7 +92,7 @@ async function Vault({ searchParams }: { searchParams: Promise<Search> }) {
   }
   return (
     <>
-      <h1 className="m-0 text-h1">Kho kiến thức</h1>
+      <h1 className="m-0 text-title">Kho kiến thức</h1>
       {view.subjects.length === 0 ? (
         <EmptyState
           title="Chưa có môn nào."

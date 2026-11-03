@@ -96,7 +96,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
   }
 
   return (
-    <li className="flex flex-col gap-3 rounded-card bg-surface p-5 shadow-card" data-slot="vault-card">
+    <li className="flex flex-col gap-3 rounded-sheet bg-sheet p-5 shadow-sheet" data-slot="vault-card">
       {draft ? (
         <>
           <input
@@ -117,7 +117,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
             <Button
               variant="primary"
               size="md"
-              className="h-11"
+             
               disabled={busy || !draft.title.trim() || !draft.content.trim()}
               onClick={save}
             >
@@ -136,7 +136,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
           <h3 className="m-0 text-lead font-semibold">{saved.title}</h3>
           <p className="m-0 whitespace-pre-wrap text-body">{saved.content}</p>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" size="md" className="h-11" onClick={() => setDraft(saved)}>
+            <Button variant="secondary" size="md" onClick={() => setDraft(saved)}>
               Sửa thẻ
             </Button>
             <Button variant="quiet" aria-expanded={showSource} onClick={() => setShowSource((v) => !v)}>
