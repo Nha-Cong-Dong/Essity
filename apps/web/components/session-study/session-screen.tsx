@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useReducer, useRef, useState } from "react";
 
 import { FieldHint } from "@/components/field-error";
@@ -102,7 +101,7 @@ function Suggest({ suggestion, id }: { suggestion: Suggestion; id: string }) {
 
 export function SessionScreen(props: SessionScreenProps) {
   const { subject, subjectId, stopHref, docs, initial, api, footer } = props;
-  const router = useRouter();
+  const pieceMode = typeof api?.addPiece === "function";
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [recording, setRecording] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -138,11 +137,11 @@ export function SessionScreen(props: SessionScreenProps) {
 
   // F2: the pieces kept so far come from core-api (a reopened page shows them again).
   useEffect(() => {
-    if (!api) return;
+    if (!pieceMode || !api) return;
     void api.pieces().then((found) => {
       if (found.ok) setPieces(found.data.pieces);
     });
-  }, [api]);
+  }, [api, pieceMode]);
 
   async function record() {
     if (!api || recording || uploading > 0) return;
@@ -182,7 +181,7 @@ export function SessionScreen(props: SessionScreenProps) {
       return;
     }
     if (subjectId) rememberPendingSession({ sessionId: api.sessionId, subjectId, subject });
-    router.push(subjectId ? `/subjects/${subjectId}` : stopHref);
+    window.location.assign(subjectId ? `/subjects/${subjectId}` : stopHref);
   }
 
   const uploading = files.filter((f) => f.state === "uploading").length;
@@ -414,9 +413,9 @@ export function SessionScreen(props: SessionScreenProps) {
                   className="max-[480px]:w-full"
                   aria-disabled={uploading > 0 || undefined}
                   aria-describedby={uploading > 0 ? "session-send-why" : undefined}
-                  onClick={api ? () => void record() : submit}
+                  onClick={pieceMode ? () => void record() : submit}
                 >
-                  {api ? (recording ? "Đang ghi…" : "Ghi lại") : "Gửi"}
+                  {pieceMode ? (recording ? "Đang ghi…" : "Ghi lại") : "Gửi"}
                 </Button>
                 {uploading > 0 && (
                   <span id="session-send-why">
@@ -424,7 +423,7 @@ export function SessionScreen(props: SessionScreenProps) {
                   </span>
                 )}
               </div>
-              {api && pieces.length > 0 && (
+              {pieceMode && pieces.length > 0 && (
                 <section aria-label="Đã học trong buổi" className="flex flex-col gap-3 border-t border-line pt-5">
                   <h3 className="m-0 font-display text-lead">Đã học trong buổi</h3>
                   <ol className="m-0 flex list-none flex-col gap-2 p-0">
@@ -443,7 +442,7 @@ export function SessionScreen(props: SessionScreenProps) {
                   </Button>
                 </section>
               )}
-              {isFree || api ? null : (
+              {isFree ? null : (
                 <button
                   type="button"
                   onClick={() => setFree(true)}

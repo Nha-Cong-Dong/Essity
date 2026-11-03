@@ -62,7 +62,7 @@ export function SessionReadyToast() {
   return (
     <div className="fixed right-4 bottom-4 z-50 flex max-w-sm flex-col gap-2" role="status" aria-live="polite">
       {ready.map((item) => (
-        <div key={item.sessionId} className="flex items-start gap-3 rounded-control border border-line bg-surface p-4 shadow-lg">
+        <div key={item.sessionId} className="flex items-start gap-3 rounded-control border border-line bg-sunken p-4">
           <Link href={`/kho-kien-thuc/${item.subjectId}`} className="text-body underline underline-offset-4">
             Các thẻ của buổi học môn {item.subject} đã sẵn sàng
           </Link>
