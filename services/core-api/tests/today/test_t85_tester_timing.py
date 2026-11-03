@@ -19,7 +19,7 @@ from clock import FROZEN_NOW
 from core_api.db.models import PracticeState, Question, QuestionSection
 from practice_bench import Bench
 
-pytestmark = pytest.mark.timing
+pytestmark = [pytest.mark.timing, pytest.mark.usefixtures("analyze_allowed")]
 
 
 def bulk_practice(session: Session, bench: Bench, count: int) -> None:

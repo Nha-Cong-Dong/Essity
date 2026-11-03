@@ -10,7 +10,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from redis import Redis
-from sqlalchemy import Engine
+from sqlalchemy import Engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
@@ -116,6 +116,19 @@ def alembic_config(url: str = OWNER_DATABASE_URL) -> Config:
 def test_database_url() -> str:
     """The `core_app` login: what core-api and core-worker use."""
     return TEST_DATABASE_URL
+
+
+@pytest.fixture
+def analyze_allowed(owner_engine: Engine) -> Iterator[None]:
+    """ANALYZE needs ownership or MAINTAIN, and core_app has neither (T2.22). The timing tests
+    refresh statistics of rows still uncommitted in their own transaction, so for them core_app is
+    lent MAINTAIN (PostgreSQL 17+) on the tables, and gives it back."""
+    names = "ALL TABLES IN SCHEMA public"
+    with owner_engine.begin() as connection:
+        connection.execute(text(f"GRANT MAINTAIN ON {names} TO core_app"))
+    yield
+    with owner_engine.begin() as connection:
+        connection.execute(text(f"REVOKE MAINTAIN ON {names} FROM core_app"))
 
 
 @pytest.fixture
