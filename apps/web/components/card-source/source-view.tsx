@@ -11,7 +11,7 @@ export function SourceView({ source }: { source: CardSource }) {
   );
   return (
     <section className="rounded-sheet bg-sheet p-6 shadow-sheet" data-source>
-      <h2 className="m-0 text-lg font-semibold">{sourceLabel(source)}</h2>
+      <h2 className="m-0 text-read font-semibold">{sourceLabel(source)}</h2>
       {parts === null ? (
         <>
           <p className="mt-3 mb-0 text-ink-soft">Không đọc được nội dung trang này. Đoạn đã trích:</p>
