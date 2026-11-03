@@ -27,7 +27,7 @@ function Rows({
           <li key={n.id}>
             <label
               data-picked={on ? "true" : "false"}
-              className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-control px-2 text-body wrap-anywhere ${on ? "bg-red-100 text-red-800" : n.excluded ? "text-ink-soft line-through" : ""}`}
+              className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-control px-2 text-body wrap-anywhere ${on ? "bg-rose-100 text-rose-700" : n.excluded ? "text-ink-soft line-through" : ""}`}
               style={{ marginLeft: `${depth * 20}px` }}
             >
               <input type="checkbox" checked={on} disabled={n.excluded} onChange={() => toggle(n.id)} className="size-5 shrink-0" />
