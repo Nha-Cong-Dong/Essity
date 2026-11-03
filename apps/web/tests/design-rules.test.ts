@@ -45,6 +45,26 @@ describe("design rules", () => {
     expect(offenders(UI, /\b(text|bg|border|decoration|fill|stroke)-(right|cam)\b/)).toEqual([]);
   });
 
+  // UI-1a: one left edge. A page is drawn in PageColumn (mr-auto), never in its own centred
+  // `mx-auto max-w-*`. Focus screens (FocusShell, the review and study session) keep their centred column
+  // (DESIGN §5.2, §5.3), as does AuthShell; shells.tsx holds both frames and the shared container.
+  it("UI-1a: no page centres its own column (mx-auto max-w-*)", () => {
+    const CENTRED = new Set([
+      path.join("components", "shells.tsx"),
+      path.join("components", "session-study", "session-screen.tsx"),
+      path.join("components", "practice", "practice-screen.tsx"),
+      path.join("components", "practice", "practice-answer.tsx"),
+    ]);
+    const pages = UI.filter(
+      (f) =>
+        !CENTRED.has(f) &&
+        !f.startsWith(path.join("app", "design-preview")) &&
+        !f.startsWith(path.join("components", "review")),
+    );
+    expect(pages.length).toBeGreaterThan(20);
+    expect(offenders(pages, /mx-auto[^"'`]*max-w-|max-w-[^"'`]*mx-auto/)).toEqual([]);
+  });
+
   it("V10: no bg-cover, which Tailwind also reads as background-size: cover", () => {
     expect(offenders(UI, /\bbg-cover\b(?!-)/)).toEqual([]);
   });

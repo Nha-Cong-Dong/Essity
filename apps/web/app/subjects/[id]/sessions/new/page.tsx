@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
 import { NewSessionEntry } from "@/components/session-study/new-entry";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { requireVerifiedSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Ghi buổi học · Essity" };
@@ -25,7 +25,7 @@ export default function NewSessionPage({
 }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<div aria-busy="true" className="mx-auto h-80 w-full max-w-220 rounded-sheet bg-sunken" />}>
+      <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
         <Guarded params={params} searchParams={searchParams} />
       </Suspense>
     </AppShell>

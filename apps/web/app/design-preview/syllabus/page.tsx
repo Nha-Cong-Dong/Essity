@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { SyllabusScreen } from "@/components/syllabus/syllabus-screen";
 import { UploadScreen } from "@/components/syllabus/upload-files";
 import { SYLLABUS_STATE_IDS, UPLOAD_STATE_IDS } from "@/lib/fixtures/syllabus";
@@ -19,9 +19,9 @@ async function Fixture({ searchParams }: { searchParams: Promise<{ state?: strin
   const known = SYLLABUS_STATE_IDS.find((id) => id === state) ?? "ready";
   return (
     <AppShell current="/today" account={<AccountMenu email="xem-thu@example.com" />}>
-      <div className="mx-auto w-full max-w-(--col-session)">
+      <PageColumn width="session">
         {upload ? <UploadScreen key={upload} state={upload} /> : <SyllabusScreen key={known} state={known} />}
-      </div>
+      </PageColumn>
     </AppShell>
   );
 }

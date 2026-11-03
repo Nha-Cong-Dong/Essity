@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Marker } from "@/components/notebook";
+import { PageColumn } from "@/components/shells";
 
 /**
  * The /subjects column and its title (DESIGN.md §6.8), drawn by each state of the page: loading,
@@ -12,7 +13,7 @@ import { Marker } from "@/components/notebook";
  */
 export function SubjectsFrame({ action, children }: { action?: ReactNode; children: ReactNode }) {
   return (
-    <div className="mx-auto flex w-full max-w-220 flex-col">
+    <PageColumn width="full" className="flex flex-col">
       <div className="mb-8 flex min-h-13 flex-wrap items-center justify-between gap-x-4 gap-y-4">
         <h1 className="m-0 font-display text-title">
           <Marker>Môn học</Marker>
@@ -20,7 +21,7 @@ export function SubjectsFrame({ action, children }: { action?: ReactNode; childr
         {action}
       </div>
       {children}
-    </div>
+    </PageColumn>
   );
 }
 

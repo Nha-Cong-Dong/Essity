@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { AccountSlot } from "@/components/account-slot";
 import { DocumentsFrame } from "@/components/documents/document-list";
 import { TocNotReady, TocTree, TocUnreadable, UnreadableNotice } from "@/components/documents/toc-view";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { type Document, readDocument, readToc, type TocResult } from "@/lib/documents";
 import { requireVerifiedSession } from "@/lib/session";
 import { CoreStatusError } from "@/lib/subjects";
@@ -57,7 +57,7 @@ async function Toc({ params }: { params: Promise<{ id: string; docId: string }> 
 export default function TocPage({ params }: { params: Promise<{ id: string; docId: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<div aria-busy="true" className="mx-auto h-80 w-full max-w-220 rounded-sheet bg-sunken" />}>
+      <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
         <Toc params={params} />
       </Suspense>
     </AppShell>

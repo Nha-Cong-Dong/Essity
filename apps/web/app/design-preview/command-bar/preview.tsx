@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { CommandBar } from "@/components/command-bar";
+import { PageColumn } from "@/components/shells";
 import { liveCommands } from "@/lib/command-client";
 import {
   type CommandState,
@@ -21,7 +22,7 @@ import {
 export function CommandPreview({ state }: { state: CommandState }) {
   const practice = state === "pending-ai-practice";
   return (
-    <div className="mx-auto w-full max-w-280">
+    <PageColumn width="full">
       <h1 className="m-0 font-display text-title [overflow-wrap:anywhere]">{practice ? "Luyện tập" : SUBJECT.name}</h1>
       <p className="mt-1 text-meta text-ink-soft">Môn học · 12 mục, 40 thẻ</p>
       <CommandBar
@@ -35,7 +36,7 @@ export function CommandPreview({ state }: { state: CommandState }) {
       <section aria-label="Nội dung màn" className="rounded-sheet bg-sheet p-6 ring-1 ring-line">
         <p className="text-body text-ink-soft">Nội dung của màn môn nằm ở đây.</p>
       </section>
-    </div>
+    </PageColumn>
   );
 }
 
@@ -54,12 +55,12 @@ export function LivePreview() {
     [],
   );
   return (
-    <div className="mx-auto w-full max-w-280">
+    <PageColumn width="full">
       <h1 className="m-0 font-display text-title [overflow-wrap:anywhere]">{SUBJECT.name}</h1>
       <CommandBar example={EXAMPLE} run={live.run} undo={live.undo} />
       <p data-refreshed={refreshed} className="text-meta text-ink-soft">
         Đã đọc lại màn {refreshed} lần
       </p>
-    </div>
+    </PageColumn>
   );
 }

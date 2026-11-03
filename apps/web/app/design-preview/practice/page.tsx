@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
 import { PracticeScreen } from "@/components/practice/practice-screen";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { PRACTICE_STATE_IDS } from "@/lib/fixtures/practice";
 
 export const metadata: Metadata = { title: "Design preview: luyện tập · Essity" };
@@ -17,9 +17,9 @@ async function Fixture({ searchParams }: { searchParams: Promise<{ state?: strin
   const known = PRACTICE_STATE_IDS.find((id) => id === state) ?? "home";
   return (
     <AppShell current="/today" account={<AccountMenu email="xem-thu@example.com" />}>
-      <div className="mx-auto w-full max-w-280">
+      <PageColumn width="full">
         <PracticeScreen key={known} state={known} />
-      </div>
+      </PageColumn>
     </AppShell>
   );
 }

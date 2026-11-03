@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
 import { GraphScreen } from "@/components/graph/graph-screen";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import type { GraphData } from "@/lib/graph";
 import { loadGraph } from "@/lib/graph-load";
@@ -37,14 +37,14 @@ async function Graph({
   }
   if (data === null) {
     return (
-      <div className="mx-auto w-full max-w-(--col-session)">
+      <PageColumn width="session">
         <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
           <p className="m-0 font-semibold">Không tải được đồ thị.</p>
           <a href={`/subjects/${subject.id}/graph`} className="mt-3 inline-flex min-h-11 items-center font-semibold underline">
             Thử lại
           </a>
         </div>
-      </div>
+      </PageColumn>
     );
   }
   return <GraphScreen live={{ subjectId: subject.id, subjectName: subject.name, data }} />;

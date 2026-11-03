@@ -18,6 +18,29 @@ function Logo() {
   );
 }
 
+const COLUMN = {
+  read: "max-w-160",
+  session: "max-w-(--col-session)",
+  full: "max-w-280",
+} as const;
+
+/**
+ * One column for a page inside AppShell (UI-1a). Every width starts at the left edge of the
+ * container, under the logo: `mr-auto`, never `mx-auto`, so no screen has its own left edge.
+ */
+export function PageColumn({
+  width = "full",
+  className,
+  children,
+  ...rest
+}: { width?: keyof typeof COLUMN } & React.ComponentProps<"div">) {
+  return (
+    <div {...rest} className={cn("mr-auto w-full", COLUMN[width], className)}>
+      {children}
+    </div>
+  );
+}
+
 /**
  * Regular frame: a 64px header with the logo, the pill nav right after it (the current item in
  * inverted ink) and the account button at the right edge; then the page.

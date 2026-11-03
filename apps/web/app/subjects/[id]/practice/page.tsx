@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
 import { PracticeLive } from "@/components/practice/practice-live";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import type { PracticeType } from "@/lib/practice-client";
 import { loadPracticeTypes } from "@/lib/practice-types";
@@ -31,7 +31,7 @@ async function Practice({ params }: { params: Promise<{ id: string }> }) {
     if (error instanceof CoreStatusError && error.status === 401) redirect("/login");
   }
   return (
-    <div className="mx-auto w-full max-w-(--col-session)">
+    <PageColumn width="session">
       {list === null ? (
         <>
         <h1 className="m-0 mb-6 font-display text-title">Luyện tập</h1>
@@ -46,14 +46,14 @@ async function Practice({ params }: { params: Promise<{ id: string }> }) {
       ) : (
         <PracticeLive subjectId={subject.id} subjectName={subject.name} list={list} types={types} />
       )}
-    </div>
+    </PageColumn>
   );
 }
 
 export default function PracticePage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<div aria-busy="true" className="mx-auto h-80 w-full max-w-(--col-session) rounded-sheet bg-sunken" />}>
+      <Suspense fallback={<PageColumn width="session" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
         <Practice params={params} />
       </Suspense>
     </AppShell>
