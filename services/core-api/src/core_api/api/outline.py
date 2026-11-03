@@ -54,6 +54,8 @@ class SectionOut(BaseModel):
     # Covered share of the section's weight (leaves not excluded under it), 0..1.
     progress: float
     studied: bool
+    # Ticked by the system, never by the learner: true when the section is fully covered (E1).
+    learned: bool
     children: list["SectionOut"]
 
 
@@ -71,6 +73,8 @@ class OutlineOut(BaseModel):
     progress: float
     # Every section is a stand-in (blocks of ten pages) until the learner fixes the outline.
     temporary: bool
+    # Chapters (top-level sections) not excluded that are not fully covered yet: the "còn n".
+    remaining_chapters: int
     sections: list[SectionOut]
 
 
@@ -113,6 +117,7 @@ def _tree(view: OutlineView) -> list[SectionOut]:
             excluded_effective=section.id in view.excluded,
             progress=progress,
             studied=section.weight > 0 and progress >= 1.0,
+            learned=section.weight > 0 and progress >= 1.0,
             children=[],
         )
         nodes[section.id] = node
@@ -130,6 +135,7 @@ def _reason(document: Document | None, sections: list[DocSection]) -> Reason | N
 
 def outline_out(subject_id: uuid.UUID, view: OutlineView) -> OutlineOut:
     document = view.document
+    sections = _tree(view)
     return OutlineOut(
         subject_id=subject_id,
         document=None
@@ -140,7 +146,8 @@ def outline_out(subject_id: uuid.UUID, view: OutlineView) -> OutlineOut:
         reason=_reason(document, view.sections),
         progress=view.progress,
         temporary=bool(view.sections) and all(s.source == "chunk10" for s in view.sections),
-        sections=_tree(view),
+        remaining_chapters=sum(1 for c in sections if not c.excluded_effective and not c.learned),
+        sections=sections,
     )
 
 
