@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 export const NAV = [
   { href: "/today", label: "Hôm nay" },
   { href: "/subjects", label: "Môn học" },
+  { href: "/kho-kien-thuc", label: "Kho kiến thức" },
   { href: "/stats", label: "Thống kê" },
 ] as const;
 
@@ -31,7 +32,7 @@ export function MainNav({ current }: { current?: NavItem }) {
           href={item.href}
           aria-current={item.href === current ? "page" : undefined}
           className={cn(
-            "flex h-10 shrink-0 items-center rounded-full max-[480px]:flex-1 max-[480px]:justify-center px-2.5 text-body font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink max-[360px]:px-1.5 min-[401px]:px-3 min-[901px]:px-4",
+            "flex h-10 shrink-0 items-center rounded-full max-[480px]:flex-1 max-[480px]:justify-center max-[640px]:text-meta px-2.5 text-body font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink max-[360px]:px-1 min-[401px]:max-[640px]:px-2 min-[641px]:px-3 min-[901px]:px-4",
             "aria-[current=page]:bg-ink aria-[current=page]:font-semibold aria-[current=page]:text-bg",
             // The nav scrolls, so it clips anything drawn outside it: the focus ring goes inside the
             // pill (review C2 #1, WCAG 2.4.7).
@@ -41,7 +42,13 @@ export function MainNav({ current }: { current?: NavItem }) {
             "aria-[current=page]:[--focus:var(--bg)] aria-[current=page]:focus-visible:-outline-offset-4",
           )}
         >
-          {item.label}
+          {item.label.startsWith("Kho") ? (
+            <>
+              Kho<span className="max-[767px]:hidden">{item.label.slice(3)}</span>
+            </>
+          ) : (
+            item.label
+          )}
         </a>
       ))}
     </nav>

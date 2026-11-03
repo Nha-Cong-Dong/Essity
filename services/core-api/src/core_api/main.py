@@ -33,6 +33,7 @@ from core_api.api import (
     suggestions,
     today,
     units,
+    vault,
 )
 from core_api.api.errors import install_validation_handler
 from core_api.clients.ai_client import AiServiceClient
@@ -88,6 +89,7 @@ app.include_router(generated_questions.router)
 app.include_router(question_banks.router)
 app.include_router(units.router)
 app.include_router(graph.router)
+app.include_router(vault.router)
 app.include_router(sessions.router)
 app.include_router(session_confirm.router)
 app.include_router(session_pieces.router)

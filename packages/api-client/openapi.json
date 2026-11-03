@@ -418,6 +418,38 @@
         "title": "CandidateOut",
         "type": "object"
       },
+      "CardEditIn": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "CardEditIn",
+        "type": "object"
+      },
       "CardRange": {
         "properties": {
           "basis_assumed_file": {
@@ -3887,6 +3919,101 @@
         "title": "Source",
         "type": "object"
       },
+      "SourceOut": {
+        "properties": {
+          "anchor_id": {
+            "format": "uuid",
+            "title": "Anchor Id",
+            "type": "string"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "document_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Name"
+          },
+          "highlight": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highlight"
+          },
+          "page_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page No"
+          },
+          "page_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Text"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "anchor_id",
+          "source",
+          "document_id",
+          "document_name",
+          "page_no",
+          "page_text",
+          "quote",
+          "highlight"
+        ],
+        "title": "SourceOut",
+        "type": "object"
+      },
       "SplitIn": {
         "additionalProperties": false,
         "properties": {
@@ -5082,6 +5209,197 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VaultAnchorOut": {
+        "properties": {
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "document_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "page_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page No"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "document_id",
+          "document_name",
+          "page_no",
+          "quote"
+        ],
+        "title": "VaultAnchorOut",
+        "type": "object"
+      },
+      "VaultCardOut": {
+        "properties": {
+          "anchors": {
+            "items": {
+              "$ref": "#/components/schemas/VaultAnchorOut"
+            },
+            "title": "Anchors",
+            "type": "array"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "content",
+          "kind",
+          "anchors"
+        ],
+        "title": "VaultCardOut",
+        "type": "object"
+      },
+      "VaultCardsOut": {
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/VaultCardOut"
+            },
+            "title": "Cards",
+            "type": "array"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "title",
+          "cards"
+        ],
+        "title": "VaultCardsOut",
+        "type": "object"
+      },
+      "VaultSessionOut": {
+        "properties": {
+          "cards": {
+            "title": "Cards",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "studied_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Studied On"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "studied_on",
+          "cards"
+        ],
+        "title": "VaultSessionOut",
+        "type": "object"
+      },
+      "VaultSubjectOut": {
+        "properties": {
+          "cards": {
+            "title": "Cards",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sessions",
+          "cards"
+        ],
+        "title": "VaultSubjectOut",
         "type": "object"
       },
       "WaitingSectionOut": {
@@ -8682,6 +9000,239 @@
           }
         },
         "summary": "Skip Unit"
+      }
+    },
+    "/v1/vault/cards/{card_id}": {
+      "delete": {
+        "operationId": "delete_card_v1_vault_cards__card_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "card_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Card Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Card"
+      },
+      "patch": {
+        "description": "\"Lưu\" on the card: the new text is the answer reviews compare against.",
+        "operationId": "edit_card_v1_vault_cards__card_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "card_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Card Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardEditIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaultCardOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Card"
+      }
+    },
+    "/v1/vault/cards/{card_id}/sources": {
+      "get": {
+        "description": "\"Nguồn\" on the card: for each anchor the page's extracted text with the cited passage's\nposition, so the screen can mark it (a real PDF highlight is for later).",
+        "operationId": "card_sources_v1_vault_cards__card_id__sources_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "card_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Card Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SourceOut"
+                  },
+                  "title": "Response Card Sources V1 Vault Cards  Card Id  Sources Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Card Sources"
+      }
+    },
+    "/v1/vault/sessions/{session_id}/cards": {
+      "get": {
+        "operationId": "vault_cards_v1_vault_sessions__session_id__cards_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaultCardsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vault Cards"
+      }
+    },
+    "/v1/vault/subjects": {
+      "get": {
+        "operationId": "vault_subjects_v1_vault_subjects_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VaultSubjectOut"
+                  },
+                  "title": "Response Vault Subjects V1 Vault Subjects Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Vault Subjects"
+      }
+    },
+    "/v1/vault/subjects/{subject_id}/sessions": {
+      "get": {
+        "operationId": "vault_sessions_v1_vault_subjects__subject_id__sessions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VaultSessionOut"
+                  },
+                  "title": "Response Vault Sessions V1 Vault Subjects  Subject Id  Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vault Sessions"
       }
     }
   }

@@ -32,7 +32,7 @@ from sqlalchemy.orm import Session
 
 from core_api.clients.ai_client import Failure, Graded, NotGraded
 from core_api.clients.storage import ObjectStorage, StorageUnavailableError
-from core_api.db.models import Attempt, Grade, GradeJob, User
+from core_api.db.models import Attempt, Grade, GradeJob, KnowledgeUnit, User
 from core_api.domain.grading import (
     AnchorIn,
     CheckedGrade,
@@ -162,15 +162,32 @@ def grade_attempt(
     return GradingOutcome("graded", grade=grade)
 
 
+# The card's own text leads its first quote: the card is the ground truth reviews are graded
+# against (G3), the quotes are what it was drawn from.
+CARD_TEXT_CHARS = 1500
+_QUOTE_CHARS = 3000
+
+
+def _with_card_text(unit: KnowledgeUnit, anchors: list[AnchorIn]) -> list[AnchorIn]:
+    if not anchors:
+        return anchors
+    lead = f"[Nội dung thẻ] {unit.title}: {unit.summary[:CARD_TEXT_CHARS]}\n[Trích nguồn] "
+    first = anchors[0]
+    return [AnchorIn(first.anchor_id, (lead + first.quote_text)[:_QUOTE_CHARS]), *anchors[1:]]
+
+
 def units_of(session: Session, user_id: uuid.UUID, question_id: uuid.UUID) -> list[UnitIn]:
-    """The units a question asks about, with their sources, in the order requests list them."""
+    """The units a question asks about, with their sources, in the order requests list them.
+    Each unit's first quote starts with the card's current text (G3)."""
     units = QuestionUnitRepository(session, user_id).units_of(question_id)
     anchors = AnchorRepository(session, user_id).of_units([unit.id for unit in units])
     return [
         UnitIn(
             unit.id,
             unit.title,
-            [AnchorIn(a.id, a.quote_text) for a in anchors if a.unit_id == unit.id],
+            _with_card_text(
+                unit, [AnchorIn(a.id, a.quote_text) for a in anchors if a.unit_id == unit.id]
+            ),
         )
         for unit in sorted(units, key=lambda unit: unit.id)
     ]

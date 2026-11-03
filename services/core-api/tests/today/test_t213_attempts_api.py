@@ -55,7 +55,8 @@ def test_us05_ac2_submit_grades_and_answers_the_result(
     assert result["reference_answer"] == "a"
     sent = stub.calls[0]["units"][0]["anchors"][0]  # type: ignore[index]
     assert [s["anchor_id"] for s in result["sources"]] == [sent["anchor_id"]]
-    assert result["sources"][0]["quote_text"] == sent["quote_text"]
+    # G3: the sent quote leads with the card text; the result shows the stored quote.
+    assert str(sent["quote_text"]).endswith(str(result["sources"][0]["quote_text"]))  # type: ignore[index]
     assert result["practice"] is False
     assert [u["verdict"] for u in result["units"]] == ["correct"]
 
