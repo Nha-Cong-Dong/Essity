@@ -12,6 +12,7 @@ vi.mock("next/server", () => ({ connection: async () => undefined }));
 vi.mock("@/components/account-menu", () => ({ AccountMenu: () => null }));
 vi.mock("@/components/shells", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
+  PageColumn: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 const { default: TodayPage } = await import("@/app/today/page");
