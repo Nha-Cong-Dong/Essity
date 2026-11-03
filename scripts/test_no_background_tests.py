@@ -35,6 +35,19 @@ class BackgroundTests(unittest.TestCase):
             "python scripts/with_lock.py web -- pnpm test",
             "bash -c 'uv run pytest'",
             "FOO=1 pytest",
+            "pnpm -C apps/web lint",
+            "pnpm --filter web typecheck",
+            "pnpm build",
+            "npm run lint:fix",
+            "cd apps/web && npx tsc --noEmit",
+            "npx eslint .",
+            "pnpm exec next build",
+            "next build",
+            "ruff check .",
+            "uv run ruff format --check",
+            "uv run pyright",
+            "python scripts/with_lock.py web -- pnpm lint",
+            "tsc.cmd -p .",
         ]:
             with self.subTest(command=command):
                 reason = self.reason(command)
@@ -51,7 +64,22 @@ class BackgroundTests(unittest.TestCase):
         self.assertIsNone(self.reason("grep -r vitest ."))
         self.assertIsNone(self.reason("pnpm install"))
         self.assertIsNone(self.reason("pnpm dev"))
-        self.assertIsNone(self.reason("ruff check ."))
+        self.assertIsNone(self.reason("cat eslint.config.js"))
+        self.assertIsNone(self.reason("grep -r tsc apps; echo pyright"))
+        self.assertIsNone(self.reason("next dev"))
+        self.assertIsNone(self.reason("pnpm add eslint"))
+        self.assertIsNone(self.reason("ruff check .", bg=False))
+        self.assertIsNone(self.reason("pnpm lint", cwd=self.main))
+
+    def test_powershell_tool_is_covered(self) -> None:
+        run = lambda c, bg=True: background_test_reason(  # noqa: E731
+            "PowerShell", {"command": c, "run_in_background": bg}, self.lane
+        )
+        self.assertIsNotNone(run("pnpm typecheck"))
+        self.assertIsNotNone(run("Set-Location x; npx eslint ."))
+        self.assertIsNotNone(run("uv run pytest | Select-Object -Last 5"))
+        self.assertIsNone(run("pnpm typecheck", bg=False))
+        self.assertIsNone(run("Get-Content eslint.config.js"))
 
     def test_main_session_may_background(self) -> None:
         self.assertIsNone(self.reason("uv run pytest", cwd=self.main))
