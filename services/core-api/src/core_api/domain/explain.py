@@ -24,13 +24,15 @@ class Reason:
     days_since_last: int | None  # whole days since the previous review; None for "new"
 
 
-def explain(states: Sequence[MemoryState], now: datetime) -> Reason:
+def explain(
+    states: Sequence[MemoryState], now: datetime, scheduler: FsrsScheduler = _SCHEDULER
+) -> Reason:
     """The reason for a question whose units have these schedules (empty: never reviewed)."""
     if not states:
         return Reason(kind="new", retrievability=None, days_since_last=None)
-    weakest = min(states, key=lambda s: _SCHEDULER.retrievability(s, now))
+    weakest = min(states, key=lambda s: scheduler.retrievability(s, now))
     return Reason(
         kind="review",
-        retrievability=_SCHEDULER.retrievability(weakest, now),
+        retrievability=scheduler.retrievability(weakest, now),
         days_since_last=max(0, (now - weakest.last_review).days),
     )

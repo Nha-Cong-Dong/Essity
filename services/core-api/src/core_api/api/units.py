@@ -27,6 +27,7 @@ from core_api.repositories.review import (
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
 from core_api.repositories.today import TodayRepository
 from core_api.repositories.unit import DraftRepository, KnowledgeUnitRepository
+from core_api.repositories.user_scheduler import scheduler_for
 from core_api.services.command_context import group_by_section
 from core_api.services.today import session_steps
 
@@ -136,6 +137,7 @@ def _replace(
         },
         exclude=inside,
         room=missing,
+        scheduler=scheduler_for(user),
     )
     if plan.items:
         items.append(review_session_id, [item.question_id for item in plan.items])
