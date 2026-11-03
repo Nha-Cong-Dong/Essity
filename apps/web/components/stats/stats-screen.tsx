@@ -60,7 +60,7 @@ function Trend({ cells }: { cells: GridCell[] }) {
         {weeks.map((n, i) => (
           <div key={i} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${n}`}>
             <div
-              className="w-full rounded-t-sm bg-spine"
+              className="w-full rounded-t-control bg-spine"
               style={{ height: `${n === 0 ? 2 : Math.max((n / top) * 100, 6)}%`, opacity: n === 0 ? 0.3 : 1 }}
             />
           </div>
