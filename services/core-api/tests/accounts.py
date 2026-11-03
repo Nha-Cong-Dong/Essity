@@ -10,6 +10,11 @@ from core_api.repositories.auth_session import AuthSessionRepository
 from core_api.repositories.user import UserRepository
 
 
+def fresh_username() -> str:
+    """A legal, unused username (D2): a letter, then 12 hex characters."""
+    return f"u{uuid.uuid4().hex[:12]}"
+
+
 def signed_in(session: Session, *, verified: bool = True) -> tuple[User, dict[str, str]]:
     user = UserRepository(session).create(f"user-{uuid.uuid4().hex[:12]}@example.com")
     session.flush()
