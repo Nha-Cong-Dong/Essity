@@ -31,6 +31,7 @@ from core_api.domain.scheduling.params import (
 )
 from core_api.domain.scheduling.rating import ReviewRating
 from core_api.jobs.handler import periodic_job
+from core_api.repositories.practice import PracticeStateRepository
 from core_api.repositories.review import MemoryStateRepository
 
 OPTIMIZE_FSRS = "optimize_fsrs"
@@ -71,6 +72,7 @@ def optimize_user(session: Session, user_id: uuid.UUID, now: datetime) -> Outcom
     user.fsrs_params_version = version
     session.flush()
     states.rebuild()
+    PracticeStateRepository(session, user_id).rebuild()
     return Outcome.NEW_VERSION
 
 
@@ -83,6 +85,7 @@ def rollback_fsrs_params(session: Session, user_id: uuid.UUID) -> int | None:
     user.fsrs_params_version = previous_version(user.fsrs_params, user.fsrs_params_version)
     session.flush()
     MemoryStateRepository(session, user_id).rebuild()
+    PracticeStateRepository(session, user_id).rebuild()
     return user.fsrs_params_version
 
 
