@@ -2,6 +2,9 @@
 ACTIVE parameters, in the same transaction, so a question's due date does not wait for its next
 grade to move onto the new curve."""
 
+import uuid
+
+import pytest
 from sqlalchemy.orm import Session
 
 from core_api.db.models import User
@@ -10,10 +13,23 @@ from core_api.domain.scheduling.fsrs_adapter import DEFAULT_PARAMETERS, FsrsSche
 from core_api.domain.scheduling.params import active_parameters
 from core_api.jobs.optimize_fsrs import Outcome, optimize_user, rollback_fsrs_params
 from core_api.repositories.practice import PracticeStateRepository
+from core_api.repositories.user import UserRepository
 from practice_rows import Practice, day
 from scheduling.test_t59_params import NOW, forgetful_learner, seed_history
 
 FITTED = [value * 0.4 if i < 4 else value for i, value in enumerate(DEFAULT_PARAMETERS)]
+
+
+@pytest.fixture
+def two_users(db_session: Session) -> tuple[User, User]:
+    """Alice and Bob with emails of their own: a user key shared with another test in the same
+    process (`alice@example.com`) is the only global key these rows would touch, and the CI run
+    of this file hung once behind it (T5.9d)."""
+    users = UserRepository(db_session)
+    alice = users.create(f"t59d-a-{uuid.uuid4()}@example.com")
+    bob = users.create(f"t59d-b-{uuid.uuid4()}@example.com")
+    db_session.flush()
+    return alice, bob
 
 
 def due_of(session: Session, user: User, question_id: object) -> object:
