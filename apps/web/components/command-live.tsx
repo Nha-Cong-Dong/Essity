@@ -14,6 +14,7 @@ import { liveCommands } from "@/lib/command-client";
 // again.
 
 export const SLOT = "[data-command-slot]";
+const SYLLABUS = new RegExp("^/subjects/[^/]+/syllabus$"); // B3: the bar lives on the outline page only
 const EXAMPLE = "mục 3.4 kết thúc ở trang 80";
 
 export function CommandLive({ subjectId }: { subjectId: string }) {
@@ -41,6 +42,6 @@ export function CommandLive({ subjectId }: { subjectId: string }) {
     () => null,
   );
 
-  if (slot === null || !pathname.endsWith("/syllabus")) return null;
+  if (slot === null || !SYLLABUS.test(pathname)) return null;
   return createPortal(<CommandBar example={EXAMPLE} run={live.run} undo={live.undo} />, slot);
 }

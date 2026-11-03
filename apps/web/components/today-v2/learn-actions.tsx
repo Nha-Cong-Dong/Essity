@@ -12,7 +12,7 @@ import { paceLine, TODAY_V2_COPY as COPY, type LearnItem } from "@/lib/today-v2"
 
 const POPUP =
   "fixed top-1/2 left-1/2 z-(--z-menu) flex max-h-[85vh] w-[min(92vw,40rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-sheet bg-raised p-6 text-ink shadow-over";
-const BACKDROP = "fixed inset-0 z-(--z-menu) bg-black/40";
+const BACKDROP = "fixed inset-0 z-(--z-menu) bg-ink/40";
 
 const STEPS = [
   { title: "1. Tải tài liệu", body: "Vào môn học, tải giáo trình, đề cương hoặc đề cũ lên. Essity đọc và ghi nhớ chúng giúp bạn." },
