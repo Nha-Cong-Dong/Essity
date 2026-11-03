@@ -8,10 +8,12 @@ export function SubjectScreenBlock({
   subjectId,
   subjectName,
   state,
+  nothingDue = false,
 }: {
   subjectId: string;
   subjectName: string;
   state: SuggestionState;
+  nothingDue?: boolean;
 }) {
   return (
     <SubjectSuggestion
@@ -20,6 +22,7 @@ export function SubjectScreenBlock({
       state={state}
       resolve={() => fetchSubjectSuggestion(subjectId)}
       practiceLink={false}
+      nothingDue={nothingDue}
     />
   );
 }

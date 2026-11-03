@@ -60,6 +60,7 @@ export function SubjectSuggestion({
   resolve,
   preview = false,
   practiceLink = true,
+  nothingDue = false,
 }: {
   subjectId: string;
   subjectName: string;
@@ -70,6 +71,8 @@ export function SubjectSuggestion({
   preview?: boolean;
   /** The Luyện tập link: off until the practice screen exists (M8). */
   practiceLink?: boolean;
+  /** T7.19 F3: today's review holds nothing of this subject. */
+  nothingDue?: boolean;
 }) {
   const [answer, setAnswer] = useState<SuggestionState | null>(null);
   const [failed, setFailed] = useState(false);
@@ -162,7 +165,7 @@ export function SubjectSuggestion({
       )}
       {showExtras && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line pt-3">
-          <StartButton variant="secondary" subjectId={subjectId} preview={preview}>
+          <StartButton variant="secondary" subjectId={subjectId} preview={preview} nothingDue={nothingDue}>
             Ôn riêng môn này
           </StartButton>
           {learnedOut && practiceLink && (

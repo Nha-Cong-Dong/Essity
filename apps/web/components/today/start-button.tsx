@@ -13,6 +13,7 @@ export function StartButton({
   "data-copy": copy,
   subjectId,
   preview = false,
+  nothingDue = false,
 }: {
   children: React.ReactNode;
   variant: "primary-inverse" | "secondary";
@@ -22,9 +23,13 @@ export function StartButton({
   subjectId?: string;
   /** Design preview: the button is drawn but never calls the real API (T7.13). */
   preview?: boolean;
+  /** T7.19 F3: the page already knows this subject has nothing due: say so, no button to press. */
+  nothingDue?: boolean;
 }) {
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [none, setNone] = useState(false);
+  const empty = nothingDue || none;
 
   async function start() {
     if (preview) return;
@@ -40,7 +45,13 @@ export function StartButton({
       const body: unknown = response.ok ? await response.json() : null;
       const id = (body as { id?: unknown } | null)?.id;
       if (typeof id === "string") return go(`/review/${id}`);
-      if (response.status === 409) return go("/today"); // nothing left today: show it
+      if (response.status === 409) {
+        // Nothing due: for one subject say so here; for today's whole session /today says it.
+        if (subjectId === undefined) return go("/today");
+        setNone(true);
+        setPending(false);
+        return;
+      }
     } catch {
       // network: say so below
     }
@@ -55,11 +66,17 @@ export function StartButton({
         variant={variant}
         size="lg"
         pending={pending}
+        disabled={empty}
         onClick={start}
         data-copy={copy}
       >
         {children}
       </Button>
+      {empty && (
+        <p role="status" className="m-0 text-meta text-ink-soft">
+          Môn này chưa có gì đến hạn ôn. Thẻ mới sẽ hiện khi đến hạn.
+        </p>
+      )}
       {failed && (
         <p role="alert" data-copy="tam" className="m-0 text-meta">
           Chưa mở được phiên. Thử lại sau giây lát.
