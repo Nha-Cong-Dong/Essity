@@ -45,7 +45,7 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
               onClick={() => setOrder((o) => [...o.slice(1), o[0]!])}
               aria-label={i === 0 ? "Thẻ trên cùng: bấm để xem thẻ tiếp theo" : undefined}
               style={{ transform: `translate(${i * 8}px, ${i * 8}px)`, zIndex: 10 - i }}
-              className="absolute inset-0 flex flex-col items-start justify-between rounded-tile bg-paper p-4 text-left shadow-sheet inset-ring-1 inset-ring-line transition-transform duration-300 disabled:cursor-default"
+              className="absolute inset-0 flex flex-col items-start justify-between rounded-tile bg-paper p-4 text-left shadow-sheet transition-transform duration-300 disabled:cursor-default"
             >
               <span className="text-meta text-ink-soft">{card.kind === "practice" ? "Câu luyện tập" : "Thẻ ôn"}</span>
               <span className="text-read wrap-anywhere">{card.why}</span>
