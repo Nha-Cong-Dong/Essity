@@ -46,7 +46,9 @@ class Outcome(StrEnum):
 
 def optimize_user(session: Session, user_id: uuid.UUID, now: datetime) -> Outcome:
     """Fit and store parameters for one user; the schedule is rebuilt when a version is stored."""
-    user = session.scalars(select(User).where(User.id == user_id).with_for_update()).one()
+    user = session.scalars(
+        select(User).where(User.id == user_id).with_for_update(key_share=True)
+    ).one()
     states = MemoryStateRepository(session, user_id)
     units = [
         [(ReviewRating(row[2]), row[3]) for row in reviews]
@@ -75,7 +77,9 @@ def optimize_user(session: Session, user_id: uuid.UUID, now: datetime) -> Outcom
 def rollback_fsrs_params(session: Session, user_id: uuid.UUID) -> int | None:
     """Make the previous version active (None: the defaults) and rebuild the user's schedule.
     Raises `NothingToRollBackError` if the user is on the defaults already."""
-    user = session.scalars(select(User).where(User.id == user_id).with_for_update()).one()
+    user = session.scalars(
+        select(User).where(User.id == user_id).with_for_update(key_share=True)
+    ).one()
     user.fsrs_params_version = previous_version(user.fsrs_params, user.fsrs_params_version)
     session.flush()
     MemoryStateRepository(session, user_id).rebuild()

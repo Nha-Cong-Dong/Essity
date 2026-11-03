@@ -2,7 +2,7 @@
 """T5.9b (review #163 F2): a grade during the weekly `optimize_fsrs` fit waits for the user row
 the job holds, then schedules with the NEW parameters, never persisting state from the old ones."""
 
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine, select, text
 from sqlalchemy.orm import Session
 from test_t213_grading_races import Ready, correct, ready  # noqa: F401  (fixture)
 
@@ -20,7 +20,9 @@ FITTED = [value * 0.4 if i < 4 else value for i, value in enumerate(DEFAULT_PARA
 # job commits new ones and the unit keeps a state computed with the old curve.
 def test_a_grade_during_the_fit_uses_the_new_parameters(engine: Engine, ready: Ready) -> None:  # noqa: F811
     with Session(engine) as job, Session(engine) as grader:
-        holder = job.get(User, ready.user_id, with_for_update=True)  # what optimize_user does
+        holder = job.scalars(
+            select(User).where(User.id == ready.user_id).with_for_update(key_share=True)
+        ).one()
         assert holder is not None
         pid = grader.execute(text("SELECT pg_backend_pid()")).scalar_one()
         user = grader.get(User, ready.user_id)  # loaded before the job commits: old parameters

@@ -27,6 +27,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal, Protocol
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core_api.clients.ai_client import Failure, Graded, NotGraded
@@ -215,7 +216,10 @@ def record_grade(session: Session, user: User, attempt: Attempt, checked: Checke
     by id. A review older than the unit's last one replays the unit (PLAN T2.13 25/10).
     The user row is locked first, the lock `optimize_fsrs` takes: a grade during the weekly fit
     waits for it and then reads the new parameters (T5.9b)."""
-    session.refresh(user, with_for_update=True)
+    # NO KEY UPDATE, not UPDATE: a PATCH of the exam date holds the subject and then inserts
+    # memory_state (KEY SHARE on the user), which UPDATE would deadlock with (T5.9b review).
+    session.execute(select(User.id).where(User.id == user.id).with_for_update(key_share=True))
+    session.refresh(user, ["fsrs_params", "fsrs_params_version"])  # the job may have committed
     question = QuestionRepository(session, user.id).get(attempt.question_id)
     assert question is not None and attempt.submitted_at is not None
     subjects = SubjectRepository(session, user.id)

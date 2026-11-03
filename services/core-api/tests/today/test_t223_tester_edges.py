@@ -39,7 +39,13 @@ def test_t223_units_never_asked_leave_out_skipped_units_and_deleted_subjects(
     space.question(gone, "Bỏ môn")
     reads = TodayRepository(db_session, space.user.id)
     assert reads.unasked_by_subject(day=DAY) == {subject: 3, gone: 1}
-    (unit, *_) = [u.id for u in KnowledgeUnitRepository(db_session, space.user.id).list()]
+    # A unit of the live subject: list() has no order, and the first one may be the deleted
+    # subject's, which made this test fail one run in four (T5.9b CI).
+    (unit, *_) = [
+        u.id
+        for u in KnowledgeUnitRepository(db_session, space.user.id).list()
+        if u.subject_id == subject
+    ]
     KnowledgeUnitRepository(db_session, space.user.id).skip(unit, FROZEN_NOW)
     SubjectRepository(db_session, space.user.id).soft_delete(gone, FROZEN_NOW)
     db_session.flush()
