@@ -7,6 +7,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from core_api.api import (
     attempts,
     auth,
+    card_sources,
     commands,
     documents,
     drafts,
@@ -86,6 +87,7 @@ app.include_router(generated_questions.router)
 app.include_router(question_banks.router)
 app.include_router(units.router)
 app.include_router(graph.router)
+app.include_router(card_sources.router)
 app.include_router(sessions.router)
 app.include_router(session_confirm.router)
 app.include_router(session_notes.router)
