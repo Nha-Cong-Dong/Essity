@@ -15,6 +15,7 @@ import { anyEdited, sourceLabel, type SyllabusNode } from "@/lib/syllabus/tree";
 
 import { COPY, NOTICE, Skeleton, Totals } from "./syllabus-screen";
 import { ExcludeEditor } from "./exclude-editor";
+import { SYLLABUS_CHANGED } from "./syllabus-chat";
 import { SyllabusTree } from "./syllabus-tree";
 
 // T7.5 (US-13 AC1, AC4-AC6, AC9; US-01 AC5; DESIGN §6.6): the Đề cương screen on the real API. The
@@ -68,6 +69,19 @@ export function SyllabusLive({
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [waiting, subjectId]);
+
+  // The chat at the foot changed the outline: read it again.
+  useEffect(() => {
+    async function reread() {
+      const next = await readOutline(subjectId);
+      if (next.ok) {
+        setOutline(next.data);
+        setLocal(null);
+      }
+    }
+    window.addEventListener(SYLLABUS_CHANGED, reread);
+    return () => window.removeEventListener(SYLLABUS_CHANGED, reread);
+  }, [subjectId]);
 
   function change(next: SyllabusNode[]) {
     const changes = diffChanges(nodesRef.current, next);
