@@ -41,6 +41,6 @@ export function CommandLive({ subjectId }: { subjectId: string }) {
     () => null,
   );
 
-  if (slot === null) return null;
+  if (slot === null || !pathname.endsWith("/syllabus")) return null;
   return createPortal(<CommandBar example={EXAMPLE} run={live.run} undo={live.undo} />, slot);
 }

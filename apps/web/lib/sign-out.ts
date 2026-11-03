@@ -1,6 +1,5 @@
 import { type AuthResult, postJson } from "@/lib/auth-errors";
 import { clearAllDrafts } from "@/lib/draft";
-import { safeNext } from "@/lib/landing";
 
 type Deps = {
   post?: (path: string) => Promise<AuthResult<{ next: string }>>;
@@ -24,6 +23,6 @@ export async function signOut({
   const result = await post("/api/auth/logout");
   if (!result.data) return false;
   clearDrafts();
-  assign(then ?? safeNext(result.data.next, ["/login"], "/login"));
+  assign(then ?? "/");
   return true;
 }

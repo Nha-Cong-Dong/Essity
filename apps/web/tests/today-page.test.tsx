@@ -61,11 +61,11 @@ describe("/today page (T2.14)", () => {
       },
     });
     const markup = await html();
-    expect(markup).toContain("Hôm nay không có thẻ hay câu đến hạn.");
+    expect(markup).toContain("Tuyệt vời, không có nội dung nào cần ôn tập hôm nay");
     expect(markup).toContain("TCP flow control");
-    expect(markup).toContain("Vào buổi học");
+    expect(markup).toContain("Xem tất cả");
     expect(markup).toContain("còn 3 mục, 55 ngày");
-    expect(markup).toContain("Chưa có câu sẵn sàng");
+    expect(markup).toContain("Chưa có câu hỏi nào sẵn sàng");
   });
 
   // Red when: a failing /v1/today throws to the error page or shows a made-up state.
