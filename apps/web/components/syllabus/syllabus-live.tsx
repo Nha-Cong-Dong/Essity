@@ -14,6 +14,7 @@ import {
 import { anyEdited, sourceLabel, type SyllabusNode } from "@/lib/syllabus/tree";
 
 import { COPY, NOTICE, Skeleton, Totals } from "./syllabus-screen";
+import { ExcludeEditor } from "./exclude-editor";
 import { SyllabusTree } from "./syllabus-tree";
 
 // T7.5 (US-13 AC1, AC4-AC6, AC9; US-01 AC5; DESIGN §6.6): the Đề cương screen on the real API. The
@@ -47,6 +48,7 @@ export function SyllabusLive({
   const [live, setLive] = useState("");
   const [failure, setFailure] = useState<string | null>(null);
   const [, setEditing] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const view = outlineView(outline);
   const nodes = local ?? (view.kind === "ready" ? view.nodes : []);
@@ -102,11 +104,9 @@ export function SyllabusLive({
         <h1 className="m-0 font-display text-title">
           <Marker>{COPY.heading}</Marker>
         </h1>
-        {view.kind === "ready" && (
-          <Button className="max-sm:px-4" render={<a href={`${subjectHref}/sessions/new`} />}>
-            {COPY.study}
-          </Button>
-        )}
+        <Button className="max-sm:px-4" variant="secondary" render={<a href={subjectHref} />} nativeButton={false}>
+          Quay lại
+        </Button>
       </div>
     </>
   );
@@ -136,6 +136,12 @@ export function SyllabusLive({
     );
   }
 
+  const exclude = (ids: string[]) => {
+    const mark = (list: SyllabusNode[]): SyllabusNode[] =>
+      list.map((n) => ({ ...n, excluded: n.excluded || ids.includes(n.id), children: mark(n.children) }));
+    change(mark(nodes));
+    setRemoving(false);
+  };
   const note = view.temporary ? NOTICE.chunk10 : null;
   return (
     <div data-state={view.temporary ? "provisional" : "ready"}>
@@ -158,16 +164,27 @@ export function SyllabusLive({
           {failure}
         </p>
       )}
-      <div className="mt-4">
-        <SyllabusTree
-          label={`Đề cương ${view.name}`}
-          nodes={nodes}
-          unit={view.unit}
-          total={view.total}
-          onNodes={change}
-          say={setLive}
-          onEditing={setEditing}
-        />
+      <div className="mt-4 flex flex-col gap-3">
+        {!removing && (
+          <div>
+            <Button variant="secondary" onClick={() => setRemoving(true)}>
+              Chỉnh sửa
+            </Button>
+          </div>
+        )}
+        {removing ? (
+          <ExcludeEditor nodes={nodes} onExclude={exclude} onCancel={() => setRemoving(false)} />
+        ) : (
+          <SyllabusTree
+            label={`Đề cương ${view.name}`}
+            nodes={nodes}
+            unit={view.unit}
+            total={view.total}
+            onNodes={change}
+            say={setLive}
+            onEditing={setEditing}
+          />
+        )}
       </div>
       <p role="status" className="sr-only" data-live>
         {live}
