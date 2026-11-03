@@ -6,15 +6,19 @@ reviews wrote, field for field. A replay with a new exam date is also how a move
 the schedule (US-01 AC3): the constraint only pulls due dates in, never back out.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import date, datetime
+from functools import lru_cache
 from zoneinfo import ZoneInfo
 
 from core_api.domain.scheduling.exam_constraint import apply_exam_constraint
 from core_api.domain.scheduling.fsrs_adapter import FsrsScheduler, MemoryState
 from core_api.domain.scheduling.rating import ReviewRating
 
-_SCHEDULER = FsrsScheduler()
+
+@lru_cache(maxsize=64)
+def _scheduler_for(parameters: tuple[float, ...] | None) -> FsrsScheduler:
+    return FsrsScheduler() if parameters is None else FsrsScheduler(parameters)
 
 
 def schedule_review(
@@ -25,9 +29,12 @@ def schedule_review(
     exam_day: date,
     tz: ZoneInfo,
     day_start_hour: int,
+    parameters: Sequence[float] | None = None,
 ) -> MemoryState:
-    """The state after one review of a unit whose subject's exam is on `exam_day`."""
-    reviewed = _SCHEDULER.review(state, rating, reviewed_at)
+    """The state after one review of a unit whose subject's exam is on `exam_day`.
+    `parameters` are the user's fitted FSRS parameters (T5.9); None means the defaults."""
+    key = None if parameters is None else tuple(parameters)
+    reviewed = _scheduler_for(key).review(state, rating, reviewed_at)
     return apply_exam_constraint(reviewed, exam_day, tz, day_start_hour)
 
 
@@ -37,6 +44,7 @@ def replay(
     exam_day: date,
     tz: ZoneInfo,
     day_start_hour: int,
+    parameters: Sequence[float] | None = None,
 ) -> MemoryState | None:
     """The state of one (unit, facet) from its reviews, oldest first; None if never reviewed."""
     state: MemoryState | None = None
@@ -44,6 +52,12 @@ def replay(
         if state is not None and reviewed_at < state.last_review:
             raise ValueError("reviews must be in the order they happened")
         state = schedule_review(
-            state, rating, reviewed_at, exam_day=exam_day, tz=tz, day_start_hour=day_start_hour
+            state,
+            rating,
+            reviewed_at,
+            exam_day=exam_day,
+            tz=tz,
+            day_start_hour=day_start_hour,
+            parameters=parameters,
         )
     return state
