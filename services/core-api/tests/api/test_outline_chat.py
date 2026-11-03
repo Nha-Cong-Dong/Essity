@@ -56,3 +56,53 @@ def test_other_users_subject_is_404(client: TestClient, ai: FakeAi, world: World
     _, h = world
     res = client.post(f"/v1/subjects/{uuid.uuid4()}/outline/chat", json={"text": "bỏ"}, headers=h)
     assert res.status_code == 404
+
+
+def test_merge_siblings_by_sentence(client: TestClient, ai: FakeAi, world: World) -> None:
+    cw, _ = world
+    out = chat(client, world, "Gộp mục 1.1 với 1.2").json()
+    assert out["status"] == "applied" and "Đã gộp 2 mục" in out["reply"], out
+    assert ai.payloads == []  # read by pattern, no model call
+    from sqlalchemy import select
+
+    from core_api.db.models import DocSection
+
+    titles = set(
+        cw.db.scalars(select(DocSection.title).where(DocSection.subject_id == cw.subject.id))
+    )
+    assert "1.1" in titles and "1.2" not in titles
+
+
+def test_merge_unknown_section_is_a_friendly_failure(
+    client: TestClient, ai: FakeAi, world: World
+) -> None:
+    out = chat(client, world, "gộp mục 1.1 với 9.9").json()
+    assert out["status"] == "failed" and "9.9" in out["reply"]
+
+
+def test_split_leaf_into_parts_by_pages(client: TestClient, ai: FakeAi, world: World) -> None:
+    cw, _ = world
+    cw.leaf2.first_page, cw.leaf2.last_page = 10, 19
+    cw.db.flush()
+    out = chat(client, world, "tách mục 1.2 thành 2 phần").json()
+    assert out["status"] == "applied", out
+    from sqlalchemy import select
+
+    from core_api.db.models import DocSection
+
+    rows = cw.db.execute(
+        select(DocSection.title, DocSection.first_page, DocSection.last_page)
+        .where(DocSection.title.like("1.2 (phần%"))
+        .order_by(DocSection.title)
+    ).all()
+    assert [(r[1], r[2]) for r in rows] == [(10, 14), (15, 19)]
+
+
+def test_split_chapter_promotes_its_children(client: TestClient, ai: FakeAi, world: World) -> None:
+    cw, _ = world
+    cw.parent.title = "Chương 1"
+    cw.db.flush()
+    out = chat(client, world, "tách chương 1").json()
+    assert out["status"] == "applied" and "2 mục" in out["reply"], out
+    cw.db.refresh(cw.leaf1)
+    assert cw.leaf1.parent_id is None
