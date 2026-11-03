@@ -18,7 +18,8 @@ const EMPTY: Record<string, EmptyReason> = {
 };
 
 const paceOf = (s: SuggestionApi): Pace => ({
-  sections_left: s.pace.remaining_leaves,
+  // E2: "còn n" counts chapters (field arrives with the next api-client regen).
+  sections_left: (s.pace as { remaining_chapters?: number }).remaining_chapters ?? s.pace.remaining_leaves,
   pages_left: null,
   days_left: s.pace.days_left,
   text: s.pace.text,
