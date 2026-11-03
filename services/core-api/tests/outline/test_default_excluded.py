@@ -6,12 +6,14 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from accounts import signed_in
+from core_api.db.models import DocSection
 from core_api.domain import outline as rules
+from core_api.domain.outline import SectionRow
 from core_api.domain.suggest import SubjectInput, suggest_for_subject
 from core_api.handlers.document_indexed import parse_outline
 from core_api.repositories.doc_section import DocSectionRepository
 from core_api.repositories.study_ledger import StudyLedgerRepository
-from core_api.services.outline import OutlineService, _row
+from core_api.services.outline import OutlineService
 from documents.test_document_indexed import uploaded
 from fake_storage import FakeStorage
 from outline.test_handler import answer, node, run
@@ -57,7 +59,7 @@ def test_stored_excluded_sections_do_not_count_and_a_new_reading_may_replace_the
         ("Why", False, "bookmark"),
         ("Chương 1", False, "bookmark"),
     ]
-    gone = rules.excluded_ids([_row(r) for r in rows])
+    gone = rules.excluded_ids([_section_row(r) for r in rows])
     assert {r.title for r in rows if r.id in gone} == {
         "Phần đầu sách",
         "Preface",
@@ -101,3 +103,15 @@ def test_stats_leaves_under_an_excluded_section_are_excluded(
 
     leaves = StatsRepository(db_session, user.id).leaves()[document.subject_id]
     assert sorted(leaf.excluded for leaf in leaves) == [False, True, True]
+
+
+def _section_row(section: DocSection) -> SectionRow:
+    return SectionRow(
+        id=section.id,
+        parent_id=section.parent_id,
+        first_page=section.first_page or 0,
+        last_page=section.last_page or 0,
+        weight=section.weight,
+        studied_weight=section.studied_weight,
+        excluded=section.excluded,
+    )

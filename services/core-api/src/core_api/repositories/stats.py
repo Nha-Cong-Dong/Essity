@@ -97,7 +97,7 @@ class StatsRepository(UserScopedRepository[MemoryState]):
             if s.id not in parents:
                 # Left out when it or an ancestor is (the flag is set on the top section only).
                 gone, up, hops = s.excluded, s.parent_id, 0
-                while not gone and up in by_id and hops < 10:
+                while not gone and up is not None and up in by_id and hops < 10:
                     gone, up, hops = by_id[up].excluded, by_id[up].parent_id, hops + 1
                 out.setdefault(s.subject_id, []).append(
                     Leaf(s.weight, s.unit, self._studied(s), gone)
