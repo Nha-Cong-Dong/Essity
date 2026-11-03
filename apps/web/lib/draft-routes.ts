@@ -19,6 +19,8 @@ export type SubmitBody = {
   description: string;
   mentions: { document_id: string; start: number; end: number }[];
   files: UploadFile[];
+  /** T7.19 F1: the sentence again as the note, when there is no file (core-api needs a note or a file). */
+  text?: string;
 };
 
 /** The description is the learner's sentence (2000 characters, T7.6) and its `@` mentions. */
@@ -41,7 +43,9 @@ export function readSubmit(body: unknown): SubmitBody | null {
     if (file === null) return null;
     read.push(file);
   }
-  return { session_id, description, mentions: found, files: read };
+  // Words alone are a note: core-api refuses a submission with neither text nor a file.
+  const note = read.length === 0 && description.trim() !== "" ? { text: description } : {};
+  return { session_id, description, mentions: found, files: read, ...note };
 }
 
 export type Edit = { version: number; title?: string; content?: string };

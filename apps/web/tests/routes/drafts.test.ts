@@ -41,10 +41,12 @@ describe("draft routes (T7.12)", () => {
     const body = { session_id: ID, description: "học @Giáo trình mục 3.2", mentions: [{ document_id: OTHER, start: 4, end: 14 }] };
     const response = await submit(browserPost("/x", body, SIGNED_IN));
     expect(calls[0].path).toBe("/v1/submissions");
-    expect(calls[0].body).toEqual({ ...body, files: [] });
+    // T7.19 F1: with no file the sentence is also the note (core-api refuses "nothing_submitted" else).
+    expect(calls[0].body).toEqual({ ...body, files: [], text: body.description });
     expect(response.status).toBe(201);
     const bad = [
       { ...body, extra: 1 },
+      { ...body, text: "x" },
       { ...body, session_id: "../x" },
       { ...body, description: "x".repeat(2001) },
       { ...body, mentions: [{ document_id: OTHER, start: 1 }] },
@@ -72,6 +74,20 @@ describe("draft routes (T7.12)", () => {
     ];
     for (const item of bad) expect((await submit(browserPost("/x", item, SIGNED_IN))).status).toBe(400);
     expect(calls).toHaveLength(1);
+  });
+
+  // T7.19 F1. Red when: a note with only words is handed over without them as the note, or a blank
+  // sentence becomes a note, or a note with files also repeats the sentence as a second file.
+  it("submissions make the sentence the note only when there is no file and it is not blank", async () => {
+    const calls = fakeCoreApi(() => Response.json({ submission_id: OTHER, session_id: ID, status: "queued", mentions: [] }, { status: 201 }));
+    const file = { sha256: "ab".repeat(32), mime: "image/png", size_bytes: 12 };
+    const base = { session_id: ID, mentions: [] };
+    await submit(browserPost("/x", { ...base, description: "hai dòng ghi chú" }, SIGNED_IN));
+    await submit(browserPost("/x", { ...base, description: "   " }, SIGNED_IN));
+    await submit(browserPost("/x", { ...base, description: "kèm ảnh", files: [file] }, SIGNED_IN));
+    expect(calls[0].body).toMatchObject({ text: "hai dòng ghi chú" });
+    expect(calls[1].body).not.toHaveProperty("text");
+    expect(calls[2].body).not.toHaveProperty("text");
   });
 
   // US-02 AC4. Red when: the index of the mention that did not resolve is not passed on, or the

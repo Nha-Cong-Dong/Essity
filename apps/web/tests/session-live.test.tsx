@@ -332,7 +332,7 @@ describe("study session on core-api", () => {
     expect(screen.getByText("Chọn file")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
     expect(api.submit).not.toHaveBeenCalled();
-    expect(screen.getByText("Viết vài dòng mô tả buổi học rồi gửi.")).toBeTruthy();
+    expect(screen.getByText("Chưa có gì để gửi. Viết vài dòng hoặc thêm file rồi gửi.")).toBeTruthy();
   });
 });
 
