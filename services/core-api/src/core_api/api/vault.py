@@ -30,6 +30,7 @@ from core_api.db.session import DbSession
 router = APIRouter(prefix="/v1/vault", dependencies=[Depends(verified_user)])
 
 PAGE_TEXT_MAX_BYTES = 8_000_000
+READ_URL_SECONDS = 600
 
 
 class VaultSubjectOut(BaseModel):
@@ -88,6 +89,9 @@ class SourceOut(BaseModel):
     quote: str
     # [start, end) of the quote inside `page_text`; None when it cannot be found there
     highlight: tuple[int, int] | None
+    # Short-lived read URLs (G4): the original PDF, and the page's picture (slides, scans).
+    file_url: str | None = None
+    image_url: str | None = None
 
 
 def _error(code: int, detail: str) -> HTTPException:
@@ -357,6 +361,15 @@ def card_sources(
         )
     }
     out: list[SourceOut] = []
+
+    def presign(key: str | None) -> str | None:
+        if key is None:
+            return None
+        try:
+            return storage.presign_get(key, expires_in=READ_URL_SECONDS)
+        except Exception:  # noqa: BLE001 - the screen falls back to the page text
+            return None
+
     for a in anchors:
         document = documents.get(a.document_id) if a.document_id else None
         text = (
@@ -374,6 +387,12 @@ def card_sources(
                 page_text=text,
                 quote=a.quote_text,
                 highlight=find_highlight(text, a.quote_text) if text else None,
+                file_url=presign(document.object_key)
+                if document is not None and document.format == "pdf"
+                else None,
+                image_url=presign(f"{document.thumbnails_prefix}/{a.page_no}.png")
+                if document is not None and document.thumbnails_prefix and a.page_no
+                else None,
             )
         )
     return out

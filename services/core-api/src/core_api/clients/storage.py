@@ -61,6 +61,8 @@ class ObjectStorage(Protocol):
         self, key: str, *, size: int, sha256: str, content_type: str, expires_in: int
     ) -> PresignedPut: ...
 
+    def presign_get(self, key: str, *, expires_in: int) -> str: ...
+
     def head(self, key: str) -> StoredObject | None: ...
 
     def read_start(self, key: str, length: int) -> bytes: ...
@@ -185,6 +187,12 @@ class S3Storage:
             "If-None-Match": "*",
         }
         return PresignedPut(url=url, headers=headers)
+
+    def presign_get(self, key: str, *, expires_in: int) -> str:
+        """A short-lived read URL (G4); a credential until it expires, never log it."""
+        return self._public.generate_presigned_url(
+            "get_object", Params={"Bucket": self._bucket, "Key": key}, ExpiresIn=expires_in
+        )
 
     def head(self, key: str) -> StoredObject | None:
         try:

@@ -123,7 +123,9 @@ def test_g4_source_highlights_the_passage(client: TestClient, db_session: Sessio
     doc = next(r for r in rows if r["source"] == "document")
     start, end = doc["highlight"]
     assert doc["page_text"][start:end] == "bắt tay\nba bước"
+    assert "X-Amz-Expires=600" in doc["file_url"] and doc["image_url"] is None
     assert next(r for r in rows if r["source"] == "notes")["page_text"] is None
+    assert next(r for r in rows if r["source"] == "notes")["file_url"] is None
 
 
 def test_find_highlight():

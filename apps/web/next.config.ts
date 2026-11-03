@@ -20,7 +20,7 @@ function contentSecurityPolicy(production: boolean): string {
     "default-src 'self'",
     production ? "script-src 'self' 'unsafe-inline'" : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:", // the paper grain is an SVG data: URL
+    `img-src 'self' data: blob:${storage}`, // the paper grain is an SVG data: URL; page pictures (G4)
     "font-src 'self'",
     production ? `connect-src 'self'${storage}` : `connect-src 'self'${storage} ws: wss:`,
     "object-src 'none'",
