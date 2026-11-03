@@ -66,14 +66,16 @@ export function StartButton({
         variant={variant}
         size="lg"
         pending={pending}
-        disabled={empty}
-        onClick={start}
+        aria-disabled={empty || undefined}
+        aria-describedby={empty ? "nothing-due" : undefined}
+        className={empty ? "bg-sunken text-ink-soft inset-ring-line hover:bg-sunken" : undefined}
+        onClick={empty ? undefined : start}
         data-copy={copy}
       >
         {children}
       </Button>
       {empty && (
-        <p role="status" className="m-0 text-meta text-ink-soft">
+        <p id="nothing-due" role="status" className="m-0 text-meta text-ink-soft">
           Môn này chưa có gì đến hạn ôn. Thẻ mới sẽ hiện khi đến hạn.
         </p>
       )}

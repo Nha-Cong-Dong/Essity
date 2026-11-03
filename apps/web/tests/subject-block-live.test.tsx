@@ -84,7 +84,7 @@ describe("subject block (T7.13)", () => {
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Ôn riêng môn này" })));
     expect(go).not.toHaveBeenCalled();
     expect(screen.getByRole("status").textContent).toContain("Môn này chưa có gì đến hạn ôn");
-    expect((screen.getByRole("button", { name: "Ôn riêng môn này" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Ôn riêng môn này" }).getAttribute("aria-disabled")).toBe("true");
   });
 
   // Red when: a subject the page knows has nothing due still offers a button that cannot work.
@@ -92,7 +92,7 @@ describe("subject block (T7.13)", () => {
     const spy = vi.fn();
     vi.stubGlobal("fetch", spy);
     show({ nothingDue: true });
-    expect((screen.getByRole("button", { name: "Ôn riêng môn này" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Ôn riêng môn này" }).getAttribute("aria-disabled")).toBe("true");
     expect(screen.getByRole("status").textContent).toContain("Môn này chưa có gì đến hạn ôn");
     expect(spy).not.toHaveBeenCalled();
   });
