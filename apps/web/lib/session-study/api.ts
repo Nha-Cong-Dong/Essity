@@ -128,7 +128,7 @@ export function createSessionApi(sessionId: string, docs: readonly DocRef[], fet
         { text, mentions: mentions.map((m) => ({ document_id: m.docId, start: m.start, end: m.end })), files },
         (json) => piece(json as unknown as CorePiece),
       ),
-    complete: () => run(`/api/sessions/${sessionId}/complete`, "POST", undefined, (json) => ({ status: readStatus(String(json.status)) })),
+    complete: () => run(`/api/sessions/${sessionId}/complete`, "POST", sectionId ? { section_id: sectionId } : undefined, (json) => ({ status: readStatus(String(json.status)) })),
     async submit(text, mentions, files = []) {
       const body = { session_id: sessionId, description: text, mentions: mentions.map((m) => ({ document_id: m.docId, start: m.start, end: m.end })), ...(files.length > 0 ? { files } : {}) };
       const { status, json } = await call("/api/submissions", "POST", body);

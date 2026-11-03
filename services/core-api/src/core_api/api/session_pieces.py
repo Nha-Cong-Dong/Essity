@@ -23,6 +23,7 @@ from core_api.db.models.study_session import DESCRIPTION_MAX
 from core_api.db.session import DbSession
 from core_api.repositories.study_session import StudySessionRepository
 from core_api.security.rate_limit import RateLimiter, get_rate_limiter
+from core_api.services.outline import NoChangeError, OutlineService, SectionNotFoundError
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
 
@@ -43,6 +44,13 @@ class PieceOut(BaseModel):
     text: str
     file_count: int
     created_at: datetime
+
+
+class CompleteIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # The section the session was opened for (a suggestion), marked studied with the mentioned ones.
+    section_id: uuid.UUID | None = None
 
 
 class PiecesOut(BaseModel):
@@ -139,6 +147,7 @@ def complete(  # noqa: PLR0913
     limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
     now: Now,
     response: Response,
+    body: CompleteIn | None = None,
 ) -> SubmissionOut:
     """Hand every piece in as one submission (queued for the worker). 404 `session_not_found`;
     422 `nothing_submitted`; the rest as `POST /v1/submissions`."""
@@ -172,4 +181,23 @@ def complete(  # noqa: PLR0913
         )
     except ValidationError:
         raise _error(422, "text_too_long") from None
-    return submit(request, user, session, storage, limiter, now, response)
+    out = submit(request, user, session, storage, limiter, now, response)
+    if response.status_code != 200:  # 200 = already handed in before
+        _mark_studied(session, user.id, out, body.section_id if body else None)
+    return out
+
+
+def _mark_studied(
+    session: DbSession, user_id: uuid.UUID, out: SubmissionOut, section_id: uuid.UUID | None
+) -> None:
+    """The sections the pieces were about are studied now: the outline ticks them (the system
+    ticks, the learner does not). A section that is gone or excluded is skipped."""
+    ids = {m.section_id for m in out.mentions if m.section_id is not None}
+    if section_id is not None:
+        ids.add(section_id)
+    service = OutlineService(session, user_id)
+    for sid in ids:
+        try:
+            service.edit_section(sid, studied=True)
+        except (SectionNotFoundError, NoChangeError):
+            continue
