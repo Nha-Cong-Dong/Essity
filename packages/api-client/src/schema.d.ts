@@ -1922,7 +1922,9 @@ export interface components {
         /** LoginBody */
         LoginBody: {
             /** Email */
-            email: string;
+            email?: string | null;
+            /** Identifier */
+            identifier?: string | null;
             /** Password */
             password: string;
         };
@@ -2384,6 +2386,10 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+            /** Phone */
+            phone?: string | null;
+            /** Username */
+            username: string;
         };
         /** ResetBody */
         ResetBody: {
