@@ -57,12 +57,13 @@ async function deleteSubject(id: string): Promise<"deleted" | "history" | "signe
 
 type RowProps = {
   initial: ListedSubject;
+  featured: boolean;
   example: string;
   onOpen: () => void;
   onDeleted: () => void;
 };
 
-function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
+function SubjectRow({ initial, featured, example, onOpen, onDeleted }: RowProps) {
   const [subject, setSubject] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(initial.name);
@@ -168,35 +169,39 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
   }
 
   return (
-    <li className="flex min-w-0 flex-col gap-4 rounded-tile bg-sheet p-5 shadow-sheet">
-      {/* Below sm a grid (T2.3c, R44, plan G3): the cover spans both lines, the name wraps
-          anywhere beside it with "Sửa" on its first line, the date line starts under the name.
-          From sm, DESIGN.md §6.8's single line. */}
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6">
-        <SubjectMark name={subject.name} className="row-span-2 self-start sm:self-auto" />
+    <li
+      className={`flex min-w-0 flex-col gap-4 rounded-sheet border border-line bg-sheet p-5 ${featured ? "min-[640px]:col-span-2" : ""}`}
+    >
+      {/* V22 SubjectCard: vertical, never three things in a row. Row 1: letter + name (the name
+          wraps between words, never inside one); row 2: the date line; row 3: "Sửa". */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1">
+        <SubjectMark name={subject.name} className="row-span-2" />
         <a
           id={ids.name}
           href={`/subjects/${subject.id}`}
-          className="min-w-0 text-section font-semibold wrap-anywhere text-inherit no-underline hover:underline sm:flex-1"
+          className="min-w-0 text-body font-semibold break-words text-inherit no-underline hover:underline"
         >
           {subject.name}
         </a>
         {/* The space between the halves keeps them two words for a screen reader (plan G9). */}
-        <span className="col-span-2 col-start-2 row-start-2 flex flex-wrap gap-x-2 text-small sm:flex-col sm:items-end">
+        <span className="flex flex-wrap gap-x-2 text-meta">
           <span className="whitespace-nowrap">thi {formatExamDate(subject.exam_date)}</span>{" "}
           <span className="whitespace-nowrap text-ink-soft">{daysLeftText(subject.days_until_exam)}</span>
         </span>
-        {!editing && (
-          <Button
-            variant="quiet"
-            onClick={open}
-            aria-label={`Sửa ${subject.name}`}
-            className="col-start-3 row-start-1 self-start sm:self-auto"
-          >
+      </div>
+      {featured && subject.days_until_exam > 0 && (
+        <p className="m-0 flex items-baseline gap-2" data-featured-days>
+          <span className="font-serif text-display font-medium tabular-nums">{subject.days_until_exam}</span>
+          <span className="text-body text-ink-soft">ngày nữa thi</span>
+        </p>
+      )}
+      {!editing && (
+        <div className="-ml-3 flex">
+          <Button variant="quiet" onClick={open} aria-label={`Sửa ${subject.name}`}>
             Sửa
           </Button>
-        )}
-      </div>
+        </div>
+      )}
       {/* Always on the page, so a screen reader reads "Đã lưu." when it appears (plan F7). */}
       <p role="status" className={saved ? "m-0 text-small text-ink-soft" : "sr-only"}>
         {saved ? SUBJECT_MESSAGES.saved : ""}
@@ -280,7 +285,7 @@ function DeletedRow() {
   const ref = useRef<HTMLParagraphElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
-    <li className="rounded-tile bg-rose-100 p-5">
+    <li className="rounded-sheet bg-rose-50 p-5">
       <p ref={ref} tabIndex={-1} className="m-0 text-small text-ink-soft">
         Đã xóa môn.
       </p>
@@ -297,6 +302,10 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
     deletedId: null,
   });
   const remaining = rows.filter((subject) => subject.id !== deletedId);
+  // V22: the nearest exam leads, on a double-width card with its days as the one big number.
+  const featuredId = remaining.length > 1
+    ? remaining.filter((subject) => subject.days_until_exam > 0).sort((x, y) => x.days_until_exam - y.days_until_exam)[0]?.id
+    : undefined;
 
   function dropPlaceholder() {
     setList((list) =>
@@ -347,7 +356,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
           />
         </>
       ) : (
-        <ul className="m-0 grid list-none items-start gap-6 p-0 min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3">
+        <ul className="m-0 grid list-none items-start gap-4 p-0 min-[600px]:grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))]">
           {rows.map((subject) =>
             subject.id === deletedId ? (
               <DeletedRow key={subject.id} />
@@ -355,6 +364,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
               <SubjectRow
                 key={subject.id}
                 initial={subject}
+                featured={subject.id === featuredId}
                 example={example}
                 onOpen={dropPlaceholder}
                 onDeleted={() => deleted(subject.id)}
@@ -366,7 +376,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
       {remaining.length > 0 && (
         <a
           href="/subjects/new"
-          className="mt-6 flex min-h-20 items-center justify-center rounded-tile border-2 border-dashed border-rose-300 bg-rose-50 p-5 text-read font-semibold text-ink no-underline hover:bg-rose-100"
+          className="mt-4 flex min-h-16 items-center justify-center rounded-sheet border border-dashed border-line-strong p-5 text-body font-semibold text-ink no-underline hover:bg-sunken"
         >
           + Thêm môn
         </a>

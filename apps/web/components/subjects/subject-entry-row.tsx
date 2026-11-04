@@ -12,7 +12,7 @@ export function SubjectEntryRow({ entries }: { entries: SubjectEntry[] }) {
             <a
               href={entry.href}
               data-entry={entry.key}
-              className="flex min-h-11 flex-col justify-center px-4 py-1 first:pl-0 wrap-anywhere"
+              className="flex min-h-11 flex-col justify-center px-4 py-1 first:pl-0 break-words"
             >
               <span className="font-semibold underline">{entry.label}</span>
               {entry.note !== null && <span className="text-small text-ink-soft">{entry.note}</span>}

@@ -16,7 +16,7 @@ export function StartButton({
   nothingDue = false,
 }: {
   children: React.ReactNode;
-  variant: "primary-inverse" | "secondary";
+  variant: "primary" | "primary-inverse" | "secondary";
   /** "tam" while the label waits for the user's approval (R09). */
   "data-copy"?: "tam";
   /** "Ôn riêng môn này" (US-03 AC7): today's session for this subject only. */

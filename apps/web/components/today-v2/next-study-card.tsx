@@ -3,11 +3,11 @@ import { Button } from "@/components/ui/button";
 import { paceLine, TODAY_V2_COPY as COPY, type LearnItem } from "@/lib/today-v2";
 
 // T7.13a (US-15 AC1, AC7; DESIGN §6.2 "Học gì tiếp"): one subject's block. The cover, name and
-// the lines wrap anywhere (a name may be one long word); the same grid as the subjects list.
+// V22: words are never cut mid-word; a name that does not fit goes to the next line.
 
 export function PaceLine({ pace }: { pace: Extract<LearnItem, { state: "next" }>["pace"] }) {
   return (
-    <p className="m-0 text-meta text-ink-soft wrap-anywhere">
+    <p className="m-0 text-meta text-ink-soft break-words">
       {paceLine(pace)}
     </p>
   );
@@ -21,16 +21,16 @@ export function NextStudyCard({ item }: { item: LearnItem; primary?: boolean }) 
     <article aria-labelledby={nameId} className="flex flex-col gap-2">
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4">
         <SubjectMark name={item.subject.name} />
-        <h3 id={nameId} className="m-0 min-w-0 text-section font-semibold break-words hyphens-auto">
+        <h3 id={nameId} className="m-0 min-w-0 text-body font-semibold break-words">
           {item.subject.name}
         </h3>
       </div>
       {item.state === "next" && (
         <>
           {item.section.chapter ? (
-            <p className="m-0 text-meta font-semibold text-ink-soft wrap-anywhere">{item.section.chapter}</p>
+            <p className="m-0 text-meta font-semibold text-ink-soft break-words">{item.section.chapter}</p>
           ) : null}
-          <p className="m-0 text-lead wrap-anywhere">
+          <p className="m-0 text-body break-words">
             Phần {item.section.label} {item.section.title}
             {item.section.pages ? ` · ${item.section.pages}` : ""}
           </p>
@@ -39,7 +39,7 @@ export function NextStudyCard({ item }: { item: LearnItem; primary?: boolean }) 
       )}
       {item.state === "no_textbook" && (
         <>
-          <p className="m-0 text-body wrap-anywhere">
+          <p className="m-0 text-body break-words">
             Môn {item.subject.name} {COPY.noTextbook}
           </p>
           <div className="-ml-3">

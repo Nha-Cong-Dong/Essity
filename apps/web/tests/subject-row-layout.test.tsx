@@ -38,11 +38,13 @@ describe("subject row (T2.3c, R44)", () => {
     expect(left.className).toMatch(/\btext-ink-soft\b/);
   });
 
-  // Red when: the name cannot break inside a long word, which then spills over the date (R44).
-  it("R44-b the name breaks anywhere it has to and keeps the id the row's labels point at", () => {
+  // Red when: the name is cut inside a word ("Mạn/g má/y tính", V22 §8.1): it wraps between words
+  // only, and keeps the id the row's labels point at.
+  it("R44-b the name wraps between words, never inside one, and keeps its id", () => {
     render(<SubjectList subjects={[MMT]} example="15/12/2031" />);
     const name = screen.getByText("Mạng máy tính");
-    expect(name.className).toMatch(/\bwrap-anywhere\b/);
+    expect(name.className).toContain("break-words");
+    expect(name.className).not.toMatch(/wrap-anywhere/);
     expect(name.id).toBe(`subject-${MMT.id}-name`);
     const row = name.closest("li") as HTMLElement;
     expect(within(row).getByRole("button", { name: "Sửa Mạng máy tính" })).toBeTruthy();

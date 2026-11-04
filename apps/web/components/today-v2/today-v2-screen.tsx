@@ -1,12 +1,10 @@
 import { Marker } from "@/components/notebook";
-import { MarginRule, NoteSticker, Watermark } from "@/components/motifs";
 import { WeekStrip, type WeekCell } from "@/components/today-v2/week-strip";
 import { LearnActions } from "@/components/today-v2/learn-actions";
 import { Mascot } from "@/components/mascot";
 import { NextStudyCard } from "@/components/today-v2/next-study-card";
 import { StartButton } from "@/components/today/start-button";
 import { Button } from "@/components/ui/button";
-import { Sheet } from "@/components/ui/sheet";
 import { dayLabel } from "@/lib/today-copy";
 import {
   draftLine,
@@ -23,16 +21,16 @@ import {
 // Order: Việc dở, Ôn hôm nay, Học gì tiếp, Luyện tập. Exactly one primary button per state.
 
 const FULL = "max-sm:w-full";
-// V21: a white card with the pink shadow only (UI-1b: a border or a shadow, not both).
+// V22: no card chrome except the one tinted sheet ("tờ chính") of the review; lists are rows.
 const EDGE = "min-w-0";
 
 function Heading({ day }: { day: string }) {
   return (
-    <div className="mb-10 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-      <h1 className="m-0 font-display text-display">
+    <div className="mb-8 grid items-end gap-x-6 gap-y-2 min-[901px]:grid-cols-12">
+      <h1 className="m-0 font-serif text-title min-[901px]:col-span-8">
         <Marker>{COPY.heading}</Marker>
       </h1>
-      <p className="m-0 text-read text-ink-soft">{dayLabel(day)}</p>
+      <p className="m-0 text-body text-ink-soft min-[901px]:col-span-4 min-[901px]:justify-self-end">{dayLabel(day)}</p>
     </div>
   );
 }
@@ -42,7 +40,7 @@ function ResumeRow({ item, primary }: { item: Unfinished; primary: boolean }) {
   const variant = primary ? "primary" : "secondary";
   if (item.kind === "note") {
     return (
-      <li className="m-0 text-small text-ink-soft wrap-anywhere">
+      <li className="m-0 text-small text-ink-soft break-words">
         {item.text}
       </li>
     );
@@ -61,7 +59,7 @@ function ResumeRow({ item, primary }: { item: Unfinished; primary: boolean }) {
         : `/subjects/${item.subject.id}/sessions`;
   return (
     <li className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
-      <p className="m-0 min-w-0 flex-1 basis-60 text-read wrap-anywhere">
+      <p className="m-0 min-w-0 flex-1 basis-60 text-read break-words">
         {line}
       </p>
       <Button
@@ -80,8 +78,8 @@ function ResumeRow({ item, primary }: { item: Unfinished; primary: boolean }) {
 export function ResumeStrip({ items }: { items: Unfinished[] }) {
   const first = items.findIndex((item) => item.kind !== "note");
   return (
-    <Sheet variant="sunken" className="min-w-0 min-[901px]:col-span-12" aria-labelledby="today-unfinished">
-      <h2 id="today-unfinished" className="m-0 mb-3 font-display text-lead">
+    <section className="min-w-0 border-b border-line pb-6 min-[901px]:col-span-12" aria-labelledby="today-unfinished">
+      <h2 id="today-unfinished" className="m-0 mb-3 text-body font-semibold">
         {COPY.unfinished}
       </h2>
       <ul className="m-0 flex list-none flex-col gap-4 p-0">
@@ -89,9 +87,11 @@ export function ResumeStrip({ items }: { items: Unfinished[] }) {
           return <ResumeRow key={index} item={item} primary={index === first} />;
         })}
       </ul>
-    </Sheet>
+    </section>
   );
 }
+
+const SHEET = "relative flex min-w-0 flex-col gap-3 self-start rounded-sheet bg-rose-50 p-5 min-[901px]:col-span-8 min-[901px]:p-10";
 
 export function ReviewTile({
   review,
@@ -104,81 +104,39 @@ export function ReviewTile({
 }) {
   if (review.state === "none") {
     return (
-      <Sheet
-        variant="tile"
-        tone="rose"
-        className="flex min-w-0 flex-col gap-2 self-start min-[901px]:col-span-7"
-        aria-labelledby="today-review"
-      >
+      <section className={`${SHEET} items-start`} aria-labelledby="today-review">
         <h2 id="today-review" className="sr-only">
           {COPY.review}
         </h2>
-        <Mascot pose="vui" />
-        <p className="m-0 font-display text-lead">
-          {COPY.nothingDue}
-        </p>
-        {review.next_due && (
-          <p className="m-0 text-read text-ink-soft">
-            {nextDueLabel(review.next_due)}
-          </p>
-        )}
-      </Sheet>
+        <Mascot pose="vui" size="md" />
+        <p className="m-0 font-serif text-lead font-medium">{COPY.nothingDue}</p>
+        {review.next_due && <p className="m-0 text-body text-ink-soft">{nextDueLabel(review.next_due)}</p>}
+      </section>
     );
   }
-  const body = (
-    <>
-      <h2 id="today-review" className="m-0 text-read font-normal">
+  return (
+    <section className={SHEET} aria-labelledby="today-review">
+      <h2 id="today-review" className="m-0 text-meta font-semibold text-ink-soft">
         {COPY.review}
       </h2>
       <p className="m-0 flex items-baseline gap-3">
-        <span className="font-display text-display tabular-nums">{review.count}</span>
-        <span className="text-lead">{COPY.questions}</span>
+        <span className="font-serif text-display font-medium tabular-nums">{review.count}</span>
+        <span className="text-body">{COPY.questions}</span>
       </p>
       {/* V5: the total only, no subject names. */}
-      <p className="m-0 text-read">khoảng {review.minutes} phút</p>
-      {review.note && (
-        <p className="m-0 text-small wrap-anywhere">
-          {review.note}
-        </p>
-      )}
+      <p className="m-0 text-body">khoảng {review.minutes} phút</p>
+      {review.note && <p className="m-0 text-meta break-words">{review.note}</p>}
       {review.in_progress ? (
-        <p className="m-0 text-small">
-          {COPY.inProgressHint}
-        </p>
+        <p className="m-0 text-meta">{COPY.inProgressHint}</p>
       ) : (
-        <div className="mt-4">
-          <StartButton variant={primary ? "primary-inverse" : "secondary"} preview={preview}>
+        <div className="mt-3 max-sm:w-full">
+          <StartButton variant={primary ? "primary" : "secondary"} preview={preview}>
             {COPY.start}
           </StartButton>
         </div>
       )}
-    </>
-  );
-  // One pink tile, only when it carries the primary button (design-decisions #2).
-  if (primary) {
-    return (
-      <Sheet
-        variant="tile"
-        tone="hong"
-        className="relative flex min-w-0 flex-col gap-3 self-start min-[901px]:col-span-7"
-        aria-labelledby="today-review"
-      >
-        <NoteSticker>hôm nay</NoteSticker>
-        <Mascot pose="vui" className="absolute top-6 right-6 max-sm:size-20" />
-        {body}
-      </Sheet>
-    );
-  }
-  return (
-    <Sheet
-      variant="tile"
-      tone="rose"
-      className="relative flex min-w-0 flex-col gap-3 self-start min-[901px]:col-span-7"
-      aria-labelledby="today-review"
-    >
-      <Mascot pose="vui" className="absolute top-6 right-6 max-sm:size-20" />
-      {body}
-    </Sheet>
+      <Mascot pose="vui" className="absolute top-5 right-5 max-sm:size-20 min-[901px]:top-auto min-[901px]:right-10 min-[901px]:bottom-10 min-[901px]:size-40" />
+    </section>
   );
 }
 
@@ -186,15 +144,14 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
   const { items, empty_reason } = today.learn;
   const first = items.findIndex((item) => item.state === "next");
   return (
-    <Sheet variant="tile" className={`${EDGE} relative pl-11 min-[901px]:col-span-5 min-[901px]:pl-14`} aria-labelledby="today-learn">
-      <MarginRule />
-      <h2 id="today-learn" className="m-0 font-display text-lead">
+    <section className={`${EDGE} min-[901px]:col-span-4`} aria-labelledby="today-learn">
+      <h2 id="today-learn" className="m-0 text-body font-semibold">
         {COPY.learn}
       </h2>
       {items.length > 0 ? (
-        <ul className="m-0 mt-4 flex list-none flex-col gap-6 p-0">
+        <ul className="m-0 mt-4 flex list-none flex-col p-0">
           {items.map((item, index) => (
-            <li key={item.subject.id}>
+            <li key={item.subject.id} className="border-b border-line py-4 first:pt-0 last:border-b-0">
               <NextStudyCard item={item} primary={primary && index === first} />
             </li>
           ))}
@@ -212,28 +169,26 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
         </div>
       )}
       <LearnActions items={items} primary={primary && first >= 0} />
-    </Sheet>
+    </section>
   );
 }
 
 function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2["practice"]>; primary: boolean }) {
   return (
-    <Sheet variant="tile" className={`${EDGE} min-[901px]:col-span-12`} aria-labelledby="today-practice">
-      <h2 id="today-practice" className="m-0 font-display text-lead">
+    <section className={`${EDGE} min-[901px]:col-span-4`} aria-labelledby="today-practice">
+      <h2 id="today-practice" className="m-0 text-body font-semibold">
         {COPY.practice}
       </h2>
       {practice.state === "none_ready" ? (
         <div className="mt-3 flex items-center gap-4">
           <Mascot pose="cho" size="sm" />
-          <p className="m-0 text-read text-ink-soft">{COPY.practiceNone}</p>
+          <p className="m-0 text-body text-ink-soft">{COPY.practiceNone}</p>
         </div>
       ) : (
-        <ul className="m-0 mt-4 flex list-none flex-col gap-4 p-0">
+        <ul className="m-0 mt-3 flex list-none flex-col gap-3 p-0">
           {practice.rows.map((row, index) => (
-            <li key={row.subject_id} className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2">
-              <p className="m-0 min-w-0 flex-1 basis-60 text-read wrap-anywhere">
-                {practiceLine(row)}
-              </p>
+            <li key={row.subject_id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <p className="m-0 min-w-0 flex-1 basis-40 text-body break-words">{practiceLine(row)}</p>
               <Button
                 render={<a href={`/subjects/${row.subject_id}/practice`} />}
                 nativeButton={false}
@@ -247,7 +202,7 @@ function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2[
           ))}
         </ul>
       )}
-    </Sheet>
+    </section>
   );
 }
 
@@ -282,13 +237,12 @@ export function TodayV2Screen({
   return (
     <>
       <Heading day={today.learning_day} />
-      <div data-reveal className="relative grid gap-8 min-[901px]:grid-cols-12">
-        <Watermark />
+      <div className="grid gap-x-4 gap-y-10 min-[901px]:grid-cols-12 min-[901px]:gap-y-14">
         {today.unfinished.length > 0 && <ResumeStrip items={today.unfinished} />}
         <ReviewTile review={today.review} primary={primary === "review"} preview={preview} />
         <LearnSection today={today} primary={primary === "learn"} />
         {today.practice && <PracticeSection practice={today.practice} primary={primary === "practice"} />}
-        {week && <WeekStrip cells={week} today={today.learning_day} className="min-[901px]:col-span-12" />}
+        {week && <WeekStrip cells={week} today={today.learning_day} className="min-[901px]:col-span-8" />}
       </div>
     </>
   );
@@ -298,10 +252,9 @@ export function TodayV2Screen({
 export function TodayV2Loading() {
   return (
     <div aria-busy="true" className="grid gap-6 min-[901px]:grid-cols-12">
-      <div className="h-24 rounded-sheet bg-sunken min-[901px]:col-span-12" />
-      <div className="h-64 rounded-tile bg-sunken min-[901px]:col-span-7" />
-      <div className="h-64 rounded-tile bg-sunken min-[901px]:col-span-5" />
-      <div className="h-32 rounded-tile bg-sunken min-[901px]:col-span-12" />
+      <div className="h-72 rounded-sheet bg-sunken min-[901px]:col-span-8" />
+      <div className="h-40 rounded-sheet bg-sunken min-[901px]:col-span-4" />
+      <div className="h-32 rounded-sheet bg-sunken min-[901px]:col-span-12" />
       <p className="sr-only" role="status">
         {COPY.loading}
       </p>

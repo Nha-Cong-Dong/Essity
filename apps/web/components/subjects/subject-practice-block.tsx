@@ -1,4 +1,3 @@
-import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // V19: the practice block of the subject screen, a tile like "Thống kê môn này": how many
@@ -17,13 +16,13 @@ export function SubjectPracticeBlock({
 }) {
   const empty = total === 0;
   return (
-    <Sheet variant="tile" tone="rose" aria-label="Luyện tập" data-subject-practice className="flex flex-col gap-3">
-      <h2 className="m-0 font-display text-lead">Luyện tập</h2>
+    <section aria-label="Luyện tập" data-subject-practice className="flex flex-col gap-3 border-t border-line pt-6">
+      <h2 className="m-0 text-body font-semibold">Luyện tập</h2>
       {empty ? (
         <p className="m-0 text-body text-ink-soft">Chưa có bộ câu hỏi. Tải bộ câu hỏi để luyện đúng dạng đề thi.</p>
       ) : (
         <>
-          <p className="m-0 font-display text-title" data-due-today>
+          <p className="m-0 font-serif text-lead font-medium" data-due-today>
             {dueToday === null ? `${ready} câu sẵn sàng` : `${dueToday} câu cần luyện hôm nay`}
           </p>
           <p className="m-0 text-meta text-ink-soft">
@@ -36,6 +35,6 @@ export function SubjectPracticeBlock({
           {empty ? "Tải bộ câu hỏi" : "Luyện tập"}
         </Button>
       </div>
-    </Sheet>
+    </section>
   );
 }

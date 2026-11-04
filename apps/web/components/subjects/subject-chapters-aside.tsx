@@ -9,13 +9,13 @@ function Row({ node, depth }: { node: SyllabusNode; depth: number }) {
   return (
     <li>
       <div
-        className={`flex items-start gap-2 py-1 text-small wrap-anywhere ${node.excluded ? "text-ink-soft line-through" : ""} ${leaf ? "" : "font-semibold"}`}
+        className={`flex items-start gap-2 py-1 text-small break-words ${node.excluded ? "text-ink-soft line-through" : ""} ${leaf ? "" : "font-semibold"}`}
         style={{ paddingLeft: `${depth * 12}px` }}
       >
         <span
           aria-hidden="true"
           data-ticked={ticked ? "true" : "false"}
-          className={`mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-control ${ticked ? "bg-hong text-on-hong" : "bg-rose-100"}`}
+          className={`mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-control ${ticked ? "bg-hong text-on-hong" : "bg-sunken inset-ring-1 inset-ring-line-strong"}`}
         >
           {ticked ? <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 6.5l2.5 2.5L10 3.5" /></svg> : null}
         </span>
@@ -41,8 +41,8 @@ function isTicked(n: SyllabusNode): boolean {
 
 export function SubjectOutlineAside({ nodes, subjectId }: { nodes: SyllabusNode[]; subjectId: string }) {
   return (
-    <aside aria-label="Đề cương" className="flex min-w-0 flex-col gap-3 rounded-tile bg-sheet p-6 shadow-sheet lg:max-h-[80vh] lg:overflow-y-auto">
-      <h2 className="m-0 font-display text-lead">Đề cương</h2>
+    <aside aria-label="Đề cương" className="flex min-w-0 flex-col gap-3 border-t border-line pt-6 lg:max-h-[70vh] lg:overflow-y-auto">
+      <h2 className="m-0 text-body font-semibold">Đề cương</h2>
       <ul className="m-0 flex list-none flex-col p-0">
         {nodes.map((n) => (
           <Row key={n.id} node={n} depth={0} />

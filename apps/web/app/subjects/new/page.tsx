@@ -4,12 +4,9 @@ import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
 import { AUTH_LINK } from "@/components/auth/fields";
-import { Marker } from "@/components/notebook";
-import { MarginRule } from "@/components/motifs";
 import { Mascot } from "@/components/mascot";
 import { AppShell, PageColumn } from "@/components/shells";
 import { OutlineCard } from "@/components/subjects/outline-card";
-import { StepIndicator } from "@/components/subjects/step-indicator";
 import { Sheet } from "@/components/ui/sheet";
 import { NewSubjectForm } from "@/components/subjects/new-subject-form";
 import { exampleFor } from "@/lib/exam-date";
@@ -32,30 +29,21 @@ export default function NewSubjectPage() {
         <a href="/subjects" className={AUTH_LINK}>
           Môn học
         </a>
-        <StepIndicator current={1} />
-        <div className="flex items-end gap-4">
-          <Sheet className="relative min-w-0 flex-1 p-5 pl-11 sm:p-8 sm:pl-14">
-            <MarginRule />
-            <h1 className="m-0 mb-2 font-display text-title">
-              <Marker>Môn mới</Marker>
-            </h1>
-            <p className="m-0 mb-6 max-w-[48ch] text-read text-ink-soft">Đặt tên môn và ngày thi để app chia lịch học cho vừa sức.</p>
-            <h2 className="m-0 mb-4 font-display text-lead">1. Thông tin</h2>
-            <Suspense fallback={<div aria-busy="true" className="h-60" />}>
-              <NewSubject />
-            </Suspense>
-          </Sheet>
+        <header className="flex items-end justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <h1 className="m-0 font-serif text-title">Môn mới</h1>
+            <p className="m-0 text-body text-ink-soft">
+              Bước 1/2 · Tạo môn. Đặt tên môn và ngày thi để app chia lịch học cho vừa sức.
+            </p>
+          </div>
           <div className="hidden shrink-0 min-[641px]:block">
             <Mascot pose="chuanbi" size="md" />
           </div>
-        </div>
-        <Sheet variant="tile" tone="rose" aria-labelledby="docs-next">
-          <h2 id="docs-next" className="m-0 font-display text-lead">
-            2. Tài liệu
-          </h2>
-          <p className="m-0 mt-2 text-read text-ink-soft">
-            Sau khi tạo môn, bạn tải giáo trình chính, giáo trình phụ hoặc bộ câu hỏi (PDF).
-          </p>
+        </header>
+        <Sheet className="min-w-0 border border-line p-5 shadow-none sm:p-8">
+          <Suspense fallback={<div aria-busy="true" className="h-60" />}>
+            <NewSubject />
+          </Suspense>
         </Sheet>
         <OutlineCard />
       </PageColumn>
