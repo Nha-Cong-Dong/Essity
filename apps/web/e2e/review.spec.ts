@@ -39,19 +39,15 @@ for (const width of WIDTHS) {
       }
     });
 
-    // Red when: the result column is laid over the question, or stays beside it on a phone.
-    test("the result: beside the answer from 901px, under it below; nothing spills", async ({ page }) => {
+    // Red when: the result is laid over the question, or beside it (V22: one 680 column at every width).
+    test("the result: under the answer at every width; nothing spills", async ({ page }) => {
       await page.getByRole("button", { name: "Gửi" }).click();
       await expect(page.locator("[data-verdict]")).toBeVisible();
       await page.waitForTimeout(800); // the rise and sweep have ended
       expect(await sideways(page)).toBe(false);
       const question = await box(page.getByRole("heading", { level: 1 }));
       const verdict = await box(page.locator("[data-verdict]"));
-      if (width >= 901) {
-        expect(verdict.x).toBeGreaterThan(question.x + question.width);
-      } else {
-        expect(verdict.y).toBeGreaterThan(question.y + question.height);
-      }
+      expect(verdict.y).toBeGreaterThan(question.y + question.height);
       const next = await box(page.getByRole("button", { name: "Câu tiếp" }));
       expect(next.x + next.width).toBeLessThanOrEqual(width);
       await expect(page.getByRole("button", { name: "Câu tiếp" })).toBeFocused();

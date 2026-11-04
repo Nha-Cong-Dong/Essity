@@ -572,24 +572,6 @@
   }
 }
 
-/* Auth screens (T1.24): the pink poster beside the form. Fixed values (--poster, --on-poster,
-   --glow-*) so the column keeps its contrast in both palettes; grain is a 9% white noise. */
-.auth-poster {
-  background-color: var(--poster);
-  background-image:
-    radial-gradient(55% 65% at 12% 8%, var(--glow-a) 0%, transparent 62%),
-    radial-gradient(60% 70% at 100% 100%, var(--glow-b) 0%, transparent 65%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-.auth-poster-grid {
-  background-image:
-    linear-gradient(rgb(255 255 255 / 0.16) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.16) 1px, transparent 1px);
-  background-size: 32px 32px;
-  -webkit-mask-image: radial-gradient(60% 45% at 100% 100%, #000 0%, transparent 100%);
-  mask-image: radial-gradient(60% 45% at 100% 100%, #000 0%, transparent 100%);
-}
-
 /* Phase B (04/11): the mascot's dots, the staggered reveal of a screen's blocks and the sticker
    button. All of it stands still when motion is reduced. */
 @media (prefers-reduced-motion: no-preference) {

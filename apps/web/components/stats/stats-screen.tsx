@@ -196,7 +196,7 @@ export function StatsScreen({
         <NxList title="Môn đang học" className="min-[901px]:col-span-5">
           {subjects.map((s) => (
             <NxRow key={s.id} lead={s.name.trim().charAt(0).toUpperCase()} state={s.examOn ? `Thi ${s.examOn}` : "Chưa có ngày thi"}>
-              <span className="font-semibold">{s.name}</span>
+              <span className="font-semibold wrap-anywhere">{s.name}</span>
             </NxRow>
           ))}
         </NxList>
