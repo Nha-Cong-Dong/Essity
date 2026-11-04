@@ -7,6 +7,10 @@ rebuild-practice-state --user-email EMAIL
 seed-demo --user-email EMAIL
     Give one user a made-up subject to review by hand with the fake grader (T2.16, plan D-10).
     Local and test only.
+promote-drafts [--dry-run]
+    Move every draft card still waiting for review into the vault (CARDS-V3): the same code a
+    Save runs, so events, review questions and the ledger follow. Not reversible: back up first.
+    Safe to run again.
 erase-user --user-id UUID [--confirm-email EMAIL]
     Erase everything of one user (T6.3, runbook db-roles §4). Connects as the `core_eraser`
     login given in CORE_ERASER_DATABASE_URL, and as the app. The email is required while the
@@ -43,6 +47,10 @@ def _parser() -> argparse.ArgumentParser:
     practice.add_argument("--user-email", required=True)
     demo = commands.add_parser("seed-demo", help="give one user a demo subject (local, test only)")
     demo.add_argument("--user-email", required=True)
+    promote = commands.add_parser(
+        "promote-drafts", help="move waiting draft cards into the vault (CARDS-V3)"
+    )
+    promote.add_argument("--dry-run", action="store_true")
     erase = commands.add_parser("erase-user", help="erase everything of one user (T6.3)")
     erase.add_argument("--user-id", required=True, type=uuid.UUID)
     erase.add_argument("--confirm-email")
@@ -58,6 +66,13 @@ def run(session: Session, argv: Sequence[str], *, environment: str | None = None
         if environment not in DEV_ENVIRONMENTS:
             print("seed-demo runs only in local and test", file=sys.stderr)
             return 1
+    if args.command == "promote-drafts":
+        from core_api.services.promote_drafts import promote_drafts
+
+        report = promote_drafts(session, now=datetime.now(UTC), dry_run=args.dry_run)
+        label = "would promote" if args.dry_run else "promoted"
+        print(f"{label} {report.cards} cards of {report.sessions} sessions ({report.users} users)")
+        return 0
     user = UserRepository(session).get_by_email(args.user_email)
     if user is None:
         print(f"no user with email {args.user_email}", file=sys.stderr)
