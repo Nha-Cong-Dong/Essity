@@ -253,11 +253,6 @@ export function PracticeLive({
             {list.total === 0 ? null : <span data-user>{subjectName}</span>}
           </p>
         </div>
-        {dueNow.length > 0 && (
-          <Button className={FULL} onClick={() => setDoing(dueNow[0].id)}>
-            Vào luyện tập ngay
-          </Button>
-        )}
       </div>
       <p role="status" className="sr-only">
         {removed.size > 0 ? "Đã gỡ khỏi luyện tập." : ""}
@@ -277,24 +272,37 @@ export function PracticeLive({
           </Button>
         </div>
       ) : (
-        <div className="mt-6">
-          <div className="flex flex-col gap-4" data-practice-today>
-          <div data-progress>
-            <p data-summary className="m-0 text-read">
-              Đã mở khóa {readyCount}/{live.length} câu
-            </p>
-            <div className="mt-2">
-              <CoverageBar percent={live.length === 0 ? 0 : (readyCount / live.length) * 100} />
-            </div>
-          </div>
-          {list.due_today !== undefined && (
-            <div data-due className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <p className="m-0 text-read">
-                {dueNow.length > 0 ? `Hôm nay cần luyện ${dueNow.length} câu.` : "Hôm nay không có câu nào cần luyện."}
+        <div className="mt-6 grid gap-6 min-[1000px]:grid-cols-12 min-[1000px]:items-start">
+          {/* UI-A/B: the answer of the screen (unlocked / total) and the one action sit in a right column. */}
+          <aside
+            className="flex flex-col gap-4 rounded-tile bg-hong-tint p-5 min-[1000px]:sticky min-[1000px]:top-6 min-[1000px]:col-start-9 min-[1000px]:col-end-13 min-[1000px]:row-start-1 min-[1000px]:p-6"
+            data-practice-today
+          >
+            <div data-progress>
+              <p className="m-0 flex items-baseline gap-2">
+                <span className="font-display text-display tabular-nums">{readyCount}</span>
+                <span className="text-lead font-semibold">/ {live.length} câu</span>
               </p>
+              <p data-summary className="m-0 mt-1 text-read">
+                Đã mở khóa {readyCount}/{live.length} câu
+              </p>
+              <div className="mt-3">
+                <CoverageBar percent={live.length === 0 ? 0 : (readyCount / live.length) * 100} />
+              </div>
             </div>
-          )}
-          </div>
+            {list.due_today !== undefined && (
+              <div data-due className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <p className="m-0 text-read">
+                  {dueNow.length > 0 ? `Hôm nay cần luyện ${dueNow.length} câu.` : "Hôm nay không có câu nào cần luyện."}
+                </p>
+              </div>
+            )}
+            {dueNow.length > 0 && (
+              <Button className={FULL} onClick={() => setDoing(dueNow[0].id)}>
+                Vào luyện tập ngay
+              </Button>
+            )}
+          </aside>
           {firstReady === null && (
             <>
               <p className="m-0 mt-3">Chưa có câu hỏi nào sẵn sàng, hãy kết nối thêm kiến thức để mở khóa câu hỏi nhé!</p>
@@ -303,7 +311,7 @@ export function PracticeLive({
               </Button>
             </>
           )}
-          <section aria-labelledby="practised" className={`mt-8 ${TILE}`} data-practised data-nx>
+          <section aria-labelledby="practised" className={`${TILE} min-[1000px]:col-span-8 min-[1000px]:col-start-1 min-[1000px]:row-start-1`} data-practised data-nx>
             <div className="flex items-baseline justify-between gap-3">
               <h2 id="practised" className="m-0 font-display text-lead max-[640px]:text-body max-[640px]:font-semibold">
                 Câu đã luyện tập
@@ -337,7 +345,7 @@ export function PracticeLive({
             )}
           </section>
           {waitingRows.length > 0 && (
-            <section aria-labelledby="waiting" className={`mt-8 ${TILE}`} data-nx>
+            <section aria-labelledby="waiting" className={`${TILE} min-[1000px]:col-span-8 min-[1000px]:col-start-1`} data-nx>
               <h2 id="waiting" className="m-0 text-read font-semibold">
                 Chờ mở khóa
               </h2>

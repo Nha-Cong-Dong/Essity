@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from "react";
 
-import { AUTH_LINK } from "@/components/auth/fields";
 import { Mascot } from "@/components/mascot";
 import { OutlineCard } from "@/components/subjects/outline-card";
 import { Uploader } from "@/components/subjects/uploader";
@@ -48,17 +47,17 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
   );
   return (
     <section aria-labelledby="upload-title" className="flex w-full max-w-160 flex-col gap-6">
-      <a href="/subjects" className={AUTH_LINK}>
+      <a href="/subjects" className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
         Môn học
       </a>
       <Sheet className="relative border border-line p-5 shadow-none sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-2">
             <h1 id="upload-title" className="m-0 font-display text-title break-words text-balance">
-              Tải tài liệu cho {name}
+              Tải tài liệu
             </h1>
             <p className="m-0 max-w-[56ch] text-read text-ink-soft">
-              Bước 2/2 · Tải tài liệu. Câu hỏi và thẻ sẽ dựa trên đúng những trang này.
+              <b className="font-semibold text-ink">{name}</b> · Bước 2/2. Câu hỏi và thẻ sẽ dựa trên đúng những trang này.
             </p>
           </div>
           <div className="hidden shrink-0 min-[641px]:block">

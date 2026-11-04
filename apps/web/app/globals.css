@@ -120,7 +120,7 @@
   --text-verdict--line-height: 1.2;
   --text-verdict--font-weight: 650;
   --text-verdict--letter-spacing: -0.02em;
-  --text-title: clamp(32px, 3.4vw, 44px); /* h1 of a screen = the landing's h2 step (V22) */
+  --text-title: clamp(24px, 1.2vw + 19px, 32px); /* h1 of an app screen: 24 on a phone, 32 from 1440 (ux-critic 05/11) */
   --text-title--line-height: 1.15;
   --text-title--font-weight: 650;
   --text-title--letter-spacing: -0.02em;
@@ -227,7 +227,7 @@
   --hong-soft-text: var(--ink-soft);
   --rose-50: #fdf0f5;
   --hong-tint: #f9f0f4; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
-  --cam: #8f5322; /* the one second colour: "suggested / next" rows only */
+  --cam: #9c2459; /* the one second colour: "suggested / next" rows only (a deeper pink, same family as --hong) */
   --rose-100: #fae3ec;
   --rose-200: #f4ccdc;
   --rose-300: #eaafc7;
@@ -285,7 +285,7 @@
   --hong-soft-text: var(--ink-soft);
     --rose-50: #221820;
     --hong-tint: #251b20; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
-    --cam: #e0a36a; /* the one second colour: "suggested / next" rows only */
+    --cam: #f2a0c3; /* the one second colour: "suggested / next" rows only */
     --rose-100: #2c1d27;
     --rose-200: #3a2432;
     --rose-300: #5a3a4a;
@@ -345,7 +345,7 @@
   --hong-soft-text: var(--ink-soft);
   --rose-50: #221820;
   --hong-tint: #251b20; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
-  --cam: #e0a36a; /* the one second colour: "suggested / next" rows only */
+  --cam: #f2a0c3; /* the one second colour: "suggested / next" rows only */
   --rose-100: #2c1d27;
   --rose-200: #3a2432;
   --rose-300: #5a3a4a;

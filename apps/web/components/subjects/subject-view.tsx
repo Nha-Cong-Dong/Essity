@@ -50,7 +50,7 @@ export function SubjectView({
             Môn học ›
           </a>
           <h1 className="m-0 max-w-full font-display text-title break-words text-balance">
-            <Marker>{subject.name}</Marker>
+            {subject.name}
           </h1>
           <p className="m-0 text-body text-ink-soft">{examLine}</p>
         </div>

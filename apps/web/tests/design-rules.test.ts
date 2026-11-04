@@ -103,6 +103,12 @@ describe("design rules", () => {
     expect(offenders(files, /<(a|button|summary|Link)\b[^>]*(?<![-\w])underline(?![-\w])/)).toEqual([]);
   });
 
+  it("the quiet button keeps a 44px touch target (h-11)", () => {
+    const src = read(path.join("components", "ui", "button.tsx"));
+    const quiet = src.slice(src.indexOf("        quiet:"), src.indexOf("        \"primary-inverse\":"));
+    expect(quiet).toContain('"h-11 ');
+  });
+
   it("V10: no bg-cover, which Tailwind also reads as background-size: cover", () => {
     expect(offenders(UI, /\bbg-cover\b(?!-)/)).toEqual([]);
   });
