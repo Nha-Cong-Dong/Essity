@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { StartButton } from "@/components/today/start-button";
+import { Mascot } from "@/components/mascot";
 import { Sheet } from "@/components/ui/sheet";
 
 // Hackathon D6: this subject's cards due today, stacked. Click the top card: it slides to the
@@ -19,10 +20,7 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
         <h2 id={`rv-${subjectId}`} className="m-0 font-display text-lead">
           Ôn tập hôm nay
         </h2>
-        {/* mascot placeholder */}
-        <div aria-hidden="true" data-mascot className="flex size-20 items-center justify-center rounded-full bg-sunken text-3xl">
-          ☺
-        </div>
+        <Mascot pose="vui" />
         <p className="m-0 text-read">Tuyệt vời, không có kiến thức nào cần ôn hôm nay</p>
       </Sheet>
     );

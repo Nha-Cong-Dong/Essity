@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
+import { ScreenHero } from "@/components/screen-kit";
 import { AppShell, PageColumn } from "@/components/shells";
 import { SubjectEntryRow } from "@/components/subjects/subject-entry-row";
 import { SubjectScreenBlock } from "@/components/subjects/subject-screen";
@@ -71,15 +72,20 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
   });
   const rowEntries = entries.filter((e) => e.key !== "syllabus" && e.key !== "stats");
   return (
-    <PageColumn width="full" className="flex flex-col gap-6">
+    <PageColumn width="full" data-reveal className="flex flex-col gap-8">
       <a href="/subjects" className="text-small">
         Môn học
       </a>
-      <h1 className="m-0 font-display text-title wrap-anywhere">{subject.name}</h1>
-      <p className="m-0 text-read text-ink-soft">
-        Thi vào {dayLabel(subject.exam_date)}
-        {subject.days_until_exam >= 0 ? ` (còn ${subject.days_until_exam} ngày)` : " (đã qua)"}
-      </p>
+      <ScreenHero
+        tone="rose"
+        title={subject.name}
+        lede={
+          <>
+            Thi vào {dayLabel(subject.exam_date)}
+            {subject.days_until_exam >= 0 ? ` (còn ${subject.days_until_exam} ngày)` : " (đã qua)"}
+          </>
+        }
+      />
       {prog !== null && prog.total > 0 && (
         <div className="flex flex-col gap-1" data-subject-progress>
           <p className="m-0 text-meta text-ink-soft">

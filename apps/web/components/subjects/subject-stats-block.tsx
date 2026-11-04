@@ -9,26 +9,26 @@ export function SubjectStatsBlock({ stats }: { stats: ViewSubject }) {
   const practiced = bank?.reduce((n, t) => n + t.practiced, 0) ?? 0;
   const mastered = bank?.reduce((n, t) => n + t.mastered, 0) ?? 0;
   return (
-    <section aria-label="Thống kê môn" data-subject-stats className="flex flex-col gap-3 rounded-sheet bg-sunken p-4">
+    <section aria-label="Thống kê môn" data-subject-stats className="flex flex-col gap-4 rounded-sheet border border-line border-t-4 border-t-hong p-6">
       <h2 className="m-0 font-display text-lead">Thống kê môn này</h2>
       <dl className="m-0 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
           <dt className="text-meta text-ink-soft">Đã học</dt>
-          <dd className="m-0 text-read font-semibold">
+          <dd className="m-0 font-display text-lead">
             {syllabus.studied}/{syllabus.leaves} mục
           </dd>
         </div>
         <div>
           <dt className="text-meta text-ink-soft">Câu sẵn sàng</dt>
-          <dd className="m-0 text-read font-semibold">{bank === null ? "chưa có" : ready}</dd>
+          <dd className="m-0 font-display text-lead">{bank === null ? "chưa có" : ready}</dd>
         </div>
         <div>
           <dt className="text-meta text-ink-soft">Đã luyện / thành thạo</dt>
-          <dd className="m-0 text-read font-semibold">{bank === null ? "–" : `${practiced} / ${mastered}`}</dd>
+          <dd className="m-0 font-display text-lead">{bank === null ? "–" : `${practiced} / ${mastered}`}</dd>
         </div>
         <div>
           <dt className="text-meta text-ink-soft">Nhớ tốt hôm nay</dt>
-          <dd className="m-0 text-read font-semibold">{retention === null ? "chưa có thẻ" : `${Math.round(retention * 100)}%`}</dd>
+          <dd className="m-0 font-display text-lead">{retention === null ? "chưa có thẻ" : `${Math.round(retention * 100)}%`}</dd>
         </div>
       </dl>
       <CoverageBar percent={percent} />
