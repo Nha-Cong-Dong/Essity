@@ -15,12 +15,15 @@ const POPUP =
   "fixed top-1/2 left-1/2 z-(--z-menu) flex max-h-[85vh] w-[min(92vw,40rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-sheet bg-raised p-6 text-ink shadow-over";
 const BACKDROP = "fixed inset-0 z-(--z-menu) bg-ink/40";
 
+// V10: the four steps of a study session, in the words the product owner gave.
 const STEPS = [
-  { title: "1. Tải tài liệu", body: "Vào môn học, tải giáo trình, đề cương hoặc đề cũ lên. Essity đọc và ghi nhớ chúng giúp bạn." },
-  { title: "2. Xem đề cương", body: "Essity dựng đề cương từ tài liệu. Bạn chỉnh lại phần, trang, ngày thi bằng một câu lệnh." },
-  { title: "3. Vào buổi học", body: "Chọn một phần rồi học: đọc, rồi tự viết lại điều bạn nhớ. Chưa hoàn hảo cũng được." },
-  { title: "4. Duyệt thẻ", body: "Sau buổi học, Essity tạo thẻ nháp. Bạn giữ thẻ nào có ích và bỏ thẻ còn lại." },
-  { title: "5. Ôn tập và luyện tập", body: "Mỗi ngày ôn các thẻ đến hạn, rồi làm câu luyện tập đúng dạng đề thi." },
+  { title: "B1", body: "Vào giao diện buổi học." },
+  { title: "B2", body: "Học bài theo nội dung định hướng theo đề cương." },
+  {
+    title: "B3",
+    body: "Mỗi phiên của buổi học, trước khi tạm nghỉ thì ghi lại những nội dung mình đã học vào phần \"Bạn đã học gì\" rồi bấm Ghi lại để hệ thống ghi lại; có thể gửi kèm vở ghi, slide hay tài liệu.",
+  },
+  { title: "B4", body: "Khi nào học xong rồi thì bấm Hoàn thành để kết thúc buổi học." },
 ] as const;
 
 type Next = Extract<LearnItem, { state: "next" }>;

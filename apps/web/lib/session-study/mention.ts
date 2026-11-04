@@ -59,6 +59,19 @@ export function applyMention(
   return { text: next, caret: at + inserted.length, mentions: [...kept, mention].sort((a, b) => a.start - b.start) };
 }
 
+/** V11: adds `@name ` at the end of the text for a file that has just gone into the subject's store. */
+export function appendMention(
+  text: string,
+  doc: DocRef,
+  mentions: readonly Mention[],
+): { text: string; mentions: Mention[] } {
+  if (mentions.some((m) => m.docId === doc.id)) return { text, mentions: [...mentions] };
+  const lead = text === "" || /\s$/.test(text) ? "" : " ";
+  const at = text.length + lead.length;
+  const mention: Mention = { docId: doc.id, name: doc.name, start: at, end: at + 1 + doc.name.length };
+  return { text: `${text}${lead}@${doc.name} `, mentions: [...mentions, mention] };
+}
+
 /**
  * After an edit: a mention whose characters were touched is removed (no orphan chip), the ones
  * after the edit shift. The edit is found as the span between the common prefix and suffix.
