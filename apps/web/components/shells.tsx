@@ -10,9 +10,9 @@ const CONTAINER = "mx-auto w-full max-w-(--page-max) px-(--page-gutter)";
 
 export type { NavItem } from "@/components/main-nav";
 
-function Logo() {
+function Logo({ className }: { className?: string }) {
   return (
-    <span className="font-display text-logo text-hong max-[640px]:flex max-[640px]:h-(--header-h) max-[640px]:items-center">
+    <span className={cn("font-display text-logo text-hong", className)}>
       Essity
     </span>
   );
@@ -42,8 +42,10 @@ export function PageColumn({
 }
 
 /**
- * Regular frame: a 64px header with the logo, the pill nav right after it (the current item in
- * inverted ink) and the account button at the right edge; then the page.
+ * Regular frame (V21, "cuốn vở"): a pink ground with a dot grid. From 901px a 96px spine on the
+ * left holds the logo, the nav and the account button; below it a thin top bar keeps the logo and
+ * the account button, and the nav becomes a tab bar at the foot (see MainNav). The page content
+ * is one container beside the spine.
  */
 export function AppShell({
   current,
@@ -55,24 +57,32 @@ export function AppShell({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="sticky top-0 z-(--z-header) border-b border-line bg-bg">
+    <div className="ground-dots flex min-h-full flex-1 flex-col bg-ground min-[901px]:pl-24">
+      <header
+        className={cn(
+          "sticky top-0 z-(--z-header) border-b border-line bg-ground",
+          "min-[901px]:fixed min-[901px]:inset-y-0 min-[901px]:left-0 min-[901px]:w-24 min-[901px]:border-b-0 min-[901px]:bg-rail",
+        )}
+      >
         <div
           className={cn(
-            CONTAINER,
-            // Under 640px five nav items cannot share a row with the logo and the account button
-            // at 320 (T9.5): the nav drops to its own row, below, as wide as the page.
-            "flex h-(--header-h) items-center gap-4 max-[640px]:h-auto max-[640px]:flex-wrap max-[640px]:gap-x-2 max-[640px]:gap-y-0 min-[901px]:gap-10",
+            "flex h-(--header-h) items-center gap-4 px-(--page-gutter)",
+            "min-[901px]:h-full min-[901px]:flex-col min-[901px]:items-center min-[901px]:justify-start min-[901px]:gap-0 min-[901px]:px-0 min-[901px]:pt-7",
           )}
         >
-          <Logo />
-          <MainNav current={current} />
-          <div className="ml-auto flex min-w-10 justify-end max-[640px]:order-1 max-[640px]:h-(--header-h) max-[640px]:items-center">
+          <Logo className="min-[901px]:text-on-rail" />
+          <div className="ml-auto flex min-w-10 justify-end min-[901px]:fixed min-[901px]:bottom-28 min-[901px]:left-0 min-[901px]:ml-0 min-[901px]:w-24 min-[901px]:justify-center">
             {account}
           </div>
+          <span aria-hidden="true" data-motif="holes" className="hidden min-[901px]:fixed min-[901px]:bottom-5 min-[901px]:left-0 min-[901px]:flex min-[901px]:w-24 min-[901px]:flex-col min-[901px]:items-center min-[901px]:gap-5">
+            {[0, 1, 2].map((k) => (
+              <i key={k} className="size-3 rounded-full bg-ground shadow-[inset_0_2px_3px_rgb(0_0_0/0.35)]" />
+            ))}
+          </span>
         </div>
       </header>
-      <main className={cn(CONTAINER, "flex flex-1 flex-col pt-10 pb-24")}>
+      <MainNav current={current} />
+      <main className={cn(CONTAINER, "flex flex-1 flex-col pt-10 pb-24 max-[900px]:pt-6 max-[900px]:pb-28")}>
         {/* T9.3: the subject's command bar is drawn here (components/command-live.tsx). */}
         <div data-command-slot className="empty:hidden" />
         {children}

@@ -197,18 +197,13 @@ const headerFits = async (page: Page) => {
   expect(await nav(page).evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
 };
 const headerApart = async (page: Page) => {
+  // V21: the nav is the spine (>= 901px) or the tab bar at the foot; the logo and the account
+  // button sit in the rail or the top bar. None of the three touches another, and every item stays
+  // inside the nav.
   const [l, n, a] = [await box(logo(page)), await box(nav(page)), await box(account(page))];
-  if (n.y >= bottom(l) - 0.5) {
-    // Under 480px (T9.5, three items): the nav is its own row below the logo and the account
-    // button, and both rows keep the page's gutters.
-    expect(overlap(n, a)).toBe(false);
-    expect(n.x).toBeGreaterThanOrEqual(l.x - 0.5);
-  } else {
-    expect(right(l)).toBeLessThanOrEqual(n.x + 0.5);
-    // At least 4px to spare beside the account button, with the web fonts or the fallback ones
-    // (T2.3c plan G12, design-director): exactly fitting would turn red on the next font change.
-    expect(a.x - right(n)).toBeGreaterThanOrEqual(MIN_GAP);
-  }
+  expect(overlap(l, n)).toBe(false);
+  expect(overlap(n, a)).toBe(false);
+  expect(overlap(l, a)).toBe(false);
   for (const pill of await nav(page).getByRole("link").all()) expect(inside(await box(pill), n)).toBe(true);
 };
 rule("R46-a nav labels are not clipped", HEADER, headerFits);

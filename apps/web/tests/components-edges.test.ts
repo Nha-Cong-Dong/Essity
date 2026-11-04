@@ -167,7 +167,7 @@ describe("shells: edges", () => {
   });
 
   // Red when: nav items get under 40px high (touch target, final §5).
-  it("nav items are at least 40px high pills", () => {
-    expect(shell()).toMatch(/<a [^>]*class="[^"]*\bh-10\b[^"]*\brounded-full\b/);
+  it("nav items are at least 44px high (V21 spine and tab bar)", () => {
+    expect(shell()).toMatch(/<a [^>]*class="[^"]*min-h-11/);
   });
 });

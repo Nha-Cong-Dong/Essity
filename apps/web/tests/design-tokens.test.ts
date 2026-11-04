@@ -21,6 +21,11 @@ const TEXT: Record<Mode, Pair[]> = {
     ["--on-hong", "--hong"],
     ["--hong", "--on-hong"],
     ["--bg", "--ink"],
+    // V21: the pink ground and the spine.
+    ["--ink", "--ground"],
+    ["--ink-soft", "--ground"],
+    ["--hong", "--ground"],
+    ["--on-rail", "--rail"],
   ],
   dark: [
     ...["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200", "--cover", "--hl-stroke"].map(
@@ -39,6 +44,10 @@ const TEXT: Record<Mode, Pair[]> = {
     ["--on-hong", "--hong"],
     ["--hong", "--on-hong"],
     ["--bg", "--ink"],
+    ["--ink", "--ground"],
+    ["--ink-soft", "--ground"],
+    ["--hong", "--ground"],
+    ["--on-rail", "--rail"],
   ],
 };
 
@@ -129,7 +138,7 @@ describe.each(["light", "dark"] as const)("%s primary-inverse", (mode) => {
 describe("token tables", () => {
   it("checks the number of pairs it means to (a dropped pair fails here)", () => {
     const count = (table: Record<Mode, Pair[]>) => table.light.length + table.dark.length;
-    expect([count(TEXT), count(EDGES), count(FORBIDDEN)]).toEqual([79, 30, 5]);
+    expect([count(TEXT), count(EDGES), count(FORBIDDEN)]).toEqual([87, 30, 5]);
   });
 
   it("matches the spec on a few exact values, to catch a mistyped hex", () => {

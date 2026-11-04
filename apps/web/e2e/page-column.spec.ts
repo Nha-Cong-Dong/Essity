@@ -1,5 +1,5 @@
-// UI-1a: one left edge. On every screen inside AppShell the h1 starts at the same x as the logo,
-// at 1280px; nothing overflows sideways at 320px; a long Vietnamese title wraps and stays inside.
+// UI-1a (V21): one left edge. On every screen inside AppShell the h1 starts right of the spine, at the
+// same x, at 1280px; nothing overflows sideways at 320px; a long Vietnamese title wraps and stays inside.
 // Geometry only, on the design-preview pages (they draw the same screens as the real routes).
 import { expect, test } from "@playwright/test";
 
@@ -15,14 +15,15 @@ const PAGES = [
 ];
 
 for (const url of PAGES) {
-  test(`${url}: h1 starts under the logo at 1280px`, async ({ page }) => {
+  test(`${url}: h1 starts beside the spine at 1280px`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(url);
     await settled(page);
-    const logo = await page.locator("header").getByText("Essity", { exact: true }).boundingBox();
+    // V21: the logo is in the 96px spine; every h1 starts right of it, at the page container's edge.
+    const spine = await page.getByRole("navigation", { name: "Chính" }).boundingBox();
     const h1 = await page.locator("main h1").first().boundingBox();
-    expect(logo && h1).toBeTruthy();
-    expect(Math.abs(h1!.x - logo!.x)).toBeLessThanOrEqual(1);
+    expect(spine && h1).toBeTruthy();
+    expect(h1!.x).toBeGreaterThanOrEqual(spine!.x + spine!.width - 1);
   });
 
   test(`${url}: no sideways overflow at 320px`, async ({ page }) => {

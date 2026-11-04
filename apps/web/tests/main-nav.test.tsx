@@ -42,12 +42,23 @@ describe("MainNav (T2.3c, R46)", () => {
     for (const link of screen.getAllByRole("link")) expect(link.className).toMatch(/focus-visible:-outline-offset-2/);
   });
 
-  // Red when: the current (ink) pill keeps the pink ring, under 3:1 on ink (plan G14).
-  it("the current pill's ring is the page colour, 4px in", () => {
+  // V21: five items, graph included, each with a decorative icon.
+  it("lists the five items; icons are hidden from assistive tech", () => {
+    const { container } = render(<MainNav current="/graph" />);
+    expect(screen.getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual([
+      "/today", "/subjects", "/kho-kien-thuc", "/graph", "/stats",
+    ]);
+    expect(container.querySelectorAll('a svg[aria-hidden="true"]')).toHaveLength(5);
+    expect(screen.getByRole("link", { name: "Đồ thị" }).getAttribute("aria-current")).toBe("page");
+  });
+
+  // Red when: the current item loses its state (colour alone is not enough: aria-current + weight).
+  it("marks the current item by weight and background, not colour alone", () => {
     render(<MainNav current="/subjects" />);
     const current = screen.getByRole("link", { name: "Môn học" });
-    expect(current.className).toMatch(/aria-\[current=page\]:\[--focus:var\(--bg\)\]/);
-    expect(current.className).toMatch(/aria-\[current=page\]:focus-visible:-outline-offset-4/);
+    expect(current.className).toMatch(/aria-\[current=page\]:font-semibold/);
+    expect(current.className).toMatch(/aria-\[current=page\]:bg-rose-100/);
+    expect(current.className).toMatch(/min-\[901px\]:aria-\[current=page\]:bg-ground/);
   });
 
   it("keeps the nav landmark that shrinks and scrolls (review of 96bebab)", () => {
@@ -55,5 +66,6 @@ describe("MainNav (T2.3c, R46)", () => {
     const nav = screen.getByRole("navigation", { name: "Chính" });
     expect(nav.className).toMatch(/min-w-0/);
     expect(nav.className).toMatch(/overflow-x-auto/);
+    expect(nav.className).toMatch(/fixed/);
   });
 });

@@ -14,9 +14,9 @@ const containers = (markup: string) =>
   [...markup.matchAll(/class="([^"]+)"/g)].map((m) => m[1]).filter((c) => CONTAINER.test(c));
 
 describe("frames share one container (§5)", () => {
-  it("AppShell: header and main start at the same left edge", () => {
+  it("AppShell: the page is one container beside the spine (header is the spine, no second container)", () => {
     const markup = renderToStaticMarkup(h(AppShell, { current: "/today", children: "x" }));
-    expect(containers(markup)).toHaveLength(2);
+    expect(containers(markup)).toHaveLength(1);
   });
 
   it("FocusShell and AuthShell too", () => {
@@ -28,12 +28,16 @@ describe("frames share one container (§5)", () => {
     expect(containers(auth)).toHaveLength(2);
   });
 
-  it("AppShell header is 64px; the current nav item is inverted ink; the logo uses the logo step", () => {
+  it("AppShell (V21): top bar 64px, pink ground with dots, a 96px spine from 901px, five nav items", () => {
     const markup = renderToStaticMarkup(h(AppShell, { current: "/today", children: "x" }));
     expect(markup).toMatch(/h-\(--header-h\)/);
-    expect(markup).toMatch(/aria-\[current=page\]:bg-ink/);
-    expect(markup).toMatch(/aria-\[current=page\]:text-bg/);
+    expect(markup).toMatch(/bg-ground/);
+    expect(markup).toMatch(/ground-dots/);
+    expect(markup).toMatch(/min-\[901px\]:w-24/);
+    expect(markup).toMatch(/aria-current="page"/);
     expect(markup).toMatch(/text-logo/);
+    for (const label of ["Hôm nay", "Môn học", "Đồ thị", "Thống kê"]) expect(markup).toContain(label);
+    expect(markup.match(/<nav /g)).toHaveLength(1);
   });
 
   it("FocusShell header is 56px, its bar 3px, nothing wraps", () => {
