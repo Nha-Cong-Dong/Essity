@@ -114,10 +114,11 @@ describe("PracticeLive (US-16 AC1, AC3, AC8)", () => {
     expect(primaries.length).toBe(1);
     expect(primaries[0].textContent).toBe("Làm câu này");
     expect(container.querySelector(`[data-question="${Q1}"] [data-variant='primary']`)).not.toBeNull();
-    const section = container.querySelector("section[aria-labelledby=g-t1]") as HTMLElement;
-    expect([...section.querySelectorAll("[data-question]")].map((li) => li.getAttribute("data-question")).at(-1)).toBe(
-      "0b8f1d2e-0000-4000-8000-0000000000a3",
-    );
+    // V20: one flat section of unlocked questions, then the waiting ones apart.
+    const section = container.querySelector("section[data-practised]") as HTMLElement;
+    expect(section.querySelectorAll("[data-question]").length).toBe(2);
+    expect(section.querySelector("[data-question='0b8f1d2e-0000-4000-8000-0000000000a3']")).toBeNull();
+    expect(screen.getByText("Câu đã luyện tập")).toBeTruthy();
     expect(screen.getByText("Đã mở khóa 2/3 câu")).toBeTruthy();
   });
 
