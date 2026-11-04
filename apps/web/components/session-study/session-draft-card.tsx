@@ -19,7 +19,7 @@ const NO_SECTION = "";
 const ANCHORS_SHOWN = 2;
 
 const ruled =
-  "block field-sizing-content min-h-16 w-full resize-none rounded-none border-0 bg-transparent bg-[linear-gradient(transparent_31px,var(--line)_31px,var(--line)_32px)] bg-size-[100%_32px] [background-attachment:local] p-0 scroll-mb-24 text-answer text-hong outline-none focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus";
+  "block field-sizing-content min-h-16 w-full resize-none rounded-tile bg-sunken p-4 scroll-mb-24 text-answer text-hong outline-none focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus";
 
 const SOURCE_NOTE = { notes: "Chỉ thấy trong vở", document: "Chỉ thấy trong giáo trình" } as const;
 

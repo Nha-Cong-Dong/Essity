@@ -341,7 +341,8 @@ describe("UploadStep (US-01 AC7, plan K5; T4.6)", () => {
   });
 
   it("US-01 AC7: names the subject, no Làm sau (V13), a Sẵn sàng học thôi button outside the tabs (V14)", () => {
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Tải tài liệu cho Mạng máy tính");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Tải tài liệu");
+    expect(screen.getByText("Mạng máy tính")).toBeTruthy();
     expect(screen.queryByText("Sắp có")).toBeNull();
     expect(screen.queryByText("Làm sau")).toBeNull();
     expect(screen.getByRole("link", { name: "Sẵn sàng học thôi!" }).getAttribute("href")).toBe("/subjects/9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b");

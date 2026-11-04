@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { AUTH_LINK } from "@/components/auth/fields";
+import { AUTH_PILL } from "@/components/auth/fields";
 import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import { authMessage, postJson, resendWait } from "@/lib/auth-errors";
@@ -60,7 +60,7 @@ export function CheckEmailActions({ initialWait }: { initialWait: number }) {
       {error && <FieldError id="check-email-error">{authMessage(error)}</FieldError>}
       <p className="m-0 text-body">
         Sai email?{" "}
-        <button type="button" onClick={wrongEmail} className={AUTH_LINK}>
+        <button type="button" onClick={wrongEmail} className={AUTH_PILL}>
           Đăng xuất
         </button>{" "}
         để đăng ký bằng email khác.

@@ -349,6 +349,38 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy }: RowProps) {
   );
 }
 
+/** The soonest exam still ahead, as the one big number of the screen (user + ux-director 05/11). */
+function NextExam({ subjects }: { subjects: ListedSubject[] }) {
+  const ahead = subjects.filter((subject) => subject.days_until_exam > 0);
+  if (ahead.length === 0) return null;
+  const next = ahead.reduce((a, b) =>
+    b.days_until_exam < a.days_until_exam ? b : a,
+  );
+  return (
+    <aside
+      aria-label="Kỳ thi gần nhất"
+      className="flex min-w-0 flex-col justify-between gap-6 rounded-tile bg-hong-tint p-5 min-[1100px]:col-span-4 min-[1100px]:p-6"
+    >
+      <p className="m-0 font-display text-lead">Kỳ thi gần nhất</p>
+      <div>
+        <p className="m-0 flex items-baseline gap-3">
+          <span className="font-display text-display tabular-nums">
+            {next.days_until_exam}
+          </span>
+          <span className="text-lead font-semibold">ngày nữa</span>
+        </p>
+      </div>
+      <Button
+        render={<a href={`/subjects/${next.id}`} />}
+        nativeButton={false}
+        className="h-auto min-h-13 max-w-full self-start whitespace-normal py-2 text-left"
+      >
+        Vào {next.name}
+      </Button>
+    </aside>
+  );
+}
+
 /** Where a deleted subject was: no name, no button; focused so it is read (plan F7). */
 function DeletedRow() {
   const ref = useRef<HTMLParagraphElement>(null);
@@ -447,32 +479,35 @@ export function SubjectList({
           />
         </>
       ) : (
-        <ul className="m-0 grid list-none gap-4 p-0 min-[640px]:grid-cols-2 min-[1100px]:grid-cols-3">
-          {rows.map((subject) =>
-            subject.id === deletedId ? (
-              <DeletedRow key={subject.id} />
-            ) : (
-              <SubjectRow
-                key={subject.id}
-                initial={subject}
-                example={example}
-                onOpen={dropPlaceholder}
-                onDeleted={() => deleted(subject.id)}
-                onBusy={setBusy}
-              />
-            ),
-          )}
-          {!anyBusy && (
-            <li className="min-w-0">
-              <a
-                href="/subjects/new"
-                className="flex h-full min-h-40 items-center justify-center rounded-tile border border-dashed border-line-strong px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"
-              >
-                + Thêm môn
-              </a>
-            </li>
-          )}
-        </ul>
+        <div className="grid min-w-0 gap-4 min-[1100px]:grid-cols-12">
+          <ul className="m-0 grid list-none gap-4 p-0 min-[640px]:grid-cols-2 min-[1100px]:col-span-8 min-[1100px]:content-start">
+            {rows.map((subject) =>
+              subject.id === deletedId ? (
+                <DeletedRow key={subject.id} />
+              ) : (
+                <SubjectRow
+                  key={subject.id}
+                  initial={subject}
+                  example={example}
+                  onOpen={dropPlaceholder}
+                  onDeleted={() => deleted(subject.id)}
+                  onBusy={setBusy}
+                />
+              ),
+            )}
+            {!anyBusy && (
+              <li className="min-w-0">
+                <a
+                  href="/subjects/new"
+                  className="flex h-full min-h-40 items-center justify-center rounded-tile border border-dashed border-line-strong px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"
+                >
+                  + Thêm môn
+                </a>
+              </li>
+            )}
+          </ul>
+          <NextExam subjects={remaining} />
+        </div>
       )}
     </SubjectsFrame>
   );

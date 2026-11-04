@@ -93,6 +93,10 @@ export function AuthNote({ children, id }: { children: ReactNode; id?: string })
   );
 }
 
-/** A text link of the account screens ("Quên mật khẩu?", "Đăng ký"). */
+/** A pill for a standalone action of the account screens (user 05/11: no underlined action text). */
+export const AUTH_PILL =
+  "inline-flex min-h-11 items-center justify-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken";
+
+/** A text link of the account screens (inside a sentence only) ("Quên mật khẩu?", "Đăng ký"). */
 export const AUTH_LINK =
   "font-medium text-ink underline decoration-ink-soft decoration-[1.5px] underline-offset-4 hover:decoration-ink";

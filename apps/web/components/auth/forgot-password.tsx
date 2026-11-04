@@ -3,7 +3,7 @@
 import { type FormEvent, useState } from "react";
 
 import { AuthLayout } from "@/components/auth/auth-layout";
-import { AUTH_LINK, AuthField, AuthNote } from "@/components/auth/fields";
+import { AUTH_PILL, AuthField, AuthNote } from "@/components/auth/fields";
 import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import { FORGOT_PASSWORD_SENT } from "@/lib/auth-copy";
@@ -36,7 +36,7 @@ export function ForgotPassword() {
           <span className="font-medium text-hong">{maskEmail(sentTo)}</span>
         </p>
         <p className="m-0 text-ink-soft">{FORGOT_PASSWORD_SENT.body}</p>
-        <a href="/login" className={AUTH_LINK}>
+        <a href="/login" className={AUTH_PILL}>
           Quay lại đăng nhập
         </a>
       </AuthLayout>
@@ -54,7 +54,7 @@ export function ForgotPassword() {
         <Button type="submit" pending={busy} className="w-full">
           Gửi link đặt lại
         </Button>
-        <a href="/login" className={AUTH_LINK}>
+        <a href="/login" className={AUTH_PILL}>
           Quay lại đăng nhập
         </a>
       </form>
