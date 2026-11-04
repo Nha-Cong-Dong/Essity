@@ -13,10 +13,10 @@ from sqlalchemy.orm import Session
 
 from accounts import signed_in
 from core_api.db.models import DocSection, Document, Outbox, UnitSection
-from core_api.handlers.document_indexed import OnDocumentIndexed
+from core_api.handlers.document_indexed import OnDocumentIndexed, on_document_failed
 from core_api.repositories.doc_section import DocSectionRepository, NewSection
 from core_api.services.outline import OutlineService
-from documents.test_document_indexed import indexed_event
+from documents.test_document_indexed import failed_event, indexed_event
 from fake_storage import FakeStorage
 from v2_rows import make_unit
 
@@ -95,7 +95,8 @@ def test_the_reading_is_laid_over_the_learners_work(
     assert ")" not in after  # nothing hung on it: gone
     assert after["3. Ý nghĩa"].parent_id is None
     assert after["1.1. Biến cố"].parent_id == after["1. Xác suất"].id
-    assert db_session.get(Document, document.id).status == "indexed"  # type: ignore[union-attr]
+    current = db_session.get(Document, document.id)
+    assert current is not None and current.status == "indexed" and current.reread is None
 
 
 def test_an_old_section_with_a_card_is_kept_and_excluded(
@@ -164,7 +165,9 @@ def test_post_marks_the_document_being_read_and_sends_the_event(
     response = client.post(f"/v1/documents/{document.id}/reextract-outline", headers=headers)
 
     assert response.status_code == 202
-    assert response.json()["status"] == "uploaded"
+    assert response.json()["status"] == "indexed"  # nothing is taken away while it is read
+    db_session.expire_all()
+    assert db_session.get(Document, document.id).reread == "pending"  # type: ignore[union-attr]
     events = db_session.scalars(
         select(Outbox).where(Outbox.event_type == "document.uploaded.v1")
     ).all()
@@ -203,3 +206,48 @@ def test_asking_again_within_five_minutes_is_limited(
     again = client.post(url, headers=headers)
 
     assert again.status_code == 429
+
+
+def test_a_reading_that_fails_keeps_the_document_and_its_outline(
+    client: TestClient, db_session: Session
+) -> None:
+    user, headers, document, before = worked(db_session)
+    assert (
+        client.post(f"/v1/documents/{document.id}/reextract-outline", headers=headers).status_code
+        == 202
+    )
+
+    on_document_failed(db_session, failed_event(document))
+    db_session.flush()
+
+    current = db_session.get(Document, document.id)
+    assert current is not None and current.status == "indexed" and current.failure_reason is None
+    assert current.toc_key is not None and current.reread == "failed"
+    assert set(rows(db_session, user, document)) == set(before)  # the old outline, untouched
+    outline = client.get(f"/v1/subjects/{document.subject_id}/outline", headers=headers).json()
+    assert outline["reread"] == "failed" and outline["reason"] is None and outline["sections"]
+
+
+def test_a_failure_without_a_reread_still_fails_the_document(db_session: Session) -> None:
+    _, _, document, _ = worked(db_session)
+
+    on_document_failed(db_session, failed_event(document))
+    db_session.flush()
+
+    current = db_session.get(Document, document.id)
+    assert current is not None and current.status == "failed" and current.reread is None
+
+
+def test_a_good_answer_clears_the_mark_and_a_failed_one_can_be_asked_again(
+    db_session: Session, fake_storage: FakeStorage
+) -> None:
+    user, _, document, _ = worked(db_session)
+    service = OutlineService(db_session, user.id)
+    service.request_reextract(document.id)
+    on_document_failed(db_session, failed_event(document))
+    service.request_reextract(document.id)  # a failed reading can be asked for again
+    OnDocumentIndexed(fake_storage)(db_session, answer(fake_storage, document))
+    db_session.flush()
+
+    current = db_session.get(Document, document.id)
+    assert current is not None and current.reread is None and current.status == "indexed"

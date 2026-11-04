@@ -150,11 +150,12 @@ class OutlineService:
         return True
 
     def request_reextract(self, document_id: uuid.UUID) -> Document:
-        """Start reading the document's outline again (OUTLINE-FIX3). The document goes back to
-        `uploaded`, the state that says "being read"; the caller sends `document.uploaded.v1`.
-        The answer is laid over the outline the learner has worked on, so their progress stays.
-        Raises DocumentNotFoundError, DocumentNotIndexedError (not read yet, failed, or already
-        being read again)."""
+        """Start reading the document's outline again (OUTLINE-FIX3). The document stays
+        `indexed` with its outline and is marked `reread = pending`; the caller sends
+        `document.uploaded.v1`. The answer is laid over the outline the learner has worked on,
+        so their progress stays; if ai-service cannot read it, the mark becomes `failed` and
+        nothing else changes. Raises DocumentNotFoundError, DocumentNotIndexedError (not read
+        yet, or failed)."""
         found = self.documents.get(document_id)
         if found is None or self.subjects.get(found.subject_id) is None:
             raise DocumentNotFoundError
@@ -163,11 +164,7 @@ class OutlineService:
             raise DocumentNotFoundError
         if document.status != "indexed" or not self.sections.of_document(document.id):
             raise DocumentNotIndexedError
-        document.status = "uploaded"
-        # What "indexed" stands on goes until the new answer brings it back (the table's check).
-        document.run_id = document.page_count = None
-        document.toc_key = document.page_labels_key = document.page_text_key = None
-        document.thumbnails_prefix = None
+        document.reread = "pending"
         self.session.flush()
         return document
 

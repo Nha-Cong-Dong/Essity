@@ -94,6 +94,7 @@ class Document(UserOwned, Base):
             "(status = 'failed') = (failure_reason IS NOT NULL)", name="failed_iff_reason"
         ),
         CheckConstraint(one_of("failure_reason", FAILURE_REASONS), name="failure_reason_known"),
+        CheckConstraint("reread IS NULL OR reread IN ('pending', 'failed')", name="reread_known"),
         CheckConstraint("page_count IS NULL OR page_count >= 1", name="page_count_from_one"),
     )
 
@@ -117,6 +118,9 @@ class Document(UserOwned, Base):
     # Pages with no text to read (scans), 1-based: the web offers reading them as images.
     unreadable_pages: Mapped[list[int]] = mapped_column(ARRAY(Integer), server_default=text("'{}'"))
     failure_reason: Mapped[str | None] = mapped_column(String(20))
+    # OUTLINE-FIX3: the learner asked to read the outline again. `pending` while ai-service
+    # reads, `failed` when it could not; the document stays indexed with its old outline.
+    reread: Mapped[str | None] = mapped_column(String(7))
     # Old rows are auxiliary PDFs: a subject may already hold several files, so none is promoted.
     role: Mapped[str] = mapped_column(String(14), server_default="auxiliary")
     format: Mapped[str] = mapped_column(String(5), server_default="pdf")
