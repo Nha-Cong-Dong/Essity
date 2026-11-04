@@ -7227,6 +7227,50 @@
         "summary": "Add Piece"
       }
     },
+    "/v1/study-sessions/{session_id}/pieces/{piece_id}": {
+      "delete": {
+        "description": "Drop a piece kept by mistake, before the session is handed in (else the learner cannot\nfix a piece `complete` refuses). 404 `session_not_found`, `piece_not_found`; 409\n`session_confirmed`.",
+        "operationId": "drop_piece_v1_study_sessions__session_id__pieces__piece_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Drop Piece"
+      }
+    },
     "/v1/subjects": {
       "get": {
         "operationId": "list_subjects_v1_subjects_get",
