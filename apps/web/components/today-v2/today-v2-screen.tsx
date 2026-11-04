@@ -126,7 +126,7 @@ export function ReviewTile({
       <h2 id="today-review" className="m-0 font-display text-lead">
         {COPY.review}
       </h2>
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-1 items-center justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
           <p className="m-0 flex items-baseline gap-3">
             <span className="font-display text-display tabular-nums">{review.count}</span>
@@ -135,7 +135,7 @@ export function ReviewTile({
           {/* V5: the total only, no subject names. */}
           <p className="m-0 text-body text-ink-soft">khoảng {review.minutes} phút</p>
         </div>
-        <Mascot pose="vui" className="size-24 shrink-0 min-[901px]:size-32" />
+        <Mascot pose="vui" className="size-24 shrink-0 min-[901px]:size-36" />
       </div>
       <div className="flex flex-col gap-3">
         {review.note && <p className="m-0 text-meta break-words">{review.note}</p>}

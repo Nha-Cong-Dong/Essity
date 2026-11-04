@@ -34,7 +34,7 @@ export function MainNav({ current }: { current?: NavItem }) {
       className={cn(
         "z-(--z-header) flex min-w-0 bg-sheet",
         // Phone and tablet: tab bar at the foot, above the home indicator.
-        "fixed inset-x-0 bottom-0 h-[calc(56px+env(safe-area-inset-bottom))] flex-row justify-around overflow-x-auto border-t border-line pb-[env(safe-area-inset-bottom)]",
+        "fixed inset-x-0 bottom-0 h-[calc(56px+env(safe-area-inset-bottom))] flex-row justify-around overflow-x-auto border-t border-line px-3 pb-[env(safe-area-inset-bottom)] min-[1024px]:px-0",
         // Desktop: a column under the logo, inside the rail.
         "min-[1024px]:static min-[1024px]:mt-8 min-[1024px]:h-auto min-[1024px]:flex-col min-[1024px]:justify-start min-[1024px]:gap-1 min-[1024px]:overflow-visible min-[1024px]:border-t-0 min-[1024px]:bg-transparent min-[1024px]:pb-0",
       )}
