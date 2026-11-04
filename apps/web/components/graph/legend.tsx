@@ -53,7 +53,7 @@ export function EdgeSample({ kind }: { kind: EdgeKind }) {
 
 export function Legend() {
   return (
-    <details className="rounded-control border border-line bg-sheet px-3 py-1" data-legend>
+    <details className="rounded-control bg-sheet px-3 py-1 shadow-sheet" data-legend>
       <summary className="flex h-11 cursor-pointer items-center text-caption font-semibold">Chú giải</summary>
       <ul className="m-0 mb-2 flex list-none flex-col gap-2 p-0 text-caption">
         {EDGE_KINDS.map((kind) => (

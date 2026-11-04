@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Watermark } from "@/components/motifs";
 import { Sheet } from "@/components/ui/sheet";
 import type { GridCell } from "@/lib/stats";
 import { NO_TOTALS, type StatsView } from "@/lib/stats-view";
@@ -138,9 +139,10 @@ export function StatsScreen({
   }
   if (subjects.length === 0) {
     return (
-      <>
-        <h1 className="m-0 text-title">Thống kê</h1>
-        <div className="mt-8 flex flex-col items-start gap-4">
+      <div className="relative">
+        <Watermark />
+        <h1 className="relative z-1 m-0 text-title">Thống kê</h1>
+        <div className="relative z-1 mt-8 flex flex-col items-start gap-4">
           <p className="m-0 max-w-xl text-read">
             Thống kê hiện sau tuần học đầu tiên. Tạo một môn rồi nộp bài ở buổi học đầu tiên để bắt đầu.
           </p>
@@ -148,7 +150,7 @@ export function StatsScreen({
             Tạo môn
           </Button>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -157,7 +159,9 @@ export function StatsScreen({
     <>
       <div className="flex flex-col gap-4 min-[768px]:flex-row min-[768px]:items-end min-[768px]:justify-between">
         <div>
-          <h1 className="m-0 font-display text-display">Thống kê</h1>
+          <h1 className="m-0 font-display text-display">
+            <span className="px-1" style={{ backgroundImage: "linear-gradient(to top, var(--hl-band) 35%, transparent 35%)" }}>Thống kê</span>
+          </h1>
           <p className="m-0 mt-1 text-meta text-ink-soft">Tổng quan việc học của bạn, mọi môn cộng lại.</p>
         </div>
         <Button
