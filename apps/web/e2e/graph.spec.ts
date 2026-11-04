@@ -139,11 +139,10 @@ test("US-19 AC3: many cards: the neutral line, 300 nodes, and a hint to use the 
   await expect.poll(() => page.locator("[data-graph-canvas]").evaluate((el) => (el as CyHost).__cy?.nodes(".card").length ?? 0)).toBe(300);
 });
 
-test("US-19 AC6: the graph is not in the main navigation", async ({ page }) => {
+test("V16: the graph is an item of the main navigation", async ({ page }) => {
   await open(page, 1440, "/design-preview/graph?state=few");
-  for (const link of await page.locator("header a, nav a").all()) {
-    expect(await link.getAttribute("href")).not.toMatch(/graph/);
-  }
+  const hrefs = await page.getByRole("navigation", { name: "Chính" }).getByRole("link").evaluateAll((l) => l.map((a) => a.getAttribute("href")));
+  expect(hrefs).toContain("/graph");
 });
 
 // Red when: reduced motion still animates the layout (the canvas must settle at once).

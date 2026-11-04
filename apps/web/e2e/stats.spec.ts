@@ -123,7 +123,7 @@ test("I1, I2: overall totals only, and all seven weekday labels on the year grid
 test("US-10 AC1: the nav has Thống kê and marks it current", async ({ page }) => {
   await open(page, 390, "/design-preview/stats?state=full-year");
   const nav = page.getByRole("navigation", { name: "Chính" });
-  await expect(nav.getByRole("link")).toHaveText(["Hôm nay", "Môn học", "Kho kiến thức", "Thống kê"]);
+  await expect(nav.getByRole("link")).toHaveText(["Hôm nay", "Môn học", "Kho kiến thức", "Đồ thị", "Thống kê"]);
   await expect(nav.locator('[aria-current="page"]')).toHaveText("Thống kê");
   expect(await nav.getByRole("link", { name: "Thống kê" }).getAttribute("href")).toBe("/stats");
 });
