@@ -234,9 +234,9 @@ export function SessionScreen(props: SessionScreenProps) {
     setFiles((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   }
 
-  function startStoreUpload(id: string, file: File) {
+  function startStoreUpload(subject: string, id: string, file: File) {
     patchRow(id, { state: "uploading", percent: 0 });
-    void uploadPdf(subjectId, file, (state) => {
+    void uploadPdf(subject, file, (state) => {
       if (state.kind === "uploading") patchRow(id, { state: "uploading", percent: state.percent });
       else if (state.kind === "done" && state.documentId) {
         const documentId = state.documentId;
@@ -250,7 +250,7 @@ export function SessionScreen(props: SessionScreenProps) {
 
   function startUpload(id: string, file: File) {
     if (!api) return;
-    if (/\.(pdf|docx|pptx)$/i.test(file.name)) return startStoreUpload(id, file);
+    if (subjectId && /\.(pdf|docx|pptx)$/i.test(file.name)) return startStoreUpload(subjectId, id, file);
     blobs.current.set(id, file);
     patchRow(id, { state: "uploading", percent: 0 });
     void api.upload(file, (state) => {
