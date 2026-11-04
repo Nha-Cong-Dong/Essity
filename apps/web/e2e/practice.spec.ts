@@ -208,3 +208,14 @@ for (const width of WIDTHS) {
     expect(await noSideScroll(page)).toBe(true);
   });
 }
+
+// Red when: on a phone "Gỡ khỏi luyện tập" is as wide as the main button under it, so a mild
+// destructive action looks as big as "Làm câu này" (ux-critic 05/11).
+test("390px: one main button per card; Gỡ khỏi luyện tập is a small pill below it", async ({ page }) => {
+  await open(page, 390, "/design-preview/practice-live");
+  const card = page.locator("[data-question]").first();
+  const main = await box(card.getByRole("button", { name: "Làm câu này" }));
+  const remove = await box(card.getByRole("button", { name: "Gỡ khỏi luyện tập" }));
+  expect(remove.width).toBeLessThan(main.width * 0.8);
+  expect(remove.y).toBeGreaterThanOrEqual(main.y + main.height);
+});

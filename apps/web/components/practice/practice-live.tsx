@@ -142,7 +142,8 @@ function Row({
             Làm câu này
           </Button>
         )}
-        <Button variant="quiet" aria-describedby={`sum-${q.id}`} onClick={onRemove}>
+        {/* One main button per card; removing is a small ghost pill kept apart (ux-critic 05/11). */}
+        <Button variant="quiet" aria-describedby={`sum-${q.id}`} className="mt-3 self-start sm:mt-0 sm:ml-2" onClick={onRemove}>
           Gỡ khỏi luyện tập
         </Button>
       </div>
