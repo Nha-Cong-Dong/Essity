@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { Pen } from "@/components/practice/practice-extras";
 import { PracticeAnswer } from "@/components/practice/practice-answer";
-import { Badge } from "@/components/ui/badge";
 import { CoverageBar } from "@/components/stats/stat-tile";
 import { Button } from "@/components/ui/button";
 import { go } from "@/lib/navigate";
@@ -51,6 +50,13 @@ export function groupQuestions(list: QuestionListOut, types: PracticeType[]): { 
     if (!known.has(name)) groups.push({ key: `name-${name}`, name: name || OTHER_TYPE, type: null, rows: ordered(rows) });
   }
   return { groups, unlinked: list.questions.filter((q) => q.status === "unlinked") };
+}
+
+/** The kind name for the chip: a short readable name, never a raw key (no spaces and long = a key). */
+export function kindChip(name: string): string | null {
+  const t = name.trim();
+  if (t === "") return null;
+  return !/\s/.test(t) && t.length > 24 ? null : t;
 }
 
 const TILE = "min-w-0 rounded-tile bg-hong-tint p-4 min-[901px]:p-6";
@@ -101,23 +107,22 @@ function Row({
       className={`flex flex-col items-start gap-2 rounded-row bg-bg px-4 py-3.5 ${pick ? NX_CAM.pick : ""}`}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {q.type_name !== "" && (
+        {kindChip(q.type_name) !== null && (
           <NxChip className="h-auto min-h-7 max-w-full py-1">
             <span data-user className="wrap-anywhere">
-              {q.type_name}
+              {kindChip(q.type_name)}
             </span>
           </NxChip>
         )}
-        <Badge variant="level">{q.origin === "bank" ? "Câu gốc" : "Câu sinh thêm"}</Badge>
-        {q.status === "ready" && <span className="text-meta">{q.line}</span>}
-        {q.status === "waiting" && (
-          <a href={`/subjects/${subjectId}/syllabus`} className="text-meta underline">
+        {q.status === "waiting" ? (
+          <a href={`/subjects/${subjectId}/syllabus`} className="text-meta text-ink-soft underline">
             {q.line}
           </a>
-        )}
-        {q.status === "unlinked" && <span className="text-meta text-ink-soft">Chưa gắn phần</span>}
-        {q.number !== null && <span className="text-meta text-ink-soft">Câu {q.number}</span>}
-        {q.unlocked_at && <span className="text-meta text-ink-soft">Mở khóa {unlockedOn(q.unlocked_at)}</span>}
+        ) : q.status === "unlinked" ? (
+          <span className="text-meta text-ink-soft">Chưa gắn phần</span>
+        ) : q.number !== null ? (
+          <span className="text-meta text-ink-soft">Câu {q.number}</span>
+        ) : null}
       </div>
       <p id={`sum-${q.id}`} data-user className="m-0 line-clamp-3 wrap-anywhere">
         {q.prompt}

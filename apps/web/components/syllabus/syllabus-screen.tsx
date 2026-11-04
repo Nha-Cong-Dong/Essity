@@ -107,6 +107,7 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
             variant={editing ? "secondary" : "primary"}
             className="max-sm:px-4"
             render={<a href={`${subjectHref}/sessions/new`} />}
+            nativeButton={false}
           >
             {COPY.study}
           </Button>
@@ -160,7 +161,7 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
         <div className="mt-6 rounded-sheet bg-rose-50 p-6">
           <p className="m-0 text-body">{COPY.empty}</p>
           <div className="mt-4">
-            <Button render={<a href={`${subjectHref}/upload`} />}>{COPY.upload}</Button>
+            <Button render={<a href={`${subjectHref}/upload`} />} nativeButton={false}>{COPY.upload}</Button>
           </div>
         </div>
       </div>
