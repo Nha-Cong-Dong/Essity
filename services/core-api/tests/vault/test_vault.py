@@ -67,6 +67,10 @@ def test_g1_deleted_subject_is_not_in_the_vault(client: TestClient, db_session: 
     assert client.get("/v1/vault/subjects", headers=headers).json() == []
     r = client.get(f"/v1/vault/subjects/{subject.id}/sessions", headers=headers)
     assert r.status_code == 404
+    # A session of the deleted subject is not reachable by typing its URL either.
+    study_id = db_session.query(StudySession.id).filter_by(subject_id=subject.id).scalar()
+    r = client.get(f"/v1/vault/sessions/{study_id}/cards", headers=headers)
+    assert r.status_code == 404
 
 
 def test_g1_other_user_gets_404(client: TestClient, db_session: Session):

@@ -232,7 +232,13 @@ def _anchor_out(a: Anchor, names: dict[uuid.UUID, str]) -> VaultAnchorOut:
 @router.get("/sessions/{session_id}/cards")
 def vault_cards(session_id: uuid.UUID, user: VerifiedUser, session: DbSession) -> VaultCardsOut:
     study = session.scalar(
-        select(StudySession).where(StudySession.id == session_id, StudySession.user_id == user.id)
+        select(StudySession)
+        .join(Subject, Subject.id == StudySession.subject_id)
+        .where(
+            StudySession.id == session_id,
+            StudySession.user_id == user.id,
+            Subject.deleted_at.is_(None),
+        )
     )
     if study is None:
         raise _error(status.HTTP_404_NOT_FOUND, "session_not_found")

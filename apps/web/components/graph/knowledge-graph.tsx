@@ -172,8 +172,22 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
       });
       const opts = optionsFor(list.length);
       let alpha = 0.5;
+      let calm = 0; // frames spent at the floor; the loop stops after ~10 s and wakes on touch or hover
+      let running = false;
+      const wake = () => {
+        calm = 0;
+        alpha = Math.max(alpha, 0.3);
+        if (!running) {
+          running = true;
+          frame = requestAnimationFrame(tick);
+        }
+      };
       const tick = () => {
         alpha = Math.max(0.1, alpha * 0.995);
+        if (alpha <= 0.1 && ++calm > 600) {
+          running = false;
+          return;
+        }
         stepSim(sim, links, alpha, Math.random, opts);
         cy.batch(() => {
           list.forEach((n, i) => {
@@ -182,7 +196,9 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
         });
         frame = requestAnimationFrame(tick);
       };
+      running = true;
       frame = requestAnimationFrame(tick);
+      cy.on("grab mouseover", "node", wake);
       // Once the cloud has opened up, frame it again, unless the reader already took hold of the view.
       let touched = false;
       const touch = () => {
