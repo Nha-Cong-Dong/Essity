@@ -35,6 +35,7 @@ from core_api.domain.documents import (
     looks_like_pdf,
     short_name,
 )
+from core_api.handlers.question_bank_import import enqueue_import
 from core_api.messaging.envelope import DocumentUploaded
 from core_api.messaging.outbox import enqueue_event
 from core_api.repositories.document import (
@@ -359,6 +360,8 @@ def patch_document(
             name = short_name(f"{body.short_name}.pdf")  # the cleaning rules of an upload's name
         except (ValueError, InvalidFilenameError):
             raise _error(422, "invalid_short_name") from None
+    before = DocumentRepository(session, user.id).get(document_id)
+    was_bank = before is not None and before.role == "question_bank"
     try:
         document = OutlineService(session, user.id).edit_document(
             document_id, short_name=name, role=body.role
@@ -373,6 +376,10 @@ def patch_document(
         raise _error(409, "textbook_exists") from None
     except TextbookNotReadyError:
         raise _error(409, "document_not_ready") from None
+    if document.role == "question_bank" and not was_bank and document.status == "indexed":
+        # Already read (a file uploaded before, or moved from another tab): the indexed event
+        # will not come again, so queue the split here (one waiting job per bank).
+        enqueue_import(session, user.id, document)
     return _out(document)
 
 
