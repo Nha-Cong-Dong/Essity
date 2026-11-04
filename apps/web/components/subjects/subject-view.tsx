@@ -46,7 +46,7 @@ export function SubjectView({
       {/* V22 row 0: the name (cols 1-8, two lines at most) and the one big number (cols 9-12). */}
       <header className="grid items-end gap-x-6 gap-y-3 min-[901px]:grid-cols-12">
         <div className="flex min-w-0 flex-col gap-3 min-[901px]:col-span-8">
-          <a href="/subjects" className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
+          <a href="/subjects" className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
             Môn học ›
           </a>
           <h1 className="m-0 max-w-full font-display text-title break-words text-balance">

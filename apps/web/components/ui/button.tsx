@@ -20,7 +20,7 @@ const buttonVariants = cva(
         secondary:
           "rounded-full bg-transparent px-6 text-ink inset-ring-[1.5px] inset-ring-line-strong hover:bg-sunken disabled:bg-sunken disabled:text-ink-soft disabled:inset-ring-line",
         quiet:
-          "h-11 rounded-full bg-sheet px-5 font-medium text-ink inset-ring-1 inset-ring-line hover:bg-sunken disabled:bg-sunken disabled:text-ink-soft",
+          "h-11 rounded-full bg-sheet px-5 font-medium text-ink inset-ring-1 inset-ring-line-strong hover:bg-sunken disabled:bg-sunken disabled:text-ink-soft",
         "primary-inverse":
           "rounded-full bg-(color:--inverse-bg) px-6 text-(color:--inverse-fg) hover:-translate-y-px hover:shadow-[0_12px_28px_-12px_rgb(0_0_0/0.45)] disabled:bg-sunken disabled:text-ink-soft",
       },

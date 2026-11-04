@@ -47,7 +47,7 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
   );
   return (
     <section aria-labelledby="upload-title" className="flex w-full max-w-160 flex-col gap-6">
-      <a href="/subjects" className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
+      <a href="/subjects" className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
         Môn học
       </a>
       <Sheet className="relative border border-line p-5 shadow-none sm:p-8">

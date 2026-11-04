@@ -265,7 +265,7 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
       <div className="flex flex-col items-start gap-3 rounded-tile bg-hong-tint p-6" data-empty>
         <p className="m-0 text-read">Chưa có thẻ kiến thức nào. Ghi một buổi học, các thẻ sẽ hiện thành đồ thị ở đây.</p>
         {graphs[0] && (
-          <a href={`/subjects/${graphs[0].id}/sessions/new`} className="inline-flex min-h-11 items-center font-semibold rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
+          <a href={`/subjects/${graphs[0].id}/sessions/new`} className="inline-flex min-h-11 items-center font-semibold rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
             Ghi buổi học
           </a>
         )}
@@ -284,7 +284,7 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
             type="button"
             aria-pressed={!hidden.has(s.id)}
             onClick={() => toggle(s.id)}
-            className="inline-flex h-11 max-w-full items-center gap-2 rounded-full bg-sheet px-4 text-meta font-medium text-ink inset-ring-1 inset-ring-line hover:bg-sunken aria-pressed:inset-ring-[1.5px] aria-pressed:inset-ring-line-strong aria-[pressed=false]:text-ink-soft aria-[pressed=false]:line-through"
+            className="inline-flex h-11 max-w-full items-center gap-2 rounded-full bg-sheet px-4 text-meta font-medium text-ink inset-ring-1 inset-ring-line-strong hover:bg-sunken aria-pressed:inset-ring-[1.5px] aria-pressed:inset-ring-line-strong aria-[pressed=false]:text-ink-soft aria-[pressed=false]:line-through"
           >
             <span aria-hidden="true" className="inline-block size-3 shrink-0 rounded-full" style={{ background: s.color }} />
             <span className="truncate">{s.name}</span>
