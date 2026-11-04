@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { DocRole } from "@/components/syllabus/doc-role";
+import { patchDocument } from "@/lib/syllabus/api";
 import type { Role } from "@/lib/syllabus/roles";
 
 import { checkFile, uploadPdf, type UploadState } from "@/lib/upload-client";
@@ -15,7 +16,7 @@ import { uploadMessage } from "@/lib/upload-copy";
 // (stored, waiting for ai-service: T4.7), or the reason it was refused. Files go one after the
 // other, so a long list does not eat the 30-asks-an-hour limit all at once.
 
-type Row = { key: number; name: string; state: UploadState; role?: Role };
+type Row = { key: number; name: string; state: UploadState; role?: Role; roleConflict?: boolean };
 
 const STATUS = "text-small font-semibold text-ink-soft";
 
@@ -110,6 +111,7 @@ export function Uploader({
   const next = useRef(0);
   const busy = useRef(Promise.resolve());
   const claimed = useRef(hasMain);
+  const sentRole = useRef(new Set<string>());
 
   const doneCount = rows.filter((row) => row.state.kind === "done").length;
   const runningCount = rows.filter((row) => row.state.kind === "hashing" || row.state.kind === "uploading").length;
@@ -117,7 +119,24 @@ export function Uploader({
     onCount?.(doneCount, runningCount);
   }, [doneCount, runningCount, onCount]);
 
+  // The tab fixes the role (H2), but a new document is auxiliary until told otherwise: send the role
+  // as soon as the file is confirmed (core accepts it before the file is read), so the Đề cương page
+  // finds the textbook even if the learner leaves before the read ends.
+  function sendRole(key: number, documentId: string) {
+    const apiRole = fixedRole === "main" ? "textbook" : fixedRole === "bank" ? "question_bank" : null;
+    if (!apiRole) return;
+    void patchDocument(documentId, { role: apiRole }).then((sent) => {
+      if (!sent.ok && sent.code === "textbook_exists") {
+        setRows((all) => all.map((row) => (row.key === key ? { ...row, roleConflict: true } : row)));
+      }
+    });
+  }
+
   function update(key: number, state: UploadState) {
+    if (state.kind === "done" && state.documentId && !sentRole.current.has(state.documentId)) {
+      sentRole.current.add(state.documentId);
+      sendRole(key, state.documentId);
+    }
     setRows((all) =>
       all.map((row) => {
         if (row.key !== key) return row;
@@ -193,7 +212,11 @@ export function Uploader({
                   className="h-2 w-full accent-hong"
                 />
               ) : null}
-              {row.state.kind === "done" && fixedRole ? (
+              {row.state.kind === "done" && fixedRole && row.roleConflict ? (
+                <p role="alert" className="m-0 text-small text-pencil">
+                  Môn này đã có giáo trình chính, nên file này đang là tài liệu phụ. Đổi giáo trình chính ở trang Đề cương.
+                </p>
+              ) : row.state.kind === "done" && fixedRole ? (
                 <span className="w-fit rounded-control bg-rose-100 px-2 py-1 text-small font-semibold">{ROLE_TAG[fixedRole]}</span>
               ) : null}
               {row.state.kind === "done" && !fixedRole && row.state.documentId && row.role ? (
