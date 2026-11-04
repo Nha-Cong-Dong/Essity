@@ -54,7 +54,7 @@ export function Skeleton() {
 /** The tile of the landing's "Học gì tiếp" list: the subject on the left, "Gợi ý, bạn chọn" on the right, the tree below. */
 export function SyllabusTile({ name, children }: { name: string; children: ReactNode }) {
   return (
-    <section data-nx className="min-w-0 rounded-tile bg-hong-tint p-4 min-[901px]:p-6">
+    <section data-nx className="min-w-0 rounded-tile bg-hong-tint p-4 max-sm:p-3 min-[901px]:p-6">
       <div className="flex items-baseline justify-between gap-3 pb-3.5">
         <h2 className="m-0 min-w-0 font-display text-lead wrap-anywhere max-[640px]:text-body max-[640px]:font-semibold">{name}</h2>
         <span className="shrink-0 text-meta italic text-ink-soft">Gợi ý, bạn chọn</span>

@@ -60,11 +60,12 @@ type Props = {
 // A row of the tile is a white row apart from its siblings (the landing's "nx" list): the indent is a
 // margin, so the white follows the level. The one "next" row is cam, with an arrow and words.
 const INDENT_M =
-  "ml-[calc(min(var(--lvl),var(--cap))*var(--step))] [--lvl:0] [--cap:3] [--step:16px] sm:[--step:24px]";
+  "ml-[calc(min(var(--lvl),var(--cap))*var(--step))] [--lvl:0] [--cap:3] [--step:10px] sm:[--step:24px]";
 /** "3.1 Giao thuc" -> ["3.1", "Giao thuc"]; a title with no number keeps the whole title. */
 const splitTitle = (title: string): [string | null, string] => {
   const m = /^(\d+(?:\.\d+)*\.?)\s+([\s\S]+)$/.exec(title);
-  return m ? [m[1], m[2]] : [null, title];
+  // A long number ("5.1.1.1.1.1") would eat the title column at 320 px: it stays in the title.
+  return m && m[1].length <= 6 ? [m[1], m[2]] : [null, title];
 };
 // The visible mark is 28 px; its touch area is 44 px (after:) without widening the indent step.
 // Panel buttons wrap their label (a long one such as "Đánh dấu 12 phần chưa học là đã học" must fit 320 px).
@@ -556,7 +557,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
             data-row
             style={{ ["--lvl" as string]: level - 1 }}
             onClick={() => (branch ? fold(node.id, !isOpen) : openPanel(node.id))}
-            className={`${INDENT_M} mb-1.5 flex min-h-12 cursor-pointer items-center gap-2 rounded-row bg-bg px-3 py-1.5 sm:min-h-11.5 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus ${isNext ? `${NX_CAM.row} font-semibold` : ""}`}
+            className={`${INDENT_M} mb-1.5 flex min-h-12 cursor-pointer items-center gap-2 max-sm:gap-1 rounded-row bg-bg px-3 max-sm:px-2 py-1.5 sm:min-h-11.5 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus ${isNext ? `${NX_CAM.row} font-semibold` : ""}`}
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center">
               {branch && (
@@ -589,10 +590,15 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
                 <span id={`ti-${node.id}-m`}>{range}</span>
                 {visible && (!showState || status === "partial") ? ` · ${visible}` : ""}
               </span>
+              {isNext && (
+                <span className={`mt-0.5 text-meta sm:hidden ${NX_CAM.text}`}>
+                  <span aria-hidden="true">→ </span>Tiếp theo
+                </span>
+              )}
               {isNext && why && <span className={`mt-0.5 text-meta ${NX_CAM.text}`}>{why}</span>}
             </span>
             <span
-              className={`flex shrink-0 items-center gap-1 whitespace-nowrap text-meta ${isNext ? NX_CAM.text : "text-ink-soft"}`}
+              className={`flex shrink-0 items-center gap-1 whitespace-nowrap text-meta ${isNext ? `${NX_CAM.text} max-sm:hidden` : "text-ink-soft"}`}
               data-state-cell
             >
               {isNext ? (
@@ -603,7 +609,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
                 <>
                   {status === "done" && !node.excluded && <Tick />}
                   {status === "partial" && leaf && !node.excluded && <Half />}
-                  {stateText}
+                  <span className="max-sm:sr-only">{stateText}</span>
                 </>
               ) : null}
             </span>
