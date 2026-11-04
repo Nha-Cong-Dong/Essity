@@ -383,3 +383,19 @@ def test_context_with_outline_validates_against_the_contract(
     assert response.status_code == 201, response.text
     [event] = events(world)
     assert validator.is_valid(world.context_of(event))
+
+
+def test_context_outline_leaves_out_excluded_sections_and_stays_under_its_byte_cap(
+    client: TestClient, world: World
+) -> None:
+    from core_api.domain import submission_outline as outline
+
+    hidden = world.section(world.document, "Phần đã loại", ord=1)
+    hidden.excluded = True
+    world.db.flush()
+    response = submit(client, world, description="@Mạng máy tính chương 3", files=[world.pdf()])
+    assert response.status_code == 201, response.text
+    [event] = events(world)
+    titles = [s["title"] for s in world.context_of(event)["documents"][0]["sections"]]
+    assert "Phần đã loại" not in titles and "Chương 3. Tầng mạng" in titles
+    assert outline.MAX_OUTLINE_BYTES < 1_000_000 // 2

@@ -211,7 +211,8 @@ def check_pick(text: str, prompt: PickPrompt) -> list[Picked]:
     out: list[Picked] = []
     seen: set[str] = set()
     for label in answer.sections:
-        found = prompt.labels.get(label.strip())
+        label = label.strip()
+        found = prompt.labels.get(label)
         if found is None or label in seen or len(out) >= MAX_PICKED:
             continue
         seen.add(label)

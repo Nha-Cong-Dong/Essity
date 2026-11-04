@@ -99,6 +99,8 @@ class StudySession(UserOwned, Base):
 
     subject_id: Mapped[uuid.UUID]
     description_raw: Mapped[str] = mapped_column(Text)
+    # The topic of the session's cards, named by ai-service (null: older sessions, a draft).
+    title: Mapped[str | None] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(10), default="draft")
     extraction: Mapped[str] = mapped_column(String(14))
     studied_on: Mapped[date | None] = mapped_column(Date)
@@ -253,6 +255,7 @@ class Submission(UserOwned, Base):
         ),
         CheckConstraint(FILE_KEYS_SQL, name="file_keys_are_own_notes"),
         CheckConstraint("retry_count >= 0", name="retry_count_not_negative"),
+        CheckConstraint("notice IS NULL OR notice IN ('no_content_found')", name="notice_known"),
     )
 
     session_id: Mapped[uuid.UUID]
@@ -263,6 +266,8 @@ class Submission(UserOwned, Base):
     # Retry bookkeeping of the job that re-runs a submission waiting for the AI (T7.8b).
     retry_count: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
     next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Why a finished submission has no card (a closed list, set from the result file).
+    notice: Mapped[str | None] = mapped_column(String(32))
 
 
 class StudyLedger(UserOwned, Base):
