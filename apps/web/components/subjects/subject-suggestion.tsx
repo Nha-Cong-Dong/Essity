@@ -34,9 +34,6 @@ function Suggested({ id, subjectId, subjectName, next }: { id: string; subjectId
         {next.title}
         {next.pages ? ` · ${next.pages}` : ""}
       </p>
-      <p className="m-0 text-body wrap-anywhere">
-        {next.reason}
-      </p>
       <div className="mt-2">
         <Button
           render={<a href={studyHref(subjectId, next.sectionId)} />}

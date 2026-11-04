@@ -87,8 +87,19 @@ export function toTodayV2(today: TodayApi): TodayV2 {
       items: today.next_study.items.map(learnItem),
       empty_reason: empty === null ? null : (EMPTY[empty] ?? "no_textbook"),
     },
-    // M8 (T8.5/T8.7) sends practice rows; until then the block says so neutrally (US-03 AC7).
-    practice: { state: "none_ready" },
+    // US-03 AC7: the rows /v1/today sends (ready, never attempted, by subject); none: the neutral line.
+    practice:
+      today.practice && today.practice.lines.length > 0
+        ? {
+            state: "ready",
+            rows: today.practice.lines.map((l) => ({
+              subject_id: l.subject_id,
+              name: l.subject_name,
+              ready: l.ready_questions,
+              kinds: l.question_types,
+            })),
+          }
+        : { state: "none_ready" },
   };
 }
 

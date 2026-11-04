@@ -45,6 +45,17 @@ const base = (over: Partial<TodayApi> = {}): TodayApi => ({
 });
 
 describe("toTodayV2", () => {
+  // Red when: Today says "no question ready" while /v1/today lists ready practice (demo 04/11).
+  it("US-03 AC7: practice lines from the API become rows; none stays the neutral line", () => {
+    const lines = [{ subject_id: A, subject_name: "Mạng máy tính", ready_questions: 3, question_types: 2 }];
+    expect(toTodayV2(base({ practice: { lines } })).practice).toEqual({
+      state: "ready",
+      rows: [{ subject_id: A, name: "Mạng máy tính", ready: 3, kinds: 2 }],
+    });
+    expect(toTodayV2(base({ practice: { lines: [] } })).practice).toEqual({ state: "none_ready" });
+    expect(toTodayV2(base()).practice).toEqual({ state: "none_ready" });
+  });
+
   // Red when: the screen invents a review count or hides the next due day.
   it("US-03 AC1: nothing due keeps the next due day", () => {
     expect(toTodayV2(base()).review).toEqual({ state: "none", next_due: "2026-11-05" });

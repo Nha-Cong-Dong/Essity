@@ -16,6 +16,7 @@ from collections.abc import Sequence
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core_api.config import DEV_ENVIRONMENTS, get_settings
@@ -28,6 +29,7 @@ from core_api.db.models import (
     Question,
     QuestionSection,
     QuestionUnit,
+    StudySession,
     UnitSection,
     User,
 )
@@ -41,12 +43,17 @@ DEMO_EMAIL = "demo@essity.test"
 DEMO_PASSWORD = "Demo-Essity-2026"
 DEMO_SUBJECT = "Mạng máy tính (tài khoản mẫu)"
 
-# (title, first page, last page, studied)
-_SECTIONS = (
-    ("Giới thiệu mạng máy tính", 1, 20, True),
-    ("Tầng giao vận: TCP và UDP", 21, 60, True),
-    ("Tầng mạng: định tuyến IP", 61, 100, False),
-    ("Bảo mật mạng", 101, 130, False),
+# Two chapters over four leaf sections (the outline "còn n" counts chapters):
+# (chapter title, [(leaf title, first page, last page, studied)])
+_CHAPTERS = (
+    (
+        "Chương 1. Mạng và tầng giao vận",
+        [("Giới thiệu mạng máy tính", 1, 20, True), ("Tầng giao vận: TCP và UDP", 21, 60, True)],
+    ),
+    (
+        "Chương 2. Tầng mạng và bảo mật",
+        [("Tầng mạng: định tuyến IP", 61, 100, False), ("Bảo mật mạng", 101, 130, False)],
+    ),
 )
 # (title, summary, review question, answer, section index)
 _CARDS = (
@@ -108,8 +115,19 @@ def seed_account(session: Session, email: str, password: str, now: datetime | No
     elif user.email_verified_at is None:
         user.email_verified_at = now
     subjects = SubjectRepository(session, user.id)
-    if any(s.name == DEMO_SUBJECT for s, _, _ in subjects.list_with_exams()):
-        return f"{email}: demo subject is already there"
+    for old, _, _ in subjects.list_with_exams():
+        if old.name != DEMO_SUBJECT:
+            continue
+        indexed = session.scalar(
+            select(Document.id).where(
+                Document.subject_id == old.id,
+                Document.user_id == user.id,
+                Document.status == "indexed",
+            )
+        )
+        if indexed is not None:
+            return f"{email}: demo subject is already there"
+        old.deleted_at = now  # an earlier seed without an indexed textbook: set aside, redo
     day = learning_day(now, ZoneInfo(user.timezone), user.day_start_hour)
     subject, _ = subjects.create_with_exam(DEMO_SUBJECT, day + timedelta(days=30))
     _fill(session, user, subject.id, now, day)
@@ -129,33 +147,71 @@ def _fill(session: Session, user: User, subject_id: uuid.UUID, now: datetime, da
         sha256=sha,
         size_bytes=1_000_000,
         object_key=f"users/{uid}/subjects/{subject_id}/raw/{sha}.pdf",
-        status="uploaded",
+        status="indexed",
         presigned_at=now,
         uploaded_at=now,
         role="textbook",
         format="pdf",
+        page_count=130,
+        run_id=uuid.uuid4(),
+        toc_key=f"derived/demo-{uid}/toc.json",
+        page_labels_key=f"derived/demo-{uid}/labels.json",
+        page_text_key=f"derived/demo-{uid}/text.json",
+        thumbnails_prefix=f"derived/demo-{uid}/thumbs/",
     )
     session.add(doc)
     session.flush()
-    sections: list[DocSection] = []
-    for index, (title, first, last, studied) in enumerate(_SECTIONS):
-        weight = float(last - first + 1)
-        row = DocSection(
+    sections: list[DocSection] = []  # the leaves, in reading order
+    for chapter_index, (chapter_title, leaves) in enumerate(_CHAPTERS):
+        chapter = DocSection(
             user_id=uid,
             subject_id=subject_id,
             document_id=doc.id,
             parent_id=None,
-            ord=index,
-            title=title,
-            weight=weight,
-            studied_weight=weight if studied else 0.0,
+            ord=chapter_index,
+            title=chapter_title,
+            weight=float(sum(last - first + 1 for _, first, last, _ in leaves)),
+            studied_weight=float(
+                sum(last - first + 1 for _, first, last, studied in leaves if studied)
+            ),
             unit="page",
             source="user",
-            first_page=first,
-            last_page=last,
+            first_page=leaves[0][1],
+            last_page=leaves[-1][2],
         )
-        session.add(row)
-        sections.append(row)
+        session.add(chapter)
+        session.flush()
+        for index, (title, first, last, studied) in enumerate(leaves):
+            weight = float(last - first + 1)
+            leaf = DocSection(
+                user_id=uid,
+                subject_id=subject_id,
+                document_id=doc.id,
+                parent_id=chapter.id,
+                ord=index,
+                title=title,
+                weight=weight,
+                studied_weight=weight if studied else 0.0,
+                unit="page",
+                source="user",
+                first_page=first,
+                last_page=last,
+            )
+            session.add(leaf)
+            sections.append(leaf)
+    session.flush()
+    study = StudySession(
+        user_id=uid,
+        subject_id=subject_id,
+        description_raw="Buổi học mẫu: TCP, UDP và gói tin.",
+        status="confirmed",
+        extraction="proposed",
+        studied_on=day - timedelta(days=1),
+        learning_day=day - timedelta(days=1),
+        confirmed_at=now - timedelta(days=1),
+        processing_state="processed",
+    )
+    session.add(study)
     session.flush()
     run_id = uuid.uuid4()
     yesterday = now - timedelta(days=1)
@@ -168,6 +224,7 @@ def _fill(session: Session, user: User, subject_id: uuid.UUID, now: datetime, da
             kind="concept",
             status="canonical",
             run_id=run_id,
+            session_id=study.id,
             saved_at=yesterday,
             saved_learning_day=day - timedelta(days=1),
         )
