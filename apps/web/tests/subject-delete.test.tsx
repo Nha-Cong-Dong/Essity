@@ -35,38 +35,39 @@ function fakeWeb(...replies: (() => Response | Promise<Response>)[]) {
 
 const row = (name: string) => screen.getByText(name, { selector: "a" }).closest("li") as HTMLElement;
 const openEdit = (name: string) => fireEvent.click(screen.getByRole("button", { name: `Sửa ${name}` }));
+// UI-A (user 05/11): "Xóa <name>" sits beside "Sửa" on the tile; the confirmation's own button is "Xóa môn".
+const trigger = (name: string) => screen.getByRole("button", { name: `Xóa ${name}` });
 const deleteButton = (scope: HTMLElement = document.body) => within(scope).getByRole("button", { name: "Xóa môn" });
 const keepButton = () => screen.getByRole("button", { name: "Giữ môn" });
 const empty204 = () => new Response(null, { status: 204 });
 
 function openConfirm(name: string) {
-  openEdit(name);
-  fireEvent.click(deleteButton(row(name)));
+  fireEvent.click(trigger(name));
 }
 
 afterEach(cleanup);
 beforeEach(() => go.mockReset());
 
 describe("SubjectList delete (T2.3b, us-01 AC8)", () => {
-  it("us-01 AC8: a subject with no history has \"Xóa môn\" in its edit form, under a rule, apart from Lưu", () => {
+  it("us-01 AC8: a subject with no history has \"Xóa\" beside \"Sửa\", and the edit form has no delete", () => {
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
-    openEdit(MMT.name);
-    const button = deleteButton(row(MMT.name));
-    expect(button.closest("form")).toBeNull();
-    expect(button.parentElement?.className).toContain("border-t");
+    const button = trigger(MMT.name);
+    expect(button.nextElementSibling ?? button.previousElementSibling).toBe(screen.getByRole("button", { name: `Sửa ${MMT.name}` }));
     // Several rows can be open at once: the subject's name tells the buttons apart.
     const describedBy = button.getAttribute("aria-describedby") ?? "";
     expect(document.getElementById(describedBy)?.textContent).toBe(MMT.name);
+    openEdit(MMT.name);
+    expect(within(row(MMT.name)).queryByRole("button", { name: /^Xóa/ })).toBeNull();
+    expect(within(row(MMT.name)).getByRole("button", { name: "Lưu" })).toBeTruthy();
   });
 
   it("us-01 AC8: a subject with history has no delete button but a line saying why", () => {
     render(<SubjectList subjects={[{ ...MMT, has_history: true }]} example={EXAMPLE} />);
-    openEdit(MMT.name);
-    expect(within(row(MMT.name)).queryByRole("button", { name: "Xóa môn" })).toBeNull();
+    expect(within(row(MMT.name)).queryByRole("button", { name: /^Xóa/ })).toBeNull();
     expect(within(row(MMT.name)).getByText(HAS_HISTORY)).toBeTruthy();
   });
 
-  it("us-01 AC8: \"Xóa môn\" turns the form into a confirmation in place, focus on \"Giữ môn\"", () => {
+  it("us-01 AC8: \"Xóa\" turns the tile into a confirmation in place, focus on \"Giữ môn\"", () => {
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
     openConfirm(MMT.name);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -82,14 +83,12 @@ describe("SubjectList delete (T2.3b, us-01 AC8)", () => {
   it.each([
     ["Giữ môn", () => fireEvent.click(keepButton())],
     ["Escape", () => fireEvent.keyDown(screen.getByRole("group"), { key: "Escape" })],
-  ])("us-01 AC8: %s goes back to the form with what was typed, focus on \"Xóa môn\"", (_, keep) => {
+  ])("us-01 AC8: %s goes back to the tile, focus on \"Xóa\"", (_, keep) => {
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
-    openEdit(MMT.name);
-    fireEvent.change(screen.getByLabelText("Môn"), { target: { value: "Mạng 2" } });
-    fireEvent.click(deleteButton(row(MMT.name)));
+    openConfirm(MMT.name);
     keep();
-    expect((screen.getByLabelText("Môn") as HTMLInputElement).value).toBe("Mạng 2");
-    expect(document.activeElement).toBe(deleteButton(row(MMT.name)));
+    expect(screen.queryByRole("group")).toBeNull();
+    expect(document.activeElement).toBe(trigger(MMT.name));
   });
 
   it("us-01 AC8: deleting sends one DELETE; the row becomes \"Đã xóa môn.\" with no name, focused", async () => {
@@ -140,10 +139,8 @@ describe("SubjectList delete (T2.3b, us-01 AC8)", () => {
     fakeWeb(() => new Promise<Response>((resolve) => answers.push(resolve)));
     const X = { ...HDH, id: "9a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", name: "Xác suất" };
     render(<SubjectList subjects={[MMT, HDH, X]} example={EXAMPLE} />);
-    openEdit(MMT.name);
-    openEdit(HDH.name);
-    fireEvent.click(deleteButton(row(MMT.name)));
-    fireEvent.click(deleteButton(row(HDH.name)));
+    openConfirm(MMT.name);
+    openConfirm(HDH.name);
     const [first, second] = screen.getAllByRole("group");
     fireEvent.click(deleteButton(first));
     fireEvent.click(deleteButton(second));
@@ -180,7 +177,7 @@ describe("SubjectList delete (T2.3b, us-01 AC8)", () => {
     const line = await screen.findByText(HAS_HISTORY);
     expect(screen.queryByRole("group")).toBeNull();
     expect(screen.queryByText(DELETED)).toBeNull();
-    expect(within(row(MMT.name)).queryByRole("button", { name: "Xóa môn" })).toBeNull();
+    expect(within(row(MMT.name)).queryByRole("button", { name: /^Xóa/ })).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(line));
   });
 
@@ -233,16 +230,33 @@ describe("SubjectList delete (T2.3b, us-01 AC8)", () => {
   it("R09: the approved sentences carry no data-copy=\"tam\" in the page", async () => {
     fakeWeb(empty204);
     render(<SubjectList subjects={[MMT, { ...HDH, has_history: true }]} example={EXAMPLE} />);
-    openEdit(HDH.name);
     expect(screen.getByText(HAS_HISTORY).getAttribute("data-copy")).toBeNull();
-    openEdit(MMT.name);
-    expect(deleteButton(row(MMT.name)).getAttribute("data-copy")).toBeNull();
-    fireEvent.click(deleteButton(row(MMT.name)));
+    expect(trigger(MMT.name).getAttribute("data-copy")).toBeNull();
+    fireEvent.click(trigger(MMT.name));
     expect(screen.getByText(CONFIRM).getAttribute("data-copy")).toBeNull();
     expect(deleteButton(screen.getByRole("group")).getAttribute("data-copy")).toBeNull();
     expect(keepButton().getAttribute("data-copy")).toBeNull();
     fireEvent.click(deleteButton(screen.getByRole("group")));
     expect((await screen.findByText(DELETED)).getAttribute("data-copy")).toBeNull();
+  });
+});
+
+describe("SubjectList: no add button while a row is being edited (UI-A, user 05/11)", () => {
+  const adds = () => [...screen.queryAllByText("Tạo môn"), ...screen.queryAllByText("+ Thêm môn")];
+  it("hides \"Tạo môn\" and \"+ Thêm môn\" while editing, shows them again after Hủy", () => {
+    render(<SubjectList subjects={[MMT, HDH]} example={EXAMPLE} />);
+    expect(adds()).toHaveLength(2);
+    openEdit(MMT.name);
+    expect(adds()).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Hủy" }));
+    expect(adds()).toHaveLength(2);
+  });
+  it("hides them while a delete is being confirmed too", () => {
+    render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
+    openConfirm(MMT.name);
+    expect(adds()).toHaveLength(0);
+    fireEvent.click(keepButton());
+    expect(adds()).toHaveLength(2);
   });
 });
 
