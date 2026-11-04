@@ -7,7 +7,6 @@ import { FieldError } from "@/components/field-error";
 import { checkSubject, refusalErrors, type SubjectErrors, SubjectFields } from "@/components/subjects/subject-fields";
 import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 import { Button } from "@/components/ui/button";
-import { NxList } from "@/components/ui/nx-list";
 import { daysLeftText, formatExamDate } from "@/lib/exam-date";
 import { go } from "@/lib/navigate";
 import { SUBJECT_MESSAGES } from "@/lib/subject-copy";
@@ -168,15 +167,15 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
   }
 
   return (
-    <li className="min-w-0 rounded-row bg-bg">
+    <li className={`min-w-0 rounded-tile bg-hong-tint ${editing ? "col-span-full" : ""}`}>
       {/* V22 (landing "nx"): a row of the subjects tile, letter | name + date line | "Sửa". The name
           wraps between words, never inside one. */}
-      <div className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-2">
+      <div className="flex min-h-36 flex-col justify-between gap-4 p-5">
         <div className="flex min-w-0 flex-col">
           <a
             id={ids.name}
             href={`/subjects/${subject.id}`}
-            className="min-w-0 text-body font-semibold break-words text-inherit no-underline hover:underline"
+            className="min-w-0 text-lead font-semibold break-words text-inherit no-underline hover:underline"
           >
             {subject.name}
           </a>
@@ -187,7 +186,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
           </span>
         </div>
         {!editing && (
-          <Button variant="quiet" onClick={open} aria-label={`Sửa ${subject.name}`} className="px-2">
+          <Button variant="quiet" onClick={open} aria-label={`Sửa ${subject.name}`} className="self-end px-2">
             Sửa
           </Button>
         )}
@@ -275,7 +274,7 @@ function DeletedRow() {
   const ref = useRef<HTMLParagraphElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
-    <li className="rounded-row bg-bg px-3.5 py-3">
+    <li className="rounded-tile bg-hong-tint p-5">
       <p ref={ref} tabIndex={-1} className="m-0 text-small text-ink-soft">
         Đã xóa môn.
       </p>
@@ -342,7 +341,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
           />
         </>
       ) : (
-        <NxList>
+        <ul className="m-0 grid list-none gap-4 p-0 min-[640px]:grid-cols-2 min-[1100px]:grid-cols-3">
           {rows.map((subject) =>
             subject.id === deletedId ? (
               <DeletedRow key={subject.id} />
@@ -356,15 +355,15 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
               />
             ),
           )}
-          <li>
+          <li className="min-w-0">
             <a
               href="/subjects/new"
-              className="flex min-h-12 items-center justify-center rounded-row border border-dashed border-line-strong bg-bg px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"
+              className="flex min-h-36 h-full items-center justify-center rounded-tile border border-dashed border-line-strong px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"
             >
               + Thêm môn
             </a>
           </li>
-        </NxList>
+        </ul>
       )}
     </SubjectsFrame>
   );

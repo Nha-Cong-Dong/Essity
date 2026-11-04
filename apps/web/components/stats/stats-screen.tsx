@@ -64,12 +64,12 @@ function Trend({ cells }: { cells: GridCell[] }) {
   const weeks = weeklyTrend(cells);
   const top = Math.max(...weeks, 1);
   return (
-    <Sheet className="min-w-0" aria-labelledby="trend-h" role="region">
+    <Sheet className="flex min-w-0 flex-col" aria-labelledby="trend-h" role="region">
       <h2 id="trend-h" className="m-0 mb-1 text-read font-semibold">
         12 tuần gần đây
       </h2>
       <p className="m-0 mb-3 text-meta text-ink-soft">Thẻ đã lưu và câu đã làm theo từng tuần.</p>
-      <div className="flex h-28 items-end gap-1.5" data-trend>
+      <div className="flex min-h-28 flex-1 items-end gap-1.5" data-trend>
         {weeks.map((n, i) => (
           <div key={i} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${n}`}>
             <div
