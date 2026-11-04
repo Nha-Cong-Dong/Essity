@@ -38,7 +38,7 @@ CONTEXT = sorted(EXAMPLES.glob("submission-context.v1*.json"))
 
 
 def test_examples_are_found() -> None:
-    assert len(V2) == 7 and len(CONTEXT) == 3
+    assert len(V2) == 9 and len(CONTEXT) == 4
 
 
 @pytest.mark.parametrize("path", V2, ids=lambda p: p.name)
@@ -109,3 +109,18 @@ def test_section_ids_are_optional_and_section_id_is_the_first() -> None:
     draft["section_id"] = None
     with pytest.raises(ValidationError):
         parse_result(json.dumps(body))
+
+
+def test_context_without_documents_still_parses() -> None:
+    # Red when: contexts already in storage (written before `documents`) are refused.
+    from ai_service.messaging.submission_context import parse_context
+
+    ctx = parse_context(json.dumps(example("submission-context.v1")))
+    assert ctx.documents == []
+
+
+def test_context_with_documents_parses() -> None:
+    from ai_service.messaging.submission_context import parse_context
+
+    ctx = parse_context(json.dumps(example("submission-context.v1.documents")))
+    assert ctx.documents[0].sections[0].title.startswith("Chương 3")

@@ -97,6 +97,72 @@
           }
         }
       }
+    },
+    "documents": {
+      "type": "array",
+      "maxItems": 20,
+      "description": "Optional and additive: outline (titles and page positions only) of each mentioned document, so ai-service can pick the section a vague @mention means. Absent means none (contexts written before it).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "document_id",
+          "name",
+          "sections"
+        ],
+        "properties": {
+          "document_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "sections": {
+            "type": "array",
+            "maxItems": 300,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "section_id",
+                "title",
+                "first_page",
+                "last_page",
+                "depth"
+              ],
+              "properties": {
+                "section_id": {
+                  "$ref": "#/$defs/uuid"
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "first_page": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1
+                },
+                "last_page": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1
+                },
+                "depth": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
