@@ -149,3 +149,25 @@ def test_a_lost_capital_u_horn_is_restored_in_titles() -> None:
     assert "4.2.3. Ước lượng tỷ lệ" in titles
     assert "4.2.4. Phép ước lượng" in titles
     assert "Chương 5. Đường và Ơ-clit" in titles
+
+
+def test_a_formula_broken_across_lines_stays_in_its_own_title() -> None:
+    """The real XSTK book: the extractor splits "N(a,σ2)" and "χ2" at the maths glyphs, so the
+    line with the page number holds only ")" (or nothing). Those entries were titled ")"."""
+    toc = TOC + "\r\n".join(
+        [
+            "",
+            "2.3. Quy luật chuẩn . . . . . . . . . . . . 11",
+            "2.3.1. Quy luật chuẩn N(a,σ2",
+            ") . . . . . . . . . . . . . . . . 12",
+            "2.3.2. Quy luật khi bình phương-χ",
+            "2",
+            ". . . . . . . . . . . . . . . . . 13",
+            "2.3.3. Quy luật Student-T(n) . . . . . . . . . 13",
+        ]
+    )
+    nodes = build_syllabus(15, [], _pages("Bìa", toc, *["Nội dung trang"] * 13), _no_ask)
+    titles = [n.title for n in nodes]
+    assert "2.3.1. Quy luật chuẩn N(a,σ2)" in titles
+    assert "2.3.2. Quy luật khi bình phương-χ2" in titles
+    assert ")" not in titles

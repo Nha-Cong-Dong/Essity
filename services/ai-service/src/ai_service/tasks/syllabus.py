@@ -315,12 +315,56 @@ def _toc_line(line: str) -> tuple[str, int] | None:
     return (title, int(found.group("page"))) if title else None
 
 
+_TOC_TAIL = re.compile(r"^\s*(?P<title>\S{0,3}?)\s*(?:\.\s*){3,}\s*(?P<page>\d{1,4})\s*$")
+_FRAGMENT_JOIN = 2
+_FRAGMENT_TAIL = 3  # a title this short is the tail of a broken one
+
+
+def _join_fragments(parts: Sequence[str]) -> str:
+    out = parts[0].strip()
+    for part in parts[1:]:
+        part = part.strip()
+        out += part if len(part) <= _FRAGMENT_JOIN else " " + part
+    return out
+
+
+def _whole_entries(lines: Sequence[str]) -> list[tuple[str, int]]:
+    """Entries read line by line. A title that holds a formula ("N(a,σ2" / ")" / "χ" / "2") is
+    broken by the extractor at the glyphs it cannot read, so the line carrying the page number
+    holds only the tail (")" or nothing): the fragments since the last numbered line are joined
+    back onto it instead of becoming a title of ")"."""
+    entries: list[tuple[str, int]] = []
+    carry: list[str] = []
+    for line in lines:
+        found = _toc_line(line)
+        if found is None and (tail := _TOC_TAIL.match(line)):
+            found = (tail.group("title").strip(), int(tail.group("page")))
+        if found is None:
+            if line.strip():
+                carry.append(line)
+                del carry[:-4]
+            continue
+        title, page = found
+        if len(title) <= _FRAGMENT_TAIL:
+            starts = [
+                i for i, c in enumerate(carry) if _TOC_NUMBER.match(c) or _TOC_CHAPTER.match(c)
+            ]
+            if starts:
+                title = _join_fragments(
+                    [*carry[starts[-1] :], title] if title else carry[starts[-1] :]
+                )
+        carry = []
+        if title:
+            entries.append((title, page))
+    return entries
+
+
 def _toc_entries(text: str) -> list[tuple[str, int]]:
     """Entries of one page. Some PDFs break a line at every glyph the extractor cannot read, so
     when whole lines give too few entries the fragments are joined until one ends in a page
     number (a blank line starts afresh)."""
     lines = text.splitlines()
-    whole = [e for line in lines if (e := _toc_line(line))]
+    whole = _whole_entries(lines)
     headed = sum(
         1
         for title, _ in whole
