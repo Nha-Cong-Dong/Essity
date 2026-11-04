@@ -28,34 +28,29 @@ async function Syllabus({ params }: { params: Promise<{ id: string }> }) {
   }
   if (outline === null) {
     return (
-      <PageColumn width="wide">
-        <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
-          <p className="m-0 font-semibold">Không tải được đề cương.</p>
-          <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
-          <a href={`/subjects/${subject.id}/syllabus`} className="mt-3 inline-flex min-h-11 items-center font-semibold underline">
-            Thử lại
-          </a>
-        </div>
-      </PageColumn>
+      <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
+        <p className="m-0 font-semibold">Không tải được đề cương.</p>
+        <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
+        <a href={`/subjects/${subject.id}/syllabus`} className="mt-3 inline-flex min-h-11 items-center font-semibold underline">
+          Thử lại
+        </a>
+      </div>
     );
   }
-  return (
-    <PageColumn width="wide">
-      <SyllabusLive subjectId={subject.id} subjectName={subject.name} initial={outline} />
-    </PageColumn>
-  );
+  return <SyllabusLive subjectId={subject.id} subjectName={subject.name} initial={outline} />;
 }
 
 export default function SyllabusPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start">
-        <Suspense fallback={<PageColumn width="wide" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
+      {/* UI-A: one centred ~960 column (the list screens' width); the chat box sits under the outline. */}
+      <PageColumn width="wide" className="flex min-w-0 flex-col gap-8">
+        <Suspense fallback={<div aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
           <Syllabus params={params} />
         </Suspense>
         <aside
           aria-label="Chỉnh đề cương bằng lời"
-          className="flex min-w-0 flex-col gap-2 rounded-sheet border border-line bg-sheet p-5 has-[[data-command-slot-bottom]:empty]:hidden lg:sticky lg:top-6"
+          className="flex min-w-0 flex-col gap-2 rounded-sheet border border-line bg-sheet p-5 has-[[data-command-slot-bottom]:empty]:hidden"
         >
           <h2 className="m-0 text-body font-semibold">Chưa hài lòng với cách chia đề cương?</h2>
           <p className="m-0 text-meta text-ink-soft">
@@ -63,7 +58,7 @@ export default function SyllabusPage({ params }: { params: Promise<{ id: string 
           </p>
           <div data-command-slot-bottom className="empty:hidden" />
         </aside>
-      </div>
+      </PageColumn>
     </AppShell>
   );
 }
