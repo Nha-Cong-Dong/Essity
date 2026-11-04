@@ -250,3 +250,14 @@ def test_ready_question_has_unlock_date_and_is_due_today_v19_v20(bench: Bench) -
     assert rows[str(ready.id)]["unlocked_at"] is not None and rows[str(ready.id)]["due"] is True
     assert rows[str(waiting.id)]["unlocked_at"] is None and rows[str(waiting.id)]["due"] is False
     assert body["due_today"] == 1
+
+
+def test_waiting_line_uses_the_number_printed_in_the_title(bench: Bench) -> None:
+    # QA 05/11. Red when: the line counts an excluded front matter as chapter 1 ("mục 2.1.1" for
+    # the learner's "1.1.1"), so it names a section the Đề cương does not show.
+    bench.section("Phần đầu sách", excluded=True)
+    head = bench.section("Chương 1. Biến cố", studied=True)
+    leaf = bench.section("1.1.1. Quy tắc cộng", studied=False, parent_id=head.id)
+    bench.card(head)
+    q = bench.question(leaf)
+    assert bench.by_id()[str(q.id)]["line"] == "Chờ học: mục 1.1.1"

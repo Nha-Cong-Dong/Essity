@@ -28,6 +28,7 @@ from core_api.domain.readiness import (
     Section,
     Waiting,
     outline_numbers,
+    printed_number,
     readiness,
 )
 from core_api.repositories.base import UserScopedRepository
@@ -84,7 +85,7 @@ class QuestionListRepository(UserScopedRepository[Question]):
         return {
             r.id: Section(
                 r.id,
-                numbers[r.id],
+                printed_number(r.title) or numbers[r.id],
                 r.weight > 0 and r.studied_weight >= r.weight,
                 excluded(r),
             )

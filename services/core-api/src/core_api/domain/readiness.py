@@ -60,6 +60,17 @@ UNLINKED_LINE = "Chưa gắn mục. Sửa bằng thanh lệnh."
 READY_LINE = "Sẵn sàng"
 
 
+_PRINTED = re.compile(r"^\s*(\d+(?:\.\d+)*)\.?(?:\s|$)")
+
+
+def printed_number(title: str) -> str | None:
+    """The number a section's title starts with ("1.4.1. Định lý" -> "1.4.1"), as the Đề cương
+    shows it; none when the title has no number (the place in the tree is used then). The tree
+    place counts an excluded front matter as chapter 1, so it is not what the learner sees."""
+    found = _PRINTED.match(title)
+    return found.group(1) if found else None
+
+
 def _natural_key(label: str) -> list[tuple[int, int, str]]:
     parts = re.split(r"(\d+)", label.strip())
     return [(0, int(p), "") if p.isdigit() else (1, 0, p.casefold()) for p in parts if p]
