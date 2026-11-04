@@ -1,126 +1,6 @@
 {
   "components": {
     "schemas": {
-      "AddIn": {
-        "additionalProperties": false,
-        "properties": {
-          "content": {
-            "maxLength": 4000,
-            "minLength": 1,
-            "title": "Content",
-            "type": "string"
-          },
-          "kind": {
-            "enum": [
-              "concept",
-              "mechanism",
-              "comparison",
-              "formula",
-              "example"
-            ],
-            "title": "Kind",
-            "type": "string"
-          },
-          "section_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Section Id"
-          },
-          "title": {
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "content",
-          "kind"
-        ],
-        "title": "AddIn",
-        "type": "object"
-      },
-      "AnchorOut": {
-        "properties": {
-          "document_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Document Id"
-          },
-          "end": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "End"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "page_no": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Page No"
-          },
-          "quote_text": {
-            "title": "Quote Text",
-            "type": "string"
-          },
-          "source": {
-            "title": "Source",
-            "type": "string"
-          },
-          "start": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start"
-          }
-        },
-        "required": [
-          "id",
-          "source",
-          "document_id",
-          "page_no",
-          "start",
-          "end",
-          "quote_text"
-        ],
-        "title": "AnchorOut",
-        "type": "object"
-      },
       "AnswerIn": {
         "additionalProperties": false,
         "properties": {
@@ -998,83 +878,18 @@
         "title": "DraftIn",
         "type": "object"
       },
-      "DraftsOut": {
+      "DraftOut": {
         "properties": {
-          "drafts": {
-            "items": {
-              "$ref": "#/components/schemas/core_api__api__drafts__DraftOut"
-            },
-            "title": "Drafts",
-            "type": "array"
-          },
-          "submission_status": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Submission Status"
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
           }
         },
         "required": [
-          "drafts",
-          "submission_status"
+          "session_id"
         ],
-        "title": "DraftsOut",
-        "type": "object"
-      },
-      "EditIn": {
-        "additionalProperties": false,
-        "properties": {
-          "content": {
-            "anyOf": [
-              {
-                "maxLength": 4000,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Content"
-          },
-          "kind": {
-            "anyOf": [
-              {
-                "enum": [
-                  "concept",
-                  "mechanism",
-                  "comparison",
-                  "formula",
-                  "example"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kind"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          }
-        },
-        "title": "EditIn",
+        "title": "DraftOut",
         "type": "object"
       },
       "EmailBody": {
@@ -1873,26 +1688,6 @@
         "title": "MentionOut",
         "type": "object"
       },
-      "MergeIn": {
-        "additionalProperties": false,
-        "properties": {
-          "unit_ids": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "maxItems": 50,
-            "minItems": 2,
-            "title": "Unit Ids",
-            "type": "array"
-          }
-        },
-        "required": [
-          "unit_ids"
-        ],
-        "title": "MergeIn",
-        "type": "object"
-      },
       "NamedOut": {
         "properties": {
           "id": {
@@ -2337,39 +2132,6 @@
           "text"
         ],
         "title": "PaceOut",
-        "type": "object"
-      },
-      "PartIn": {
-        "additionalProperties": false,
-        "properties": {
-          "anchor_ids": {
-            "default": [],
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "maxItems": 50,
-            "title": "Anchor Ids",
-            "type": "array"
-          },
-          "content": {
-            "maxLength": 4000,
-            "minLength": 1,
-            "title": "Content",
-            "type": "string"
-          },
-          "title": {
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "content"
-        ],
-        "title": "PartIn",
         "type": "object"
       },
       "PieceIn": {
@@ -3434,89 +3196,6 @@
         "title": "ReviewOut",
         "type": "object"
       },
-      "RevisionOut": {
-        "properties": {
-          "content": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Content",
-            "type": "object"
-          },
-          "origin": {
-            "title": "Origin",
-            "type": "string"
-          },
-          "rev": {
-            "title": "Rev",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "rev",
-          "origin",
-          "content"
-        ],
-        "title": "RevisionOut",
-        "type": "object"
-      },
-      "SaveIn": {
-        "additionalProperties": false,
-        "properties": {
-          "units": {
-            "items": {
-              "$ref": "#/components/schemas/SaveItemIn"
-            },
-            "maxItems": 200,
-            "minItems": 1,
-            "title": "Units",
-            "type": "array"
-          }
-        },
-        "required": [
-          "units"
-        ],
-        "title": "SaveIn",
-        "type": "object"
-      },
-      "SaveItemIn": {
-        "additionalProperties": false,
-        "properties": {
-          "unit_id": {
-            "format": "uuid",
-            "title": "Unit Id",
-            "type": "string"
-          },
-          "version": {
-            "minimum": 1.0,
-            "title": "Version",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "unit_id",
-          "version"
-        ],
-        "title": "SaveItemIn",
-        "type": "object"
-      },
-      "SaveOut": {
-        "properties": {
-          "saved": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "title": "Saved",
-            "type": "array"
-          }
-        },
-        "required": [
-          "saved"
-        ],
-        "title": "SaveOut",
-        "type": "object"
-      },
       "SectionGroupOut": {
         "properties": {
           "section_id": {
@@ -3865,6 +3544,55 @@
         "title": "SessionCard",
         "type": "object"
       },
+      "SessionResultOut": {
+        "description": "Where a handed-in session stands: the screen polls it until `submission_status` is done or\nfailed. `notice` says why a done session has no card (a closed list).",
+        "properties": {
+          "cards": {
+            "title": "Cards",
+            "type": "integer"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "submission_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Status"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "submission_status",
+          "title",
+          "cards",
+          "notice"
+        ],
+        "title": "SessionResultOut",
+        "type": "object"
+      },
       "SkipIn": {
         "additionalProperties": false,
         "properties": {
@@ -4078,25 +3806,6 @@
           "highlight"
         ],
         "title": "SourceOut",
-        "type": "object"
-      },
-      "SplitIn": {
-        "additionalProperties": false,
-        "properties": {
-          "parts": {
-            "items": {
-              "$ref": "#/components/schemas/PartIn"
-            },
-            "maxItems": 10,
-            "minItems": 2,
-            "title": "Parts",
-            "type": "array"
-          }
-        },
-        "required": [
-          "parts"
-        ],
-        "title": "SplitIn",
         "type": "object"
       },
       "StartIn": {
@@ -5492,83 +5201,6 @@
         "title": "WaitingSectionOut",
         "type": "object"
       },
-      "core_api__api__drafts__DraftOut": {
-        "properties": {
-          "anchors": {
-            "items": {
-              "$ref": "#/components/schemas/AnchorOut"
-            },
-            "title": "Anchors",
-            "type": "array"
-          },
-          "content": {
-            "title": "Content",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "kind": {
-            "title": "Kind",
-            "type": "string"
-          },
-          "revisions": {
-            "items": {
-              "$ref": "#/components/schemas/RevisionOut"
-            },
-            "title": "Revisions",
-            "type": "array"
-          },
-          "section_ids": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "title": "Section Ids",
-            "type": "array"
-          },
-          "session_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Session Id"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "version": {
-            "title": "Version",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "session_id",
-          "title",
-          "content",
-          "kind",
-          "status",
-          "version",
-          "section_ids",
-          "anchors",
-          "revisions"
-        ],
-        "title": "DraftOut",
-        "type": "object"
-      },
       "core_api__api__review_sessions__SessionOut": {
         "properties": {
           "answered": {
@@ -5651,20 +5283,6 @@
           "notes"
         ],
         "title": "SessionOut",
-        "type": "object"
-      },
-      "core_api__api__submissions__DraftOut": {
-        "properties": {
-          "session_id": {
-            "format": "uuid",
-            "title": "Session Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "session_id"
-        ],
-        "title": "DraftOut",
         "type": "object"
       },
       "core_api__api__today__SessionOut": {
@@ -6509,254 +6127,6 @@
         "summary": "Read Toc"
       }
     },
-    "/v1/drafts/{unit_id}": {
-      "delete": {
-        "operationId": "discard_draft_v1_drafts__unit_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "unit_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Unit Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/core_api__api__drafts__DraftOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Discard Draft"
-      },
-      "get": {
-        "operationId": "get_draft_v1_drafts__unit_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "unit_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Unit Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/core_api__api__drafts__DraftOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Draft"
-      },
-      "patch": {
-        "operationId": "edit_draft_v1_drafts__unit_id__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "unit_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Unit Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "if-match",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "If-Match"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EditIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/core_api__api__drafts__DraftOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Edit Draft"
-      }
-    },
-    "/v1/drafts/{unit_id}/split": {
-      "post": {
-        "operationId": "split_draft_v1_drafts__unit_id__split_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "unit_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Unit Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "if-match",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "If-Match"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SplitIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DraftsOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Split Draft"
-      }
-    },
-    "/v1/drafts/{unit_id}/undo": {
-      "post": {
-        "operationId": "undo_discard_v1_drafts__unit_id__undo_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "unit_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Unit Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/core_api__api__drafts__DraftOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Undo Discard"
-      }
-    },
     "/v1/export.csv": {
       "get": {
         "operationId": "export_csv_v1_export_csv_get",
@@ -7556,194 +6926,6 @@
           }
         },
         "summary": "Confirm Session"
-      }
-    },
-    "/v1/sessions/{session_id}/drafts": {
-      "get": {
-        "operationId": "list_drafts_v1_sessions__session_id__drafts_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "session_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Session Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DraftsOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Drafts"
-      },
-      "post": {
-        "operationId": "add_draft_v1_sessions__session_id__drafts_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "session_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Session Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/core_api__api__drafts__DraftOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Add Draft"
-      }
-    },
-    "/v1/sessions/{session_id}/drafts/merge": {
-      "post": {
-        "operationId": "merge_drafts_v1_sessions__session_id__drafts_merge_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "session_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Session Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MergeIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/core_api__api__drafts__DraftOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Merge Drafts"
-      }
-    },
-    "/v1/sessions/{session_id}/drafts/save": {
-      "post": {
-        "operationId": "save_drafts_v1_sessions__session_id__drafts_save_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "session_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Session Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SaveIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SaveOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Save Drafts"
       }
     },
     "/v1/sessions/{session_id}/notes/upload-url": {
@@ -8739,7 +7921,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/core_api__api__submissions__DraftOut"
+                  "$ref": "#/components/schemas/DraftOut"
                 }
               }
             },
@@ -9274,6 +8456,46 @@
           }
         },
         "summary": "Vault Cards"
+      }
+    },
+    "/v1/vault/sessions/{session_id}/result": {
+      "get": {
+        "operationId": "session_result_v1_vault_sessions__session_id__result_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResultOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Session Result"
       }
     },
     "/v1/vault/subjects": {
