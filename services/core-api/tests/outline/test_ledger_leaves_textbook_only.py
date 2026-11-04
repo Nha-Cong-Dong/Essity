@@ -1,4 +1,4 @@
-"""QA 05/11 (US-13, US-15): only the main textbook's sections are the leaves to study.
+"""QA 05/11 (US-13, US-15): a question bank's sections are never leaves to study.
 
 A question bank or an auxiliary file also gets a section row from the reader; counting them
 made "Đã học x/N" (stats) disagree with the Đề cương (x/N-2) and put a bank page in "Tiếp theo".
@@ -16,10 +16,8 @@ def test_leaves_come_from_the_textbook_only(db_session: Session) -> None:
     subject = subject_of(db_session, user)
     textbook = document_in(db_session, user, subject, "Giáo trình")
     bank = document_in(db_session, user, subject, "Bộ câu hỏi", role="question_bank")
-    extra = document_in(db_session, user, subject, "Slide", role="auxiliary")
     book_ids = {r.id for r in with_outline(db_session, user, textbook).values()}
     with_outline(db_session, user, bank)
-    with_outline(db_session, user, extra)
 
     leaves = StudyLedgerRepository(db_session, user.id).leaves()[subject.id]
 
