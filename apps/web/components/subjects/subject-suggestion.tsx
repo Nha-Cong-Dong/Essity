@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { StartButton } from "@/components/today/start-button";
 import { Button } from "@/components/ui/button";
+import { MarginRule } from "@/components/motifs";
 import { Sheet } from "@/components/ui/sheet";
 import { studyHref } from "@/lib/session-study/entry";
 import { type Pace, TODAY_V2_COPY as COPY } from "@/lib/today-v2";
@@ -101,7 +102,8 @@ export function SubjectSuggestion({
   const showExtras = shown.kind !== "reading";
   const learnedOut = shown.kind === "finished" || shown.kind === "exam_over";
   return (
-    <Sheet variant="tile" className="flex min-w-0 flex-col gap-3" aria-labelledby={headingId} aria-busy={busy}>
+    <Sheet variant="tile" className="relative flex min-w-0 flex-col gap-3 overflow-hidden pl-12" aria-labelledby={headingId} aria-busy={busy}>
+      <MarginRule />
       {computed && (
         <div ref={result} tabIndex={-1} aria-live="polite" className="flex flex-col gap-3 outline-none">
           <Suggested

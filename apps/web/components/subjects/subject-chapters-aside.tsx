@@ -15,9 +15,9 @@ function Row({ node, depth }: { node: SyllabusNode; depth: number }) {
         <span
           aria-hidden="true"
           data-ticked={ticked ? "true" : "false"}
-          className={`mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-control border border-line text-meta leading-none ${ticked ? "bg-ink text-paper" : ""}`}
+          className={`mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-control ${ticked ? "bg-hong text-on-hong" : "bg-rose-100"}`}
         >
-          {ticked ? "✓" : ""}
+          {ticked ? <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 6.5l2.5 2.5L10 3.5" /></svg> : null}
         </span>
         <span>
           {node.title}
@@ -41,7 +41,7 @@ function isTicked(n: SyllabusNode): boolean {
 
 export function SubjectOutlineAside({ nodes, subjectId }: { nodes: SyllabusNode[]; subjectId: string }) {
   return (
-    <aside aria-label="Đề cương" className="flex min-w-0 flex-col gap-3 rounded-sheet bg-sunken p-4 lg:max-h-[80vh] lg:overflow-y-auto">
+    <aside aria-label="Đề cương" className="flex min-w-0 flex-col gap-3 rounded-tile bg-sheet p-6 shadow-sheet lg:max-h-[80vh] lg:overflow-y-auto">
       <h2 className="m-0 font-display text-lead">Đề cương</h2>
       <ul className="m-0 flex list-none flex-col p-0">
         {nodes.map((n) => (
