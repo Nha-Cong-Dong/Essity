@@ -144,7 +144,9 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
   if (fixture.status === "loading") {
     return (
       <>
-        <h1 className="m-0 text-title">Đồ thị</h1>
+        <h1 className="m-0 text-title">
+        <span className="hl-word">Đồ thị</span>
+      </h1>
         <Skeleton />
       </>
     );
@@ -152,7 +154,9 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
   if (fixture.status === "error" || !data || !view || !everyKind) {
     return (
       <>
-        <h1 className="m-0 text-title">Đồ thị</h1>
+        <h1 className="m-0 text-title">
+        <span className="hl-word">Đồ thị</span>
+      </h1>
         <div role="alert" className="mt-8 flex flex-col items-start gap-4">
           <p className="m-0 text-read">{COPY.error}</p>
           <Button type="button" onClick={() => setRetried(true)}>
@@ -176,7 +180,9 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
       <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta underline">
         Về môn {subjectName}
       </a>
-      <h1 className="m-0 text-title">Đồ thị</h1>
+      <h1 className="m-0 text-title">
+        <span className="hl-word">Đồ thị</span>
+      </h1>
 
       <div className="mt-4 flex flex-col gap-3 min-[768px]:flex-row min-[768px]:items-end">
         <div className="flex min-w-0 flex-1 flex-col gap-1 min-[768px]:max-w-sm">
@@ -234,7 +240,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
         <div className="flex min-w-0 flex-col gap-3" ref={frame}>
           {view.hidden > 0 && <Notice>{COPY.truncated}</Notice>}
           {noLinks ? (
-            <div className="rounded-tile border border-line bg-sheet p-6" data-empty>
+            <div className="rounded-tile bg-hong-tint p-6" data-empty>
               <p className="m-0 text-read">{COPY.empty}</p>
               {view.cards.length === 0 && live && (
                 <a
