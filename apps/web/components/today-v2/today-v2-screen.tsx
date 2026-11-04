@@ -108,7 +108,7 @@ export function ReviewTile({
 }) {
   if (review.state === "none") {
     return (
-      <section className={`${SHEET} items-start`} aria-labelledby="today-review">
+      <section className={`${SHEET} items-start`} data-surface="hong" aria-labelledby="today-review">
         <h2 id="today-review" className="sr-only">
           {COPY.review}
         </h2>
@@ -119,7 +119,7 @@ export function ReviewTile({
     );
   }
   return (
-    <section className={SHEET} aria-labelledby="today-review">
+    <section className={SHEET} data-surface="hong" aria-labelledby="today-review">
       <div className="flex items-start justify-between gap-4">
         <p className="m-0 flex items-baseline gap-3">
           <span className="font-display text-display tabular-nums">{review.count}</span>

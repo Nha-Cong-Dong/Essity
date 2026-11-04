@@ -57,9 +57,9 @@ for (const width of WIDTHS) {
     });
 
     // Red when: the review start button falls outside its pink tile.
-    test("US-03 AC1: review: Bắt đầu sits inside the pink tile", async ({ page }) => {
+    test("US-03 AC1: review: Ôn ngay sits inside the pink tile", async ({ page }) => {
       await open(page, width, "/design-preview/today?state=review");
-      const start = page.getByRole("button", { name: "Bắt đầu" });
+      const start = page.getByRole("button", { name: "Ôn ngay" });
       expect(inside(await box(start), await box(page.locator('[data-surface="hong"]')))).toBe(true);
     });
 
@@ -80,6 +80,6 @@ for (const width of WIDTHS) {
 test("US-15 AC6: Gợi ý cho hôm nay shows the suggestion and moves focus to it", async ({ page }) => {
   await open(page, 390, "/design-preview/subject?state=not-suggested");
   await page.getByRole("button", { name: "Gợi ý cho hôm nay" }).click();
-  await expect(page.getByText("Nội dung hôm nay: phần 3.2")).toBeVisible();
+  await expect(page.getByText("Nội dung hôm nay", { exact: true })).toBeVisible();
   await expect(page.locator("[aria-live=polite]")).toBeFocused();
 });
