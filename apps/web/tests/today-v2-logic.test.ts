@@ -11,7 +11,7 @@ describe("paceLine", () => {
     expect(paceLine({ sections_left: 3, pages_left: 20, days_left: 1 })).toBe("còn 3 chương, 1 ngày");
     expect(paceLine({ sections_left: 3, pages_left: 20, days_left: 0 })).toBe("còn 3 chương, thi hôm nay");
     expect(paceLine({ sections_left: 3, pages_left: 20, days_left: null })).toBe("còn 3 chương");
-    expect(paceLine({ sections_left: 3, pages_left: null, days_left: 5 })).toBe("còn 3 mục, 5 ngày");
+    expect(paceLine({ sections_left: 3, pages_left: null, days_left: 5 })).toBe("còn 3 chương, 5 ngày");
   });
   // US-15 AC5. Red when: a pace line uses a banned word.
   it("never uses a banned word", () => {
