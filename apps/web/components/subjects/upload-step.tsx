@@ -1,5 +1,6 @@
 "use client";
 
+import { NoteSticker } from "@/components/motifs";
 import { useCallback, useState } from "react";
 
 import { AUTH_LINK } from "@/components/auth/fields";
@@ -52,7 +53,8 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
         Môn học
       </a>
       <StepIndicator current={2} />
-      <Sheet className="p-5 sm:p-8">
+      <Sheet className="relative p-5 sm:p-8">
+        <NoteSticker>PDF</NoteSticker>
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-2">
             <h1 id="upload-title" className="m-0 font-display text-title wrap-anywhere">

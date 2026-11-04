@@ -5,6 +5,7 @@ import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 
 import { EmptyState } from "@/components/empty-state";
 import { FieldError } from "@/components/field-error";
 import { checkSubject, refusalErrors, type SubjectErrors, SubjectFields } from "@/components/subjects/subject-fields";
+import { SubjectMark } from "@/components/subject-mark";
 import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 import { Button } from "@/components/ui/button";
 import { daysLeftText, formatExamDate } from "@/lib/exam-date";
@@ -167,15 +168,12 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
   }
 
   return (
-    <li className="flex flex-col gap-4 border-b border-line py-5 last:border-b-0">
+    <li className="flex min-w-0 flex-col gap-4 rounded-tile bg-sheet p-5 shadow-sheet">
       {/* Below sm a grid (T2.3c, R44, plan G3): the cover spans both lines, the name wraps
           anywhere beside it with "Sửa" on its first line, the date line starts under the name.
           From sm, DESIGN.md §6.8's single line. */}
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6">
-        <span
-          aria-hidden="true"
-          className="row-span-2 h-14 w-11 shrink-0 self-start rounded-slip bg-(color:--rose-200) shadow-sheet sm:self-auto"
-        />
+        <SubjectMark name={subject.name} className="row-span-2 self-start sm:self-auto" />
         <a
           id={ids.name}
           href={`/subjects/${subject.id}`}
@@ -282,7 +280,7 @@ function DeletedRow() {
   const ref = useRef<HTMLParagraphElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
-    <li className="border-b border-line py-5 last:border-b-0">
+    <li className="rounded-tile bg-rose-100 p-5">
       <p ref={ref} tabIndex={-1} className="m-0 text-small text-ink-soft">
         Đã xóa môn.
       </p>
@@ -349,7 +347,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
           />
         </>
       ) : (
-        <ul className="m-0 flex list-none flex-col p-0">
+        <ul className="m-0 grid list-none items-start gap-6 p-0 min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3">
           {rows.map((subject) =>
             subject.id === deletedId ? (
               <DeletedRow key={subject.id} />
@@ -364,6 +362,14 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
             ),
           )}
         </ul>
+      )}
+      {remaining.length > 0 && (
+        <a
+          href="/subjects/new"
+          className="mt-6 flex min-h-20 items-center justify-center rounded-tile border-2 border-dashed border-rose-300 bg-rose-50 p-5 text-read font-semibold text-ink no-underline hover:bg-rose-100"
+        >
+          + Thêm môn
+        </a>
       )}
     </SubjectsFrame>
   );

@@ -1,4 +1,6 @@
 import { Marker } from "@/components/notebook";
+import { MarginRule, NoteSticker, Watermark } from "@/components/motifs";
+import { WeekStrip, type WeekCell } from "@/components/today-v2/week-strip";
 import { LearnActions } from "@/components/today-v2/learn-actions";
 import { Mascot } from "@/components/mascot";
 import { NextStudyCard } from "@/components/today-v2/next-study-card";
@@ -21,8 +23,8 @@ import {
 // Order: Việc dở, Ôn hôm nay, Học gì tiếp, Luyện tập. Exactly one primary button per state.
 
 const FULL = "max-sm:w-full";
-// Phase B: a quiet card with the landing's thin pink top edge (a border, so no shadow).
-const EDGE = "min-w-0 border border-line border-t-4 border-t-hong shadow-none hover:shadow-none";
+// V21: a white card with the pink shadow only (UI-1b: a border or a shadow, not both).
+const EDGE = "min-w-0";
 
 function Heading({ day }: { day: string }) {
   return (
@@ -161,6 +163,7 @@ export function ReviewTile({
         className="relative flex min-w-0 flex-col gap-3 self-start min-[901px]:col-span-7"
         aria-labelledby="today-review"
       >
+        <NoteSticker>hôm nay</NoteSticker>
         <Mascot pose="vui" className="absolute top-6 right-6 max-sm:size-20" />
         {body}
       </Sheet>
@@ -183,7 +186,8 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
   const { items, empty_reason } = today.learn;
   const first = items.findIndex((item) => item.state === "next");
   return (
-    <Sheet variant="tile" className={`${EDGE} min-[901px]:col-span-5`} aria-labelledby="today-learn">
+    <Sheet variant="tile" className={`${EDGE} relative pl-11 min-[901px]:col-span-5 min-[901px]:pl-14`} aria-labelledby="today-learn">
+      <MarginRule />
       <h2 id="today-learn" className="m-0 font-display text-lead">
         {COPY.learn}
       </h2>
@@ -248,7 +252,15 @@ function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2[
 }
 
 /** `preview`: the design-preview routes draw the screen but its buttons never call the API. */
-export function TodayV2Screen({ today, preview = false }: { today: TodayV2; preview?: boolean }) {
+export function TodayV2Screen({
+  today,
+  preview = false,
+  week,
+}: {
+  today: TodayV2;
+  preview?: boolean;
+  week?: WeekCell[];
+}) {
   if (today.subject_count === 0) {
     return (
       <>
@@ -270,11 +282,13 @@ export function TodayV2Screen({ today, preview = false }: { today: TodayV2; prev
   return (
     <>
       <Heading day={today.learning_day} />
-      <div data-reveal className="grid gap-8 min-[901px]:grid-cols-12">
+      <div data-reveal className="relative grid gap-8 min-[901px]:grid-cols-12">
+        <Watermark />
         {today.unfinished.length > 0 && <ResumeStrip items={today.unfinished} />}
         <ReviewTile review={today.review} primary={primary === "review"} preview={preview} />
         <LearnSection today={today} primary={primary === "learn"} />
         {today.practice && <PracticeSection practice={today.practice} primary={primary === "practice"} />}
+        {week && <WeekStrip cells={week} today={today.learning_day} className="min-[901px]:col-span-12" />}
       </div>
     </>
   );
