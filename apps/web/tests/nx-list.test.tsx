@@ -59,7 +59,7 @@ describe("ScreenHeader", () => {
   it("draws one h1, with the highlighter under the phrase only", () => {
     const out = html(h(ScreenHeader, { title: "Hôm nay bạn học gì", highlight: "học gì" }));
     expect(out.match(/<h1/g)).toHaveLength(1);
-    expect(out.match(/hl-word/g)).toHaveLength(1);
+    expect(out.match(/class="hl-word"/g)).toHaveLength(1);
     expect(out).toMatch(/<span[^>]*class="hl-word"[^>]*>học gì<\/span>/);
   });
 
