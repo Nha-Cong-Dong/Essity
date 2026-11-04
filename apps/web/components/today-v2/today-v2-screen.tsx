@@ -1,5 +1,4 @@
 import { Marker } from "@/components/notebook";
-import { Sticker } from "@/components/motifs";
 import { LearnActions } from "@/components/today-v2/learn-actions";
 import { Mascot } from "@/components/mascot";
 import { NextStudyCard } from "@/components/today-v2/next-study-card";
@@ -133,10 +132,8 @@ export function ReviewTile({
         <span className="font-display text-display tabular-nums">{review.count}</span>
         <span className="text-lead">{COPY.questions}</span>
       </p>
-      {/* A subject name may be one long word: it wraps, never widens the page. */}
-      <p className="m-0 text-read wrap-anywhere">
-        khoảng {review.minutes} phút · {review.subjects.join(", ")}
-      </p>
+      {/* V5: the total only, no subject names. */}
+      <p className="m-0 text-read">khoảng {review.minutes} phút</p>
       {review.note && (
         <p className="m-0 text-small wrap-anywhere">
           {review.note}
@@ -164,7 +161,7 @@ export function ReviewTile({
         className="relative flex min-w-0 flex-col gap-3 self-start min-[901px]:col-span-7"
         aria-labelledby="today-review"
       >
-        <Sticker icon="moon" className="top-7 right-8" />
+        <Mascot pose="vui" className="absolute top-6 right-6 max-sm:size-20" />
         {body}
       </Sheet>
     );
@@ -173,9 +170,10 @@ export function ReviewTile({
     <Sheet
       variant="tile"
       tone="rose"
-      className="flex min-w-0 flex-col gap-3 self-start min-[901px]:col-span-7"
+      className="relative flex min-w-0 flex-col gap-3 self-start min-[901px]:col-span-7"
       aria-labelledby="today-review"
     >
+      <Mascot pose="vui" className="absolute top-6 right-6 max-sm:size-20" />
       {body}
     </Sheet>
   );

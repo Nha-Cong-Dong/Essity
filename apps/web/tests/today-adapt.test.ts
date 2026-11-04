@@ -110,6 +110,13 @@ describe("toTodayV2", () => {
     });
   });
 
+  // Red when: the card cannot say which chapter the section is in (V8, 04/11).
+  it("V8: the section carries its chapter from the planned units", () => {
+    const units = [{ section_id: SID, title: "3.2 TCP flow control", chapter_title: "Chương 3. Tầng giao vận" }];
+    const out = toTodayV2(base({ next_study: { items: [next({ units })], empty_reason: null, links: [] } }));
+    expect(out.learn.items[0]).toMatchObject({ section: { chapter: "Chương 3. Tầng giao vận" } });
+  });
+
   // Red when: free_session / review_practice are drawn as a section to study.
   it("US-15 AC7: free_session is no textbook, review_practice is finished", () => {
     const out = toTodayV2(

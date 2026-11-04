@@ -47,7 +47,9 @@ function learnItem(s: SuggestionApi): LearnItem {
   if (s.kind === "free_session") return { subject, state: "no_textbook" };
   if (s.kind === "review_practice") return { subject, state: "finished" };
   const { label, title } = splitTitle(s.section_title);
-  return { subject, state: "next", section: { label, title, pages: null, id: s.section_id }, reason: s.reason, pace: paceOf(s) };
+  // V8: the chapter the section sits in, from today's planned leaves.
+  const chapter = s.units?.find((u) => u.section_id === s.section_id)?.chapter_title ?? null;
+  return { subject, state: "next", section: { label, title, pages: null, id: s.section_id, chapter }, reason: s.reason, pace: paceOf(s) };
 }
 
 export function toTodayV2(today: TodayApi): TodayV2 {

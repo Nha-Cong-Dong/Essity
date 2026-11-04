@@ -17,7 +17,7 @@ export type LearnItem =
   | {
       subject: NamedSubject;
       state: "next";
-      section: { label: string; title: string; pages: string | null; id?: string | null };
+      section: { label: string; title: string; pages: string | null; id?: string | null; chapter?: string | null };
       reason: string;
       pace: Pace;
     }
@@ -78,11 +78,11 @@ export const TODAY_V2_COPY = {
   unfinished: "Việc dở",
   resume: "Tiếp tục",
   review: "Ôn hôm nay",
-  questions: "câu",
+  questions: "thẻ",
   start: "Bắt đầu",
   inProgressHint: "Phiên ôn đang dở nằm ở mục Việc dở.",
   nothingDue: "Tuyệt vời, không có nội dung nào cần ôn tập hôm nay",
-  learn: "Học gì tiếp",
+  learn: "Học gì tiếp theo?",
   enter: "Vào buổi học",
   seeAll: "Xem tất cả",
   studyNow: "Học môn này ngay",
