@@ -5,7 +5,7 @@ import { defineConfig } from "@playwright/test";
 // ADR-0025: layout tests on the production build (standalone server), against
 // /design-preview/subjects. Run `pnpm build` and `node scripts/prepare-standalone.mjs` first;
 // a server already listening is never reused, so a dev server or an old build cannot answer.
-const PORT = 3100;
+const PORT = Number(process.env.E2E_PORT ?? 3100);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({

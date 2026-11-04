@@ -557,7 +557,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
             data-row
             style={{ ["--lvl" as string]: level - 1 }}
             onClick={() => (branch ? fold(node.id, !isOpen) : openPanel(node.id))}
-            className={`${INDENT_M} mb-1.5 flex min-h-12 cursor-pointer items-start gap-2 max-sm:gap-1 rounded-row bg-bg px-3 max-sm:px-2 py-2.5 sm:min-h-11.5 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus ${isNext ? `${NX_CAM.row} font-semibold` : ""}`}
+            className={`${INDENT_M} mb-1.5 flex min-h-12 cursor-pointer items-start gap-2 max-sm:gap-1 rounded-row bg-bg px-3 max-sm:px-2 py-2 sm:min-h-11.5 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus ${isNext ? `${NX_CAM.row} font-semibold` : ""}`}
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center">
               {branch && (
