@@ -86,7 +86,7 @@ function Row({
             {q.line}
           </a>
         )}
-        {q.status === "unlinked" && <span className="text-meta text-ink-soft">Chưa gắn mục</span>}
+        {q.status === "unlinked" && <span className="text-meta text-ink-soft">Chưa gắn phần</span>}
         {q.number !== null && <span className="text-meta text-ink-soft">Câu {q.number}</span>}
       </div>
       <p id={`sum-${q.id}`} data-user className="m-0 line-clamp-3 wrap-anywhere">
@@ -242,7 +242,7 @@ export function PracticeLive({
           {unlinked.length > 0 && (
             <section aria-labelledby="unlinked" className="mt-8">
               <h2 id="unlinked" className="m-0 text-read font-semibold">
-                Chưa gắn mục
+                Chưa gắn phần
               </h2>
               <p className="m-0 mt-1 text-meta text-ink-soft">Sửa bằng thanh lệnh.</p>
               {rows(unlinked, null)}

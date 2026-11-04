@@ -16,12 +16,12 @@ function reply(body: unknown, ok = true) {
 
 // Red when: the reply is not shown, or an applied change does not tell the screen to read again.
 it("shows the reply and refreshes after an applied change", async () => {
-  reply({ status: "applied", reply: "Đã gộp 2 mục thành “1.2”." });
+  reply({ status: "applied", reply: "Đã gộp 2 phần thành “1.2”." });
   const changed = vi.fn();
   render(<OutlineChat subjectId="9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b" onChanged={changed} />);
-  fireEvent.change(screen.getByLabelText(/Nói điều bạn muốn sửa/), { target: { value: "gộp mục 1.2 với 1.3" } });
+  fireEvent.change(screen.getByLabelText(/Nói điều bạn muốn sửa/), { target: { value: "gộp phần 1.2 với 1.3" } });
   fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
-  await waitFor(() => expect(screen.getByText(/Đã gộp 2 mục/)).toBeTruthy());
+  await waitFor(() => expect(screen.getByText(/Đã gộp 2 phần/)).toBeTruthy());
   expect(changed).toHaveBeenCalledTimes(1);
 });
 

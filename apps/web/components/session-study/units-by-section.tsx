@@ -20,17 +20,17 @@ export function UnitsBySection({ subjectId, fetchFn }: { subjectId: string; fetc
   }, [subjectId, fetchFn]);
 
   if (groups === undefined) return null;
-  if (groups === null) return <p className="m-0 text-meta text-ink-soft">Chưa tải được danh sách thẻ theo mục.</p>;
+  if (groups === null) return <p className="m-0 text-meta text-ink-soft">Chưa tải được danh sách thẻ theo phần.</p>;
   if (groups.length === 0) return null;
   return (
     <section aria-labelledby="by-section-h" className="flex flex-col gap-4 border-t border-line pt-6">
       <h2 id="by-section-h" className="m-0 font-display text-lead">
-        Thẻ theo mục
+        Thẻ theo phần
       </h2>
       {groups.map((group) => (
         <div key={group.section_id ?? "none"} className="flex flex-col gap-2">
           <h3 className="m-0 break-words text-body font-medium">
-            {group.section_title ?? "Chưa gắn mục"} <span className="text-ink-soft">({group.units.length})</span>
+            {group.section_title ?? "Chưa gắn phần"} <span className="text-ink-soft">({group.units.length})</span>
           </h3>
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             {group.units.map((card) => (

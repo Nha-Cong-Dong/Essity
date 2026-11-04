@@ -18,7 +18,7 @@ function Row({ q, subjectId }: { q: QuestionRow; subjectId: string }) {
             {q.line}
           </a>
         )}
-        {q.status === "unlinked" && <span className="text-meta text-ink-soft">Chưa gắn mục</span>}
+        {q.status === "unlinked" && <span className="text-meta text-ink-soft">Chưa gắn phần</span>}
         {q.number !== null && <span className="text-meta text-ink-soft">Câu {q.number}</span>}
       </div>
       <p data-user className="m-0 line-clamp-3 wrap-anywhere">
@@ -63,11 +63,11 @@ export function QuestionList({ subjectId, list }: { subjectId: string; list: Que
         </section>
       ))}
       {unlinked.length > 0 && (
-        <section aria-label="Chưa gắn mục">
+        <section aria-label="Chưa gắn phần">
           <h2 className="m-0 text-body font-semibold">
-            Chưa gắn mục <span className="font-normal text-ink-soft">({unlinked.length})</span>
+            Chưa gắn phần <span className="font-normal text-ink-soft">({unlinked.length})</span>
           </h2>
-          <p className="m-0 mt-1 text-ink-soft">Chưa gắn mục. Sửa bằng thanh lệnh.</p>
+          <p className="m-0 mt-1 text-ink-soft">Chưa gắn phần. Sửa bằng thanh lệnh.</p>
           <ul className="m-0 mt-2 flex list-none flex-col p-0">
             {unlinked.map((q) => (
               <Row key={q.id} q={q} subjectId={subjectId} />

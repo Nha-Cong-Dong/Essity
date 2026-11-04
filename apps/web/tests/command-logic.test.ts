@@ -17,15 +17,15 @@ const ID = "0b8f1d2e-0000-4000-8000-000000000001";
 describe("summarize", () => {
   // US-18 AC4. Red when: a command touching 2 or more items does not say how many.
   it("AC4: the count is inside the sentence when N > 1, and absent when N = 1", () => {
-    expect(summarize({ verb: "bỏ", noun: "mục", tail: "khỏi đề cương thi", scope: "chương 7", count: 9 })).toBe(
-      "bỏ 9 mục khỏi đề cương thi (chương 7)",
+    expect(summarize({ verb: "bỏ", noun: "phần", tail: "khỏi đề cương thi", scope: "chương 7", count: 9 })).toBe(
+      "bỏ 9 phần khỏi đề cương thi (chương 7)",
     );
     expect(summarize({ verb: "sửa", noun: "thẻ", target: "TCP", count: 1 })).toBe("sửa thẻ TCP");
   });
 
   // US-18 AC4. Red when: 11 items show no "11".
   it("AC4: 11 items put 11 in the sentence", () => {
-    expect(summarize({ verb: "đánh dấu đã học", noun: "mục", count: 11 })).toContain("11");
+    expect(summarize({ verb: "đánh dấu đã học", noun: "phần", count: 11 })).toContain("11");
   });
 
   // Red when: a long name pushes the number out, or the number is cut.

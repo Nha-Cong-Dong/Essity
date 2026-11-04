@@ -9,7 +9,7 @@ export type Draft = {
   key?: string;
   title: string;
   summary: string;
-  /** Outline section the card is filed under ("3.2"); null = "Chưa gắn mục". */
+  /** Outline section the card is filed under ("3.2"); null = "Chưa gắn phần". */
   section: string | null;
   anchors: Anchor[];
   origin: "ai" | "user";

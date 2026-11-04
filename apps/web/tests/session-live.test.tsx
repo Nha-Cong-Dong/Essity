@@ -10,7 +10,7 @@ import { initialRound, type Round } from "@/lib/session-study/round";
 
 const DOC = "5a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d";
 const DOCS = [{ id: DOC, name: "Giáo trình", role: "Giáo trình chính" }];
-const FREE = { kind: "free", text: "Buổi học tự do. Bài nộp không gắn mục đề cương." } as const;
+const FREE = { kind: "free", text: "Buổi học tự do. Bài nộp không gắn phần đề cương." } as const;
 
 const card = (id: string, extra: Partial<Draft> = {}): Draft => ({
   id,
@@ -101,9 +101,9 @@ describe("study session on core-api", () => {
   it("sends the sentence, shows the cards, saves an edit, and asks to go on or stop", async () => {
     const api = fakeApi({ load: vi.fn(() => ok({ phase: "done" as Phase, drafts: [card("u1"), card("u2")] })) });
     show(api);
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Tối nay học mục 3.2" } });
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Tối nay học phần 3.2" } });
     fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
-    expect(api.submit).toHaveBeenCalledWith("Tối nay học mục 3.2", [], []);
+    expect(api.submit).toHaveBeenCalledWith("Tối nay học phần 3.2", [], []);
     await tick(2600);
     expect(await screen.findByText("Thẻ u1")).toBeTruthy();
 
@@ -126,11 +126,11 @@ describe("study session on core-api", () => {
     const api = fakeApi({
       submit: vi.fn(() => Promise.resolve({ ok: false as const, status: 422, error: "scope_not_found", docId: DOC })),
     });
-    show(api, { text: "học @Giáo trình mục 9.9", mentions: [{ docId: DOC, name: "Giáo trình", start: 4, end: 14 }] });
+    show(api, { text: "học @Giáo trình phần 9.9", mentions: [{ docId: DOC, name: "Giáo trình", start: 4, end: 14 }] });
     fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
     await tick(50);
     expect(await screen.findByText(/Chưa rõ phần sau Giáo trình/)).toBeTruthy();
-    expect((screen.getByRole("combobox") as HTMLTextAreaElement).value).toBe("học @Giáo trình mục 9.9");
+    expect((screen.getByRole("combobox") as HTMLTextAreaElement).value).toBe("học @Giáo trình phần 9.9");
   });
 
   // US-02 AC11, AC14. Red when: a dropped network leaves the learner on "Đang chờ" forever.

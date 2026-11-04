@@ -18,7 +18,7 @@ export const SLOT = "[data-command-slot]";
 const SYLLABUS = new RegExp("^/subjects/[^/]+/syllabus$"); // B3: the bar lives on the outline page only
 // A screen may ask for the bar at its foot instead (outline customise screen).
 const BOTTOM = "[data-command-slot-bottom]";
-const EXAMPLE = "mục 3.4 kết thúc ở trang 80";
+const EXAMPLE = "phần 3.4 kết thúc ở trang 80";
 
 export function CommandLive({ subjectId }: { subjectId: string }) {
   const router = useRouter();

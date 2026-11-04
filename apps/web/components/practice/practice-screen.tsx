@@ -43,7 +43,7 @@ const COPY = {
   keep: "Đưa vào luyện tập",
   discard: "Không giữ",
   upload: "Tải bộ câu hỏi",
-  generate: "Sinh câu luyện tập cho mục này",
+  generate: "Sinh câu luyện tập cho phần này",
   retry: "Thử lại",
   study: "Vào buổi học",
   view: "Xem câu hỏi",
@@ -174,10 +174,10 @@ function QuestionRow({
         <Badge variant="level">{q.origin === "bank" ? "Câu gốc" : "Câu sinh thêm"}</Badge>
         {q.status === "waiting" && (
           <a href="#" className="text-meta underline">
-            Chờ học: mục {q.sectionLabel}
+            Chờ học: phần {q.sectionLabel}
           </a>
         )}
-        {q.status === "unlinked" && <span className="text-meta text-ink-soft">Chưa gắn mục · Câu {q.number}</span>}
+        {q.status === "unlinked" && <span className="text-meta text-ink-soft">Chưa gắn phần · Câu {q.number}</span>}
       </div>
       <p id={`sum-${q.id}`} data-user className="m-0 wrap-anywhere">
         {q.summary}
@@ -420,9 +420,9 @@ export function PracticeScreen({
               {COPY.upload}
             </Button>
           </Sheet>
-          <h2 className="m-0 mt-8 text-read font-semibold">Câu luyện tập theo mục</h2>
+          <h2 className="m-0 mt-8 text-read font-semibold">Câu luyện tập theo phần</h2>
           {studied.length === 0 ? (
-            <p className="m-0 mt-3">Chưa có mục nào học xong. Hoàn thành một buổi học để sinh câu luyện tập.</p>
+            <p className="m-0 mt-3">Chưa có phần nào học xong. Hoàn thành một buổi học để sinh câu luyện tập.</p>
           ) : (
             <ul className="m-0 mt-3 flex list-none flex-col gap-3 p-0">
               {studied.map((s) => (
@@ -448,7 +448,7 @@ export function PracticeScreen({
             </ul>
           )}
           {notStudied > 0 && (
-            <p className="m-0 mt-4 text-meta text-ink-soft">{notStudied} mục chưa học xong: học xong mới sinh câu.</p>
+            <p className="m-0 mt-4 text-meta text-ink-soft">{notStudied} phần chưa học xong: học xong mới sinh câu.</p>
           )}
           {sectionGen && (
             <CandidateReview
@@ -529,9 +529,9 @@ export function PracticeScreen({
           {unlinked.length > 0 && (
             <section aria-labelledby="unlinked" className="mt-8">
               <h2 id="unlinked" className="m-0 text-read font-semibold">
-                Chưa gắn mục
+                Chưa gắn phần
               </h2>
-              <p className="m-0 mt-1 text-meta text-ink-soft">Sửa bằng thanh lệnh: gắn câu 7 với mục 3.4.</p>
+              <p className="m-0 mt-1 text-meta text-ink-soft">Sửa bằng thanh lệnh: gắn câu 7 với phần 3.4.</p>
               <ul className="m-0 mt-3 flex list-none flex-col p-0">
                 {orderedRows(unlinked, gone).map((q) =>
                   removed[q.id] === "line" ? (

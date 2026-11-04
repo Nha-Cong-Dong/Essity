@@ -39,12 +39,12 @@ const COPY = {
 };
 
 const UNCLEAR: Record<Exclude<UnclearReason, "unsupported">, string> = {
-  ambiguous: "Chưa rõ: lệnh này hiểu được theo hơn một cách. Nói rõ mục hoặc thẻ nào.",
-  unknown_target: "Chưa rõ: không thấy mục hay thẻ đó ở màn này.",
+  ambiguous: "Chưa rõ: lệnh này hiểu được theo hơn một cách. Nói rõ phần hoặc thẻ nào.",
+  unknown_target: "Chưa rõ: không thấy phần hay thẻ đó ở màn này.",
   missing_info: "Chưa rõ: còn thiếu một thông tin, ví dụ số trang hoặc ngày.",
 };
 
-const LINK_LABEL: Record<string, string> = { card: "Xem thẻ", section: "Xem mục", question: "Xem câu" };
+const LINK_LABEL: Record<string, string> = { card: "Xem thẻ", section: "Xem phần", question: "Xem câu" };
 
 // The rule of the tray (decision O1): when line 1 is neither done nor undone and a command can
 // still be undone, the newest one is named beside its Hoàn tác button.
@@ -53,7 +53,7 @@ const NAMES_LATEST: Tray["kind"][] = ["unclear", "not-allowed", "too-long", "err
 type Focus = "input" | "tray" | "retry";
 
 export type CommandBarProps = {
-  /** A command that fits what the screen shows, e.g. "mục 3.4 kết thúc ở trang 80". Required. */
+  /** A command that fits what the screen shows, e.g. "phần 3.4 kết thúc ở trang 80". Required. */
   example: string;
   run: (command: Command, signal: AbortSignal) => Promise<Outcome>;
   undo: (signal: AbortSignal) => Promise<UndoOutcome>;

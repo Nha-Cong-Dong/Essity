@@ -16,9 +16,9 @@ const WORDS: Record<string, Pick<Diff, "verb" | "noun" | "tail">> = {
   card_add: { verb: "thêm", noun: "thẻ" },
   card_discard_draft: { verb: "bỏ", noun: "thẻ nháp" },
   card_add_idea: { verb: "thêm ý vào", noun: "thẻ" },
-  section_set_pages: { verb: "đổi", noun: "trang của mục" },
-  section_exclude: { verb: "bỏ", noun: "mục", tail: "khỏi đề cương thi" },
-  section_mark: { verb: "đánh dấu", noun: "mục" },
+  section_set_pages: { verb: "đổi", noun: "trang của phần" },
+  section_exclude: { verb: "bỏ", noun: "phần", tail: "khỏi đề cương thi" },
+  section_mark: { verb: "đánh dấu", noun: "phần" },
   suggest_only_subject: { verb: "chỉ gợi ý", noun: "môn này" },
   suggest_defer_subject: { verb: "hoãn gợi ý", noun: "môn này" },
   question_set_type: { verb: "đổi dạng", noun: "câu" },
@@ -26,7 +26,7 @@ const WORDS: Record<string, Pick<Diff, "verb" | "noun" | "tail">> = {
   question_set_answer: { verb: "sửa đáp án", noun: "câu" },
   question_remove_from_practice: { verb: "bỏ", noun: "câu", tail: "khỏi luyện tập" },
 };
-const GENERIC = { verb: "đổi", noun: "mục" };
+const GENERIC = { verb: "đổi", noun: "phần" };
 
 // The text of a card or an answer, the only fields shown as "từ … thành …" (one changed object).
 const SHOWN = ["text", "answer_text"] as const;

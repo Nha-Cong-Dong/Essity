@@ -33,7 +33,7 @@ const list: QuestionListOut = {
   questions: [
     { id: Q1, number: 1, prompt: "So sánh TCP và UDP.", origin: "bank", status: "ready", answer_source: "bank", type_name: "So sánh", line: "Sẵn sàng", waiting_sections: [] },
     { id: Q2, number: 2, prompt: "Định nghĩa MSS.", origin: "generated", status: "ready", answer_source: "ai", type_name: "Định nghĩa", line: "Sẵn sàng", waiting_sections: [] },
-    { id: "0b8f1d2e-0000-4000-8000-0000000000a3", number: 3, prompt: "Tính thông lượng.", origin: "bank", status: "waiting", answer_source: "bank", type_name: "So sánh", line: "Chờ học: mục 3.4", waiting_sections: [] },
+    { id: "0b8f1d2e-0000-4000-8000-0000000000a3", number: 3, prompt: "Tính thông lượng.", origin: "bank", status: "waiting", answer_source: "bank", type_name: "So sánh", line: "Chờ học: phần 3.4", waiting_sections: [] },
   ],
 };
 const types = [

@@ -77,8 +77,8 @@ describe("every Đề cương state", () => {
   // US-13 AC5. Red when: the totals count an excluded leaf, or a pencil count disagrees with the tree.
   it("ready: totals line counts only leaves not excluded", () => {
     const { container } = render(<SyllabusScreen state="ready" />);
-    expect(container.querySelector("[data-totals]")?.textContent).toMatch(/^đã học 4\/15 mục · 60\/252 trang$/);
-    expect(container.textContent).toContain("1 mục không thi, không tính vào đây.");
+    expect(container.querySelector("[data-totals]")?.textContent).toMatch(/^đã học 4\/15 phần · 60\/252 trang$/);
+    expect(container.textContent).toContain("1 phần không thi, không tính vào đây.");
   });
 });
 
@@ -290,7 +290,7 @@ describe("panel actions (US-13 AC4, AC5, AC6)", () => {
     const names = panelOf(container, "2").getAllByRole("button").map((b) => b.textContent);
     expect(names.length).toBeLessThanOrEqual(4);
     expect(names[0]).toContain("Sửa khoảng trang");
-    expect(names.some((n) => n?.includes("Đánh dấu 2 mục chưa học là đã học"))).toBe(true);
+    expect(names.some((n) => n?.includes("Đánh dấu 2 phần chưa học là đã học"))).toBe(true);
     expect(names.some((n) => n?.includes("là chưa học"))).toBe(false);
     expect(names[names.length - 1]).toContain("Bỏ khỏi đề cương thi");
   });
@@ -302,7 +302,7 @@ describe("panel actions (US-13 AC4, AC5, AC6)", () => {
     leaf.focus();
     key(leaf, "Enter");
     fireEvent.click(panelOf(container, "2.3").getByRole("button", { name: /^Đánh dấu đã học/ }));
-    expect(container.querySelector("[data-totals]")?.textContent).toMatch(/^đã học 5\/15 mục/);
+    expect(container.querySelector("[data-totals]")?.textContent).toMatch(/^đã học 5\/15 phần/);
     expect(panelOf(container, "2.3").getByRole("button", { name: /^Đánh dấu chưa học/ })).toBeTruthy();
     expect(container.querySelector("[data-live]")?.textContent).toBe("Đã đánh dấu đã học.");
   });
@@ -310,7 +310,7 @@ describe("panel actions (US-13 AC4, AC5, AC6)", () => {
   // Red when: after the last unstudied child is marked, focus drops to the page because the button vanished.
   it("a branch mark button that vanishes after its own action leaves focus on another button of the panel", async () => {
     const { container } = render(<SyllabusScreen state="parent-panel" />);
-    const button = panelOf(container, "2").getByRole("button", { name: /^Đánh dấu 2 mục chưa học là đã học/ });
+    const button = panelOf(container, "2").getByRole("button", { name: /^Đánh dấu 2 phần chưa học là đã học/ });
     button.focus();
     fireEvent.click(button);
     await waitFor(() => expect(container.querySelector("[data-panel='2']")?.contains(document.activeElement)).toBe(true));
@@ -323,7 +323,7 @@ describe("panel actions (US-13 AC4, AC5, AC6)", () => {
     leaf.focus();
     key(leaf, "Enter");
     fireEvent.click(panelOf(container, "2.3").getByRole("button", { name: /^Bỏ khỏi đề cương thi/ }));
-    expect(container.querySelector("[data-totals]")?.textContent).toMatch(/^đã học 4\/14 mục/);
+    expect(container.querySelector("[data-totals]")?.textContent).toMatch(/^đã học 4\/14 phần/);
     expect(item(container, "2.3").textContent).toContain("không thi");
     expect(panelOf(container, "2.3").getByRole("button", { name: /^Đưa lại/ })).toBeTruthy();
   });
@@ -336,7 +336,7 @@ describe("edit range (US-13 AC4)", () => {
     const from = screen.getByLabelText("Từ trang");
     expect(from.getAttribute("aria-invalid")).toBe("true");
     const text = document.getElementById(from.getAttribute("aria-describedby")!)!.textContent;
-    expect(text).toMatch(/^Khoảng này nằm ngoài mục cha \(tr\. 45–98\)\.$/);
+    expect(text).toMatch(/^Khoảng này nằm ngoài phần cha \(tr\. 45–98\)\.$/);
     expect((screen.getByRole("button", { name: "Lưu" }) as HTMLButtonElement).disabled).toBe(false);
     expect(container.querySelector("[data-panel]")).not.toBeNull();
   });
@@ -358,7 +358,7 @@ describe("edit range (US-13 AC4)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
     expect(container.querySelector("[data-panel]")).toBeNull();
     expect(document.activeElement).toBe(item(container, "2.3"));
-    expect(container.querySelector("[data-live]")?.textContent).toBe("Đã lưu: mục 2.3 tr. 69–77.");
+    expect(container.querySelector("[data-live]")?.textContent).toBe("Đã lưu: phần 2.3 tr. 69–77.");
     expect(container.querySelector("[data-main]")?.textContent).toContain("bạn đã sửa");
   });
 

@@ -28,7 +28,7 @@ function Suggested({ id, subjectId, subjectName, next }: { id: string; subjectId
   return (
     <>
       <h2 id={id} className="m-0 font-display text-lead wrap-anywhere">
-        {next.label ? `Nội dung hôm nay: mục ${next.label}` : "Nội dung hôm nay"}
+        {next.label ? `Nội dung hôm nay: phần ${next.label}` : "Nội dung hôm nay"}
       </h2>
       <p className="m-0 text-read wrap-anywhere">
         {next.title}

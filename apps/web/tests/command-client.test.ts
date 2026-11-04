@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { diffOf, liveCommands } from "@/lib/command-client";
 
-const CMD = { id: "11111111-2222-4333-8444-555555555555", text: "mục 3.4 kết thúc ở trang 80" };
+const CMD = { id: "11111111-2222-4333-8444-555555555555", text: "phần 3.4 kết thúc ở trang 80" };
 const signal = new AbortController().signal;
 
 function reply(status: number, json: unknown) {
@@ -30,7 +30,7 @@ describe("diffOf", () => {
   it("US-18 AC4: the words come from the op kind, the count from `affected`", () => {
     expect(diffOf(applied({ op_kinds: ["section_exclude"], affected: 12 }))).toMatchObject({
       verb: "bỏ",
-      noun: "mục",
+      noun: "phần",
       count: 12,
     });
   });
@@ -44,7 +44,7 @@ describe("diffOf", () => {
     expect([diff.from, diff.to]).toEqual(["a", "b"]);
   });
   it("US-18 AC4: an op kind web does not know still gives a sentence", () => {
-    expect(diffOf(applied({ op_kinds: ["new_kind"] })).noun).toBe("mục");
+    expect(diffOf(applied({ op_kinds: ["new_kind"] })).noun).toBe("phần");
   });
 });
 

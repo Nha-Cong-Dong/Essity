@@ -116,7 +116,7 @@ describe("filters and the list switch", () => {
   });
   it("US-19 AC3: the section filter keeps the sections in the list", () => {
     show("few");
-    const select = screen.getByLabelText("Mục") as HTMLSelectElement;
+    const select = screen.getByLabelText("Phần") as HTMLSelectElement;
     expect([...select.options].map((o) => o.value)).toEqual(["", "ch1", "ch1-1", "ch1-2", "ch2", "ch2-1"]);
     expect(select.value).toBe("ch1");
   });

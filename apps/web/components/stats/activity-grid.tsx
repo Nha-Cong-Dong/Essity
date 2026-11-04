@@ -238,7 +238,7 @@ export function ActivityGrid({
             )}
             {cell.sections.length > 0 && (
               <p className="m-0 text-meta wrap-anywhere">
-                Mục: <span data-user>{sectionsText(cell.sections)}</span>
+                Phần: <span data-user>{sectionsText(cell.sections)}</span>
               </p>
             )}
           </>

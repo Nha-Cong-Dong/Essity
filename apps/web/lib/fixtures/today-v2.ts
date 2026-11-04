@@ -13,7 +13,7 @@ const NEXT_MMT: LearnItem = {
   subject: MMT,
   state: "next",
   section: { label: "3.2", title: "TCP flow control", pages: "tr. 52–58" },
-  reason: "Môn có kỳ thi gần nhất, mục này là mục chưa học đầu tiên.",
+  reason: "Môn có kỳ thi gần nhất, phần này là phần chưa học đầu tiên.",
   pace: { sections_left: 12, pages_left: 86, days_left: 20 },
 };
 const NEXT_LONG: LearnItem = {
@@ -75,7 +75,7 @@ export const SUBJECT_NEXT = {
   label: "3.2",
   title: "TCP flow control",
   pages: "tr. 52–58",
-  reason: "Môn có kỳ thi gần nhất, mục này là mục chưa học đầu tiên.",
+  reason: "Môn có kỳ thi gần nhất, phần này là phần chưa học đầu tiên.",
   pace: { sections_left: 12, pages_left: 86, days_left: 20 },
 };
 

@@ -17,7 +17,7 @@ export const LIVE_LIST: QuestionListOut = {
   questions: [
     { id: LIVE_Q1, number: 1, prompt: "So sánh TCP và UDP về độ tin cậy, kiểm soát luồng và độ trễ khi truyền video trực tiếp.", origin: "bank", status: "ready", answer_source: "bank", type_name: LONG_TYPE, line: "Sẵn sàng", waiting_sections: [] },
     { id: LIVE_Q2, number: 2, prompt: "Định nghĩa cửa sổ nhận (rwnd).", origin: "generated", status: "ready", answer_source: "ai", type_name: "Định nghĩa ngắn", line: "Sẵn sàng", waiting_sections: [] },
-    { id: LIVE_Q3, number: 3, prompt: "Tính thông lượng hiệu dụng của giao thức dừng-và-chờ.", origin: "bank", status: "waiting", answer_source: "bank", type_name: LONG_TYPE, line: "Chờ học: mục 4.1", waiting_sections: [] },
+    { id: LIVE_Q3, number: 3, prompt: "Tính thông lượng hiệu dụng của giao thức dừng-và-chờ.", origin: "bank", status: "waiting", answer_source: "bank", type_name: LONG_TYPE, line: "Chờ học: phần 4.1", waiting_sections: [] },
   ],
 };
 
