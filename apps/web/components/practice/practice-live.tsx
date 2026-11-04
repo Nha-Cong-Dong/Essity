@@ -114,15 +114,18 @@ function Row({
             </span>
           </NxChip>
         )}
+        <span className="text-meta text-ink-soft">{q.origin === "bank" ? "Câu gốc" : "Câu sinh thêm"}</span>
+        {q.number !== null && <span className="text-meta text-ink-soft">Câu {q.number}</span>}
         {q.status === "waiting" ? (
           <a href={`/subjects/${subjectId}/syllabus`} className="text-meta text-ink-soft underline">
             {q.line}
           </a>
         ) : q.status === "unlinked" ? (
           <span className="text-meta text-ink-soft">Chưa gắn phần</span>
-        ) : q.number !== null ? (
-          <span className="text-meta text-ink-soft">Câu {q.number}</span>
-        ) : null}
+        ) : (
+          <span className="text-meta text-ink-soft">{q.line}</span>
+        )}
+        {q.unlocked_at && <span className="text-meta text-ink-soft">Mở khóa {unlockedOn(q.unlocked_at)}</span>}
       </div>
       <p id={`sum-${q.id}`} data-user className="m-0 line-clamp-3 wrap-anywhere">
         {q.prompt}

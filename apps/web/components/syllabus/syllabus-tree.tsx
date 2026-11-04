@@ -391,6 +391,8 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
   const rows = visibleRows(shown, openNow);
   const nextId = firstUnstudied(nodes);
   const [active, setActive] = useState(initialPanel?.id ?? rows[0]?.node.id ?? "");
+  // The one tab stop: the active row while it is shown, else the first row (a search or a fold can hide it).
+  const activeId = rows.some((r) => r.node.id === active) ? active : (rows[0]?.node.id ?? "");
   const [panel, setPanelState] = useState<PanelState | null>(initialPanel);
   const items = useRef(new Map<string, HTMLLIElement>());
   const hintId = useId();
@@ -452,16 +454,16 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
         go(rows[rows.length - 1]);
         break;
       case "ArrowRight":
-        if (branch && !open.has(row.node.id)) fold(row.node.id, true);
+        if (branch && !openNow.has(row.node.id)) fold(row.node.id, true);
         else if (branch) go(rows[index + 1]);
         break;
       case "ArrowLeft":
-        if (branch && open.has(row.node.id)) fold(row.node.id, false);
+        if (branch && openNow.has(row.node.id)) fold(row.node.id, false);
         else go(rows.find((r) => r.node.id === row.parentId));
         break;
       case "Enter":
       case " ":
-        if (branch) fold(row.node.id, !open.has(row.node.id));
+        if (branch) fold(row.node.id, !openNow.has(row.node.id));
         else openPanel(row.node.id);
         break;
       case "ContextMenu":
@@ -531,7 +533,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
           aria-expanded={branch ? isOpen : undefined}
           aria-labelledby={`ti-${node.id}-t ti-${node.id}-m`}
           aria-describedby={`ti-${node.id}-d ${branch ? hintId : leafHintId}`}
-          tabIndex={active === node.id ? 0 : -1}
+          tabIndex={activeId === node.id ? 0 : -1}
           onFocus={(e) => {
             if (e.target === e.currentTarget) setActive(node.id);
           }}
@@ -604,7 +606,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
             </span>
             <button
               type="button"
-              tabIndex={active === node.id ? 0 : -1}
+              tabIndex={activeId === node.id ? 0 : -1}
               aria-label={`Hành động cho ${node.title}`}
               aria-expanded={panelHere}
               data-more

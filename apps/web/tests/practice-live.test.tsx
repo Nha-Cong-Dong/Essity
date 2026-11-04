@@ -363,3 +363,16 @@ describe("kindChip", () => {
     expect(kindChip("  ")).toBeNull();
   });
 });
+
+describe("practice row labels and suggestion (V22 g2)", () => {
+  // Red when: the origin label, the section line or the unlock date is dropped, or the suggestion is not on the first ready row.
+  it("shows Câu sinh thêm, the line and the suggested row", () => {
+    const { container } = render(<PracticeLive subjectId={SUBJECT} subjectName="Mạng" list={list} types={types} api={fakeApi()} />);
+    expect(container.textContent).toContain("Câu sinh thêm");
+    expect(container.textContent).toContain("Câu gốc");
+    expect(container.textContent).toContain("Sẵn sàng");
+    const why = container.querySelectorAll("[data-why]");
+    expect(why.length).toBe(1);
+    expect(why[0].closest(`[data-question="${Q1}"]`)).not.toBeNull();
+  });
+});
