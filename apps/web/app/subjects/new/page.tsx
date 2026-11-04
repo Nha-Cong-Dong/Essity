@@ -6,6 +6,8 @@ import { AccountSlot } from "@/components/account-slot";
 import { AUTH_LINK } from "@/components/auth/fields";
 import { Mascot } from "@/components/mascot";
 import { AppShell, PageColumn } from "@/components/shells";
+import { StepIndicator } from "@/components/subjects/step-indicator";
+import { Sheet } from "@/components/ui/sheet";
 import { NewSubjectForm } from "@/components/subjects/new-subject-form";
 import { exampleFor } from "@/lib/exam-date";
 import { requireVerifiedSession } from "@/lib/session";
@@ -27,21 +29,19 @@ export default function NewSubjectPage() {
         <a href="/subjects" className={AUTH_LINK}>
           Môn học
         </a>
-        <header className="flex items-end justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <p className="m-0 text-small font-semibold text-ink-soft">Bước 1 trên 2</p>
-            <h1 className="m-0 font-display text-title">Thêm môn mới</h1>
-            <p className="m-0 max-w-[48ch] text-read text-ink-soft">
-              Đặt tên môn và ngày thi. Ngày thi giúp app chia lịch học cho vừa sức.
-            </p>
+        <StepIndicator current={1} />
+        <div className="flex items-end gap-4">
+          <Sheet className="min-w-0 flex-1 p-5 sm:p-8">
+            <h1 className="m-0 mb-2 font-display text-title">Môn mới</h1>
+            <p className="m-0 mb-6 max-w-[48ch] text-read text-ink-soft">Đặt tên môn và ngày thi để app chia lịch học cho vừa sức.</p>
+            <Suspense fallback={<div aria-busy="true" className="h-60" />}>
+              <NewSubject />
+            </Suspense>
+          </Sheet>
+          <div className="hidden shrink-0 min-[641px]:block">
+            <Mascot pose="chuanbi" size="md" />
           </div>
-          <Mascot pose="chuanbi" size="sm" />
-        </header>
-        <section className="rounded-sheet bg-sunken p-6 max-[480px]:p-4">
-          <Suspense fallback={<div aria-busy="true" className="h-60" />}>
-            <NewSubject />
-          </Suspense>
-        </section>
+        </div>
       </PageColumn>
     </AppShell>
   );
