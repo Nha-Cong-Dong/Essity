@@ -25,6 +25,7 @@ from typing import Any, Self
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
 
+from ai_service.pdf.legacy_vn import fix_tcvn3
 from ai_service.pdf.types import (
     MAX_TITLE_CHARS,
     MIN_TEXT_CHARS,
@@ -149,7 +150,7 @@ class PdfDocument:
             raise PdfError("malformed") from error
         finally:
             page.close()
-        text = text[: self._limits.max_text_chars_per_page]
+        text = fix_tcvn3(text[: self._limits.max_text_chars_per_page])
         visible = sum(1 for char in text if not char.isspace())
         return PageText(text=text, needs_vision=visible < MIN_TEXT_CHARS)
 

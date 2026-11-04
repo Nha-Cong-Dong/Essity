@@ -298,3 +298,15 @@ def test_a_page_in_two_sections_gives_both_to_the_draft() -> None:
     )
     out = draft_units(req, FakeAsk(output(unit_json(anchors=[("D1.p3", Q1)]))))
     assert out.drafts[0].section_ids == [SEC1, SEC2]
+
+
+# Red when: the prompt goes back to splitting a definition into small pieces (V4).
+def test_prompt_asks_for_whole_definitions_and_properties() -> None:
+    assert PROMPT_VERSION == "v2"
+    for phrase in (
+        "ONE DEFINITION or ONE PROPERTY",
+        "never cut it into small pieces",
+        "Fewer, fuller units",
+    ):
+        assert phrase in _DRAFT_PROMPT
+    assert "Wrong:" in _DRAFT_PROMPT
