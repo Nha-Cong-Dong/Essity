@@ -23,11 +23,13 @@ const COLUMN = {
   read: "max-w-160",
   session: "max-w-(--col-session)",
   full: "max-w-280",
+  // UI-A: the reading width of list screens (Đề cương, Luyện tập, Kho, Thống kê): ~960, centred in the page.
+  wide: "max-w-240 mx-auto",
 } as const;
 
 /**
- * One column for a page inside AppShell (UI-1a). Every width starts at the left edge of the
- * container, under the logo: `mr-auto`, never `mx-auto`, so no screen has its own left edge.
+ * One column for a page inside AppShell (UI-1a). `read`, `session` and `full` start at the left edge
+ * of the container (`mr-auto`); `wide` (UI-A) is the ~960 column list screens centre in the page.
  */
 export function PageColumn({
   width = "full",

@@ -31,7 +31,7 @@ async function Fixture({ searchParams }: { searchParams: Promise<{ level?: strin
   const { level } = await searchParams;
   return (
     <AppShell current="/kho-kien-thuc" account={<AccountMenu email="xem-thu@example.com" />}>
-      <PageColumn width="full">
+      <PageColumn width="wide">
         <VaultView view={level === "sessions" ? SESSIONS : SUBJECTS} subjectId="s1" />
       </PageColumn>
     </AppShell>

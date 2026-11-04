@@ -76,7 +76,7 @@ export default function VaultPage(props: { searchParams: Promise<Search> }) {
         </Suspense>
       }
     >
-      <PageColumn width="full" className="flex flex-col gap-4">
+      <PageColumn width="wide" className="flex flex-col gap-4">
         <Suspense fallback={null}>
           <Vault {...props} />
         </Suspense>

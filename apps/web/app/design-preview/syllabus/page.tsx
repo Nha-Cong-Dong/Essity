@@ -19,7 +19,7 @@ async function Fixture({ searchParams }: { searchParams: Promise<{ state?: strin
   const known = SYLLABUS_STATE_IDS.find((id) => id === state) ?? "ready";
   return (
     <AppShell current="/today" account={<AccountMenu email="xem-thu@example.com" />}>
-      <PageColumn width="session">
+      <PageColumn width="wide">
         {upload ? <UploadScreen key={upload} state={upload} /> : <SyllabusScreen key={known} state={known} />}
       </PageColumn>
     </AppShell>

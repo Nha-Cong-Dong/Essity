@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
 import { StatsScreen } from "@/components/stats/stats-screen";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { STATS_STATE_IDS, statsFixture } from "@/lib/fixtures/stats";
 import { buildGrid } from "@/lib/stats";
 
@@ -23,7 +23,9 @@ async function Fixture({ searchParams }: { searchParams: Promise<{ state?: strin
   const mode = known === "loading" || known === "error" ? known : "ready";
   return (
     <AppShell current="/stats" account={<AccountMenu email="xem-thu@example.com" />}>
-      <StatsScreen key={`${known}:${chosen ?? ""}`} view={view} subject={chosen ?? ""} mode={mode} />
+      <PageColumn width="wide">
+        <StatsScreen key={`${known}:${chosen ?? ""}`} view={view} subject={chosen ?? ""} mode={mode} />
+      </PageColumn>
     </AppShell>
   );
 }

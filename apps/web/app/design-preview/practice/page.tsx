@@ -17,7 +17,7 @@ async function Fixture({ searchParams }: { searchParams: Promise<{ state?: strin
   const known = PRACTICE_STATE_IDS.find((id) => id === state) ?? "home";
   return (
     <AppShell current="/today" account={<AccountMenu email="xem-thu@example.com" />}>
-      <PageColumn width="full">
+      <PageColumn width="wide">
         <PracticeScreen key={known} state={known} />
       </PageColumn>
     </AppShell>

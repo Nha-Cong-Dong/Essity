@@ -46,7 +46,7 @@ export default function StatsPage() {
         </Suspense>
       }
     >
-      <PageColumn width="full">
+      <PageColumn width="wide">
         <Suspense fallback={<StatsLoading />}>
           <Stats />
         </Suspense>

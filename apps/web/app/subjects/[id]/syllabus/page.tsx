@@ -28,7 +28,7 @@ async function Syllabus({ params }: { params: Promise<{ id: string }> }) {
   }
   if (outline === null) {
     return (
-      <PageColumn width="full">
+      <PageColumn width="wide">
         <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
           <p className="m-0 font-semibold">Không tải được đề cương.</p>
           <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
@@ -40,7 +40,7 @@ async function Syllabus({ params }: { params: Promise<{ id: string }> }) {
     );
   }
   return (
-    <PageColumn width="full">
+    <PageColumn width="wide">
       <SyllabusLive subjectId={subject.id} subjectName={subject.name} initial={outline} />
     </PageColumn>
   );
@@ -50,7 +50,7 @@ export default function SyllabusPage({ params }: { params: Promise<{ id: string 
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
       <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start">
-        <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
+        <Suspense fallback={<PageColumn width="wide" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
           <Syllabus params={params} />
         </Suspense>
         <aside

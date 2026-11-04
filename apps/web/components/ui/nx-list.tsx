@@ -68,7 +68,7 @@ export function NxRow({
   const body = (
     <>
       <span className="tabular-nums text-ink-soft">{lead}</span>
-      <span className="min-w-0 break-words [overflow-wrap:normal]">
+      <span className="min-w-0 [overflow-wrap:anywhere]">
         {children}
         {why ? <span className="mt-1 block text-meta font-semibold text-cam">{why}</span> : null}
       </span>

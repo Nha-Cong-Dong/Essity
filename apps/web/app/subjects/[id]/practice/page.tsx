@@ -31,7 +31,7 @@ async function Practice({ params }: { params: Promise<{ id: string }> }) {
     if (error instanceof CoreStatusError && error.status === 401) redirect("/login");
   }
   return (
-    <PageColumn width="session">
+    <PageColumn width="wide">
       {list === null ? (
         <>
         <h1 className="m-0 mb-6 font-display text-title">Luyện tập</h1>
@@ -53,7 +53,7 @@ async function Practice({ params }: { params: Promise<{ id: string }> }) {
 export default function PracticePage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<PageColumn width="session" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
+      <Suspense fallback={<PageColumn width="wide" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
         <Practice params={params} />
       </Suspense>
     </AppShell>

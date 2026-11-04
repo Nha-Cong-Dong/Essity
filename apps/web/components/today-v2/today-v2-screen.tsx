@@ -38,7 +38,7 @@ function Heading({ day }: { day: string }) {
 
 /** One row of Việc dở: the line, and "Tiếp tục" (primary on the first row only). */
 function ResumeRow({ item, primary }: { item: Unfinished; primary: boolean }) {
-  const variant = primary ? "primary" : "secondary";
+  const variant = primary ? "primary" : "quiet";
   if (item.kind === "note") {
     return (
       <li className="m-0 text-small text-ink-soft break-words">
@@ -60,7 +60,7 @@ function ResumeRow({ item, primary }: { item: Unfinished; primary: boolean }) {
         : `/subjects/${item.subject.id}/sessions`;
   return (
     <li className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
-      <p className="m-0 min-w-0 flex-1 basis-60 text-read break-words">
+      <p className="m-0 min-w-0 flex-1 basis-60 text-read [overflow-wrap:anywhere]">
         {line}
       </p>
       <Button
@@ -92,10 +92,9 @@ export function ResumeStrip({ items }: { items: Unfinished[] }) {
   );
 }
 
-// V22: the left tile is the accent of the screen (landing "nx" tile, span 7): the one big number,
-// Bé Trang, one white row that names the review, and the solid pink button inside the tile.
-const SHEET = "relative flex min-w-0 flex-col gap-4 self-start rounded-tile bg-hong-tint p-4 min-[901px]:col-span-7 min-[901px]:p-6";
-const WHITE_ROW = "m-0 flex min-h-12 flex-wrap items-center gap-x-2 rounded-row bg-bg px-3.5 py-2 text-body";
+// UI-A: the review is the answer of the screen, drawn flat on the page like the landing's headline
+// column (no tile): the number at display size, the minutes, Bé Trang, and one solid pink button.
+const REVIEW = "relative flex min-w-0 flex-col gap-3 min-[901px]:col-span-7";
 
 export function ReviewTile({
   review,
@@ -108,7 +107,7 @@ export function ReviewTile({
 }) {
   if (review.state === "none") {
     return (
-      <section className={`${SHEET} items-start`} data-surface="hong" aria-labelledby="today-review">
+      <section className={`${REVIEW} items-start`} aria-labelledby="today-review">
         <h2 id="today-review" className="sr-only">
           {COPY.review}
         </h2>
@@ -119,24 +118,24 @@ export function ReviewTile({
     );
   }
   return (
-    <section className={SHEET} data-surface="hong" aria-labelledby="today-review">
-      <div className="flex items-start justify-between gap-4">
+    <section className={REVIEW} aria-labelledby="today-review">
+      <h2 id="today-review" className="m-0 text-body font-semibold text-ink-soft">
+        {COPY.review}
+      </h2>
+      <div className="flex items-end justify-between gap-4">
         <p className="m-0 flex items-baseline gap-3">
           <span className="font-display text-display tabular-nums">{review.count}</span>
-          <span className="text-body">{COPY.questions}</span>
+          <span className="text-lead font-semibold">{COPY.questions}</span>
         </p>
-        <Mascot pose="vui" className="size-20 shrink-0 min-[901px]:size-28" />
+        <Mascot pose="vui" className="size-20 shrink-0 min-[901px]:size-32" />
       </div>
       {/* V5: the total only, no subject names. */}
-      <h2 id="today-review" className={WHITE_ROW}>
-        <span className="font-semibold">{COPY.review}</span>
-        <span className="text-ink-soft">· khoảng {review.minutes} phút</span>
-      </h2>
+      <p className="m-0 text-body text-ink-soft">khoảng {review.minutes} phút</p>
       {review.note && <p className="m-0 text-meta break-words">{review.note}</p>}
       {review.in_progress ? (
         <p className="m-0 text-meta">{COPY.inProgressHint}</p>
       ) : (
-        <div className="max-sm:w-full">
+        <div className="mt-1 max-sm:w-full">
           <StartButton variant={primary ? "primary" : "secondary"} preview={preview}>
             {COPY.start}
           </StartButton>
