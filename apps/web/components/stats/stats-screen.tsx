@@ -26,11 +26,21 @@ function Skeleton() {
   );
 }
 
-function Kpi({ label, value, note }: { label: string; value: string; note?: string }) {
+/** Phase B: the first number of the page is the one solid pink block; the others are quiet. */
+function Kpi({ label, value, note, lead = false }: { label: string; value: string; note?: string; lead?: boolean }) {
+  if (lead) {
+    return (
+      <div data-surface="hong" data-kpi className="min-w-0 rounded-tile p-8">
+        <p className="m-0 text-read">{label}</p>
+        <p className="m-0 mt-1 font-display text-mega tabular-nums">{value}</p>
+        {note && <p className="m-0 mt-1 text-meta">{note}</p>}
+      </div>
+    );
+  }
   return (
-    <Sheet className="min-w-0" data-kpi>
+    <Sheet variant="tile" tone="rose" className="min-w-0 self-start" data-kpi>
       <p className="m-0 text-meta text-ink-soft">{label}</p>
-      <p className="m-0 mt-1 text-title tabular-nums">{value}</p>
+      <p className="m-0 mt-1 font-display text-display tabular-nums">{value}</p>
       {note && <p className="m-0 mt-1 text-meta text-ink-soft">{note}</p>}
     </Sheet>
   );
@@ -147,7 +157,7 @@ export function StatsScreen({
     <>
       <div className="flex flex-col gap-4 min-[768px]:flex-row min-[768px]:items-end min-[768px]:justify-between">
         <div>
-          <h1 className="m-0 text-title">Thống kê</h1>
+          <h1 className="m-0 font-display text-display">Thống kê</h1>
           <p className="m-0 mt-1 text-meta text-ink-soft">Tổng quan việc học của bạn, mọi môn cộng lại.</p>
         </div>
         <Button
@@ -161,10 +171,11 @@ export function StatsScreen({
       </div>
 
       <div
-        className="mt-8 grid gap-(--bento-gap) [grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))]"
+        className="mt-8 grid gap-(--bento-gap) [grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))]"
         data-totals
       >
         <Kpi
+          lead
           label="Nội dung đã học"
           value={`${t.unitsLearned}`}
           note={`/ ${t.unitsTotal} mục · ${t.sessions} buổi học`}

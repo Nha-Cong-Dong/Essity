@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { AccountSlot } from "@/components/account-slot";
 import { AUTH_LINK } from "@/components/auth/fields";
 import { NhanVo, NotebookCover } from "@/components/notebook";
+import { Mascot } from "@/components/mascot";
 import { AppShell, PageColumn } from "@/components/shells";
 import { NewSubjectForm } from "@/components/subjects/new-subject-form";
 import { exampleFor } from "@/lib/exam-date";
@@ -24,9 +25,12 @@ export default function NewSubjectPage() {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
       <PageColumn width="read" className="flex flex-col gap-4">
-        <a href="/subjects" className={AUTH_LINK}>
-          Môn học
-        </a>
+        <div className="flex items-end justify-between gap-4">
+          <a href="/subjects" className={AUTH_LINK}>
+            Môn học
+          </a>
+          <Mascot pose="chuanbi" size="sm" />
+        </div>
         <NotebookCover title="Môn mới">
           <NhanVo>
             <Suspense fallback={<div aria-busy="true" className="h-60" />}>
