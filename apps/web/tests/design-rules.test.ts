@@ -35,6 +35,9 @@ export function declaresItself(source: string, name: string): boolean {
   return new RegExp(`(?<![\\w-])${name}\\s*:`).test(source);
 }
 
+// A Nx row that sets `next` or `pick` (V22 #9).
+const NX_VARIANT = /<Nx(?:Row|Kind)\b[^>]*\b(?:next|pick)\b/g;
+
 describe("design rules", () => {
   it("finds the sources it checks", () => {
     expect(UI).toContain(path.join("components", "shells.tsx"));
@@ -54,8 +57,8 @@ describe("design rules", () => {
 
   // V22 decisions #9: a tile holds at most one cam row, so a screen file uses `next` or `pick` at most once.
   it("V22: a screen file uses the next/pick variant at most once", () => {
-    const over = UI.filter((f) => !f.endsWith("nx-list.tsx") && !f.startsWith(path.join("app", "design-preview")))
-      .map((f) => [f, (read(f).match(/<Nx(?:Row|Kind)b[^>]*b(?:next|pick)b/g) ?? []).length] as const)
+    const over = UI.filter((f) => !f.endsWith("nx-list.tsx") && !f.startsWith(path.join("app", "design-preview")) && !f.startsWith(path.join("components", "landing")))
+      .map((f) => [f, (read(f).match(NX_VARIANT) ?? []).length] as const)
       .filter(([, n]) => n > 1)
       .map(([f]) => f.replaceAll("\\", "/"));
     // The landing draws one tile per section; its rows are data-driven (one `next` entry in TOC).
@@ -80,6 +83,12 @@ describe("design rules", () => {
     );
     expect(pages.length).toBeGreaterThan(20);
     expect(offenders(pages, /mx-auto[^"'`]*max-w-|max-w-[^"'`]*mx-auto/)).toEqual([]);
+  });
+
+  it("the next/pick rule catches a violation (self-check)", () => {
+    const two = '<NxRow next>a</NxRow><NxKind pick>b</NxKind><NxRow>c</NxRow>';
+    expect((two.match(NX_VARIANT) ?? []).length).toBe(2);
+    expect(("<NxRow>a</NxRow>".match(NX_VARIANT) ?? []).length).toBe(0);
   });
 
   // UI-A (user 05/11): an action is a pill, never underlined text. Links stay underlined only inside a sentence.
