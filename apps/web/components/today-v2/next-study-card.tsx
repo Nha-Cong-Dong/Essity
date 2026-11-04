@@ -49,7 +49,7 @@ export function NextStudyRow({ item, next = false }: { item: LearnItem; next?: b
     );
   }
   return (
-    <NxRow lead={lead}>
+    <NxRow>
       {name}
       <span className="block text-meta font-normal text-ink-soft">{COPY.finished}</span>
     </NxRow>

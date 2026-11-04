@@ -5,7 +5,6 @@ import { Mascot } from "@/components/mascot";
 import { NextStudyRow } from "@/components/today-v2/next-study-card";
 import { StartButton } from "@/components/today/start-button";
 import { Button } from "@/components/ui/button";
-import { NxList } from "@/components/ui/nx-list";
 import { dayLabel } from "@/lib/today-copy";
 import {
   draftLine,
@@ -92,9 +91,10 @@ export function ResumeStrip({ items }: { items: Unfinished[] }) {
   );
 }
 
-// UI-A: the review is the answer of the screen, drawn flat on the page like the landing's headline
-// column (no tile): the number at display size, the minutes, Bé Trang, and one solid pink button.
-const REVIEW = "relative flex min-w-0 flex-col gap-3 min-[901px]:col-span-7";
+// UI-A: the review is the answer of the screen: one tile (the page's one tint), the number at display
+// size with Bé Trang beside it, the minutes, and the solid pink button at the foot. It is as tall as its
+// neighbour ("Học gì tiếp"), so neither side has a hollow.
+const REVIEW = "relative flex min-w-0 flex-col justify-between gap-6 rounded-tile bg-hong-tint p-4 min-[901px]:col-span-6 min-[901px]:p-6";
 
 export function ReviewTile({
   review,
@@ -107,40 +107,48 @@ export function ReviewTile({
 }) {
   if (review.state === "none") {
     return (
-      <section className={`${REVIEW} items-start`} aria-labelledby="today-review">
-        <h2 id="today-review" className="sr-only">
+      <section className={REVIEW} data-surface="hong" aria-labelledby="today-review">
+        <h2 id="today-review" className="m-0 font-display text-lead">
           {COPY.review}
         </h2>
-        <Mascot pose="vui" size="md" />
-        <p className="m-0 font-display text-lead">{COPY.nothingDue}</p>
-        {review.next_due && <p className="m-0 text-body text-ink-soft">{nextDueLabel(review.next_due)}</p>}
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-2">
+            <p className="m-0 font-display text-title">{COPY.nothingDue}</p>
+            {review.next_due && <p className="m-0 text-body text-ink-soft">{nextDueLabel(review.next_due)}</p>}
+          </div>
+          <Mascot pose="vui" className="size-24 shrink-0 min-[901px]:size-32" />
+        </div>
       </section>
     );
   }
   return (
-    <section className={REVIEW} aria-labelledby="today-review">
-      <h2 id="today-review" className="m-0 text-body font-semibold text-ink-soft">
+    <section className={REVIEW} data-surface="hong" aria-labelledby="today-review">
+      <h2 id="today-review" className="m-0 font-display text-lead">
         {COPY.review}
       </h2>
       <div className="flex items-end justify-between gap-4">
-        <p className="m-0 flex items-baseline gap-3">
-          <span className="font-display text-display tabular-nums">{review.count}</span>
-          <span className="text-lead font-semibold">{COPY.questions}</span>
-        </p>
-        <Mascot pose="vui" className="size-20 shrink-0 min-[901px]:size-32" />
-      </div>
-      {/* V5: the total only, no subject names. */}
-      <p className="m-0 text-body text-ink-soft">khoảng {review.minutes} phút</p>
-      {review.note && <p className="m-0 text-meta break-words">{review.note}</p>}
-      {review.in_progress ? (
-        <p className="m-0 text-meta">{COPY.inProgressHint}</p>
-      ) : (
-        <div className="mt-1 max-sm:w-full">
-          <StartButton variant={primary ? "primary" : "secondary"} preview={preview}>
-            {COPY.start}
-          </StartButton>
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="m-0 flex items-baseline gap-3">
+            <span className="font-display text-display tabular-nums">{review.count}</span>
+            <span className="text-lead font-semibold">{COPY.questions}</span>
+          </p>
+          {/* V5: the total only, no subject names. */}
+          <p className="m-0 text-body text-ink-soft">khoảng {review.minutes} phút</p>
         </div>
-      )}
+        <Mascot pose="vui" className="size-24 shrink-0 min-[901px]:size-32" />
+      </div>
+      <div className="flex flex-col gap-3">
+        {review.note && <p className="m-0 text-meta break-words">{review.note}</p>}
+        {review.in_progress ? (
+          <p className="m-0 text-meta">{COPY.inProgressHint}</p>
+        ) : (
+          <div className="max-sm:w-full">
+            <StartButton variant={primary ? "primary" : "secondary"} preview={preview}>
+              {COPY.start}
+            </StartButton>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -149,18 +157,24 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
   const { items, empty_reason } = today.learn;
   const first = items.findIndex((item) => item.state === "next");
   return (
-    <section className={`${EDGE} flex flex-col gap-3 min-[901px]:col-span-5`} aria-labelledby="today-learn">
+    <section
+      className={`${EDGE} flex flex-col gap-3.5 rounded-tile bg-hong-tint p-4 min-[901px]:col-span-6 min-[901px]:p-6`}
+      aria-labelledby="today-learn"
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 id="today-learn" className="m-0 font-display text-lead">
+          {COPY.learn}
+        </h2>
+        {items.length > 0 ? <span className="text-meta italic text-ink-soft">Gợi ý, bạn chọn</span> : null}
+      </div>
       {items.length > 0 ? (
-        <NxList title={<span id="today-learn">{COPY.learn}</span>} hint="Gợi ý, bạn chọn">
+        <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
           {items.map((item, index) => (
             <NextStudyRow key={item.subject.id} item={item} next={index === first} />
           ))}
-        </NxList>
+        </ul>
       ) : (
         <div className="flex flex-col items-start gap-1">
-          <h2 id="today-learn" className="m-0 text-body font-semibold">
-            {COPY.learn}
-          </h2>
           <p className="m-0 text-read">
             {empty_reason ? COPY.emptyReason[empty_reason] : COPY.emptyReason.no_textbook}
           </p>
@@ -171,14 +185,16 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
           </nav>
         </div>
       )}
-      <LearnActions items={items} primary={primary && first >= 0} />
+      <div className="mt-auto">
+        <LearnActions items={items} primary={primary && first >= 0} />
+      </div>
     </section>
   );
 }
 
 function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2["practice"]>; primary: boolean }) {
   return (
-    <section className={`${EDGE} min-[901px]:col-span-5`} aria-labelledby="today-practice">
+    <section className={`${EDGE} min-[901px]:col-span-6`} aria-labelledby="today-practice">
       <h2 id="today-practice" className="m-0 text-body font-semibold">
         {COPY.practice}
       </h2>
@@ -240,7 +256,7 @@ export function TodayV2Screen({
   return (
     <>
       <Heading day={today.learning_day} />
-      <div className="grid gap-x-4 gap-y-10 min-[901px]:grid-cols-12 min-[901px]:gap-y-14">
+      <div className="grid gap-x-4 gap-y-8 min-[901px]:grid-cols-12 min-[901px]:gap-y-10">
         {today.unfinished.length > 0 && <ResumeStrip items={today.unfinished} />}
         <ReviewTile review={today.review} primary={primary === "review"} preview={preview} />
         <LearnSection today={today} primary={primary === "learn"} />
@@ -249,7 +265,7 @@ export function TodayV2Screen({
           <WeekStrip
             cells={week}
             today={today.learning_day}
-            className={today.practice ? "min-[901px]:col-span-7" : "min-[901px]:col-span-12"}
+            className={today.practice ? "min-[901px]:col-span-6" : "min-[901px]:col-span-12"}
           />
         )}
       </div>
@@ -261,8 +277,8 @@ export function TodayV2Screen({
 export function TodayV2Loading() {
   return (
     <div aria-busy="true" className="grid gap-6 min-[901px]:grid-cols-12">
-      <div className="h-72 rounded-tile bg-hong-tint min-[901px]:col-span-7" />
-      <div className="h-40 rounded-tile bg-hong-tint min-[901px]:col-span-5" />
+      <div className="h-64 rounded-tile bg-hong-tint min-[901px]:col-span-6" />
+      <div className="h-64 rounded-tile bg-hong-tint min-[901px]:col-span-6" />
       <div className="h-32 rounded-tile bg-hong-tint min-[901px]:col-span-12" />
       <p className="sr-only" role="status">
         {COPY.loading}

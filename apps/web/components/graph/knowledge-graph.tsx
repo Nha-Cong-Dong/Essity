@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { shortLabel } from "@/lib/graph";
 import { multiStylesheet } from "@/lib/graph-multi-style";
+import { type SimEdge, type SimNode, stepSim } from "@/lib/graph-sim";
 import { mergeGraphs, type MultiCard, type SubjectGraph } from "@/lib/graph-multi";
 
 // V16/V17: the knowledge graph of one or several subjects. Nodes are cards coloured by subject,
@@ -93,10 +94,16 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
       maxZoom: 3,
       wheelSensitivity: 0.3,
       boxSelectionEnabled: false,
-      autoungrabify: true,
     });
     cyRef.current = cy;
     cy.on("tap", "node", (ev) => setPickedId(ev.target.id()));
+    // Hover lights a node and its neighbours; the rest dims (Obsidian-style).
+    cy.on("mouseover", "node", (ev) => {
+      const hood = ev.target.closedNeighborhood();
+      cy.elements().not(hood).addClass("dim");
+      hood.addClass("hot");
+    });
+    cy.on("mouseout", "node", () => cy.elements().removeClass("dim hot"));
     // UI-A: fit puts the whole graph in the middle; a graph of a few cards is not blown up, so its
     // labels keep their size and the canvas does not look empty at the edges.
     const layout = cy.layout({
@@ -116,9 +123,56 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
       }
     });
     layout.run();
+    // Float: after the first layout the nodes keep drifting under a small force simulation (springs on
+    // the edges, repulsion, a pull to the middle). A dragged node is pinned under the pointer and the
+    // rest follow. Reduced motion: no drift; nodes can still be dragged.
+    let frame = 0;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    layout.one("layoutstop", () => {
+      if (reduced) return;
+      const list = cy.nodes().toArray();
+      const index = new Map(list.map((n, i) => [n.id(), i] as const));
+      const sim: SimNode[] = list.map((n) => ({ id: n.id(), x: n.position("x"), y: n.position("y"), vx: 0, vy: 0, pinned: false }));
+      const links: SimEdge[] = cy
+        .edges()
+        .toArray()
+        .flatMap((e) => {
+          const a = index.get(e.source().id());
+          const b = index.get(e.target().id());
+          return a === undefined || b === undefined ? [] : [{ a, b }];
+        });
+      cy.on("grab", "node", (ev) => {
+        const i = index.get(ev.target.id());
+        if (i !== undefined) sim[i].pinned = true;
+      });
+      cy.on("drag", "node", (ev) => {
+        const i = index.get(ev.target.id());
+        if (i !== undefined) {
+          sim[i].x = ev.target.position("x");
+          sim[i].y = ev.target.position("y");
+        }
+      });
+      cy.on("free", "node", (ev) => {
+        const i = index.get(ev.target.id());
+        if (i !== undefined) sim[i].pinned = false;
+      });
+      let alpha = 0.5;
+      const tick = () => {
+        alpha = Math.max(0.1, alpha * 0.995);
+        stepSim(sim, links, alpha, Math.random);
+        cy.batch(() => {
+          list.forEach((n, i) => {
+            if (!sim[i].pinned) n.position({ x: sim[i].x, y: sim[i].y });
+          });
+        });
+        frame = requestAnimationFrame(tick);
+      };
+      frame = requestAnimationFrame(tick);
+    });
     const resize = new ResizeObserver(() => cy.resize());
     resize.observe(host.current);
     return () => {
+      cancelAnimationFrame(frame);
       resize.disconnect();
       cy.destroy();
       cyRef.current = null;
@@ -198,7 +252,7 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
           ref={host}
           aria-label="Đồ thị tri thức"
           style={{ height }}
-          className="min-h-70 w-full touch-none overflow-hidden rounded-tile bg-hong-tint"
+          className="min-h-70 w-full cursor-grab touch-none overflow-hidden rounded-tile bg-hong-tint active:cursor-grabbing"
         />
         <div className="absolute right-2 bottom-2 flex gap-2">
           <button type="button" aria-label="Phóng to" className={ZOOM} onClick={() => zoomBy(1.3)}>

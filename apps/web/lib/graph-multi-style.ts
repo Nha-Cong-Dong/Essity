@@ -28,5 +28,8 @@ export function multiStylesheet(ink: string, line: string): StylesheetJson {
     },
     { selector: "edge", style: { width: 1.5, "line-color": line, "curve-style": "bezier", opacity: 0.55, "z-index": 0 } },
     { selector: "node", style: { "z-index": 10 } },
+    { selector: ".dim", style: { opacity: 0.18 } },
+    { selector: "node.hot", style: { "border-color": ink, "border-width": 3 } },
+    { selector: "edge.hot", style: { opacity: 1, "line-color": ink, width: 2 } },
   ];
 }
