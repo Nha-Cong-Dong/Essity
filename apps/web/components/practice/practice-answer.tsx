@@ -68,6 +68,8 @@ export function PracticeAnswer({
   const [busy, setBusy] = useState(false);
   const [removed, setRemoved] = useState(false);
   const [late, setLate] = useState(false);
+  const [overrideMode, setOverrideMode] = useState<"idle" | "choosing" | "updated">("idle");
+  const [overrideFailed, setOverrideFailed] = useState(false);
 
   const attemptRef = useRef<string | null>(null);
   const textRef = useRef("");
@@ -204,6 +206,35 @@ export function PracticeAnswer({
     }
   }
 
+  // "Chấm sai" (US-09, US-16 AC10): the learner's own verdict is a new grade of this attempt; the
+  // question's schedule is rebuilt from the last attempt's latest grade.
+  async function override(verdict: "correct" | "incorrect") {
+    const gradeId = phase.kind === "sent" ? phase.view?.result?.grade_id : undefined;
+    if (!gradeId) return;
+    setBusy(true);
+    setOverrideFailed(false);
+    const reply = await api.override(gradeId, verdict);
+    setBusy(false);
+    if (reply.ok) {
+      setOverrideMode("updated");
+      setPhase((was) => (was.kind === "sent" ? { ...was, view: reply.data } : was));
+    } else {
+      setOverrideFailed(true);
+    }
+  }
+
+  // "Làm lại câu này": a new attempt at the same question; the old one and its grades stay.
+  function redo() {
+    hiddenMs.current = 0;
+    hiddenSince.current = document.hidden ? Date.now() : null;
+    textRef.current = "";
+    setText("");
+    setRemoved(false);
+    setOverrideMode("idle");
+    setOverrideFailed(false);
+    void load();
+  }
+
   async function remove() {
     const reply = await api.remove(questionId);
     if (reply.ok) setRemoved(true);
@@ -327,10 +358,37 @@ export function PracticeAnswer({
                   answerSource={view.result?.answer_origin === "ai" ? "ai" : "bank"}
                   differsFromCard={view.result?.differs_from_card_id ? true : undefined}
                 />
+                {overrideMode === "updated" && (
+                  <p role="status" className="m-0 mt-6 rounded-control bg-sunken px-4 py-3 text-meta">
+                    Đã cập nhật kết quả và lịch ôn.
+                  </p>
+                )}
+                {overrideFailed && (
+                  <p role="alert" className="m-0 mt-4 text-meta">
+                    Chưa gửi được. Bạn bấm lại nhé.
+                  </p>
+                )}
                 <div className="mt-8 flex flex-wrap items-center gap-2">
                   <Button ref={nextButton} onClick={onNext} className="max-sm:w-full">
                     {nextLabel}
                   </Button>
+                  <Button variant="secondary" onClick={redo}>
+                    Làm lại câu này
+                  </Button>
+                  {overrideMode === "choosing" ? (
+                    <>
+                      <Button variant="secondary" pending={busy} onClick={() => void override("correct")}>
+                        Thực ra tôi đúng
+                      </Button>
+                      <Button variant="secondary" pending={busy} onClick={() => void override("incorrect")}>
+                        Thực ra tôi sai
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant="quiet" onClick={() => setOverrideMode("choosing")}>
+                      Chấm sai
+                    </Button>
+                  )}
                   {removed ? (
                     <>
                       <Pen>Đã gỡ khỏi luyện tập.</Pen>

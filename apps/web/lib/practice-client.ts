@@ -17,6 +17,9 @@ export const practiceApi = {
   submit: (attemptId: string, answer: PracticeAnswer) =>
     call<PracticeView>(`/api/practice/attempts/${attemptId}/submit`, "POST", answer),
   regrade: (attemptId: string) => call<PracticeView>(`/api/practice/attempts/${attemptId}/regrade`, "POST"),
+  /** "Chấm sai": the learner's own verdict, a new grade of the attempt (US-09, US-16 AC10). */
+  override: (gradeId: string, verdict: "correct" | "incorrect") =>
+    call<PracticeView>(`/api/practice/grades/${gradeId}/override`, "POST", { verdict }),
   read: (attemptId: string) => call<PracticeView>(`/api/practice/attempts/${attemptId}`, "GET"),
   /** "Gỡ khỏi luyện tập": the question is never asked again and its schedule stops. */
   remove: (questionId: string) => call<null>(`/api/practice/questions/${questionId}/worthless`, "POST"),
