@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { shortLabel } from "@/lib/graph";
 import { multiStylesheet } from "@/lib/graph-multi-style";
-import { type SimEdge, type SimNode, stepSim } from "@/lib/graph-sim";
+import { optionsFor, type SimEdge, type SimNode, stepSim } from "@/lib/graph-sim";
 import { mergeGraphs, type MultiCard, type SubjectGraph } from "@/lib/graph-multi";
 
 // V16/V17: the knowledge graph of one or several subjects. Nodes are cards coloured by subject,
@@ -156,10 +156,11 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
         const i = index.get(ev.target.id());
         if (i !== undefined) sim[i].pinned = false;
       });
+      const opts = optionsFor(list.length);
       let alpha = 0.5;
       const tick = () => {
         alpha = Math.max(0.1, alpha * 0.995);
-        stepSim(sim, links, alpha, Math.random);
+        stepSim(sim, links, alpha, Math.random, opts);
         cy.batch(() => {
           list.forEach((n, i) => {
             if (!sim[i].pinned) n.position({ x: sim[i].x, y: sim[i].y });

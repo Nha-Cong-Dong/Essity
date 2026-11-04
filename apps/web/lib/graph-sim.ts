@@ -13,7 +13,10 @@ export type SimOptions = {
   drift: number;
 };
 
-export const SIM_DEFAULTS: SimOptions = { repulsion: 2600, spring: 0.02, rest: 80, gravity: 0.004, damping: 0.86, drift: 0.05 };
+export const SIM_DEFAULTS: SimOptions = { repulsion: 20000, spring: 0.03, rest: 100, gravity: 0.003, damping: 0.86, drift: 0.05 };
+
+/** A small graph is spread out to fill the canvas; a big one keeps its repulsion down so it stays compact. */
+export const optionsFor = (count: number): SimOptions => ({ ...SIM_DEFAULTS, repulsion: SIM_DEFAULTS.repulsion * Math.min(1, 30 / Math.max(count, 1)) });
 
 /** Advance one frame. `alpha` scales the forces (1 = full, ~0.1 = a gentle float). */
 export function stepSim(nodes: SimNode[], edges: SimEdge[], alpha: number, noise: () => number, o: SimOptions = SIM_DEFAULTS): void {
@@ -28,7 +31,7 @@ export function stepSim(nodes: SimNode[], edges: SimEdge[], alpha: number, noise
         dy = noise() - 0.5;
         d2 = dx * dx + dy * dy + 0.01;
       }
-      if (d2 > 160000) continue; // beyond 400 px nodes do not feel each other
+      if (d2 > 640000) continue; // beyond 800 px nodes do not feel each other
       const d = Math.sqrt(d2);
       const f = (o.repulsion * alpha) / d2;
       const fx = (dx / d) * f;
