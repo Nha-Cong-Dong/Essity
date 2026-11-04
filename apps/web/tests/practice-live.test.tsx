@@ -83,6 +83,7 @@ function fakeApi(over: Partial<PracticeApi> = {}): PracticeApi {
     saveDraft: vi.fn(async () => ok(null)),
     submit: vi.fn(async () => ok(gradedView())),
     regrade: vi.fn(async () => ok(gradedView())),
+    override: vi.fn(async () => ok(gradedView())),
     read: vi.fn(async () => ok(gradedView())),
     remove: vi.fn(async () => ok(null)),
     restore: vi.fn(async () => ok(null)),
@@ -250,6 +251,30 @@ describe("PracticeAnswer (US-16 AC2, AC5)", () => {
     const list = await screen.findByRole("list", { name: "theo từng ý" });
     const items = within(list).getAllByRole("listitem").map((li) => li.textContent);
     expect(items).toEqual(["Nêu độ tin cậy.Đúng", "Nêu ảnh hưởng tới độ trễ.Thiếu"]);
+  });
+
+  // REVIEW-SEED. Red when: the practice result has no "Chấm sai", or it does not send the learner's
+  // verdict for THIS grade, or the new view is not shown with the notice.
+  it("REVIEW-SEED: 'Chấm sai' sends the learner's verdict for the grade and says the schedule moved", async () => {
+    const api = fakeApi();
+    await answer(api);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Gửi" })));
+    await act(async () => fireEvent.click(await screen.findByRole("button", { name: "Chấm sai" })));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Thực ra tôi đúng" })));
+    expect(api.override).toHaveBeenCalledWith(GRADE, "correct");
+    expect(screen.getByRole("status").textContent).toContain("Đã cập nhật kết quả và lịch ôn.");
+  });
+
+  // Red when: a graded question cannot be done again on the same screen, or the old answer stays.
+  it("REVIEW-SEED: 'Làm lại câu này' opens a fresh attempt with an empty box", async () => {
+    const fresh = draftView({ attempt_id: "0b8f1d2e-0000-4000-8000-0000000000b2" });
+    const open = vi.fn().mockResolvedValueOnce(ok(draftView())).mockResolvedValueOnce(ok(fresh));
+    const api = fakeApi({ open });
+    await answer(api);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Gửi" })));
+    await act(async () => fireEvent.click(await screen.findByRole("button", { name: "Làm lại câu này" })));
+    expect(open).toHaveBeenCalledTimes(2);
+    expect((screen.getByLabelText("Câu trả lời của bạn") as HTMLTextAreaElement).value).toBe("");
   });
 
   it("T8.7b: Hoàn tác on the result calls restore and offers 'Gỡ khỏi luyện tập' again", async () => {
