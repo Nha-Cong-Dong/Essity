@@ -105,7 +105,7 @@ def chunk10_est_pages(total_chars: int) -> list[OutlineNode]:
         end = min(start + CHUNK_PAGES, pages)
         nodes.append(
             OutlineNode(
-                title=f"Pages {start + 1}-{end}",
+                title=f"Trang {start + 1}–{end}",
                 level=0,
                 ord=order,
                 start=start + 1,

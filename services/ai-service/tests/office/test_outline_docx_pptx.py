@@ -77,13 +77,13 @@ def test_docx_heading_without_text_weighs_one() -> None:  # US-13 AC1 (weight = 
 def test_docx_without_headings_is_chunk10_est_pages() -> None:  # US-13 AC2
     data = make_docx([(None, PAGE * 12)])
     nodes = build_docx_outline(read_docx(data))
-    assert shape(nodes) == [("Pages 1-10", 0, 1, 10, 10), ("Pages 11-12", 0, 11, 12, 2)]
+    assert shape(nodes) == [("Trang 1–10", 0, 1, 10, 10), ("Trang 11–12", 0, 11, 12, 2)]
     assert all(n.source == "chunk10" and n.temporary for n in nodes)
 
 
 def test_docx_without_any_text_is_one_node_of_weight_one() -> None:  # US-13 AC1
     nodes = build_docx_outline(read_docx(make_docx([])))
-    assert shape(nodes) == [("Pages 1-1", 0, 1, 1, 1)]
+    assert shape(nodes) == [("Trang 1–1", 0, 1, 1, 1)]
 
 
 def test_pptx_without_sections_is_flat_and_temporary() -> None:  # US-13 AC2

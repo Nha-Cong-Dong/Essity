@@ -294,10 +294,11 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
 });
 
 describe("the date example (risk register R24)", () => {
-  // Red when: the field keeps a fixed "15/12/2026" placeholder.
+  // Red when: the placeholder looks like a filled date, or the page's example is not shown as a hint.
   it("the new-subject field shows the page's example", () => {
     render(<NewSubjectForm example={EXAMPLE} />);
-    expect(date().getAttribute("placeholder")).toBe(EXAMPLE);
+    expect(date().getAttribute("placeholder")).toBe("ngày/tháng/năm");
+    expect(document.body.textContent).toContain(`Ví dụ: ${EXAMPLE}`);
   });
 
   // Red when: a message is shown without its example filled in (review 27b3601).
@@ -313,7 +314,8 @@ describe("the date example (risk register R24)", () => {
   it("the edit field shows the same example", () => {
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
     fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
-    expect(date().getAttribute("placeholder")).toBe(EXAMPLE);
+    expect(date().getAttribute("placeholder")).toBe("ngày/tháng/năm");
+    expect(document.body.textContent).toContain(`Ví dụ: ${EXAMPLE}`);
   });
 });
 

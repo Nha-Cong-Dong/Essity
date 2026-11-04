@@ -123,12 +123,11 @@ def seed_account(session: Session, email: str, password: str, now: datetime | No
             select(Document.id).where(
                 Document.subject_id == old.id,
                 Document.user_id == user.id,
-                Document.status == "indexed",
             )
         )
         if indexed is not None:
             return f"{email}: demo subject is already there"
-        old.deleted_at = now  # an earlier seed without an indexed textbook: set aside, redo
+        old.deleted_at = now  # an earlier seed without any textbook: set aside, redo
     day = learning_day(now, ZoneInfo(user.timezone), user.day_start_hour)
     subject, _ = subjects.create_with_exam(DEMO_SUBJECT, day + timedelta(days=30))
     _fill(session, user, subject.id, now, day)
