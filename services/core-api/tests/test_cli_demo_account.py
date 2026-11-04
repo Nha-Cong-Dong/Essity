@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core_api.cli_demo_account import DEMO_EMAIL, DEMO_PASSWORD, seed_account
-from core_api.db.models import DocSection, Document, KnowledgeUnit
+from core_api.db.models import Anchor, DocSection, Document, KnowledgeUnit
 from core_api.domain.auth.passwords import verify_password
 from core_api.repositories.today import TodayRepository
 from core_api.repositories.user import UserRepository
@@ -39,3 +39,17 @@ def test_demo_textbook_is_indexed_with_chapters_and_cards_sit_in_a_session(
     assert len([s for s in sections if s.parent_id is None]) == 2
     units = list(db_session.scalars(select(KnowledgeUnit).where(KnowledgeUnit.user_id == user.id)))
     assert units and all(u.session_id is not None for u in units)
+
+
+def test_every_demo_unit_has_a_source_anchor_so_grading_is_not_refused(
+    db_session: Session,
+) -> None:
+    """Hackathon V2: no anchor meant `RequestRefused("anchor count")` and "Chưa chấm được"."""
+    seed_account(db_session, DEMO_EMAIL, DEMO_PASSWORD)
+    user = UserRepository(db_session).get_by_email(DEMO_EMAIL)
+    assert user is not None
+    units = list(db_session.scalars(select(KnowledgeUnit).where(KnowledgeUnit.user_id == user.id)))
+    anchored = {
+        a.unit_id for a in db_session.scalars(select(Anchor).where(Anchor.user_id == user.id))
+    }
+    assert units and {u.id for u in units} <= anchored
