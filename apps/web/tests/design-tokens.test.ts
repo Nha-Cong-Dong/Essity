@@ -132,9 +132,22 @@ describe.each(["light", "dark"] as const)("%s tile", (mode) => {
   });
   it("the cam row (cam 15% over --bg) keeps its text and its --cam label readable", () => {
     const t = palette(mode);
-    const row = mode === "light" ? "#f4e5dc" : "#32231f";
+    const row = mixHex(t["--cam"], 0.15, t["--bg"]); // the row is opaque: cam 15% over --bg, as in nx-list.tsx
     expect(contrastOn(t, "--ink", row)).toBeGreaterThanOrEqual(4.5);
     expect(contrastOn(t, "--cam", row)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+/** sRGB mix of two #rrggbb tokens: `a` at `share`, `b` for the rest (CSS color-mix in srgb). */
+function mixHex(a: string, share: number, b: string): string {
+  const ch = (hex: string, i: number) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
+  return `#${[0, 1, 2].map((i) => Math.round(ch(a, i) * share + ch(b, i) * (1 - share)).toString(16).padStart(2, "0")).join("")}`;
+}
+
+describe("--elev-sheet keeps a hairline", () => {
+  it.each(["light", "dark"] as const)("%s: a card shadow is never none", (mode) => {
+    expect(palette(mode)["--elev-sheet"]).not.toBe("none");
+    expect(palette(mode)["--elev-sheet"]).toMatch(/var\(--line\)/);
   });
 });
 

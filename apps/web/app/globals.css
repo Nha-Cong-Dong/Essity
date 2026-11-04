@@ -255,7 +255,7 @@
   --pencil: #625c5a;
   --focus: var(--hong);
   --grain-opacity: 0.1;
-  --elev-sheet: none; /* V22: cards are flat: a hairline border or the --hong-tint tile, no shadow */
+  --elev-sheet: 0 0 0 1px var(--line); /* V22: cards are flat: a hairline ring (so a white card on white keeps an edge) or the --hong-tint tile, no shadow */
   --elev-over: 0 0 0 1px rgb(110 23 62 / 0.06), 0 28px 64px -24px rgb(110 23 62 / 0.4);
   --elev-cover: 0 1px 2px rgb(110 23 62 / 0.08), 0 24px 48px -20px rgb(110 23 62 / 0.4);
   --elev-hong: 0 10px 24px -10px rgb(168 37 95 / 0.6);
@@ -313,7 +313,7 @@
     --pencil: #ada8a6;
     --focus: var(--hong);
     --grain-opacity: 0.14;
-    --elev-sheet: none; /* V22: cards are flat: a hairline border or the --hong-tint tile, no shadow */
+    --elev-sheet: 0 0 0 1px var(--line); /* V22: cards are flat: a hairline ring (so a white card on white keeps an edge) or the --hong-tint tile, no shadow */
     --elev-over: 0 0 0 1px var(--line), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 28px 64px -16px rgb(0 0 0 / 0.7);
     --elev-cover: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 48px -16px rgb(0 0 0 / 0.7);
     --elev-hong: 0 10px 28px -10px rgb(242 141 186 / 0.45);
@@ -373,7 +373,7 @@
   --pencil: #ada8a6;
   --focus: var(--hong);
   --grain-opacity: 0.14;
-  --elev-sheet: none; /* V22: cards are flat: a hairline border or the --hong-tint tile, no shadow */
+  --elev-sheet: 0 0 0 1px var(--line); /* V22: cards are flat: a hairline ring (so a white card on white keeps an edge) or the --hong-tint tile, no shadow */
   --elev-over: 0 0 0 1px var(--line), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 28px 64px -16px rgb(0 0 0 / 0.7);
   --elev-cover: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 48px -16px rgb(0 0 0 / 0.7);
   --elev-hong: 0 10px 28px -10px rgb(242 141 186 / 0.45);
@@ -452,10 +452,10 @@
     /* The sticky header never hides the focused element (WCAG 2.4.11). */
     scroll-padding-top: calc(var(--header-h) + 8px);
   }
-  /* Under 480px the nav sits on its own 48px row below the logo row (T9.5, three nav items). */
-  @media (max-width: 479px) {
+  /* Under 1024px the nav is a fixed bar at the foot: a focused element never hides behind it. */
+  @media (max-width: 1023px) {
     html {
-      scroll-padding-top: calc(var(--header-h) + 48px + 8px);
+      scroll-padding-bottom: calc(56px + env(safe-area-inset-bottom) + 8px);
     }
   }
   body {

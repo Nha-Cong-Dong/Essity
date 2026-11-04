@@ -40,8 +40,8 @@ export function NxList({
 }
 
 const ROW = "grid min-h-12 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 rounded-row bg-bg px-3.5 py-1.5 text-body min-[641px]:min-h-11.5";
-const NEXT = "bg-cam/15 font-semibold inset-ring-[1.5px] inset-ring-cam";
-const PICK = "bg-cam/12 inset-ring-[1.5px] inset-ring-cam";
+const NEXT = "bg-[color-mix(in_srgb,var(--cam)_15%,var(--bg))] font-semibold inset-ring-[1.5px] inset-ring-cam";
+const PICK = "bg-[color-mix(in_srgb,var(--cam)_12%,var(--bg))] inset-ring-[1.5px] inset-ring-cam";
 
 /**
  * A row: a lead cell (number, letter tile, tick), the name (wraps to two lines), the state at the
@@ -80,7 +80,7 @@ export function NxRow({
   );
   const cls = cn(ROW, next && NEXT, href && "text-ink no-underline hover:bg-sunken", className);
   return href ? (
-    <li className="contents">
+    <li>
       <a href={href} className={cls}>
         {body}
       </a>
