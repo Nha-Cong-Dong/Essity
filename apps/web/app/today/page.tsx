@@ -4,9 +4,11 @@ import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
 import { AppShell, PageColumn } from "@/components/shells";
+import { weekFromCells } from "@/components/today-v2/week-strip";
 import { TodayV2Failed, TodayV2Loading, TodayV2Screen } from "@/components/today-v2/today-v2-screen";
 import { errorName, logError } from "@/lib/log";
 import { requireVerifiedSession } from "@/lib/session";
+import { getStats } from "@/lib/stats-api";
 import { getToday } from "@/lib/today";
 import { type TodayApi, toTodayV2 } from "@/lib/today-adapt";
 
@@ -32,7 +34,11 @@ async function Today() {
     logError("core-api call failed", { route: "today", error: errorName(error) });
     return <TodayV2Failed />;
   }
-  return <TodayV2Screen today={toTodayV2(today)} />;
+  // The week strip is a bonus: if the stats call fails the screen just goes without it.
+  const week = await getStats()
+    .then(({ view }) => weekFromCells(view.cells, today.learning_day))
+    .catch(() => undefined);
+  return <TodayV2Screen today={toTodayV2(today)} week={week} />;
 }
 
 export default function TodayPage() {
