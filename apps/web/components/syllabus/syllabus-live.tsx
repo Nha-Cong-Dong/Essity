@@ -11,7 +11,7 @@ import {
   patchSection,
   readOutline,
 } from "@/lib/syllabus/api";
-import { anyEdited, sourceLabel, type SyllabusNode } from "@/lib/syllabus/tree";
+import { anyEdited, prettyDocName, sourceNote, type SyllabusNode } from "@/lib/syllabus/tree";
 
 import { COPY, NOTICE, Skeleton, SyllabusTile, Totals } from "./syllabus-screen";
 import { ExcludeEditor } from "./exclude-editor";
@@ -161,8 +161,8 @@ export function SyllabusLive({
     <div data-state={view.temporary ? "provisional" : "ready"}>
       {header}
       <p className="m-0 mt-1 flex flex-wrap items-baseline gap-x-3 text-read wrap-anywhere" data-main>
-        <span data-user>{view.name}</span>
-        <PencilNote>{sourceLabel(view.source, anyEdited(nodes))}</PencilNote>
+        <span data-user>{prettyDocName(view.name)}</span>
+        {sourceNote(view.source, anyEdited(nodes)) && <PencilNote>{sourceNote(view.source, anyEdited(nodes))}</PencilNote>}
       </p>
       {note && (
         <div className="mt-4 rounded-sheet bg-sunken p-4 text-body" data-notice="chunk10">

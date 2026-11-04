@@ -1,4 +1,3 @@
-import { CoverageBar } from "@/components/stats/stat-tile";
 import { NxList } from "@/components/ui/nx-list";
 import type { ViewSubject } from "@/lib/stats-view";
 
@@ -28,7 +27,6 @@ function StatRow({ label, value, unit, hint }: { label: string; value: string | 
 
 export function SubjectStatsBlock({ stats }: { stats: ViewSubject }) {
   const { syllabus, bank, retention } = stats;
-  const percent = syllabus.leaves > 0 ? Math.round((syllabus.studied / syllabus.leaves) * 100) : 0;
   const ready = bank?.reduce((n, t) => n + t.ready, 0) ?? 0;
   const practiced = bank?.reduce((n, t) => n + t.practiced, 0) ?? 0;
   const mastered = bank?.reduce((n, t) => n + t.mastered, 0) ?? 0;
@@ -53,7 +51,6 @@ export function SubjectStatsBlock({ stats }: { stats: ViewSubject }) {
           hint="Học một buổi để có thẻ"
         />
       </NxList>
-      <CoverageBar percent={percent} />
     </div>
   );
 }
