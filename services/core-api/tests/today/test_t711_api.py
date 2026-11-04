@@ -177,7 +177,7 @@ def test_us03_ac7_nothing_due_shows_the_next_due_day(
 
 
 # US-03 AC1 (unfinished). Red when: done submissions show, or a count is exposed.
-def test_us03_ac1_unfinished_lines_for_drafts_and_pending_ai(
+def test_us03_ac1_unfinished_lines_only_for_pending_ai(
     client: TestClient, db_session: Session
 ) -> None:
     user, headers = signed_in(db_session)
@@ -195,7 +195,7 @@ def test_us03_ac1_unfinished_lines_for_drafts_and_pending_ai(
     db_session.flush()
     body = today(client, headers)
     lines = body["unfinished"]
-    assert {line["session_id"] for line in lines} == {str(drafts.id), str(waiting.id)}
+    assert {line["session_id"] for line in lines} == {str(waiting.id)}  # no draft lines (CARDS-V3)
     assert all(line["line"] and line["subject_id"] == str(subject_id) for line in lines)
     assert "backlog_total" not in body
 

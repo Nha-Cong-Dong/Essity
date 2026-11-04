@@ -56,13 +56,8 @@ class Saved:
         key = self.world.put([self.world.draft(1), self.world.draft(2)])
         OnSubmissionProcessed(storage)(db, self.world.processed(key))
         db.commit()
-        self.base = f"/v1/sessions/{self.world.study.id}/drafts"
-        self.cards = client.get(self.base, headers=self.headers).json()["drafts"]
-        self.ids = [uuid.UUID(c["id"]) for c in self.cards]
-
-    def save(self) -> Any:
-        body = {"units": [{"unit_id": c["id"], "version": c["version"]} for c in self.cards]}
-        return self.client.post(f"{self.base}/save", json=body, headers=self.headers)
+        # The cards of a result go straight to the vault (CARDS-V3): saved once the handler ran.
+        self.ids = list(db.scalars(select(KnowledgeUnit.id).order_by(KnowledgeUnit.created_at)))
 
     def ask(self, unit_id: uuid.UUID, ai: FakeAi, *, lazy: bool = False) -> str:
         return ensure_review_question(self.db, self.user.id, unit_id, ai, lazy=lazy)
@@ -91,26 +86,16 @@ def jobs(db: Session, user_id: uuid.UUID) -> list[dict[str, Any]]:
     return [r[0]["payload"] for r in rows if r[0]["payload"]["user_id"] == str(user_id)]
 
 
-def test_ac11_save_enqueues_one_job_per_card_and_a_second_save_none(saved: Saved) -> None:
-    # Red when: Save does not ask for the questions, or a re-Save asks again.
-    assert saved.save().status_code == 200
+def test_ac11_a_result_enqueues_one_job_per_card(saved: Saved) -> None:
+    # Red when: a card of a result does not ask for its question, or asks twice.
     first = jobs(saved.db, saved.user.id)
     assert sorted(j["unit_id"] for j in first) == sorted(str(i) for i in saved.ids)
     assert all(j["lazy"] is False and j["user_id"] == str(saved.user.id) for j in first)
-    saved.save()
     assert len(jobs(saved.db, saved.user.id)) == 2
-
-
-def test_ac1_a_draft_has_no_review_question(saved: Saved) -> None:
-    # Red when: a card that is not saved gets a question (or a model call).
-    ai = FakeAi()
-    assert saved.ask(saved.ids[0], ai) == "skipped"
-    assert ai.payloads == [] and saved.questions(saved.ids[0]) == []
 
 
 def test_ac11_save_makes_exactly_one_review_auto_question_with_rubric(saved: Saved) -> None:
     # Red when: no question, a second one, no rubric or answer stored, or no unit_rev / run_id.
-    saved.save()
     ai = FakeAi()
     unit_id = saved.ids[0]
     assert saved.ask(unit_id, ai) == "created"
@@ -122,7 +107,6 @@ def test_ac11_save_makes_exactly_one_review_auto_question_with_rubric(saved: Sav
 
 
 def test_ac11_the_card_goes_to_the_model_with_its_text_and_quotes(saved: Saved) -> None:
-    saved.save()
     ai = FakeAi()
     saved.ask(saved.ids[0], ai)
     [sent] = ai.payloads
@@ -132,7 +116,6 @@ def test_ac11_the_card_goes_to_the_model_with_its_text_and_quotes(saved: Saved) 
 
 def test_ac11_resave_or_repeated_job_does_not_duplicate_and_calls_nothing(saved: Saved) -> None:
     # Red when: a repeated run (at-least-once delivery, a re-Save) makes a second question or call.
-    saved.save()
     ai = FakeAi()
     unit_id = saved.ids[0]
     assert saved.ask(unit_id, ai) == "created"
@@ -150,7 +133,6 @@ def new_rev(saved: Saved, unit_id: uuid.UUID, rev: int) -> None:
 
 def test_ac11_edit_keeps_the_old_question_and_makes_the_new_one_lazily(saved: Saved) -> None:
     # Red when: an edit makes a call at once, deletes the old question, or the due card gets none.
-    saved.save()
     ai = FakeAi()
     unit_id = saved.ids[0]
     saved.ask(unit_id, ai)
@@ -166,7 +148,6 @@ def test_ac11_edit_keeps_the_old_question_and_makes_the_new_one_lazily(saved: Sa
 
 def test_ac11_cap_reached_is_not_an_error_and_the_old_question_stays(saved: Saved) -> None:
     # Red when: pending_ai raises, or the card loses the question it has.
-    saved.save()
     unit_id = saved.ids[0]
     saved.ask(unit_id, FakeAi())
     new_rev(saved, unit_id, 2)
@@ -176,7 +157,6 @@ def test_ac11_cap_reached_is_not_an_error_and_the_old_question_stays(saved: Save
 
 
 def test_ac11_cap_reached_with_no_question_yet_waits_without_error(saved: Saved) -> None:
-    saved.save()
     unit_id = saved.ids[0]
     assert saved.ask(unit_id, FakeAi(NotGraded("quota", "quota_hard_cap"))) == "pending_ai"
     assert saved.questions(unit_id) == []
@@ -186,13 +166,11 @@ def test_ac11_cap_reached_with_no_question_yet_waits_without_error(saved: Saved)
 
 
 def test_ac11_ai_unreachable_raises_so_the_job_retries(saved: Saved) -> None:
-    saved.save()
     with pytest.raises(AiUnavailableError):
         saved.ask(saved.ids[0], FakeAi(NotGraded("unavailable", "timeout")))
 
 
 def test_ac11_a_broken_reply_makes_no_question(saved: Saved) -> None:
-    saved.save()
     bad = FakeAi(
         ReviewQuestionReply(
             status="failed", failure="output_invalid", prompt_version="v1", run_id=RUN
@@ -204,7 +182,6 @@ def test_ac11_a_broken_reply_makes_no_question(saved: Saved) -> None:
 
 def test_ac11_same_wording_is_not_doubled(saved: Saved) -> None:
     # Red when: the unique active hash makes the insert fail, or a second row appears.
-    saved.save()
     unit_id = saved.ids[0]
     same = FakeAi(ok("Cùng một câu?"))
     saved.ask(unit_id, same)
@@ -216,7 +193,6 @@ def test_ac11_same_wording_is_not_doubled(saved: Saved) -> None:
 
 def test_ac11_another_users_card_is_skipped(saved: Saved, db_session: Session) -> None:
     # Red when: a job for another user id reaches this user's card (isolation).
-    saved.save()
     ai = FakeAi()
     stranger = uuid.uuid4()
     assert ensure_review_question(db_session, stranger, saved.ids[0], ai, lazy=False) == "skipped"
@@ -228,7 +204,6 @@ def test_t99_save_enqueues_one_edge_job_per_card(saved: Saved) -> None:
     # Red when: Save does not ask for the edges of the cards it saves (US-19 AC2).
     from core_api.jobs.propose_unit_edges import PROPOSE_UNIT_EDGES
 
-    assert saved.save().status_code == 200
     rows = saved.db.execute(
         text("SELECT args FROM procrastinate_jobs WHERE task_name = :k"),
         {"k": PROPOSE_UNIT_EDGES},

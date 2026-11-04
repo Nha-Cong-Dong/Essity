@@ -209,3 +209,44 @@ def test_v2_finished_session_is_listed(client: TestClient, db_session: Session):
     sessions = client.get(f"/v1/vault/subjects/{subject.id}/sessions", headers=headers).json()
     listed = [(x["id"], x["title"], x["cards"]) for x in sessions]
     assert listed == [(str(ids["done"]), "Buổi done", 1)]
+
+
+def test_vault_title_prefers_study_title(client: TestClient, db_session: Session):
+    # Red when: the session is still named by the first 80 characters of the note, or an old
+    # session (no title) loses its fallback.
+    _, headers, subject, study, _ = _world(db_session)
+    study.title = "Giao thức TCP"
+    db_session.commit()
+    sessions = client.get(f"/v1/vault/subjects/{subject.id}/sessions", headers=headers).json()
+    assert sessions[0]["title"] == "Giao thức TCP"
+    cards = client.get(f"/v1/vault/sessions/{study.id}/cards", headers=headers).json()
+    assert cards["title"] == "Giao thức TCP"
+    study.title = None
+    db_session.commit()
+    sessions = client.get(f"/v1/vault/subjects/{subject.id}/sessions", headers=headers).json()
+    assert sessions[0]["title"] == "Chương 3: TCP"
+
+
+def test_session_result_reports_status_cards_and_notice(client: TestClient, db_session: Session):
+    # Red when: a done session with no card says nothing, or another user's session answers.
+    user, headers, _, study, _ = _world(db_session)
+    sub = Submission(
+        user_id=user.id,
+        session_id=study.id,
+        status="done",
+        finished_at=datetime.now(UTC),
+        notice="no_content_found",
+    )
+    db_session.add(sub)
+    db_session.commit()
+    body = client.get(f"/v1/vault/sessions/{study.id}/result", headers=headers).json()
+    assert body["submission_status"] == "done" and body["cards"] == 1
+    assert body["notice"] == "no_content_found" and body["title"] == "Chương 3: TCP"
+    stranger = signed_in(db_session)[1]
+    assert client.get(f"/v1/vault/sessions/{study.id}/result", headers=stranger).status_code == 404
+
+
+def test_session_result_before_any_submission(client: TestClient, db_session: Session):
+    _, headers, _, study, _ = _world(db_session)
+    body = client.get(f"/v1/vault/sessions/{study.id}/result", headers=headers).json()
+    assert body["submission_status"] is None and body["notice"] is None

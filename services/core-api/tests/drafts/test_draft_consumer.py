@@ -1,6 +1,7 @@
 """T7.8 (US-02b AC1, AC6, AC10, AC13, Bảo mật): the consumer of `submission.processed.v1` and
 `submission.failed.v1` writes draft cards once, trusts neither the event nor the file."""
 
+import json
 import uuid
 
 import pytest
@@ -11,7 +12,9 @@ from sqlalchemy.orm import Session
 from core_api.db.models import (
     Anchor,
     KnowledgeUnit,
-    Question,
+    Outbox,
+    SessionRange,
+    StudyLedger,
     UnitRevision,
     UnitSection,
     User,
@@ -41,8 +44,9 @@ def count(db: Session, model: type) -> int:
     return db.scalar(select(func.count()).select_from(model)) or 0
 
 
-def test_ac13_resent_event_makes_no_duplicate_drafts(world: World) -> None:
-    # Red when: the (session, draft_key) unique index or ON CONFLICT is missing.
+def test_ac13_resent_event_makes_no_duplicate_cards(world: World) -> None:
+    # Red when: the (session, draft_key) unique index or ON CONFLICT is missing, or a resent
+    # result promotes a card twice (a second revision, ledger row or event).
     key = world.put([world.draft(1), world.draft(2)])
     run(world, key)
     world.submission.status = "processing"  # the same file arrives again, in a new event
@@ -50,20 +54,67 @@ def test_ac13_resent_event_makes_no_duplicate_drafts(world: World) -> None:
     world.db.flush()
     run(world, key)
     assert count(world.db, KnowledgeUnit) == 2
-    assert count(world.db, UnitRevision) == 2
+    assert count(world.db, UnitRevision) == 4  # the AI's rev 0 and the learner's rev 1, each card
     assert count(world.db, Anchor) == 2
+    assert saved_events(world) == 2
 
 
-def test_ac1_draft_is_a_draft_with_ai_rev0_and_no_question(world: World) -> None:
-    # Red when: a draft is written canonical, has no rev 0, or brings a review question.
+def saved_events(world: World) -> int:
+    rows = world.db.scalars(select(Outbox).where(Outbox.event_type == "unit.saved.v1"))
+    return sum(1 for r in rows if r.payload["subject_id"] == str(world.subject.id))
+
+
+def test_result_inserts_canonical_with_unit_saved_event(world: World) -> None:
+    # Red when: a card of a result is left a draft (it would be invisible), has no rev 0 of the
+    # AI, or lacks the event, the ledger row or the review-question job a Save makes.
     run(world)
     units = list(world.db.scalars(select(KnowledgeUnit)))
-    assert {u.status for u in units} == {"draft"}
+    assert {u.status for u in units} == {"canonical"}
+    assert all(u.saved_at is not None and u.saved_learning_day is not None for u in units)
     assert {u.session_id for u in units} == {world.study.id}
     revisions = list(world.db.scalars(select(UnitRevision)))
-    assert {(r.rev, r.origin) for r in revisions} == {(0, "ai")}
-    assert count(world.db, Question) == 0
+    assert sorted((r.rev, r.origin) for r in revisions) == [(0, "ai")] * 2 + [(1, "user")] * 2
+    assert saved_events(world) == 2
+    ledger = list(world.db.scalars(select(StudyLedger)))
+    assert sum(r.units_saved for r in ledger) == 2
     assert world.submission.status == "done" and world.submission.finished_at is not None
+
+
+def test_result_title_and_notice_are_kept(world: World) -> None:
+    body = world.body([world.draft(1)]) | {"title": "Phép thử"}
+    world.storage.write(world.key(), json.dumps(body).encode(), content_type="x")
+    run(world, key=world.key())
+    assert world.study.title == "Phép thử" and world.submission.notice is None
+
+
+def test_zero_cards_result_keeps_the_notice(world: World) -> None:
+    # Red when: an empty result ends silently, with nothing the learner can be told.
+    body = world.body([]) | {"notice": "no_content_found"}
+    world.storage.write(world.key(), json.dumps(body).encode(), content_type="x")
+    run(world, key=world.key())
+    assert world.submission.status == "done" and world.submission.notice == "no_content_found"
+    assert count(world.db, KnowledgeUnit) == 0 and world.study.title is None
+
+
+def test_retired_card_is_not_brought_back_by_a_resent_result(world: World) -> None:
+    key = world.put([world.draft(1)])
+    run(world, key)
+    unit = world.db.scalars(select(KnowledgeUnit)).one()
+    unit.status = "retired"
+    world.db.flush()
+    world.submission.status = "processing"
+    world.submission.finished_at = None
+    world.db.flush()
+    run(world, key)
+    assert world.db.scalars(select(KnowledgeUnit)).one().status == "retired"
+
+
+def test_a_card_of_a_result_covers_the_pages_it_quotes(world: World) -> None:
+    run(world, drafts=[world.draft(1)])
+    ranges = list(world.db.scalars(select(SessionRange)))
+    assert [(r.document_id, r.start_page, r.end_page) for r in ranges] == [
+        (world.document.id, 3, 3)
+    ]
 
 
 def test_section_ids_write_one_row_per_section_primary_first(world: World) -> None:

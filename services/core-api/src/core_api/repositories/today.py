@@ -375,18 +375,9 @@ class TodayRepository(UserScopedRepository[MemoryState]):
         )
 
     def unfinished_sessions(self) -> list[DraftSession]:
-        """Study sessions of visible subjects with draft cards left or a submission waiting for
-        the AI (`pending_ai`): one line each on Today, never a backlog count (US-03 AC1)."""
-        drafts = (
-            select(KnowledgeUnit.session_id, func.count().label("n"))
-            .where(
-                KnowledgeUnit.user_id == self.user_id,
-                KnowledgeUnit.status == "draft",
-                KnowledgeUnit.session_id.is_not(None),
-            )
-            .group_by(KnowledgeUnit.session_id)
-            .subquery()
-        )
+        """Study sessions of visible subjects with a submission waiting for the AI (`pending_ai`):
+        one line each on Today, never a backlog count (US-03 AC1). There are no draft cards any
+        more (CARDS-V3): the cards of a result go straight to the vault, so `draft_cards` is 0."""
         waiting = (
             select(Submission.session_id)
             .where(Submission.user_id == self.user_id, Submission.status == "pending_ai")
@@ -394,25 +385,14 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             .subquery()
         )
         rows = self.session.execute(
-            select(
-                StudySession.id,
-                StudySession.subject_id,
-                StudySession.created_at,
-                func.coalesce(drafts.c.n, 0),
-                waiting.c.session_id.is_not(None),
-            )
-            .outerjoin(drafts, drafts.c.session_id == StudySession.id)
-            .outerjoin(waiting, waiting.c.session_id == StudySession.id)
+            select(StudySession.id, StudySession.subject_id, StudySession.created_at)
+            .join(waiting, waiting.c.session_id == StudySession.id)
             .where(
                 StudySession.user_id == self.user_id,
                 self._visible_subject(StudySession.subject_id),  # type: ignore[arg-type]
-                or_(drafts.c.n > 0, waiting.c.session_id.is_not(None)),
             )
         ).all()
-        return [
-            DraftSession(sid, subject, count, bool(pending), at)
-            for sid, subject, at, count, pending in rows
-        ]
+        return [DraftSession(sid, subject, 0, True, at) for sid, subject, at in rows]
 
     def stale_rev_units(self, question_ids: Sequence[uuid.UUID]) -> list[uuid.UUID]:
         """Canonical cards of these questions whose newest revision is later than the revision
