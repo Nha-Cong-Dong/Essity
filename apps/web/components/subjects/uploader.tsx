@@ -103,7 +103,7 @@ export function Uploader({
   /** H2: the upload tab decides the role of every file put in it. */
   fixedRole?: Role;
   /** V14: how many files of this tab are stored, so the screen's own button can show. */
-  onCount?: (done: number) => void;
+  onCount?: (done: number, uploading: number) => void;
 }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [over, setOver] = useState(false);
@@ -112,9 +112,10 @@ export function Uploader({
   const claimed = useRef(hasMain);
 
   const doneCount = rows.filter((row) => row.state.kind === "done").length;
+  const runningCount = rows.filter((row) => row.state.kind === "hashing" || row.state.kind === "uploading").length;
   useEffect(() => {
-    onCount?.(doneCount);
-  }, [doneCount, onCount]);
+    onCount?.(doneCount, runningCount);
+  }, [doneCount, runningCount, onCount]);
 
   function update(key: number, state: UploadState) {
     setRows((all) =>
