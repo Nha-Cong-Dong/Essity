@@ -22,11 +22,13 @@ import {
 // Order: Việc dở, Ôn hôm nay, Học gì tiếp, Luyện tập. Exactly one primary button per state.
 
 const FULL = "max-sm:w-full";
+// Phase B: a quiet card with the landing's thin pink top edge (a border, so no shadow).
+const EDGE = "min-w-0 border border-line border-t-4 border-t-hong shadow-none hover:shadow-none";
 
 function Heading({ day }: { day: string }) {
   return (
-    <div className="mb-8 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-      <h1 className="m-0 font-display text-title">
+    <div className="mb-10 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+      <h1 className="m-0 font-display text-display">
         <Marker>{COPY.heading}</Marker>
       </h1>
       <p className="m-0 text-read text-ink-soft">{dayLabel(day)}</p>
@@ -183,7 +185,7 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
   const { items, empty_reason } = today.learn;
   const first = items.findIndex((item) => item.state === "next");
   return (
-    <Sheet variant="tile" className="min-w-0 min-[901px]:col-span-4" aria-labelledby="today-learn">
+    <Sheet variant="tile" className={`${EDGE} min-[901px]:col-span-4`} aria-labelledby="today-learn">
       <h2 id="today-learn" className="m-0 font-display text-lead">
         {COPY.learn}
       </h2>
@@ -214,7 +216,7 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
 
 function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2["practice"]>; primary: boolean }) {
   return (
-    <Sheet variant="tile" className="min-w-0 min-[901px]:col-span-12" aria-labelledby="today-practice">
+    <Sheet variant="tile" className={`${EDGE} min-[901px]:col-span-12`} aria-labelledby="today-practice">
       <h2 id="today-practice" className="m-0 font-display text-lead">
         {COPY.practice}
       </h2>
@@ -254,6 +256,7 @@ export function TodayV2Screen({ today, preview = false }: { today: TodayV2; prev
       <>
         <Heading day={today.learning_day} />
         <section className="flex flex-col items-start gap-3 py-8" aria-labelledby="today-empty">
+          <Mascot pose="vui" size="lg" />
           <p id="today-empty" className="m-0 font-display text-title">
             {COPY.noSubjects}
           </p>
@@ -269,7 +272,7 @@ export function TodayV2Screen({ today, preview = false }: { today: TodayV2; prev
   return (
     <>
       <Heading day={today.learning_day} />
-      <div className="grid gap-6 min-[901px]:grid-cols-12">
+      <div data-reveal className="grid gap-8 min-[901px]:grid-cols-12">
         {today.unfinished.length > 0 && <ResumeStrip items={today.unfinished} />}
         <ReviewTile review={today.review} primary={primary === "review"} preview={preview} />
         <LearnSection today={today} primary={primary === "learn"} />
