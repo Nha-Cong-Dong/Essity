@@ -15,7 +15,7 @@ export const NAV = [
 export type NavItem = (typeof NAV)[number]["href"];
 
 /**
- * The pill nav of AppShell. Under 480px it sits on its own row below the logo and the account
+ * The pill nav of AppShell. Under 640px it sits on its own row below the logo and the account
  * button, the pills sharing the width (T9.5: three items do not fit beside them at 320, R46). Where the nav still has to scroll (a
  * narrower screen, a fallback font, enlarged text), the current item is brought into view along
  * the nav only: `nearest` on both axes never scrolls the page.
@@ -26,14 +26,14 @@ export function MainNav({ current }: { current?: NavItem }) {
     ref.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView?.({ inline: "nearest", block: "nearest" });
   }, [current]);
   return (
-    <nav ref={ref} aria-label="Chính" className="flex min-w-0 gap-1 overflow-x-auto max-[480px]:order-2 max-[480px]:basis-full max-[480px]:pb-2 max-[360px]:gap-0.5">
+    <nav ref={ref} aria-label="Chính" className="flex min-w-0 gap-1 overflow-x-auto max-[640px]:order-2 max-[640px]:basis-full max-[640px]:pb-2 max-[360px]:gap-0.5">
       {NAV.map((item) => (
         <a
           key={item.href}
           href={item.href}
           aria-current={item.href === current ? "page" : undefined}
           className={cn(
-            "flex h-10 shrink-0 items-center rounded-full max-[480px]:flex-1 max-[480px]:justify-center max-[640px]:text-meta px-2.5 text-body font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink max-[360px]:px-1 min-[401px]:max-[640px]:px-2 min-[641px]:px-3 min-[901px]:px-4",
+            "flex h-10 shrink-0 items-center rounded-full max-[640px]:flex-1 max-[640px]:justify-center max-[640px]:text-meta px-1 text-body font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink min-[401px]:max-[640px]:px-1.5 min-[641px]:px-3 min-[901px]:px-4",
             "aria-[current=page]:bg-ink aria-[current=page]:font-semibold aria-[current=page]:text-bg",
             // The nav scrolls, so it clips anything drawn outside it: the focus ring goes inside the
             // pill (review C2 #1, WCAG 2.4.7).
@@ -43,9 +43,10 @@ export function MainNav({ current }: { current?: NavItem }) {
             "aria-[current=page]:[--focus:var(--bg)] aria-[current=page]:focus-visible:-outline-offset-4",
           )}
         >
-          {item.label.startsWith("Kho") ? (
+          {item.label.startsWith("Kho") || item.label.startsWith("Môn") ? (
             <>
-              Kho<span className="max-[767px]:hidden">{" " + item.label.slice(4)}</span>
+              {item.label.split(" ")[0] + " "}
+              <span className={item.label.startsWith("Kho") ? "max-[767px]:hidden" : "max-[359px]:hidden"}>{item.label.split(" ").slice(1).join(" ")}</span>
             </>
           ) : (
             item.label
