@@ -74,7 +74,7 @@ export function EdgeList({ view, selectedId, onSelectCard }: Props) {
       </a>
       {rows.length > 0 &&
         (wide ? (
-          <table data-nx className="w-full table-fixed [border-collapse:separate] border-spacing-y-1.5 rounded-tile bg-hong-tint p-4 text-caption [&_td]:bg-bg [&_td]:px-3 [&_td]:first:rounded-l-row [&_td]:last:rounded-r-row [&_th]:px-3">
+          <table data-nx className="w-full table-fixed [border-collapse:separate] border-spacing-1.5 rounded-tile bg-hong-tint p-4 text-caption [&_td]:bg-bg [&_td]:px-3 [&_td]:rounded-sm [&_th]:px-3">
             <caption className="pb-2 text-left text-meta text-ink-soft">Liên kết giữa các thẻ</caption>
             <thead>
               <tr className="text-left">

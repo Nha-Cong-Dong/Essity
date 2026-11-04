@@ -102,7 +102,7 @@ function Row({
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {q.type_name !== "" && (
-          <NxChip>
+          <NxChip className="h-auto min-h-7 max-w-full py-1">
             <span data-user className="wrap-anywhere">
               {q.type_name}
             </span>

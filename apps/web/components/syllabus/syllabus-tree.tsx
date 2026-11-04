@@ -63,7 +63,7 @@ const INDENT_M =
   "ml-[calc(min(var(--lvl),var(--cap))*var(--step))] [--lvl:0] [--cap:3] [--step:16px] sm:[--step:24px]";
 /** "3.1 Giao thuc" -> ["3.1", "Giao thuc"]; a title with no number keeps the whole title. */
 const splitTitle = (title: string): [string | null, string] => {
-  const m = /^(\d+(?:\.\d+)*\.?)\s+(.+)$/s.exec(title);
+  const m = /^(\d+(?:\.\d+)*\.?)\s+([\s\S]+)$/.exec(title);
   return m ? [m[1], m[2]] : [null, title];
 };
 // The visible mark is 28 px; its touch area is 44 px (after:) without widening the indent step.
