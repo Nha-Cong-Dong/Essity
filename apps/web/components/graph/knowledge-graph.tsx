@@ -127,6 +127,7 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
     // the edges, repulsion, a pull to the middle). A dragged node is pinned under the pointer and the
     // rest follow. Reduced motion: no drift; nodes can still be dragged.
     let frame = 0;
+    let fitTimer = 0;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const startSim = () => {
       if (reduced) return;
@@ -169,12 +170,35 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
         frame = requestAnimationFrame(tick);
       };
       frame = requestAnimationFrame(tick);
+      // Once the cloud has opened up, frame it again, unless the reader already took hold of the view.
+      let touched = false;
+      const touch = () => {
+        touched = true;
+      };
+      host.current?.addEventListener("pointerdown", touch, { once: true });
+      host.current?.addEventListener("wheel", touch, { once: true, passive: true });
+      fitTimer = window.setTimeout(() => {
+        if (touched) return;
+        cy.animate(
+          { fit: { eles: cy.nodes(), padding: 48 } },
+          {
+            duration: 400,
+            complete: () => {
+              if (cy.zoom() > MAX_FIT_ZOOM) {
+                cy.zoom(MAX_FIT_ZOOM);
+                cy.center();
+              }
+            },
+          },
+        );
+      }, 2500);
     };
     startSim(); // the layout is synchronous (animate: false), so the nodes are already placed
     const resize = new ResizeObserver(() => cy.resize());
     resize.observe(host.current);
     return () => {
       cancelAnimationFrame(frame);
+      window.clearTimeout(fitTimer);
       resize.disconnect();
       cy.destroy();
       cyRef.current = null;

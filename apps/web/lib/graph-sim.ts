@@ -13,7 +13,7 @@ export type SimOptions = {
   drift: number;
 };
 
-export const SIM_DEFAULTS: SimOptions = { repulsion: 20000, spring: 0.03, rest: 100, gravity: 0.003, damping: 0.86, drift: 0.05 };
+export const SIM_DEFAULTS: SimOptions = { repulsion: 9000, spring: 0.03, rest: 100, gravity: 0.003, damping: 0.86, drift: 0.05 };
 
 /** A small graph is spread out to fill the canvas; a big one keeps its repulsion down so it stays compact. */
 export const optionsFor = (count: number): SimOptions => ({ ...SIM_DEFAULTS, repulsion: SIM_DEFAULTS.repulsion * Math.min(1, 30 / Math.max(count, 1)) });
