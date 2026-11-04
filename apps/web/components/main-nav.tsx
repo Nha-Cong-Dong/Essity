@@ -44,7 +44,7 @@ export function MainNav({ current }: { current?: NavItem }) {
         >
           {item.label.startsWith("Kho") ? (
             <>
-              Kho<span className="max-[767px]:hidden">{item.label.slice(3)}</span>
+              Kho<span className="max-[767px]:hidden">{" " + item.label.slice(4)}</span>
             </>
           ) : (
             item.label

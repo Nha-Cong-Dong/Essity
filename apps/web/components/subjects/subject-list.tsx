@@ -338,6 +338,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
           )}
           <EmptyState
             className="py-8"
+            mascot="vui"
             title="Chưa có môn nào."
             hint="Tạo môn đầu tiên bằng tên và ngày thi."
             action={

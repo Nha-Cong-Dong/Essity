@@ -45,6 +45,7 @@ export function DocumentList({ subjectId, docs }: { subjectId: string; docs: Lis
     return (
       <EmptyState
         className="rounded-sheet bg-sunken p-6"
+        mascot="cho"
         title="Chưa có tài liệu."
         hint="Tải giáo trình, slide hoặc ảnh vở để app biết bạn học từ đâu."
         action={
