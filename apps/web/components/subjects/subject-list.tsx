@@ -175,7 +175,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
           <a
             id={ids.name}
             href={`/subjects/${subject.id}`}
-            className="min-w-0 text-lead font-semibold break-words text-inherit no-underline hover: inline-flex items-center justify-center min-h-11 rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line"
+            className="min-w-0 text-lead font-semibold break-words text-inherit no-underline"
           >
             {subject.name}
           </a>

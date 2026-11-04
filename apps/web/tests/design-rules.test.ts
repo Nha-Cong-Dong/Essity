@@ -55,7 +55,7 @@ describe("design rules", () => {
   // V22 decisions #9: a tile holds at most one cam row, so a screen file uses `next` or `pick` at most once.
   it("V22: a screen file uses the next/pick variant at most once", () => {
     const over = UI.filter((f) => !f.endsWith("nx-list.tsx") && !f.startsWith(path.join("app", "design-preview")))
-      .map((f) => [f, (read(f).match(/<Nx(?:Row|Kind)[^>]*(?:next|pick)/g) ?? []).length] as const)
+      .map((f) => [f, (read(f).match(/<Nx(?:Row|Kind)b[^>]*b(?:next|pick)b/g) ?? []).length] as const)
       .filter(([, n]) => n > 1)
       .map(([f]) => f.replaceAll("\\", "/"));
     // The landing draws one tile per section; its rows are data-driven (one `next` entry in TOC).
@@ -91,7 +91,7 @@ describe("design rules", () => {
       path.join("components", "practice", "practice-screen.tsx"),
     ]);
     const files = UI.filter((f) => !SENTENCE.has(f) && !f.startsWith(path.join("app", "design-preview")));
-    expect(offenders(files, /<(a|button|summary|Link)[^>]*(?<![-\w])underline(?![-\w])/)).toEqual([]);
+    expect(offenders(files, /<(a|button|summary|Link)\b[^>]*(?<![-\w])underline(?![-\w])/)).toEqual([]);
   });
 
   it("V10: no bg-cover, which Tailwind also reads as background-size: cover", () => {

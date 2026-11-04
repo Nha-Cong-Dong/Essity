@@ -153,6 +153,7 @@ export function ReviewTile({
   );
 }
 
+// UI-A (user 05/11): the box shows only the top-priority subject; "Xem tất cả" opens the full list.
 function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) {
   const { items, empty_reason } = today.learn;
   const first = items.findIndex((item) => item.state === "next");
@@ -169,9 +170,7 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
       </div>
       {items.length > 0 ? (
         <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-          {items.map((item, index) => (
-            <NextStudyRow key={item.subject.id} item={item} next={index === first} />
-          ))}
+          <NextStudyRow key={items[Math.max(first, 0)].subject.id} item={items[Math.max(first, 0)]} next={first >= 0} />
         </ul>
       ) : (
         <div className="flex flex-col items-start gap-1">
@@ -194,8 +193,8 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
 
 function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2["practice"]>; primary: boolean }) {
   return (
-    <section className={`${EDGE} min-[901px]:col-span-6`} aria-labelledby="today-practice">
-      <h2 id="today-practice" className="m-0 text-body font-semibold">
+    <section className={`${EDGE} rounded-tile bg-hong-tint p-4 min-[901px]:col-span-6 min-[901px]:p-6`} aria-labelledby="today-practice">
+      <h2 id="today-practice" className="m-0 font-display text-lead">
         {COPY.practice}
       </h2>
       {practice.state === "none_ready" ? (

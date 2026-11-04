@@ -258,7 +258,7 @@ export function ActivityGrid({
       </Sheet>
 
       <details className="mt-4">
-        <summary className="flex min-h-11 cursor-pointer items-center text-body font-medium rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line >
+        <summary className="flex min-h-11 cursor-pointer items-center text-body font-medium rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
           Xem dạng danh sách
         </summary>
         <div role="region" tabIndex={0} aria-labelledby="alt-caption" className={styles.alt} data-alt-list>

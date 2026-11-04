@@ -67,10 +67,13 @@ describe("Hôm nay v2 states", () => {
     expect(markup).not.toMatch(/whitespace-nowrap[^>]*>(<span[^>]*>→ <\/span>)Tiếp theo/);
   });
 
-  it("US-15 AC7: a subject without a textbook keeps its own block while another is suggested", () => {
+  // UI-A (user 05/11): the "Học gì tiếp theo?" box shows one subject, the top suggestion; the rest is behind "Xem tất cả".
+  it("US-15 AC7: the box shows only the top subject; the others (a subject without a textbook) wait behind Xem tất cả", () => {
     const markup = draw(TODAY_STATES.learn);
-    expect(markup).toContain("chưa có giáo trình chính");
-    expect(markup).toContain("Tải giáo trình");
+    const box = markup.slice(markup.indexOf('id="today-learn"'), markup.indexOf('id="today-practice"'));
+    expect((box.match(/<li/g) ?? []).length).toBe(1);
+    expect(box).not.toContain("chưa có giáo trình chính");
+    expect(box).toContain(COPY.seeAll);
     expect(markup).toContain("Tuyệt vời, không có nội dung nào cần ôn tập hôm nay");
     expect(markup).toContain("Lần tới đến hạn: thứ Hai, 02/11");
   });
