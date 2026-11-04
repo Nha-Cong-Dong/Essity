@@ -57,7 +57,7 @@ export default function GraphPage() {
       }
     >
       <PageColumn width="full" className="flex flex-col gap-4">
-        <h1 className="m-0 font-display text-display">Đồ thị tri thức</h1>
+        <h1 className="m-0 font-display text-title">Đồ thị tri thức</h1>
         <Suspense fallback={<div aria-busy="true" className="h-80 w-full rounded-sheet bg-sunken" />}>
           <Graphs />
         </Suspense>

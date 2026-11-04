@@ -14,6 +14,7 @@ import { mergeGraphs, type MultiCard, type SubjectGraph } from "@/lib/graph-mult
 // screen. A legend names each colour.
 
 let registered = false;
+const MAX_FIT_ZOOM = 1.1;
 const ZOOM =
   "inline-flex h-11 items-center justify-center rounded-full bg-sheet px-3 text-caption text-ink inset-ring-[1.5px] inset-ring-line-strong hover:bg-sunken";
 
@@ -65,6 +66,8 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
   const host = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
   const bySubject = useMemo(() => new Map(merged.subjects.map((s) => [s.id, s] as const)), [merged]);
   const picked = merged.cards.find((c) => c.id === pickedId) ?? null;
 
@@ -94,14 +97,25 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
     });
     cyRef.current = cy;
     cy.on("tap", "node", (ev) => setPickedId(ev.target.id()));
-    cy.layout({
+    // UI-A: fit puts the whole graph in the middle; a graph of a few cards is not blown up, so its
+    // labels keep their size and the canvas does not look empty at the edges.
+    const layout = cy.layout({
       name: "fcose",
       animate: false,
       randomize: true,
       fit: true,
-      padding: 30,
+      padding: 48,
       nodeDimensionsIncludeLabels: true,
-    } as cytoscape.LayoutOptions).run();
+      idealEdgeLength: 90,
+      nodeRepulsion: 6500,
+    } as cytoscape.LayoutOptions);
+    layout.one("layoutstop", () => {
+      if (cy.zoom() > MAX_FIT_ZOOM) {
+        cy.zoom(MAX_FIT_ZOOM);
+        cy.center();
+      }
+    });
+    layout.run();
     const resize = new ResizeObserver(() => cy.resize());
     resize.observe(host.current);
     return () => {
@@ -110,6 +124,26 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
       cyRef.current = null;
     };
   }, [merged, bySubject]);
+
+  // The subjects ticked off in "Lọc" are not drawn (their edges go with them).
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.batch(() => {
+      cy.nodes().forEach((n) => {
+        const card = merged.cards.find((c) => c.id === n.id());
+        n.style("display", card && hidden.has(card.subjectId) ? "none" : "element");
+      });
+    });
+  }, [hidden, merged]);
+
+  const toggle = (id: string) =>
+    setHidden((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const zoomBy = (f: number) => {
     const cy = cyRef.current;
@@ -131,16 +165,34 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
   const subject = picked ? bySubject.get(picked.subjectId) : undefined;
   return (
     <div className="flex flex-col gap-3">
-      <ul aria-label="Chú thích màu" className="m-0 flex list-none flex-wrap gap-x-5 gap-y-2 p-0 text-meta">
-        {merged.subjects.map((s) => (
-          <li key={s.id} className="flex items-center gap-2">
-            <span aria-hidden="true" className="inline-block h-3.5 w-3.5 rounded-full" style={{ background: s.color }} />
-            <span className="wrap-anywhere">
-              {s.name} · {s.cards} thẻ
-            </span>
-          </li>
-        ))}
-      </ul>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          aria-expanded={filterOpen}
+          aria-controls="graph-filter"
+          onClick={() => setFilterOpen((v) => !v)}
+          className="inline-flex h-11 items-center gap-2 rounded-full bg-sheet px-4 text-meta font-semibold text-ink inset-ring-[1.5px] inset-ring-line-strong hover:bg-sunken"
+        >
+          Lọc
+          {hidden.size > 0 ? <span className="text-ink-soft">({merged.subjects.length - hidden.size}/{merged.subjects.length} môn)</span> : null}
+        </button>
+        <p className="m-0 text-meta text-ink-soft">{merged.cards.length} thẻ</p>
+      </div>
+      {filterOpen && (
+        <ul id="graph-filter" aria-label="Chú thích màu" className="m-0 flex list-none flex-wrap gap-x-5 gap-y-2 p-0 text-meta">
+          {merged.subjects.map((s) => (
+            <li key={s.id}>
+              <label className="flex min-h-11 cursor-pointer items-center gap-2">
+                <input type="checkbox" checked={!hidden.has(s.id)} onChange={() => toggle(s.id)} className="size-4 accent-hong" />
+                <span aria-hidden="true" className="inline-block h-3.5 w-3.5 rounded-full" style={{ background: s.color }} />
+                <span className="wrap-anywhere">
+                  {s.name} · {s.cards} thẻ
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="relative">
         <div
           ref={host}
@@ -155,7 +207,15 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
           <button type="button" aria-label="Thu nhỏ" className={ZOOM} onClick={() => zoomBy(1 / 1.3)}>
             −
           </button>
-          <button type="button" className={ZOOM} onClick={() => cyRef.current?.fit(undefined, 30)}>
+          <button type="button" className={ZOOM} onClick={() => {
+              const cy = cyRef.current;
+              if (!cy) return;
+              cy.fit(undefined, 48);
+              if (cy.zoom() > MAX_FIT_ZOOM) {
+                cy.zoom(MAX_FIT_ZOOM);
+                cy.center();
+              }
+            }}>
             Đặt lại
           </button>
         </div>

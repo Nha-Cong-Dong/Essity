@@ -17,10 +17,16 @@ export function multiStylesheet(ink: string, line: string): StylesheetJson {
         "text-margin-y": 3,
         "text-wrap": "ellipsis",
         "text-max-width": "110px",
+        // UI-A: a label never sits bare on an edge: a soft plate under the words.
+        "text-background-color": "#ffffff",
+        "text-background-opacity": 0.85,
+        "text-background-padding": "2px",
+        "text-background-shape": "roundrectangle",
         "border-width": 2,
         "border-color": "#ffffff",
       },
     },
-    { selector: "edge", style: { width: 2, "line-color": line, "curve-style": "bezier", opacity: 0.8 } },
+    { selector: "edge", style: { width: 1.5, "line-color": line, "curve-style": "bezier", opacity: 0.55, "z-index": 0 } },
+    { selector: "node", style: { "z-index": 10 } },
   ];
 }
