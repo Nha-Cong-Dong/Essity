@@ -64,6 +64,16 @@ for (const width of WIDTHS) {
       expect((await box(title)).width).toBeGreaterThanOrEqual(140);
     });
 
+    // Red when: a part left out of the exam is told only by colour on a phone, or a chapter loses its "3/5".
+    test("US-13 AC5: an excluded part says 'Không thi' in words and a chapter keeps its count", async ({ page }) => {
+      await open(page, width, "/design-preview/syllabus?state=ready");
+      await page.getByRole("button", { name: "Mở hết" }).click();
+      const state = page.locator("[data-node='2.5'] [data-state-cell]");
+      await expect(state).toBeVisible();
+      await expect(state).toContainText(/không thi/i);
+      await expect(page.locator("[data-node='2'] [data-state-cell]").first()).toContainText(/\d+\/\d+/);
+    });
+
     // Red when: the chevron or ⋯ touch area is under 44 px (the visible mark is 28 px).
     test("US-13 AC4: chevron and ⋯ have a 44 px touch area", async ({ page }) => {
       await open(page, width, "/design-preview/syllabus?state=ready");

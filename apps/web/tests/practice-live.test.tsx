@@ -352,3 +352,27 @@ describe("PracticeLive due today (V20)", () => {
     expect(screen.getByRole("button", { name: "Vào luyện tập ngay" })).toBeTruthy();
   });
 });
+
+// V22 g2: the chip shows a readable kind name, never a raw key.
+describe("kindChip", () => {
+  it("keeps a readable name and hides a spaceless key", async () => {
+    const { kindChip } = await import("@/components/practice/practice-live");
+    expect(kindChip("So sánh")).toBe("So sánh");
+    expect(kindChip("Định nghĩa ngắn")).toBe("Định nghĩa ngắn");
+    expect(kindChip("so_sanh_hai_giao_thuc_van_chuyen_nang_cao_tinh_toan")).toBeNull();
+    expect(kindChip("  ")).toBeNull();
+  });
+});
+
+describe("practice row labels and suggestion (V22 g2)", () => {
+  // Red when: the origin label, the section line or the unlock date is dropped, or the suggestion is not on the first ready row.
+  it("shows Câu sinh thêm, the line and the suggested row", () => {
+    const { container } = render(<PracticeLive subjectId={SUBJECT} subjectName="Mạng" list={list} types={types} api={fakeApi()} />);
+    expect(container.textContent).toContain("Câu sinh thêm");
+    expect(container.textContent).toContain("Câu gốc");
+    expect(container.textContent).toContain("Sẵn sàng");
+    const why = container.querySelectorAll("[data-why]");
+    expect(why.length).toBe(1);
+    expect(why[0].closest(`[data-question="${Q1}"]`)).not.toBeNull();
+  });
+});

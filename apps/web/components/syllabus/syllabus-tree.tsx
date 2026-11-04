@@ -5,6 +5,7 @@ import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState 
 import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NX_CAM } from "@/components/ui/nx-list";
 import {
   applyMark,
   applyRange,
@@ -15,6 +16,7 @@ import {
   findNode,
   markCounts,
   nodeStatus,
+  progress,
   rangeContext,
   rangeText,
   type Row,
@@ -55,8 +57,16 @@ type Props = {
 
 // Indent: 28 px a level from 640 px, 16 px below; the real indent stops at level 4 / 3 so a deep
 // outline keeps room for its titles at 320 px. aria-level stays true.
-const INDENT =
-  "pl-[calc(min(var(--lvl),var(--cap))*var(--step))] [--lvl:0] [--cap:3] [--step:16px] sm:[--cap:4] sm:[--step:28px]";
+// A row of the tile is a white row apart from its siblings (the landing's "nx" list): the indent is a
+// margin, so the white follows the level. The one "next" row is cam, with an arrow and words.
+const INDENT_M =
+  "ml-[calc(min(var(--lvl),var(--cap))*var(--step))] [--lvl:0] [--cap:3] [--step:10px] sm:[--step:24px]";
+/** "3.1 Giao thuc" -> ["3.1", "Giao thuc"]; a title with no number keeps the whole title. */
+const splitTitle = (title: string): [string | null, string] => {
+  const m = /^(\d+(?:\.\d+)*\.?)\s+([\s\S]+)$/.exec(title);
+  // A long number ("5.1.1.1.1.1") would eat the title column at 320 px: it stays in the title.
+  return m && m[1].length <= 6 ? [m[1], m[2]] : [null, title];
+};
 // The visible mark is 28 px; its touch area is 44 px (after:) without widening the indent step.
 // Panel buttons wrap their label (a long one such as "Đánh dấu 12 phần chưa học là đã học" must fit 320 px).
 const WRAP = "h-auto min-h-11 max-w-full shrink whitespace-normal py-2 text-left";
@@ -207,9 +217,9 @@ function Panel({
       onKeyDown={onKey}
       data-panel={node.id}
       style={{ ["--lvl" as string]: level - 1 }}
-      className={`${INDENT} pb-3`}
+      className={`${INDENT_M} mb-1.5 rounded-row bg-bg px-3 pb-3`}
     >
-      <div className="ml-[calc(28px+8px+20px+8px)] flex flex-col gap-1 max-sm:ml-7">
+      <div className="ml-[calc(28px+8px)] flex flex-col gap-1 max-sm:ml-7">
         {state.mode === "actions" ? (
           <div className="flex flex-wrap items-center gap-x-1">
             <Button ref={editRef} variant="quiet" className={WRAP} onClick={edit}>
@@ -334,6 +344,34 @@ function Panel({
   );
 }
 
+const allBranchIds = (list: SyllabusNode[]): string[] =>
+  list.flatMap((n) => (n.children.length > 0 ? [n.id, ...allBranchIds(n.children)] : []));
+
+const norm = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/g, "d").toLowerCase();
+
+/** Only the rows whose title has `query`, and the branches above them (a match keeps its children). */
+function filterNodes(list: SyllabusNode[], query: string): SyllabusNode[] {
+  return list.flatMap((n) => {
+    if (norm(n.title).includes(query)) return [n];
+    const inside = filterNodes(n.children, query);
+    return inside.length > 0 ? [{ ...n, children: inside }] : [];
+  });
+}
+
+/** The part to study next: the first leaf, in order, that counts and is not yet studied. */
+function firstUnstudied(list: SyllabusNode[], parentExcluded = false): string | null {
+  for (const n of list) {
+    if (n.excluded || parentExcluded) continue;
+    if (n.children.length === 0) {
+      if (nodeStatus(n) !== "done") return n.id;
+    } else {
+      const inside = firstUnstudied(n.children);
+      if (inside) return inside;
+    }
+  }
+  return null;
+}
+
 export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditing, initialPanel = null }: Props) {
   const [open, setOpen] = useState<Set<string>>(() => {
     const set = defaultOpen(nodes);
@@ -347,8 +385,17 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
     }
     return set;
   });
-  const rows = visibleRows(nodes, open);
+  const [query, setQuery] = useState("");
+  const needle = norm(query.trim());
+  const shown = needle === "" ? nodes : filterNodes(nodes, needle);
+  // While searching every branch above a match is open; the learner can still fold one (reset by a new query).
+  const [searchFolded, setSearchFolded] = useState<Set<string>>(new Set());
+  const openNow = needle === "" ? open : new Set(allBranchIds(shown).filter((id) => !searchFolded.has(id)));
+  const rows = visibleRows(shown, openNow);
+  const nextId = firstUnstudied(nodes);
   const [active, setActive] = useState(initialPanel?.id ?? rows[0]?.node.id ?? "");
+  // The one tab stop: the active row while it is shown, else the first row (a search or a fold can hide it).
+  const activeId = rows.some((r) => r.node.id === active) ? active : (rows[0]?.node.id ?? "");
   const [panel, setPanelState] = useState<PanelState | null>(initialPanel);
   const items = useRef(new Map<string, HTMLLIElement>());
   const hintId = useId();
@@ -366,17 +413,18 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
   };
 
   function fold(id: string, to: boolean) {
-    const next = new Set(open);
-    if (to) next.add(id);
-    else {
-      next.delete(id);
+    const next = new Set(needle === "" ? open : searchFolded);
+    if (needle === "" ? to : !to) next.add(id);
+    else next.delete(id);
+    if (!to) {
       // A fold that hides the focused row moves focus up to the branch.
       const node = findNode(nodes, id);
-      const hidden = node ? visibleRows(node.children, open) : [];
+      const hidden = node ? visibleRows(node.children, openNow) : [];
       if (hidden.some((r) => r.node.id === active)) focusRow(id);
       if (panel && hidden.some((r) => r.node.id === panel.id)) setPanel(null);
     }
-    setOpen(next);
+    if (needle === "") setOpen(next);
+    else setSearchFolded(next);
   }
 
   function openPanel(id: string) {
@@ -410,16 +458,16 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
         go(rows[rows.length - 1]);
         break;
       case "ArrowRight":
-        if (branch && !open.has(row.node.id)) fold(row.node.id, true);
+        if (branch && !openNow.has(row.node.id)) fold(row.node.id, true);
         else if (branch) go(rows[index + 1]);
         break;
       case "ArrowLeft":
-        if (branch && open.has(row.node.id)) fold(row.node.id, false);
+        if (branch && openNow.has(row.node.id)) fold(row.node.id, false);
         else go(rows.find((r) => r.node.id === row.parentId));
         break;
       case "Enter":
       case " ":
-        if (branch) fold(row.node.id, !open.has(row.node.id));
+        if (branch) fold(row.node.id, !openNow.has(row.node.id));
         else openPanel(row.node.id);
         break;
       case "ContextMenu":
@@ -443,7 +491,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
     return list.map((node, i) => {
       const row: Row = { node, level, setSize: list.length, posInSet: i + 1, parentId };
       const branch = node.children.length > 0;
-      const isOpen = open.has(node.id);
+      const isOpen = openNow.has(node.id);
       const status = nodeStatus(node);
       const leaf = !branch;
       const range = rangeText(node.from, node.to, unit);
@@ -458,6 +506,20 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
               ? note
               : null;
       const panelHere = panel?.id === node.id;
+      const [num, name] = splitTitle(node.title);
+      const isNext = node.id === nextId;
+      const why = "Gợi ý: phần chưa học đầu tiên trong đề cương";
+      const sub = branch ? progress([node]) : null;
+      const stateText = node.excluded
+        ? "Không thi"
+        : sub
+          ? `${sub.done}/${sub.total}`
+          : status === "done"
+            ? "Đã học"
+            : status === "partial"
+              ? "Học một phần"
+              : "";
+      const showState = stateText !== "";
       return (
         <li
           key={node.id}
@@ -475,7 +537,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
           aria-expanded={branch ? isOpen : undefined}
           aria-labelledby={`ti-${node.id}-t ti-${node.id}-m`}
           aria-describedby={`ti-${node.id}-d ${branch ? hintId : leafHintId}`}
-          tabIndex={active === node.id ? 0 : -1}
+          tabIndex={activeId === node.id ? 0 : -1}
           onFocus={(e) => {
             if (e.target === e.currentTarget) setActive(node.id);
           }}
@@ -495,7 +557,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
             data-row
             style={{ ["--lvl" as string]: level - 1 }}
             onClick={() => (branch ? fold(node.id, !isOpen) : openPanel(node.id))}
-            className={`${INDENT} flex min-h-11 cursor-pointer items-start gap-2 max-sm:gap-1 rounded-control py-2 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus`}
+            className={`${INDENT_M} mb-1.5 flex min-h-12 cursor-pointer items-center gap-2 max-sm:gap-1 rounded-row bg-bg px-3 max-sm:px-2 py-1.5 sm:min-h-11.5 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus ${isNext ? `${NX_CAM.row} font-semibold` : ""}`}
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center">
               {branch && (
@@ -514,27 +576,48 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
                 </button>
               )}
             </span>
-            <span className="flex h-7 w-5 shrink-0 items-center justify-center max-sm:w-4" aria-hidden="true">
-              {status === "done" && !node.excluded ? <Tick /> : status === "partial" && leaf && !node.excluded ? <Half /> : null}
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
-              <span className="flex min-w-0 flex-col">
-                <span id={`ti-${node.id}-t`} data-user className={`wrap-anywhere text-body ${node.excluded ? "text-ink-soft" : ""} ${branch ? "font-semibold" : ""}`}>
-                  {node.title}
+            {num && (
+              <span aria-hidden="true" className="w-9 shrink-0 text-body tabular-nums text-ink-soft max-sm:w-8">
+                {num}
+              </span>
+            )}
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span id={`ti-${node.id}-t`} data-user className={`wrap-anywhere text-body ${node.excluded ? "text-ink-soft" : ""} ${branch ? "font-semibold" : ""}`}>
+                {num && <span className="sr-only">{num} </span>}
+                {name}
+              </span>
+              <span className="text-meta font-normal text-ink-soft">
+                <span id={`ti-${node.id}-m`}>{range}</span>
+                {visible && (!showState || status === "partial") ? ` · ${visible}` : ""}
+              </span>
+              {isNext && (
+                <span className={`mt-0.5 text-meta sm:hidden ${NX_CAM.text}`}>
+                  <span aria-hidden="true">→ </span>Tiếp theo
                 </span>
-                {visible && (
-                  <span className="text-small text-ink-soft">
-                    {visible}
-                  </span>
-                )}
-              </span>
-              <span id={`ti-${node.id}-m`} className="shrink-0 text-small text-ink-soft">
-                {range}
-              </span>
+              )}
+              {isNext && why && <span className={`mt-0.5 text-meta ${NX_CAM.text}`}>{why}</span>}
+            </span>
+            <span
+              className={`flex shrink-0 items-center gap-1 whitespace-nowrap text-meta ${isNext ? `${NX_CAM.text} max-sm:hidden` : "text-ink-soft"}`}
+              data-state-cell
+            >
+              {isNext ? (
+                <>
+                  <span aria-hidden="true">→</span> Tiếp theo
+                </>
+              ) : showState ? (
+                <>
+                  {status === "done" && !node.excluded && <Tick />}
+                  {status === "partial" && leaf && !node.excluded && <Half />}
+                  {/* On a phone the tick / half mark carries "Đã học" and the line under the name carries the pages;
+                      "Không thi" and a chapter's "3/5" stay visible (never colour or an icon alone). */}
+                  <span className={leaf && !node.excluded ? "max-sm:sr-only" : undefined}>{stateText}</span>
+                </>
+              ) : null}
             </span>
             <button
               type="button"
-              tabIndex={active === node.id ? 0 : -1}
+              tabIndex={activeId === node.id ? 0 : -1}
               aria-label={`Hành động cho ${node.title}`}
               aria-expanded={panelHere}
               data-more
@@ -583,8 +666,39 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
       <span id={leafHintId} className="sr-only">
         Nhấn Enter để sửa
       </span>
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2" data-tree-tools>
+        <Input
+          type="search"
+          aria-label="Tìm trong đề cương"
+          placeholder="Tìm phần, ví dụ: hoán vị"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSearchFolded(new Set());
+          }}
+          className="min-w-0 flex-1 basis-56"
+        />
+        {needle === "" && (
+          <span className="flex gap-3 text-meta">
+            <button type="button" className="min-h-11 underline" onClick={() => setOpen(new Set(allBranchIds(nodes)))}>
+              Mở hết
+            </button>
+            <button type="button" className="min-h-11 underline" onClick={() => {
+                setOpen(new Set());
+                setPanel(null);
+              }}>
+              Thu hết
+            </button>
+          </span>
+        )}
+      </div>
+      {needle !== "" && shown.length === 0 && (
+        <p role="status" className="m-0 text-body text-ink-soft" data-no-match>
+          Không có phần nào khớp “{query.trim()}”.
+        </p>
+      )}
       <ul role="tree" aria-label={label} className="m-0 list-none p-0">
-        {renderList(nodes, 1, null)}
+        {renderList(shown, 1, null)}
       </ul>
     </>
   );

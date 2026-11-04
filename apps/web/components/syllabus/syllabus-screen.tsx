@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 
-import { Marker, PencilNote } from "@/components/notebook";
+import { PencilNote } from "@/components/notebook";
 import { Button } from "@/components/ui/button";
 import {
   FIXTURES,
@@ -51,6 +51,19 @@ export function Skeleton() {
   );
 }
 
+/** The tile of the landing's "Học gì tiếp" list: the subject on the left, "Gợi ý, bạn chọn" on the right, the tree below. */
+export function SyllabusTile({ name, children }: { name: string; children: ReactNode }) {
+  return (
+    <section data-nx className="min-w-0 rounded-tile bg-hong-tint p-4 max-sm:p-3 min-[901px]:p-6">
+      <div className="flex items-baseline justify-between gap-3 pb-3.5">
+        <h2 className="m-0 min-w-0 font-display text-lead wrap-anywhere max-[640px]:text-body max-[640px]:font-semibold">{name}</h2>
+        <span className="shrink-0 text-meta italic text-ink-soft">Gợi ý, bạn chọn</span>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function Totals({ nodes, unit }: { nodes: SyllabusNode[]; unit: SyllabusFixture["unit"] }) {
   const p = progress(nodes);
   const word = unit === "slide" ? "slide" : unit === "est_page" ? "trang ước tính" : "trang";
@@ -86,14 +99,15 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
         ‹ {SUBJECT.name}
       </a>
       <div className="flex items-center justify-between gap-3">
-        <h1 className="m-0 font-display text-display">
-          <Marker>{COPY.heading}</Marker>
+        <h1 className="m-0 font-display text-title">
+          <span className="hl-word">{COPY.heading}</span>
         </h1>
         {state !== "empty-no-main" && state !== "error" && state !== "loading" && state !== "extracting" && (
           <Button
             variant={editing ? "secondary" : "primary"}
             className="max-sm:px-4"
             render={<a href={`${subjectHref}/sessions/new`} />}
+            nativeButton={false}
           >
             {COPY.study}
           </Button>
@@ -147,7 +161,7 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
         <div className="mt-6 rounded-sheet bg-rose-50 p-6">
           <p className="m-0 text-body">{COPY.empty}</p>
           <div className="mt-4">
-            <Button render={<a href={`${subjectHref}/upload`} />}>{COPY.upload}</Button>
+            <Button render={<a href={`${subjectHref}/upload`} />} nativeButton={false}>{COPY.upload}</Button>
           </div>
         </div>
       </div>
@@ -184,6 +198,7 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
       )}
       <Totals nodes={nodes} unit={fixture.unit} />
       <div className="mt-4">
+        <SyllabusTile name={SUBJECT.name}>
         <SyllabusTree
           label={`Đề cương ${fixture.mainName}`}
           nodes={nodes}
@@ -194,6 +209,7 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
           onEditing={setEditing}
           initialPanel={PANEL_AT[state] ? { ...PANEL_AT[state]!, focus: false } : null}
         />
+        </SyllabusTile>
       </div>
       {live_}
     </div>

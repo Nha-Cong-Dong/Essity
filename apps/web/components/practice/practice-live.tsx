@@ -1,12 +1,11 @@
 "use client";
 
-import { MarginRule } from "@/components/motifs";
+import { NX_CAM, NxChip } from "@/components/ui/nx-list";
 import { Sheet } from "@/components/ui/sheet";
 import { useEffect, useRef, useState } from "react";
 
 import { Pen } from "@/components/practice/practice-extras";
 import { PracticeAnswer } from "@/components/practice/practice-answer";
-import { Badge } from "@/components/ui/badge";
 import { CoverageBar } from "@/components/stats/stat-tile";
 import { Button } from "@/components/ui/button";
 import { go } from "@/lib/navigate";
@@ -53,10 +52,21 @@ export function groupQuestions(list: QuestionListOut, types: PracticeType[]): { 
   return { groups, unlinked: list.questions.filter((q) => q.status === "unlinked") };
 }
 
+/** The kind name for the chip: a short readable name, never a raw key (no spaces and long = a key). */
+export function kindChip(name: string): string | null {
+  const t = name.trim();
+  if (t === "") return null;
+  return !/\s/.test(t) && t.length > 24 ? null : t;
+}
+
+const TILE = "min-w-0 rounded-tile bg-hong-tint p-4 min-[901px]:p-6";
+
 function Row({
   q,
   subjectId,
   primary,
+  pick,
+  why,
   removed,
   onDo,
   onRemove,
@@ -65,6 +75,9 @@ function Row({
   q: QuestionRow;
   subjectId: string;
   primary: boolean;
+  /** The one question the screen suggests: a cam row, with its reason. */
+  pick: boolean;
+  why: string;
   removed: boolean;
   onDo: () => void;
   onRemove: () => void;
@@ -74,7 +87,7 @@ function Row({
     return (
       <li
         data-removed={q.id}
-        className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line bg-sunken px-3 py-3 first:border-t-0"
+        className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-row bg-bg px-4 py-3"
       >
         <span tabIndex={-1} data-focus={`removed-${q.id}`} className="outline-none">
           Đã gỡ khỏi luyện tập.
@@ -89,29 +102,42 @@ function Row({
     );
   }
   return (
-    <li data-question={q.id} className="flex flex-col gap-2 border-t border-line py-4 first:border-t-0">
+    <li
+      data-question={q.id}
+      className={`flex flex-col items-start gap-2 rounded-row bg-bg px-4 py-3.5 ${pick ? NX_CAM.pick : ""}`}
+    >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <Badge variant="level">{q.origin === "bank" ? "Câu gốc" : "Câu sinh thêm"}</Badge>
-        {q.type_name !== "" && (
-          <span data-user className="rounded-control border border-line px-2 text-meta wrap-anywhere">
-            {q.type_name}
-          </span>
+        {kindChip(q.type_name) !== null && (
+          <NxChip className="h-auto min-h-7 max-w-full py-1">
+            <span data-user className="wrap-anywhere">
+              {kindChip(q.type_name)}
+            </span>
+          </NxChip>
         )}
-        {q.status === "ready" && <span className="text-meta">{q.line}</span>}
-        {q.status === "waiting" && (
-          <a href={`/subjects/${subjectId}/syllabus`} className="text-meta underline">
+        <span className="text-meta text-ink-soft">{q.origin === "bank" ? "Câu gốc" : "Câu sinh thêm"}</span>
+        {q.number !== null && <span className="text-meta text-ink-soft">Câu {q.number}</span>}
+        {q.status === "waiting" ? (
+          <a href={`/subjects/${subjectId}/syllabus`} className="text-meta text-ink-soft underline">
             {q.line}
           </a>
+        ) : q.status === "unlinked" ? (
+          <span className="text-meta text-ink-soft">Chưa gắn phần</span>
+        ) : (
+          <span className="text-meta text-ink-soft">{q.line}</span>
         )}
-        {q.status === "unlinked" && <span className="text-meta text-ink-soft">Chưa gắn phần</span>}
-        {q.number !== null && <span className="text-meta text-ink-soft">Câu {q.number}</span>}
         {q.unlocked_at && <span className="text-meta text-ink-soft">Mở khóa {unlockedOn(q.unlocked_at)}</span>}
       </div>
       <p id={`sum-${q.id}`} data-user className="m-0 line-clamp-3 wrap-anywhere">
         {q.prompt}
       </p>
+      {pick && (
+        <p data-why className={`m-0 text-meta ${NX_CAM.text}`}>
+          <span aria-hidden="true">→ </span>
+          {why}
+        </p>
+      )}
       {q.answer_source === "ai" && <Pen>đáp án do AI soạn</Pen>}
-      <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="flex w-full flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:items-center">
         {q.status === "ready" && (
           <Button variant={primary ? "primary" : "secondary"} data-focus={`do-${q.id}`} aria-describedby={`sum-${q.id}`} className={FULL} onClick={onDo}>
             Làm câu này
@@ -189,15 +215,18 @@ export function PracticeLive({
   const dueNow = list.questions.filter((q) => q.due === true && !removed.has(q.id));
   const readyCount = live.filter((q) => q.status === "ready").length;
 
+  const pickId = dueNow[0]?.id ?? firstReady;
   const dueButton = dueNow.length > 0; // then that button is the screen's primary
   const rows = (items: QuestionRow[], primaryId: string | null) => (
-    <ul className="m-0 mt-3 flex list-none flex-col p-0">
+    <ul className="m-0 mt-3 flex list-none flex-col gap-1.5 p-0">
       {items.map((q) => (
         <Row
           key={q.id}
           q={q}
           subjectId={subjectId}
           primary={!dueButton && q.id === primaryId}
+          pick={q.id === pickId}
+          why={dueNow.some((d) => d.id === q.id) ? "Gợi ý: đến hạn luyện hôm nay" : "Gợi ý: câu mở khóa mới nhất"}
           removed={removed.has(q.id)}
           onDo={() => setDoing(q.id)}
           onRemove={() => void remove(q.id)}
@@ -208,14 +237,28 @@ export function PracticeLive({
   );
 
   return (
-    <div ref={root} className="w-full max-w-180">
+    <div ref={root} className="w-full max-w-240">
       <a href={`/subjects/${subjectId}`} className="text-meta text-ink-soft underline wrap-anywhere">
         ← {subjectName}
       </a>
-      <h1 className="m-0 mt-3 font-display text-title">
-        <span className="px-1" style={{ backgroundImage: "linear-gradient(to top, var(--hl-band) 35%, transparent 35%)" }}>Luyện tập</span>
-      </h1>
-      <p className="m-0 mt-1 text-read text-ink-soft wrap-anywhere">{subjectName}</p>
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-3" data-practice-head>
+        <div className="min-w-0 basis-80 flex-1">
+          <h1 className="m-0 font-display text-title">
+            <span className="hl-word">Luyện tập</span>
+          </h1>
+          <p className="m-0 mt-1 text-read text-ink-soft wrap-anywhere" data-practice-sub>
+            {list.total === 0
+              ? subjectName
+              : `${readyCount} câu sẵn sàng${types.length > 0 ? ` · ${types.length} dạng` : ""} · `}
+            {list.total === 0 ? null : <span data-user>{subjectName}</span>}
+          </p>
+        </div>
+        {dueNow.length > 0 && (
+          <Button className={FULL} onClick={() => setDoing(dueNow[0].id)}>
+            Vào luyện tập ngay
+          </Button>
+        )}
+      </div>
       <p role="status" className="sr-only">
         {removed.size > 0 ? "Đã gỡ khỏi luyện tập." : ""}
       </p>
@@ -235,8 +278,7 @@ export function PracticeLive({
         </div>
       ) : (
         <div className="mt-6">
-          <Sheet variant="tile" className="relative flex flex-col gap-4 overflow-hidden pl-12" data-practice-today>
-          <MarginRule />
+          <Sheet variant="tile" tone="hong" className="flex flex-col gap-4 p-5 shadow-none" data-practice-today>
           <div data-progress>
             <p data-summary className="m-0 text-read">
               Đã mở khóa {readyCount}/{live.length} câu
@@ -250,11 +292,6 @@ export function PracticeLive({
               <p className="m-0 text-read">
                 {dueNow.length > 0 ? `Hôm nay cần luyện ${dueNow.length} câu.` : "Hôm nay không có câu nào cần luyện."}
               </p>
-              {dueNow.length > 0 && (
-                <Button className={FULL} onClick={() => setDoing(dueNow[0].id)}>
-                  Vào luyện tập ngay
-                </Button>
-              )}
             </div>
           )}
           </Sheet>
@@ -266,10 +303,13 @@ export function PracticeLive({
               </Button>
             </>
           )}
-          <section aria-labelledby="practised" className="mt-8" data-practised>
-            <h2 id="practised" className="m-0 text-read font-semibold">
-              Câu đã luyện tập
-            </h2>
+          <section aria-labelledby="practised" className={`mt-8 ${TILE}`} data-practised data-nx>
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 id="practised" className="m-0 font-display text-lead max-[640px]:text-body max-[640px]:font-semibold">
+                Câu đã luyện tập
+              </h2>
+              <span className="text-meta italic text-ink-soft">Gợi ý, bạn chọn</span>
+            </div>
             <p className="m-0 mt-1 text-meta text-ink-soft">Sắp theo ngày mở khóa, mới nhất trước.</p>
             {unlockedRows.length === 0 ? (
               <p className="m-0 mt-3 text-ink-soft">Chưa có câu nào mở khóa.</p>
@@ -298,7 +338,7 @@ export function PracticeLive({
             )}
           </section>
           {waitingRows.length > 0 && (
-            <section aria-labelledby="waiting" className="mt-8">
+            <section aria-labelledby="waiting" className={`mt-8 ${TILE}`} data-nx>
               <h2 id="waiting" className="m-0 text-read font-semibold">
                 Chờ mở khóa
               </h2>
@@ -306,7 +346,7 @@ export function PracticeLive({
             </section>
           )}
           {unlinked.length > 0 && (
-            <section aria-labelledby="unlinked" className="mt-8">
+            <section aria-labelledby="unlinked" className={`mt-8 ${TILE}`} data-nx>
               <h2 id="unlinked" className="m-0 text-read font-semibold">
                 Chưa gắn phần
               </h2>

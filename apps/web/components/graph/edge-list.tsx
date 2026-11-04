@@ -74,17 +74,17 @@ export function EdgeList({ view, selectedId, onSelectCard }: Props) {
       </a>
       {rows.length > 0 &&
         (wide ? (
-          <table className="w-full table-fixed [border-collapse:collapse] text-caption">
+          <table data-nx className="w-full table-fixed [border-collapse:separate] border-spacing-1.5 rounded-tile bg-hong-tint p-4 text-caption [&_td]:bg-bg [&_td]:px-3 [&_td]:rounded-sm [&_th]:px-3">
             <caption className="pb-2 text-left text-meta text-ink-soft">Liên kết giữa các thẻ</caption>
             <thead>
               <tr className="text-left">
-                <th scope="col" className="w-[22%] py-1 pr-2 font-semibold">
+                <th scope="col" className="w-[22%] py-1 font-semibold">
                   Thẻ
                 </th>
-                <th scope="col" className="w-[18%] py-1 pr-2 font-semibold">
+                <th scope="col" className="w-[18%] py-1 font-semibold">
                   Loại liên kết
                 </th>
-                <th scope="col" className="w-[22%] py-1 pr-2 font-semibold">
+                <th scope="col" className="w-[22%] py-1 font-semibold">
                   Thẻ kia
                 </th>
                 <th scope="col" className="py-1 font-semibold">
@@ -94,7 +94,7 @@ export function EdgeList({ view, selectedId, onSelectCard }: Props) {
             </thead>
             <tbody>
               {rows.map(({ e, from, to }) => (
-                <tr key={e.id} data-edge-row={e.id} className="border-t border-line align-top">
+                <tr key={e.id} data-edge-row={e.id} className="align-top">
                   <td className="py-1 pr-2" data-user>
                     <CardButton card={from} other={to} edge={e} selected={selectedId === from.id} onSelect={onSelectCard} />
                   </td>
@@ -110,9 +110,9 @@ export function EdgeList({ view, selectedId, onSelectCard }: Props) {
             </tbody>
           </table>
         ) : (
-          <ul className="m-0 flex list-none flex-col gap-3 p-0" aria-label="Liên kết giữa các thẻ">
+          <ul data-nx className="m-0 flex list-none flex-col gap-1.5 rounded-tile bg-hong-tint p-4 min-[901px]:p-6" aria-label="Liên kết giữa các thẻ">
             {rows.map(({ e, from, to }) => (
-              <li key={e.id} data-edge-row={e.id} className="rounded-control border border-line bg-sheet p-3">
+              <li key={e.id} data-edge-row={e.id} className="rounded-row bg-bg p-3">
                 <dl className="m-0 flex min-w-0 flex-col gap-1 text-caption">
                   <dt className="text-ink-soft">Thẻ</dt>
                   <dd className="m-0" data-user>

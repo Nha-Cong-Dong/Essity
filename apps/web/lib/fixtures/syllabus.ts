@@ -22,11 +22,12 @@ export type SyllabusState =
   | "loading"
   | "error"
   | "long-titles"
-  | "deep";
+  | "deep"
+  | "seventy";
 
 export const SYLLABUS_STATE_IDS: SyllabusState[] = [
   "ready", "provisional", "provisional-scan", "extracting", "empty-no-main", "flat-pptx", "editing",
-  "range-error", "parent-panel", "save-error", "loading", "error", "long-titles", "deep",
+  "range-error", "parent-panel", "save-error", "loading", "error", "long-titles", "deep", "seventy",
 ];
 
 export type UploadState =
@@ -150,13 +151,33 @@ const deepNode = (level: number): SyllabusNode => {
   const own = node(id, `${id} Tiêu đề của phần ở cấp ${level}, đủ dài để xuống dòng khi thụt sâu`, from, 330, level === 6 ? { part: [from, from + 3] } : {});
   return level === 6 ? own : { ...own, children: [deepNode(level + 1)] };
 };
+// A real textbook: 7 chapters, 70 parts, the first 24 studied (V22 g2 check at 390 and 1440).
+const SEVENTY_TITLES = ["Tổng quan về mạng", "Tầng ứng dụng", "Tầng giao vận", "Tầng mạng", "Tầng liên kết", "Mạng không dây", "An ninh mạng"];
+let seventyDone = 0;
+const SEVENTY: SyllabusFixture = {
+  ...READY,
+  nodes: SEVENTY_TITLES.map((t, c) =>
+    branch(
+      `s${c + 1}`,
+      `Chương ${c + 1} ${t}`,
+      c * 100 + 1,
+      c * 100 + 99,
+      Array.from({ length: 10 }, (_, i) => {
+        const done = seventyDone++ < 24;
+        return node(`s${c + 1}.${i + 1}`, `${c + 1}.${i + 1} ${t}: phần ${i + 1}`, c * 100 + i * 10 + 1, c * 100 + i * 10 + 10, done ? { done: true } : {});
+      }),
+    ),
+  ),
+  total: 700,
+};
 const DEEP: SyllabusFixture = {
   ...READY,
   nodes: [CHAPTER_1, { ...deepNode(1), id: "5" }],
 };
 
-export const FIXTURES: Record<"ready" | "provisional" | "provisional-scan" | "flat-pptx" | "long-titles" | "deep", SyllabusFixture> = {
+export const FIXTURES: Record<"ready" | "provisional" | "provisional-scan" | "flat-pptx" | "long-titles" | "deep" | "seventy", SyllabusFixture> = {
   ready: READY,
+  seventy: SEVENTY,
   provisional: PROVISIONAL,
   "provisional-scan": { ...PROVISIONAL, notice: "scan" },
   "flat-pptx": {

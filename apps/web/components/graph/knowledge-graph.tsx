@@ -118,7 +118,7 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
 
   if (merged.cards.length === 0) {
     return (
-      <div className="flex flex-col items-start gap-3 rounded-sheet bg-sheet p-6 shadow-sheet" data-empty>
+      <div className="flex flex-col items-start gap-3 rounded-tile bg-hong-tint p-6" data-empty>
         <p className="m-0 text-read">Chưa có thẻ kiến thức nào. Ghi một buổi học, các thẻ sẽ hiện thành đồ thị ở đây.</p>
         {graphs[0] && (
           <a href={`/subjects/${graphs[0].id}/sessions/new`} className="inline-flex min-h-11 items-center font-semibold underline">
@@ -146,7 +146,7 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
           ref={host}
           aria-label="Đồ thị tri thức"
           style={{ height }}
-          className="min-h-70 w-full touch-none overflow-hidden rounded-sheet bg-sheet shadow-sheet"
+          className="min-h-70 w-full touch-none overflow-hidden rounded-tile bg-hong-tint"
         />
         <div className="absolute right-2 bottom-2 flex gap-2">
           <button type="button" aria-label="Phóng to" className={ZOOM} onClick={() => zoomBy(1.3)}>
