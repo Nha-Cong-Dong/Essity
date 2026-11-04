@@ -6,11 +6,13 @@ The core is pure: `build_syllabus(page_count, outline, pages, ask)` where `ask` 
 (T7.4).
 
 Sources, tried in order, the first usable one wins:
-  1. `bookmarks`: the PDF outline;
-  2. `regex`: lines "Chuong N" / "Chapter N" at the top of a page;
-  3. `llm_toc`: the model reads one to three table-of-contents pages (only when such a page is
-     found, so a book without one costs nothing);
-  4. `chunk10`: blocks of 10 pages, a temporary tree.
+  1. `bookmarks`: the PDF outline (not when its titles are file names, as in merged PDFs);
+  2. `toc_text`: contents pages recognised by their text (lines "title ..... page"), parsed by
+     code with chapter / section levels from the numbering (V3);
+  3. `regex`: lines "Chuong N" / "Chapter N" at the top of a page;
+  4. `llm_toc`: the model reads one to three table-of-contents pages (only when such a page is
+     found, so a book without one costs nothing), the last resort;
+  5. `chunk10`: blocks of 10 pages, a temporary tree.
 
 Every source ends in the same shape: leaves are contiguous, cover pages 1..page_count and carry
 weight = their page count. A node's `weight` is the pages under it. The model's output is
@@ -59,7 +61,7 @@ TOC_SEARCH_PAGES = 30
 TOC_READ_PAGES = 3
 MAX_TOC_PAGE_CHARS = 12_000
 
-Source = Literal["bookmarks", "regex", "llm_toc", "chunk10"]
+Source = Literal["bookmarks", "toc_text", "regex", "llm_toc", "chunk10"]
 
 # The keyword must stand alone on its line, so prose that mentions "contents" does not match.
 _TOC_WORDS = re.compile(
@@ -72,6 +74,22 @@ _MAX_HEADING_CHARS = 120
 # Shorter titles ("1", "A") would match any page when looking for the page offset.
 _MIN_MATCH_CHARS = 4
 _LISTING_LINES = 40
+_FILE_NAME = re.compile(r"\.(?:pdf|docx?|pptx?)\s*$", re.I)
+# A contents line: "1.2. Title . . . . 12" (dot leaders, often spaced) or numbered "1.2 Title 12".
+_TOC_LEADER = re.compile(r"^\s*(?P<title>\S.*?)\s*(?:\.\s*){3,}\s*(?P<page>\d{1,4})\s*$")
+_TOC_NUMBERED = re.compile(
+    r"^\s*(?P<title>(?:\d+(?:\.\d+)*\.?|[IVXLC]+\.)\s+\S.*?)\s+(?P<page>\d{1,4})\s*$"
+)
+_TOC_NUMBER = re.compile(r"^\s*(\d+(?:\.\d+)*)\.?\s+")
+# `\S{0,4}` lets "Ch­¬ng" and "PhÇn" pass: some fonts print Vietnamese in a legacy encoding.
+_PART = re.compile(r"^\s*(?:ph\S{0,2}n|part)\s+(?:\d+|[ivxlc]+)\b", re.I)
+_TOC_CHAPTER = re.compile(r"^\s*(?:ch\S{0,4}ng|chapter)\s+(?:\d+|[ivxlc]+)\b", re.I)
+_TOC_START = re.compile(
+    r"(?:ph\S{0,2}n|part|ch\S{0,4}ng|chapter)\s+(?:\d+|[ivxlc]+)\b|\d+(?:\.\d+)+\.?\s", re.I
+)
+_TOC_MIN_LINES = 5
+_TOC_MIN_ENTRIES = 3
+_TOC_MAX_GAP = 1
 
 
 @dataclass(frozen=True)
@@ -232,6 +250,9 @@ def _from_bookmarks(outline: Sequence[OutlineEntry], page_count: int) -> list[_H
         for entry in outline
         if entry.page_index is not None
     ]
+    # A merged PDF names its parts after the files ("Chuong 1-2.pdf"): no table of contents.
+    if headings and sum(1 for h in headings if _FILE_NAME.search(h[0])) * 2 >= len(headings):
+        return None
     tidy = _tidy(headings, page_count)
     return tidy if len(tidy) >= 2 else None
 
@@ -259,6 +280,103 @@ def _from_regex(pages: Sequence[PageText], page_count: int) -> list[_Heading] | 
                 break
     tidy = _tidy(list(found.values()), page_count)
     return tidy if len(tidy) >= 2 else None
+
+
+def _toc_line(line: str) -> tuple[str, int] | None:
+    found = _TOC_LEADER.match(line) or _TOC_NUMBERED.match(line)
+    if found is None:
+        return None
+    title = re.sub(r"(?:\.\s*){3,}$", "", found.group("title")).strip(" .	")
+    return (title, int(found.group("page"))) if title else None
+
+
+def _toc_entries(text: str) -> list[tuple[str, int]]:
+    """Entries of one page. Some PDFs break a line at every glyph the extractor cannot read, so
+    when whole lines give too few entries the fragments are joined until one ends in a page
+    number (a blank line starts afresh)."""
+    lines = text.splitlines()
+    whole = [e for line in lines if (e := _toc_line(line))]
+    headed = sum(
+        1
+        for title, _ in whole
+        if _TOC_NUMBER.match(title) or _TOC_CHAPTER.match(title) or _PART.match(title)
+    )
+    if len(whole) >= _TOC_MIN_LINES and headed * 10 >= len(whole) * 7:
+        return whole
+    joined: list[tuple[str, int]] = []
+    buf = ""
+    for line in lines:
+        if not line.strip():
+            continue  # a glyph the extractor lost leaves a blank line inside an entry too
+        buf += line
+        if (e := _toc_line(buf)) is not None:
+            title, page = e
+            if not joined:  # a header before the first entry is not part of its title
+                start = _TOC_START.search(title)
+                title = title[start.start() :] if start else title
+            joined.append((title, page))
+            buf = ""
+        elif len(buf) > 300:
+            buf = ""
+    return (
+        joined if len(joined) >= _TOC_MIN_LINES else whole if len(whole) >= _TOC_MIN_LINES else []
+    )
+
+
+def _toc_text_pages(pages: Sequence[PageText]) -> list[int]:
+    """File pages (0-based) that look like contents: in the front, a run of pages (one page may
+    have no entry) where each has at least `_TOC_MIN_LINES` lines of "title ..... page"."""
+    run: list[int] = []
+    gap = 0
+    for index, page in enumerate(pages[:TOC_SEARCH_PAGES]):
+        if len(_toc_entries(page.text)) >= _TOC_MIN_LINES:
+            run.append(index)
+            gap = 0
+        elif run:
+            gap += 1
+            if gap > _TOC_MAX_GAP:
+                break
+    return run
+
+
+def _entry_level(title: str, parts: bool) -> int:
+    """Level from the numbering: "Chương 1" / "1." top, "1.2" one down, "1.2.3" two down; a part
+    ("Phần 1") sits above the chapters; an unnumbered line ("Bài tập chương 1") is a section."""
+    base = 1 if parts else 0
+    if _PART.match(title):
+        return 0
+    if _TOC_CHAPTER.match(title):
+        return base
+    number = _TOC_NUMBER.match(title)
+    if number:
+        return base + number.group(1).count(".")
+    return base + 1
+
+
+def _from_toc_text(pages: Sequence[PageText], page_count: int) -> list[_Heading] | None:
+    """The contents pages recognised by their text, parsed without a model (V3)."""
+    toc_pages = _toc_text_pages(pages)
+    if not toc_pages:
+        return None
+    entries: list[tuple[str, int]] = []
+    for index in toc_pages:
+        entries.extend(_toc_entries(pages[index].text))
+    if len(entries) < _TOC_MIN_ENTRIES or len(entries) > MAX_NODES:
+        return None
+    # A part ("Phần 1") is not a chapter: only chapters count as "còn n", so parts are left out.
+    entries = [(t, p) for t, p in entries if not _FILE_NAME.search(t) and not _PART.match(t)]
+    parts = False
+    toc = [
+        LlmTocEntry(title=title[:MAX_TITLE_CHARS], level=0, page=max(page, 1))
+        for title, page in entries
+    ]
+    offset = _page_offset(toc, pages, toc_pages[-1] + 1)
+    headings = [
+        (_single_line(title), _entry_level(title, parts), page - offset - 1)
+        for title, page in entries
+    ]
+    tidy = _tidy(headings, page_count)
+    return tidy if len(tidy) >= _TOC_MIN_ENTRIES else None
 
 
 def _toc_pages(pages: Sequence[PageText]) -> list[int]:
@@ -377,6 +495,7 @@ def build_syllabus(
         return []
     candidates: list[tuple[Source, Callable[[], list[_Heading] | None]]] = [
         ("bookmarks", lambda: _from_bookmarks(outline, page_count)),
+        ("toc_text", lambda: _from_toc_text(pages, page_count)),
         ("regex", lambda: _from_regex(pages, page_count)),
         ("llm_toc", lambda: _from_llm(pages, page_count, ask)),
     ]
@@ -392,6 +511,7 @@ def build_syllabus(
 # Source names in core-api's `doc_section.source` vocabulary (a "regex" tree is found by headings).
 _SECTION_SOURCE: dict[Source, str] = {
     "bookmarks": "bookmark",
+    "toc_text": "heading",
     "regex": "heading",
     "llm_toc": "llm_toc",
     "chunk10": "chunk10",
