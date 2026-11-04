@@ -27,7 +27,7 @@ export function VaultView({
           href={
             subjectId ? `/kho-kien-thuc?subject=${subjectId}` : "/kho-kien-thuc"
           }
-          className="text-body text-ink-soft"
+          className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken"
         >
           ← Các buổi học
         </a>
@@ -49,7 +49,7 @@ export function VaultView({
     return (
       <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div className="flex min-w-0 flex-col gap-4">
-          <a href="/kho-kien-thuc" className="text-body text-ink-soft">
+          <a href="/kho-kien-thuc" className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
             ← Các môn
           </a>
           <h1 className="m-0 font-display text-title">

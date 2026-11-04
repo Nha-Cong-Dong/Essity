@@ -13,7 +13,7 @@ describe("SubjectList next exam", () => {
     render(<SubjectList subjects={[s("a", "Toán", 40), s("b", "Vật lý", 12), s("c", "Hóa", -3)]} example="15/12/2031" />);
     const aside = screen.getByRole("complementary", { name: "Kỳ thi gần nhất" });
     expect(within(aside).getByText("12")).toBeTruthy();
-    expect(within(aside).getByRole("button", { name: /Vào Vật lý/ }).getAttribute("href")).toBe("/subjects/b");
+    expect(within(aside).getByRole("link", { name: /Vào Vật lý/ }).getAttribute("href")).toBe("/subjects/b");
   });
   it("is absent when every exam is over", () => {
     render(<SubjectList subjects={[s("c", "Hóa", -3)]} example="15/12/2031" />);

@@ -370,13 +370,12 @@ function NextExam({ subjects }: { subjects: ListedSubject[] }) {
           <span className="text-lead font-semibold">ngày nữa</span>
         </p>
       </div>
-      <Button
-        render={<a href={`/subjects/${next.id}`} />}
-        nativeButton={false}
-        className="h-auto min-h-13 max-w-full self-start whitespace-normal py-2 text-left"
+      <a
+        href={`/subjects/${next.id}`}
+        className="inline-flex min-h-13 max-w-full items-center self-start rounded-full bg-hong px-6 py-2 text-left font-semibold text-on-hong no-underline hover:bg-[color-mix(in_oklab,var(--hong)_88%,var(--ink))]"
       >
         Vào {next.name}
-      </Button>
+      </a>
     </aside>
   );
 }
