@@ -7,7 +7,6 @@ import { StartButton } from "@/components/today/start-button";
 import { Button } from "@/components/ui/button";
 import { dayLabel } from "@/lib/today-copy";
 import {
-  draftLine,
   nextDueLabel,
   practiceLine,
   primaryAction,
@@ -48,15 +47,11 @@ function ResumeRow({ item, primary }: { item: Unfinished; primary: boolean }) {
   const line =
     item.kind === "review"
       ? reviewProgress(item.position, item.total)
-      : item.kind === "session"
-        ? item.line
-        : draftLine(item.subject.name, item.drafts);
+      : item.line;
   const href =
     item.kind === "review"
       ? `/review/${item.session_id}`
-      : item.kind === "session"
-        ? `/subjects/${item.subject.id}/sessions/${item.session_id}`
-        : `/subjects/${item.subject.id}/sessions`;
+      : `/subjects/${item.subject.id}/sessions/${item.session_id}`;
   return (
     <li className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
       <p className="m-0 min-w-0 flex-1 basis-60 text-read [overflow-wrap:anywhere]">

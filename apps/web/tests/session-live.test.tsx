@@ -1,30 +1,16 @@
 // @vitest-environment jsdom
-// T7.12 (US-02 AC2-AC4, AC9-AC11; US-02b AC6-AC9): the study session screen on a faked core-api.
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+// T7.12 (US-02 AC2-AC4, AC9-AC11; CARDS-V3): the study session screen on a faked core-api.
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type SessionInitial, SessionScreen } from "@/components/session-study/session-screen";
 import type { ApiResult, Phase, SessionApi } from "@/lib/session-study/api";
-import type { Draft } from "@/lib/session-study/drafts";
 import { initialRound, type Round } from "@/lib/session-study/round";
 
 const DOC = "5a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d";
 const DOCS = [{ id: DOC, name: "Giáo trình", role: "Giáo trình chính" }];
 const FREE = { kind: "free", text: "Buổi học tự do. Bài nộp không gắn phần đề cương." } as const;
 
-const card = (id: string, extra: Partial<Draft> = {}): Draft => ({
-  id,
-  title: `Thẻ ${id}`,
-  summary: `Ý của ${id}`,
-  section: null,
-  anchors: [],
-  origin: "ai",
-  status: "draft",
-  version: 1,
-  conflict: null,
-  source: "both",
-  ...extra,
-});
 const ok = <T,>(data: T): Promise<ApiResult<T>> => Promise.resolve({ ok: true, data });
 const fail = (status: number, error: string): Promise<ApiResult<never>> =>
   Promise.resolve({ ok: false, status, error });
@@ -36,37 +22,26 @@ function fakeApi(over: Partial<SessionApi> = {}): Fake {
     sessionId: "s1",
     submit: vi.fn(() => ok({ status: "queued" as Phase })),
     upload: vi.fn(async () => undefined),
-    load: vi.fn(() => ok({ phase: "processing" as Phase, drafts: [] as Draft[] })),
-    get: vi.fn((id: string) => ok(card(id, { version: 5, summary: "Bản mới trên máy chủ" }))),
-    edit: vi.fn((id: string, version: number) => ok(card(id, { version: version + 1 }))),
-    discard: vi.fn((id: string) => ok(card(id, { status: "retired" as const }))),
-    undo: vi.fn((id: string) => ok(card(id))),
-    add: vi.fn(() => ok(card("srv-new", { title: "Mới", summary: "Mới" }))),
-    merge: vi.fn(() => ok(card("merged", { summary: "Đã gộp" }))),
-    split: vi.fn(() => ok([card("p1"), card("p2")])),
-    save: vi.fn((cards: { id: string; version: number }[]) => ok(cards.map((c) => c.id))),
+    result: vi.fn(() => ok({ phase: "processing" as Phase, title: null as string | null, cards: 0, notice: null as string | null })),
     ...over,
   };
   return api as unknown as Fake;
 }
 
-function show(api: Fake, patch: Partial<Omit<SessionInitial, "round">> & { round?: Partial<Round> } = {}) {
+function show(api: Fake, patch: Partial<Omit<SessionInitial, "round">> & { round?: Partial<Round> } = {}, subjectId?: string) {
   const { round, ...rest } = patch;
   const initial: SessionInitial = {
     round: { ...initialRound, ...round },
-    drafts: [],
     text: "",
     mentions: [],
     files: [],
-    scope: [],
-    saved: "free",
-    resumed: false,
     ...rest,
   };
   return render(
     <SessionScreen
       api={api as unknown as SessionApi}
       subject="Mạng máy tính"
+      subjectId={subjectId}
       stopHref="/today"
       docs={DOCS}
       suggestion={FREE}
@@ -80,8 +55,6 @@ const tick = (ms: number) =>
   act(async () => {
     await vi.advanceTimersByTimeAsync(ms);
   });
-const review = { round: { phase: "review" as const } };
-const cards = () => within(screen.getByRole("list", { name: "Thẻ nháp" }));
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -95,30 +68,44 @@ afterEach(() => {
 });
 
 describe("study session on core-api", () => {
-  // US-02 AC1, AC14; US-02b AC6, AC7, AC9. Red when: the sentence is not sent, the cards the
-  // reading made do not appear, an edit does not reach core-api with the version it saw, or Save
-  // does not end in "Học tiếp hay dừng?".
-  it("sends the sentence, shows the cards, saves an edit, and asks to go on or stop", async () => {
-    const api = fakeApi({ load: vi.fn(() => ok({ phase: "done" as Phase, drafts: [card("u1"), card("u2")] })) });
-    show(api);
+  // US-02 AC1, AC14; CARDS-V3. Red when: the sentence is not sent, the poll does not end in the
+  // confirmation with the count, the session name and the Kho link, or "Học tiếp hay dừng?" is missing.
+  it("sends the sentence, polls the result and confirms the cards that went into the Kho", async () => {
+    const api = fakeApi({ result: vi.fn(() => ok({ phase: "done" as Phase, title: "TCP flow control", cards: 4, notice: null })) });
+    show(api, {}, "SUBJ");
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "Tối nay học phần 3.2" } });
     fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
     expect(api.submit).toHaveBeenCalledWith("Tối nay học phần 3.2", [], []);
     await tick(2600);
-    expect(await screen.findByText("Thẻ u1")).toBeTruthy();
+    // The polite live region says it too, so the text is found twice.
+    expect((await screen.findAllByText("Đã thêm 4 thẻ vào Kho.")).length).toBeGreaterThan(0);
+    expect(screen.getByText("Buổi học: TCP flow control")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Xem trong Kho kiến thức" }).getAttribute("href")).toBe("/kho-kien-thuc?subject=SUBJ&session=s1");
+    expect(screen.getByText("Học tiếp hay dừng?")).toBeTruthy();
+    expect(screen.queryByText(/nháp/)).toBeNull();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Sửa thẻ Thẻ u1" }));
-    fireEvent.change(screen.getByLabelText("Nội dung thẻ Thẻ u1"), { target: { value: "Ý đã sửa" } });
-    await tick(900);
-    expect(api.edit).toHaveBeenCalledWith("u1", 1, { title: "Thẻ u1", content: "Ý đã sửa" });
+  // CARDS-V3. Red when: a done read with no card is silent, or does not point to the outline.
+  it("a done read with no card says so and points to the outline", async () => {
+    const api = fakeApi({ result: vi.fn(() => ok({ phase: "done" as Phase, title: null, cards: 0, notice: "no_content_found" })) });
+    show(api, { round: { phase: "processing", submission: "processing" } }, "SUBJ");
+    await tick(2600);
+    // The polite live region says it too, so the text is found twice.
+    expect((await screen.findAllByText("Chưa tìm thấy nội dung để làm thẻ.")).length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Chọn mục từ đề cương" }).getAttribute("href")).toBe("/subjects/SUBJ/syllabus");
+    expect(screen.queryByText(/Đã thêm 0 thẻ/)).toBeNull();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Đúng rồi, lưu" }));
-    await tick(50);
-    expect(api.save).toHaveBeenCalledWith([
-      { id: "u1", version: 2 },
-      { id: "u2", version: 1 },
-    ]);
-    expect(await screen.findByText("Học tiếp hay dừng?")).toBeTruthy();
+  // CARDS-V3. Red when: a failed read keeps polling or loses the retry.
+  it("a failed read stays in processing with Thử lại", async () => {
+    const api = fakeApi({ result: vi.fn(() => ok({ phase: "failed" as Phase, title: null, cards: 0, notice: null })) });
+    show(api, { round: { phase: "processing", submission: "processing" } });
+    await tick(2600);
+    expect(await screen.findByText(/Chưa đọc được bài nộp/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Thử lại" })).toBeTruthy();
+    const calls = api.result.mock.calls.length;
+    await tick(6000);
+    expect(api.result.mock.calls.length).toBe(calls);
   });
 
   // US-02 AC4. Red when: a refused @ does not show on its chip, or the sentence is lost.
@@ -142,162 +129,21 @@ describe("study session on core-api", () => {
     expect(screen.getByRole("button", { name: "Gửi" })).toBeTruthy();
   });
 
-  // US-02 AC15; US-02b AC10. Red when: pending_ai does not say manual edits still work, or the cards
-  // never arrive after the AI is back.
-  it("pending_ai says editing by hand still works, and the cards come when the read ends", async () => {
+  // US-02 AC15. Red when: pending_ai drops its waiting line, or the result never arrives once the AI is back.
+  it("pending_ai keeps its waiting line, and the result comes when the read ends", async () => {
     const api = fakeApi();
     show(api, { round: { phase: "processing", submission: "pending_ai" } });
-    expect(screen.getByText(/vẫn thêm và sửa thẻ\s+bằng tay được/)).toBeTruthy();
-    api.load.mockImplementation(() => ok({ phase: "done" as Phase, drafts: [card("late")] }));
+    expect(screen.getByText(/hết lượt AI/)).toBeTruthy();
+    api.result.mockImplementation(() => ok({ phase: "done" as Phase, title: "Buổi 1", cards: 2, notice: null }));
     await tick(2600);
-    expect(await screen.findByText("Thẻ late")).toBeTruthy();
+    // The polite live region says it too, so the text is found twice.
+    expect((await screen.findAllByText("Đã thêm 2 thẻ vào Kho.")).length).toBeGreaterThan(0);
   });
 
-  // US-02 AC1; US-02b AC8 (resume). Red when: reopening drops the cards or the note that they were kept.
-  it("opens on the cards that were kept", () => {
-    show(fakeApi(), { ...review, drafts: [card("u1")], resumed: true });
-    expect(screen.getByText(/Buổi học đang dở/)).toBeTruthy();
-    expect(screen.getByText("Thẻ u1")).toBeTruthy();
-  });
-
-  // US-02b AC7. Red when: a stale edit is not told as "đã đổi ở nơi khác", Save goes on past it,
-  // or "Tải lại thẻ" does not bring the server's card.
-  it("a 409 shows the card as changed elsewhere, blocks Save and reloads", async () => {
-    const api = fakeApi({ edit: vi.fn(() => fail(409, "unit_changed_elsewhere")) });
-    show(api, { ...review, drafts: [card("u1")] });
-    fireEvent.click(screen.getByRole("button", { name: "Sửa thẻ Thẻ u1" }));
-    fireEvent.change(screen.getByLabelText("Nội dung thẻ Thẻ u1"), { target: { value: "Chữ của tôi" } });
-    await tick(900);
-    expect(await screen.findByText("Thẻ này đã đổi ở nơi khác.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Đúng rồi, lưu" }));
-    await tick(50);
-    expect(api.save).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Tải lại thẻ" }));
-    await tick(50);
-    expect(api.get).toHaveBeenCalledWith("u1");
-    expect(await screen.findByText("Bản mới trên máy chủ")).toBeTruthy();
-    expect(screen.queryByText("Thẻ này đã đổi ở nơi khác.")).toBeNull();
-  });
-
-  // US-02b AC9. Red when: a 409 on Save is shown as a plain failure, or the changed card is not marked.
-  it("a 409 on Save marks the card that changed", async () => {
-    const api = fakeApi({
-      save: vi.fn(() => fail(409, "unit_changed_elsewhere")),
-      get: vi.fn((id: string) => ok(card(id, { version: 9 }))),
-    });
-    show(api, { ...review, drafts: [card("u1")] });
-    fireEvent.click(screen.getByRole("button", { name: "Đúng rồi, lưu" }));
-    await tick(50);
-    expect(await screen.findByText("Thẻ này đã đổi ở nơi khác.")).toBeTruthy();
-    expect(screen.queryByText("Chưa lưu được. Các thẻ nháp vẫn còn nguyên.")).toBeNull();
-  });
-
-  // US-02b AC6, AC8. Red when: a discard is not sent, a failed one stays hidden, or undo is not sent.
-  it("discard and undo go to core-api; a failed discard brings the card back", async () => {
-    const api = fakeApi();
-    show(api, { ...review, drafts: [card("u1"), card("u2")] });
-    fireEvent.click(cards().getAllByRole("button", { name: "Bỏ thẻ" })[0]);
-    await tick(50);
-    expect(api.discard).toHaveBeenCalledWith("u1");
-    fireEvent.click(screen.getByRole("button", { name: "Hoàn tác" }));
-    await tick(50);
-    expect(api.undo).toHaveBeenCalledWith("u1");
-
-    api.discard.mockImplementation(() => fail(0, "network"));
-    fireEvent.click(cards().getAllByRole("button", { name: "Bỏ thẻ" })[0]);
-    await tick(50);
-    expect(await screen.findByText("Thẻ u1")).toBeTruthy();
-    expect(screen.getByText("Chưa bỏ được thẻ. Thử lại sau.")).toBeTruthy();
-  });
-
-  // US-02b AC6. Red when: a card added by hand is sent before it has a title and a text, or twice.
-  it("adds a card by hand once it is titled and written", async () => {
-    const api = fakeApi();
-    show(api, { ...review, drafts: [card("u1")] });
-    fireEvent.click(screen.getByRole("button", { name: "Thêm thẻ" }));
-    fireEvent.change(screen.getByLabelText("Tên thẻ"), { target: { value: "Mới" } });
-    await tick(900);
-    expect(api.add).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText(/Nội dung thẻ/), { target: { value: "Nội dung mới" } });
-    fireEvent.change(screen.getByLabelText(/Nội dung thẻ/), { target: { value: "Nội dung mới hơn" } });
-    await tick(900);
-    expect(api.add).toHaveBeenCalledTimes(1);
-    expect(api.add).toHaveBeenCalledWith("Mới", "Nội dung mới hơn");
-  });
-
-  // US-02b AC6, AC9. Red when: text typed while the add is in flight is lost (the timer still names
-  // the local id), or Save sends the old text.
-  it("keeps what is typed while a new card is being added, also for Save", async () => {
-    let land: (card: Draft) => void = () => undefined;
-    const api = fakeApi({ add: vi.fn(() => new Promise<ApiResult<Draft>>((r) => { land = (d) => r({ ok: true, data: d }); })) });
-    show(api, { ...review, drafts: [card("u1")] });
-    fireEvent.click(screen.getByRole("button", { name: "Thêm thẻ" }));
-    fireEvent.change(screen.getByLabelText("Tên thẻ"), { target: { value: "Mới" } });
-    fireEvent.change(screen.getByLabelText(/Nội dung thẻ/), { target: { value: "Bản một" } });
-    await tick(900);
-    expect(api.add).toHaveBeenCalledTimes(1);
-    fireEvent.change(screen.getByLabelText(/Nội dung thẻ/), { target: { value: "Bản hai" } });
-    await act(async () => { land(card("srv1", { title: "Mới", summary: "Bản một", version: 1 })); });
-    await tick(900);
-    expect(api.edit).toHaveBeenCalledWith("srv1", 1, { title: "Mới", content: "Bản hai" });
-    fireEvent.change(screen.getByLabelText(/Nội dung thẻ/), { target: { value: "Bản ba" } });
-    fireEvent.click(screen.getByRole("button", { name: "Đúng rồi, lưu" }));
-    await tick(50);
-    expect(api.edit).toHaveBeenLastCalledWith("srv1", 2, { title: "Mới", content: "Bản ba" });
-    expect(api.save).toHaveBeenCalled();
-  });
-
-  // US-02b AC8. Red when: a card dropped while its add is in flight stays on the server as a draft.
-  it("drops the server copy of a card discarded before its add landed", async () => {
-    let land: (card: Draft) => void = () => undefined;
-    const api = fakeApi({ add: vi.fn(() => new Promise<ApiResult<Draft>>((r) => { land = (d) => r({ ok: true, data: d }); })) });
-    show(api, { ...review, drafts: [card("u1")] });
-    fireEvent.click(screen.getByRole("button", { name: "Thêm thẻ" }));
-    fireEvent.change(screen.getByLabelText("Tên thẻ"), { target: { value: "Mới" } });
-    fireEvent.change(screen.getByLabelText(/Nội dung thẻ/), { target: { value: "Nội dung" } });
-    await tick(900);
-    fireEvent.click(cards().getAllByRole("button", { name: "Bỏ thẻ" })[1]);
-    await act(async () => { land(card("srv1")); });
-    await tick(50);
-    expect(api.discard).toHaveBeenCalledWith("srv1");
-  });
-
-  // US-02b AC6 and a11y (T7.12a review): the split box closes when the split took effect, only then.
-  it("split closes its box on success and stays open on a refusal", async () => {
-    const api = fakeApi({ split: vi.fn(() => fail(422, "bad_split")) });
-    show(api, { ...review, drafts: [card("u1", { summary: "Câu một. Câu hai." })] });
-    fireEvent.click(screen.getByRole("button", { name: "Tách" }));
-    fireEvent.click(screen.getByRole("button", { name: "Tách thẻ" }));
-    await tick(50);
-    expect(await screen.findByText("Chưa tách được thẻ. Thử lại sau.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Tách thẻ" })).toBeTruthy();
-    api.split.mockImplementation(() => ok([card("p1"), card("p2")]));
-    fireEvent.click(screen.getByRole("button", { name: "Tách thẻ" }));
-    await tick(50);
-    expect(await screen.findByText("Thẻ p2")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Tách thẻ" })).toBeNull();
-    expect(api.split).toHaveBeenLastCalledWith("u1", 1, expect.arrayContaining([expect.objectContaining({ content: "Câu một." })]));
-  });
-
-  // US-02b AC6. Red when: the merged card does not replace the two.
-  it("merge shows the card core-api made from the two", async () => {
-    const api = fakeApi();
-    show(api, { ...review, drafts: [card("u1"), card("u2")] });
-    fireEvent.click(cards().getAllByRole("button", { name: "Gộp" })[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Gộp vào đây" }));
-    await tick(50);
-    expect(api.merge).toHaveBeenCalledWith(["u2", "u1"]);
-    expect(await screen.findByText("Đã gộp")).toBeTruthy();
-    expect(screen.queryByText("Thẻ u2")).toBeNull();
-  });
-
-  // a11y fix (T7.12a review): leaving the editor with Esc leaves the keyboard on the card.
-  it("puts the focus back on the card after editing with Esc", async () => {
-    show(fakeApi(), { ...review, drafts: [card("u1")] });
-    fireEvent.click(screen.getByRole("button", { name: "Sửa thẻ Thẻ u1" }));
-    fireEvent.keyDown(screen.getByLabelText("Nội dung thẻ Thẻ u1"), { key: "Escape" });
-    await tick(50);
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Sửa thẻ Thẻ u1" }));
+  // CARDS-V3. Red when: a reopened finished session shows the form again instead of its result.
+  it("opens on the result of a finished session", () => {
+    show(fakeApi(), { round: { phase: "done", result: { cards: 3, title: "TCP", notice: null } } });
+    expect(screen.getAllByText("Đã thêm 3 thẻ vào Kho.").length).toBeGreaterThan(0);
   });
 
   // a11y fix (T7.12a review): aria-controls names the list only while it exists.

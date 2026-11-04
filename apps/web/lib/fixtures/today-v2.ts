@@ -37,7 +37,6 @@ const BUSY: TodayV2 = {
   ...BASE,
   unfinished: [
     { kind: "review", session_id: "5f0c0000-0000-4000-8000-000000000001", position: 7, total: 14 },
-    { kind: "draft", subject: LONG, drafts: 4 },
     { kind: "note", text: "Bài nộp của buổi học tối qua đang được đọc." },
   ],
   review: { state: "due", count: 14, minutes: 21, subjects: [MMT.name, LONG_WORD], in_progress: true },

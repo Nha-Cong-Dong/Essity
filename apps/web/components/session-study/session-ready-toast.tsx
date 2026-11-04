@@ -5,39 +5,32 @@ import { useEffect, useState } from "react";
 
 import { forgetPendingSession, type PendingSession, readPendingSessions } from "@/lib/session-study/pending";
 
-// F3: while the cards of a finished session are being made, ask core-api now and then. When the
-// reading is done the drafts are saved as cards (the learner edits them in the knowledge store)
-// and a toast says they are ready. Does nothing when no session is waiting.
+// F3 / CARDS-V3: while the cards of a finished session are being made, ask core-api now and then.
+// The cards go straight into the Kho, so when the reading is done a toast says how many went in
+// (or that there was nothing to make cards from). Does nothing when no session is waiting.
 const EVERY_MS = 5000;
 
-type Draft = { id: string; version: number; status: string };
+type Result = { submission_status: string | null; cards: number };
+type State = { kind: "waiting" } | { kind: "gone" } | { kind: "ready"; cards: number };
 
-async function check(item: PendingSession): Promise<"ready" | "waiting" | "gone"> {
+async function check(item: PendingSession): Promise<State> {
   try {
-    const response = await fetch(`/api/sessions/${item.sessionId}/drafts`, { credentials: "same-origin" });
-    if (response.status === 404 || response.status === 401) return "gone";
-    if (!response.ok) return "waiting";
-    const json = (await response.json()) as { submission_status: string | null; drafts: Draft[] };
-    if (json.submission_status === "failed") return "gone";
-    if (json.submission_status !== "done") return "waiting";
-    const open = json.drafts.filter((d) => d.status === "draft");
-    if (open.length > 0) {
-      const saved = await fetch(`/api/sessions/${item.sessionId}/drafts/save`, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ units: open.map((d) => ({ unit_id: d.id, version: d.version })) }),
-      });
-      if (!saved.ok) return "waiting";
-    }
-    return "ready";
+    const response = await fetch(`/api/sessions/${item.sessionId}/result`, { credentials: "same-origin" });
+    if (response.status === 404 || response.status === 401) return { kind: "gone" };
+    if (!response.ok) return { kind: "waiting" };
+    const json = (await response.json()) as Result;
+    if (json.submission_status === "failed") return { kind: "gone" };
+    if (json.submission_status !== "done") return { kind: "waiting" };
+    return { kind: "ready", cards: json.cards };
   } catch {
-    return "waiting";
+    return { kind: "waiting" };
   }
 }
 
+type Ready = PendingSession & { cards: number };
+
 export function SessionReadyToast() {
-  const [ready, setReady] = useState<PendingSession[]>([]);
+  const [ready, setReady] = useState<Ready[]>([]);
 
   useEffect(() => {
     let stopped = false;
@@ -45,9 +38,9 @@ export function SessionReadyToast() {
       for (const item of readPendingSessions()) {
         const state = await check(item);
         if (stopped) return;
-        if (state === "waiting") continue;
+        if (state.kind === "waiting") continue;
         forgetPendingSession(item.sessionId);
-        if (state === "ready") setReady((rows) => [...rows, item]);
+        if (state.kind === "ready") setReady((rows) => [...rows, { ...item, cards: state.cards }]);
       }
     };
     const timer = window.setInterval(() => void tick(), EVERY_MS);
@@ -63,9 +56,15 @@ export function SessionReadyToast() {
     <div className="fixed right-4 bottom-4 z-50 flex max-w-sm flex-col gap-2" role="status" aria-live="polite">
       {ready.map((item) => (
         <div key={item.sessionId} className="flex items-start gap-3 rounded-control border border-line bg-sunken p-4">
-          <Link href={`/kho-kien-thuc/${item.subjectId}`} className="text-body inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
-            Các thẻ của buổi học môn {item.subject} đã sẵn sàng
-          </Link>
+          {item.cards > 0 ? (
+            <Link href={`/kho-kien-thuc/${item.subjectId}`} className="text-body inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
+              Đã thêm {item.cards} thẻ vào Kho cho buổi học môn {item.subject}
+            </Link>
+          ) : (
+            <Link href={`/subjects/${item.subjectId}/syllabus`} className="text-body inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
+              Chưa tìm thấy nội dung để làm thẻ cho buổi học môn {item.subject}. Chọn một mục từ đề cương.
+            </Link>
+          )}
           <button
             type="button"
             aria-label="Đóng thông báo"

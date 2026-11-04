@@ -1,30 +1,13 @@
-// T7.12 (US-02 AC2-AC4, AC13; US-02b AC6-AC9): the browser's side of the study session: core-api's
-// cards as the screen's cards, and each action as one call to web's routes.
+// T7.12 (US-02 AC2-AC4, AC13; CARDS-V3): the browser's side of the study session: each action as one
+// call to web's routes, and where the handed-in session stands.
 import { describe, expect, it, vi } from "vitest";
 
-import { createSessionApi, readStatus, toDraft } from "@/lib/session-study/api";
+import { createSessionApi, readStatus } from "@/lib/session-study/api";
 import type { DocRef } from "@/lib/session-study/mention";
 
 const SID = "b2c3d4e5-6f7a-4b8c-9d0e-1f2a3b4c5d6e";
 const DOC = "5a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d";
 const DOCS: DocRef[] = [{ id: DOC, name: "Giáo trình", role: "Giáo trình chính" }];
-
-const core = (patch: Record<string, unknown> = {}) => ({
-  id: "u1",
-  session_id: SID,
-  title: "Cửa sổ trượt",
-  content: "Bên gửi giữ rwnd.",
-  kind: "concept",
-  status: "draft",
-  version: 2,
-  section_ids: [],
-  anchors: [
-    { id: "a1", source: "document", document_id: DOC, page_no: 52, start: 0, end: 5, quote_text: "rwnd" },
-    { id: "a2", source: "notes", document_id: null, page_no: null, start: null, end: null, quote_text: "vở" },
-  ],
-  revisions: [{ rev: 0, origin: "ai", content: {} }],
-  ...patch,
-});
 
 function fakeFetch(reply: (url: string, init: RequestInit) => Response) {
   const calls: { url: string; init: RequestInit; body: unknown }[] = [];
@@ -34,26 +17,6 @@ function fakeFetch(reply: (url: string, init: RequestInit) => Response) {
   });
   return { fn: fn as unknown as typeof fetch, calls };
 }
-
-describe("toDraft", () => {
-  // US-02b AC5. Red when: where the card was seen (notebook, textbook, both) is lost, or an anchor
-  // loses its document name or page.
-  it("maps a card, its anchors and where it was seen", () => {
-    const draft = toDraft(core(), DOCS);
-    expect(draft).toMatchObject({ id: "u1", title: "Cửa sổ trượt", summary: "Bên gửi giữ rwnd.", version: 2, status: "draft", origin: "ai", source: "both", conflict: null });
-    expect(draft.anchors.map((a) => a.label)).toEqual(["Giáo trình · tr. 52", "Vở ghi"]);
-    expect(toDraft(core({ anchors: [] }), DOCS).source).toBe("both");
-    expect(toDraft(core({ anchors: [core().anchors[1]] }), DOCS).source).toBe("notes");
-    expect(toDraft(core({ anchors: [core().anchors[0]] }), DOCS).source).toBe("document");
-  });
-
-  // US-02b AC6, AC9. Red when: a card the learner edited still says "ai".
-  it("marks a card the learner wrote as theirs", () => {
-    const edited = core({ revisions: [{ rev: 0, origin: "ai", content: {} }, { rev: 1, origin: "user", content: {} }] });
-    expect(toDraft(edited, DOCS).origin).toBe("user");
-    expect(toDraft(core({ status: "retired" }), DOCS).status).toBe("retired");
-  });
-});
 
 describe("readStatus", () => {
   // US-02 AC11, AC15. Red when: a status core-api sends has no phase on the screen.
@@ -91,59 +54,27 @@ describe("createSessionApi", () => {
     expect(await api.submit("x", mentions)).toEqual({ ok: false, status: 422, error: "scope_not_found", docId: DOC });
   });
 
-  it("loads the cards and the status, keeping only drafts and discarded ones", async () => {
-    const { fn, calls } = fakeFetch(() => Response.json({ drafts: [core(), core({ id: "u2", status: "canonical" }), core({ id: "u3", status: "retired" })], submission_status: "done" }));
-    const result = await createSessionApi(SID, DOCS, fn).load();
-    expect(calls[0].url).toBe(`/api/sessions/${SID}/drafts`);
-    expect(result.ok && result.data.phase).toBe("done");
-    expect(result.ok && result.data.drafts.map((d) => d.id)).toEqual(["u1", "u3"]);
+  // CARDS-V3. Red when: the poll reads the old drafts route, or a status/notice from core-api is lost.
+  it("reads where the session stands from the result route", async () => {
+    const { fn, calls } = fakeFetch(() =>
+      Response.json({ session_id: SID, submission_status: "done", title: "TCP flow control", cards: 5, notice: null }),
+    );
+    const result = await createSessionApi(SID, DOCS, fn).result();
+    expect(calls[0].url).toBe(`/api/sessions/${SID}/result`);
+    expect(result).toEqual({ ok: true, data: { phase: "done", title: "TCP flow control", cards: 5, notice: null } });
   });
 
-  // US-02b AC6, AC7. Red when: the version the learner saw is not sent, or a 409 is not told
-  // apart from a failure.
-  it("edits with the version and tells a 409 from a failure", async () => {
-    const { fn, calls } = fakeFetch(() => Response.json(core({ version: 3, title: "T2" })));
-    const api = createSessionApi(SID, DOCS, fn);
-    const ok = await api.edit("u1", 2, { title: "T2" });
-    expect(calls[0]).toMatchObject({ url: "/api/drafts/u1", body: { version: 2, title: "T2" } });
-    expect(calls[0].init.method).toBe("PATCH");
-    expect(ok.ok && ok.data.version).toBe(3);
-    const stale = createSessionApi(SID, DOCS, fakeFetch(() => Response.json({ error: "unit_changed_elsewhere" }, { status: 409 })).fn);
-    expect(await stale.edit("u1", 1, { title: "x" })).toMatchObject({ ok: false, status: 409, error: "unit_changed_elsewhere" });
+  // CARDS-V3. Red when: a done session with no card loses its notice (the screen would be silent).
+  it("keeps the notice of a done session with no card", async () => {
+    const { fn } = fakeFetch(() => Response.json({ session_id: SID, submission_status: "done", title: null, cards: 0, notice: "no_content_found" }));
+    const result = await createSessionApi(SID, DOCS, fn).result();
+    expect(result).toEqual({ ok: true, data: { phase: "done", title: null, cards: 0, notice: "no_content_found" } });
+  });
+
+  it("answers a refusal or a dropped network as an error, never a throw", async () => {
     const down = createSessionApi(SID, DOCS, fakeFetch(() => { throw new Error("offline"); }).fn);
-    expect(await down.edit("u1", 1, { title: "x" })).toMatchObject({ ok: false, status: 0, error: "network" });
-  });
-
-  // T7.19 F2. Red when: a card added in a session opened from a suggestion is not put in its section.
-  it("adds a card to the suggested section, and to none for a free session", async () => {
-    const SEC = "5f0c0000-0000-4000-8000-000000000001";
-    const { fn, calls } = fakeFetch(() => Response.json(core()));
-    await createSessionApi(SID, DOCS, fn, SEC).add("T", "C");
-    await createSessionApi(SID, DOCS, fn).add("T", "C");
-    expect(calls[0].body).toEqual({ title: "T", content: "C", section_id: SEC });
-    expect(calls[1].body).toEqual({ title: "T", content: "C" });
-  });
-
-  it("discards, undoes, adds, merges, splits and saves through the routes", async () => {
-    const { fn, calls } = fakeFetch((url) => (url.endsWith("/save") ? Response.json({ saved: ["u1"] }) : url.endsWith("/split") ? Response.json({ drafts: [core({ id: "a" }), core({ id: "b" })], submission_status: null }) : Response.json(core())));
-    const api = createSessionApi(SID, DOCS, fn);
-    await api.discard("u1");
-    await api.undo("u1");
-    await api.add("T", "C");
-    await api.merge(["u1", "u2"]);
-    const parts = await api.split("u1", 2, [{ title: "A", content: "a" }, { title: "B", content: "b" }]);
-    const saved = await api.save([{ id: "u1", version: 2 }]);
-    expect(calls.map((c) => `${c.init.method ?? "GET"} ${c.url.replace(SID, "SID")}`)).toEqual([
-      "DELETE /api/drafts/u1",
-      "POST /api/drafts/u1/undo",
-      "POST /api/sessions/SID/drafts",
-      "POST /api/sessions/SID/drafts/merge",
-      "POST /api/drafts/u1/split",
-      "POST /api/sessions/SID/drafts/save",
-    ]);
-    expect(calls[4].body).toEqual({ version: 2, parts: [{ title: "A", content: "a", anchor_ids: [] }, { title: "B", content: "b", anchor_ids: [] }] });
-    expect(calls[5].body).toEqual({ units: [{ unit_id: "u1", version: 2 }] });
-    expect(parts.ok && parts.data.map((d) => d.id)).toEqual(["a", "b"]);
-    expect(saved).toEqual({ ok: true, data: ["u1"] });
+    expect(await down.result()).toMatchObject({ ok: false, status: 0, error: "network" });
+    const gone = createSessionApi(SID, DOCS, fakeFetch(() => Response.json({ error: "session_not_found" }, { status: 404 })).fn);
+    expect(await gone.result()).toMatchObject({ ok: false, status: 404, error: "session_not_found" });
   });
 });

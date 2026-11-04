@@ -1,5 +1,5 @@
 // T7.12a (design decisions C1-C19): the study session's busiest states at four widths on
-// /design-preview/session, and the keyboard paths (the @ list, editing a card). Geometry only, as
+// /design-preview/session, and the keyboard paths (the @ list). CARDS-V3: no draft review any more. Geometry only, as
 // in today.spec.ts: nothing spills, nothing overlaps, the page never scrolls sideways.
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
@@ -14,15 +14,8 @@ const STATES = [
   "Đang đọc",
   "Hết lượt AI",
   "Không đọc được",
-  "Đọc một phần",
-  "Duyệt thẻ",
-  "Thẻ lệch (409)",
-  "20 thẻ",
-  "Chưa tách được",
-  "Lỗi lưu",
-  "Sau khi lưu",
-  "Sau lưu (tự do)",
-  "Tiếp tục",
+  "Đã thêm thẻ",
+  "Chưa có thẻ",
 ];
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -56,19 +49,15 @@ for (const width of WIDTHS) {
       });
     }
 
-    // US-02 AC14 and US-02b AC6 (the save row; after Lưu two equal buttons). Red when: the one primary button or "Thêm thẻ" falls outside the column, or the two
-    // buttons after Lưu differ in size (they are equals: no primary, nothing pushes the learner).
-    test("review: the save row stays in the column; after saving the two buttons are equals", async ({ page }) => {
-      await open(page, width, "20 thẻ");
-      const save = page.getByRole("button", { name: "Đúng rồi, lưu" });
-      await save.scrollIntoViewIfNeeded();
+    // US-02 AC14 (Học tiếp / Dừng). Red when: the result's link falls outside the column, or the two
+    // buttons differ in size (they are equals: no primary, nothing pushes the learner).
+    test("result: the link stays in the column; the two buttons are equals", async ({ page }) => {
+      await open(page, width, "Đã thêm thẻ");
       const main = page.locator("main");
-      expect(inside(await box(save), await box(main))).toBe(true);
-      expect(inside(await box(page.getByRole("button", { name: "Thêm thẻ" })), await box(main))).toBe(true);
-      await save.click();
       const more = page.getByRole("button", { name: "Học tiếp" });
       const stop = page.getByRole("main").getByRole("link", { name: "Dừng" });
       await expect(more).toBeVisible();
+      expect(inside(await box(more), await box(main))).toBe(true);
       const [a, b] = [await box(more), await box(stop)];
       expect(Math.abs(a.height - b.height)).toBeLessThan(1);
       expect(Math.abs(a.width - b.width)).toBeLessThan(width < 481 ? 1 : 80);
@@ -115,40 +104,15 @@ test.describe("keyboard", () => {
     await expect(field).not.toBeFocused();
   });
 
-  // US-02b AC6 (user edits kept). Red when: a card cannot be opened and closed from the keyboard, or its text is lost.
-  test("a card is edited from the keyboard and what was typed stays", async ({ page }) => {
-    await page.getByRole("button", { name: "Duyệt thẻ", exact: true }).click();
-    const edit = page.getByRole("button", { name: "Sửa thẻ Cửa sổ trượt" });
-    await edit.focus();
-    await page.keyboard.press("Enter");
-    const summary = page.getByLabel("Nội dung thẻ Cửa sổ trượt");
-    await expect(summary).toBeFocused();
-    await page.keyboard.type(" Thêm ý mới.");
-    await page.keyboard.press("Escape");
-    await expect(page.getByText("Đã lưu nháp")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Sửa thẻ Cửa sổ trượt" })).toContainText("Thêm ý mới.");
-  });
-
-  // US-02b AC6, AC8 (discard = retired, undo). Red when: discarding asks for confirmation, loses the card, or Hoàn tác does not bring it back.
-  test("Bỏ thẻ is one tap and Hoàn tác restores it", async ({ page }) => {
-    await page.getByRole("button", { name: "Duyệt thẻ", exact: true }).click();
-    await page.getByRole("button", { name: "Bỏ thẻ" }).first().click();
-    await expect(page.getByText("Đã bỏ thẻ “Cửa sổ trượt”.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Hoàn tác" })).toBeFocused();
-    await page.getByRole("button", { name: "Hoàn tác" }).click();
-    await expect(page.getByRole("button", { name: "Sửa thẻ Cửa sổ trượt" })).toBeVisible();
-  });
-
   // US-02 AC1, AC14 (Học tiếp / Dừng). Red when: the main flow no longer runs from a sentence to "Học tiếp hay dừng?".
-  test("main flow: Gửi, cards, Đúng rồi lưu, Học tiếp hay dừng?", async ({ page }) => {
+  test("main flow: Gửi, cards in the Kho, Học tiếp hay dừng?", async ({ page }) => {
     await page.getByRole("combobox").fill("Hôm nay học cửa sổ trượt.");
     await page.getByRole("button", { name: "Gửi" }).click();
     await expect(page.getByText("Đang đọc bài nộp…")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Đúng rồi, lưu" })).toBeVisible({ timeout: 10_000 });
-    await page.getByRole("button", { name: "Đúng rồi, lưu" }).click();
+    await expect(page.getByText("Đã thêm 6 thẻ vào Kho.").first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("heading", { name: "Học tiếp hay dừng?" })).toBeVisible();
     await page.getByRole("button", { name: "Học tiếp" }).click();
-    await expect(page.getByText("Vòng 1: đã lưu 3 thẻ")).toBeVisible();
+    await expect(page.getByText("Vòng 1: đã thêm 6 thẻ vào Kho")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Bạn đã học gì?" })).toBeFocused();
   });
 });

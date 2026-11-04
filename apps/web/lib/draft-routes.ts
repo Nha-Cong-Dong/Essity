@@ -1,10 +1,9 @@
 import "server-only";
 
-import { readFields } from "@/lib/http";
 import { readUploadFile, type UploadFile } from "@/lib/session-routes";
 import { isSubjectId } from "@/lib/subject-id";
 
-// T7.12 (US-02, US-02b): what web's routes for the study session's drafts take from the browser.
+// T7.12 (US-02): what web's routes for the study session's submission and pieces take from the browser.
 // Each body is rebuilt field by field (review plan R1): what goes on to core-api is never the
 // browser's JSON. The learner's words are never logged (ADR-0013).
 
@@ -46,72 +45,6 @@ export function readSubmit(body: unknown): SubmitBody | null {
   // Words alone are a note: core-api refuses a submission with neither text nor a file.
   const note = read.length === 0 && description.trim() !== "" ? { text: description } : {};
   return { session_id, description, mentions: found, files: read, ...note };
-}
-
-export type Edit = { version: number; title?: string; content?: string };
-
-/** An edit: the version the browser saw (it becomes `If-Match`) and the fields it changed. */
-export async function readEdit(request: Request): Promise<Edit | null> {
-  const body = await readFields(
-    request,
-    { version: { kind: "integer" }, title: { kind: "string", optional: true }, content: { kind: "string", optional: true } },
-    { maxBytes: 32 * 1024 },
-  );
-  if (body === null || body.version < 1) return null;
-  return body;
-}
-
-export async function readAdd(
-  request: Request,
-): Promise<{ title: string; content: string; kind: "concept"; section_id?: string } | null> {
-  const body = await readFields(
-    request,
-    { title: { kind: "string" }, content: { kind: "string" }, section_id: { kind: "string", optional: true } },
-    { maxBytes: 32 * 1024 },
-  );
-  if (body === null) return null;
-  // T7.19 F2: the section a suggested session is for; only an id goes on to core-api.
-  if (body.section_id !== undefined && !isSubjectId(body.section_id)) return null;
-  return { ...body, kind: "concept" };
-}
-
-export type SplitBody = { version: number; parts: { title: string; content: string; anchor_ids: string[] }[] };
-
-export function readSplit(body: unknown): SplitBody | null {
-  if (!isObject(body) || !exactly(body, ["version", "parts"])) return null;
-  const { version, parts } = body;
-  if (!Number.isSafeInteger(version) || (version as number) < 1) return null;
-  if (!Array.isArray(parts) || parts.length < 2 || parts.length > 10) return null;
-  const found: SplitBody["parts"] = [];
-  for (const part of parts) {
-    if (!isObject(part) || !exactly(part, ["title", "content", "anchor_ids"])) return null;
-    const { title, content, anchor_ids } = part;
-    if (typeof title !== "string" || typeof content !== "string") return null;
-    if (!Array.isArray(anchor_ids) || anchor_ids.length > 50 || !anchor_ids.every(isSubjectId)) return null;
-    found.push({ title, content, anchor_ids });
-  }
-  return { version: version as number, parts: found };
-}
-
-export function readMerge(body: unknown): { unit_ids: string[] } | null {
-  if (!isObject(body) || !exactly(body, ["unit_ids"])) return null;
-  const { unit_ids } = body;
-  if (!Array.isArray(unit_ids) || unit_ids.length < 2 || unit_ids.length > 50 || !unit_ids.every(isSubjectId)) return null;
-  return { unit_ids };
-}
-
-export function readSave(body: unknown): { units: { unit_id: string; version: number }[] } | null {
-  if (!isObject(body) || !exactly(body, ["units"])) return null;
-  const { units } = body;
-  if (!Array.isArray(units) || units.length < 1 || units.length > 200) return null;
-  const found: { unit_id: string; version: number }[] = [];
-  for (const item of units) {
-    if (!isObject(item) || !exactly(item, ["unit_id", "version"])) return null;
-    const { unit_id, version } = item;
-    if (!isSubjectId(unit_id) || !Number.isSafeInteger(version) || (version as number) < 1) return null;
-    found.push({ unit_id, version: version as number });
-  }
-  return { units: found };
 }
 
 export type PieceBody = { text: string; mentions: SubmitBody["mentions"]; files: UploadFile[] };

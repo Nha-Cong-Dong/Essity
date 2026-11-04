@@ -1,5 +1,4 @@
-// T7.12a: typed fixtures for /design-preview/session (no API). T7.12 swaps them for core-api data.
-import type { Anchor, Draft } from "@/lib/session-study/drafts";
+// T7.12a: typed fixtures for /design-preview/session (no API).
 import type { DocRef } from "@/lib/session-study/mention";
 
 export const SUBJECT_NAME = "Mạng máy tính";
@@ -35,62 +34,6 @@ export const FREE_SUGGESTION: Suggestion = {
   text: "Buổi học tự do. Bài nộp không gắn phần đề cương.",
 };
 
-const quote = (id: string, kind: Anchor["kind"], label: string, text: string): Anchor => ({ id, kind, label, quote: text });
-
-export const DRAFTS: Draft[] = [
-  {
-    id: "c1",
-    title: "Cửa sổ trượt",
-    summary: "Bên nhận báo cửa sổ nhận; bên gửi không gửi quá số byte cửa sổ cho phép.",
-    section: "3.2",
-    anchors: [
-      quote("a1", "document", "Giáo trình · tr. 52", "Bên gửi giữ số byte chưa được xác nhận không vượt quá rwnd."),
-      quote("a2", "notes", "Vở ghi 12-10", "rwnd = vùng đệm trống của bên nhận"),
-      quote("a3", "document", "slide c3 · tr. 12", "Receive window được gửi kèm mỗi ACK."),
-    ],
-    origin: "ai",
-    status: "draft",
-    version: 1,
-    conflict: null,
-    source: "both",
-  },
-  {
-    id: "c2",
-    title: "Cửa sổ nhận bằng 0",
-    summary: "Khi cửa sổ nhận bằng 0, bên gửi dừng và gửi gói thăm dò nhỏ để biết khi nào có chỗ.",
-    section: "3.2",
-    anchors: [quote("a4", "document", "Giáo trình · tr. 55", "Gói thăm dò chứa 1 byte dữ liệu.")],
-    origin: "ai",
-    status: "draft",
-    version: 1,
-    conflict: null,
-    source: "document",
-  },
-  {
-    id: "c3",
-    title: `Kiểm soát lưu lượng khác kiểm soát tắc nghẽn ${LONG_WORD}`,
-    summary: "Lưu lượng bảo vệ bên nhận; tắc nghẽn bảo vệ mạng. Hai cơ chế dùng hai cửa sổ khác nhau.",
-    section: null,
-    anchors: [quote("a5", "notes", "Vở ghi 12-10", "flow control ≠ congestion control")],
-    origin: "ai",
-    status: "draft",
-    version: 1,
-    conflict: null,
-    source: "notes",
-  },
-];
-
-/** Many cards, for the layout test: 20 cards, the long title among them. */
-export const MANY_DRAFTS: Draft[] = Array.from({ length: 20 }, (_, i) => ({
-  ...DRAFTS[i % DRAFTS.length],
-  id: `m${i + 1}`,
-  anchors: DRAFTS[i % DRAFTS.length].anchors.map((a) => ({ ...a, id: `m${i + 1}-${a.id}` })),
-}));
-
-export const SERVER_VERSION: Draft = { ...DRAFTS[0], summary: "Bản mới từ thiết bị khác: bên nhận báo cửa sổ nhận.", version: 2 };
-
-export const PARTIAL_NOTE = "Không đọc được trang 4 (ảnh mờ). Các trang còn lại vẫn được xử lý.";
-
 export type FileRow = {
   id: string;
   name: string;
@@ -115,16 +58,8 @@ export type Scenario =
   | "processing"
   | "pending"
   | "failed"
-  | "partial"
-  | "review"
-  | "conflict"
-  | "many"
-  | "empty-review"
-  | "save-error"
-  | "saved"
-  | "saved-partial"
-  | "saved-free"
-  | "resume";
+  | "done"
+  | "done-none";
 
 export const SCENARIOS: { id: Scenario; label: string }[] = [
   { id: "empty", label: "Trống" },
@@ -134,14 +69,6 @@ export const SCENARIOS: { id: Scenario; label: string }[] = [
   { id: "processing", label: "Đang đọc" },
   { id: "pending", label: "Hết lượt AI" },
   { id: "failed", label: "Không đọc được" },
-  { id: "partial", label: "Đọc một phần" },
-  { id: "review", label: "Duyệt thẻ" },
-  { id: "conflict", label: "Thẻ lệch (409)" },
-  { id: "many", label: "20 thẻ" },
-  { id: "empty-review", label: "Chưa tách được" },
-  { id: "save-error", label: "Lỗi lưu" },
-  { id: "saved", label: "Sau khi lưu" },
-  { id: "saved-partial", label: "Sau lưu (một phần)" },
-  { id: "saved-free", label: "Sau lưu (tự do)" },
-  { id: "resume", label: "Tiếp tục" },
+  { id: "done", label: "Đã thêm thẻ" },
+  { id: "done-none", label: "Chưa có thẻ" },
 ];

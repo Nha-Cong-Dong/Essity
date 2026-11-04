@@ -1,21 +1,9 @@
 // T7.12 (US-02 AC2-AC4, AC11, AC13; US-02b AC6-AC9): the browser's side of the study session. Each
-// action is one call to web's own routes (app/api), which pass it on to core-api. core-api's
-// cards become the screen's `Draft`; an answer is `{ok}` or the code of the refusal, never a throw
+// action is one call to web's own routes (app/api), which pass it on to core-api. An
+// answer is `{ok}` or the code of the refusal, never a throw
 // (a dropped network is `status: 0`, `error: "network"`). The learner's words are not logged.
-import type { Anchor, Draft } from "./drafts";
 import { type FileRef, type FileState, uploadSubmissionFile } from "./files";
 import type { DocRef, Mention } from "./mention";
-
-type CoreAnchor = { id: string; source: string; document_id: string | null; page_no: number | null; quote_text: string };
-export type CoreDraft = {
-  id: string;
-  title: string;
-  content: string;
-  status: string;
-  version: number;
-  anchors: CoreAnchor[];
-  revisions: { origin: string }[];
-};
 
 /** Where the submission stands: `none` = nothing was handed in yet. */
 export type Phase = "none" | "queued" | "processing" | "pending_ai" | "failed" | "done";
@@ -39,28 +27,6 @@ export function readStatus(status: string | null): Phase {
   }
 }
 
-export function toDraft(card: CoreDraft, docs: readonly DocRef[]): Draft {
-  const anchors: Anchor[] = card.anchors.map((a) => {
-    const name = docs.find((d) => d.id === a.document_id)?.name;
-    const label = a.source === "notes" ? "Vở ghi" : `${name ?? "Tài liệu"}${a.page_no === null ? "" : ` · tr. ${a.page_no}`}`;
-    return { id: a.id, kind: a.source === "notes" ? "notes" : "document", label, quote: a.quote_text };
-  });
-  const notes = anchors.some((a) => a.kind === "notes");
-  const documents = anchors.some((a) => a.kind === "document");
-  return {
-    id: card.id,
-    title: card.title,
-    summary: card.content,
-    section: null,
-    anchors,
-    origin: card.revisions.some((r) => r.origin === "user") ? "user" : "ai",
-    status: card.status === "retired" ? "retired" : "draft",
-    version: card.version,
-    conflict: null,
-    source: notes && !documents ? "notes" : documents && !notes ? "document" : "both",
-  };
-}
-
 /** F2: one piece the learner wrote down ("Ghi lại"), kept at once. */
 export type Piece = { id: string; position: number; text: string; fileCount: number };
 
@@ -75,18 +41,11 @@ export type SessionApi = {
   submit(text: string, mentions: readonly Mention[], files?: readonly FileRef[]): Promise<ApiResult<{ status: Phase }>>;
   /** T7.12c: one file to storage; the last state is "ready" (what the submission names) or "failed". */
   upload(file: File, onState: (state: FileState) => void): Promise<void>;
-  load(): Promise<ApiResult<{ phase: Phase; drafts: Draft[] }>>;
-  get(id: string): Promise<ApiResult<Draft>>;
-  edit(id: string, version: number, patch: { title?: string; content?: string }): Promise<ApiResult<Draft>>;
-  discard(id: string): Promise<ApiResult<Draft>>;
-  undo(id: string): Promise<ApiResult<Draft>>;
-  add(title: string, content: string): Promise<ApiResult<Draft>>;
-  merge(ids: string[]): Promise<ApiResult<Draft>>;
-  split(id: string, version: number, parts: { title: string; content: string }[]): Promise<ApiResult<Draft[]>>;
-  save(cards: { id: string; version: number }[]): Promise<ApiResult<string[]>>;
+  /** CARDS-V3: where the handed-in session stands; the cards are already in the Kho when it is done. */
+  result(): Promise<ApiResult<{ phase: Phase; title: string | null; cards: number; notice: string | null }>>;
 };
 
-export function createSessionApi(sessionId: string, docs: readonly DocRef[], fetchFn: typeof fetch = fetch, sectionId?: string): SessionApi {
+export function createSessionApi(sessionId: string, _docs: readonly DocRef[], fetchFn: typeof fetch = fetch, sectionId?: string): SessionApi {
   async function call(path: string, method: string, body?: unknown): Promise<{ status: number; json: Record<string, unknown> }> {
     try {
       const response = await fetchFn(path, {
@@ -107,9 +66,6 @@ export function createSessionApi(sessionId: string, docs: readonly DocRef[], fet
     if (status >= 200 && status < 300) return { ok: true, data: read(json) };
     return { ok: false, status, error: typeof json.error === "string" ? json.error : "unavailable" };
   }
-
-  const card = (json: Record<string, unknown>) => toDraft(json as unknown as CoreDraft, docs);
-  const list = (json: Record<string, unknown>) => (json.drafts as CoreDraft[]).map((d) => toDraft(d, docs));
 
   type CorePiece = { id: string; position: number; text: string; file_count: number };
   const piece = (p: CorePiece): Piece => ({ id: p.id, position: p.position, text: p.text, fileCount: p.file_count });
@@ -138,20 +94,12 @@ export function createSessionApi(sessionId: string, docs: readonly DocRef[], fet
       return at ? { ok: false, status, error, docId: at.docId } : { ok: false, status, error };
     },
     upload: (file, onState) => uploadSubmissionFile(sessionId, file, onState),
-    load: () =>
-      run(`/api/sessions/${sessionId}/drafts`, "GET", undefined, (json) => ({
+    result: () =>
+      run(`/api/sessions/${sessionId}/result`, "GET", undefined, (json) => ({
         phase: readStatus((json.submission_status as string | null) ?? null),
-        drafts: (json.drafts as CoreDraft[]).filter((d) => d.status === "draft" || d.status === "retired").map((d) => toDraft(d, docs)),
+        title: typeof json.title === "string" ? json.title : null,
+        cards: typeof json.cards === "number" ? json.cards : 0,
+        notice: typeof json.notice === "string" ? json.notice : null,
       })),
-    get: (id) => run(`/api/drafts/${id}`, "GET", undefined, card),
-    edit: (id, version, patch) => run(`/api/drafts/${id}`, "PATCH", { version, ...patch }, card),
-    discard: (id) => run(`/api/drafts/${id}`, "DELETE", undefined, card),
-    undo: (id) => run(`/api/drafts/${id}/undo`, "POST", undefined, card),
-    add: (title, content) => run(`/api/sessions/${sessionId}/drafts`, "POST", { title, content, ...(sectionId ? { section_id: sectionId } : {}) }, card),
-    merge: (ids) => run(`/api/sessions/${sessionId}/drafts/merge`, "POST", { unit_ids: ids }, card),
-    split: (id, version, parts) =>
-      run(`/api/drafts/${id}/split`, "POST", { version, parts: parts.map((p) => ({ title: p.title, content: p.content, anchor_ids: [] })) }, list),
-    save: (cards) =>
-      run(`/api/sessions/${sessionId}/drafts/save`, "POST", { units: cards.map((c) => ({ unit_id: c.id, version: c.version })) }, (json) => json.saved as string[]),
   };
 }
