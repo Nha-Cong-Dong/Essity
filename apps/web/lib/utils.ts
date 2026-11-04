@@ -14,6 +14,7 @@ export const TYPE_STEPS = [
   "title",
   "display",
   "mega",
+  "tile",
   "hero",
   "logo",
   "chip",

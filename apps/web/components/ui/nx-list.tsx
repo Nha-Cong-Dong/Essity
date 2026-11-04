@@ -15,18 +15,22 @@ export function NxList({
   children,
   className,
   as: Tag = "ul",
+  titleAs: Title = "h2",
 }: {
   title?: ReactNode;
   hint?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
   as?: "ul" | "ol" | "div";
+  titleAs?: "h2" | "h3" | "b";
 }) {
   return (
-    <section data-nx className={cn("min-w-0 rounded-tile bg-hong-tint p-4 min-[901px]:p-6", className)}>
+    <section data-nx className={cn("min-w-0 rounded-tile bg-hong-tint p-6 max-[700px]:p-4", className)}>
       {title || hint ? (
         <div className="flex items-baseline justify-between gap-3 pb-3.5">
-          <h2 className="m-0 font-display text-lead max-[640px]:text-body max-[640px]:font-semibold">{title}</h2>
+          <Title className="m-0 font-display text-tile">
+            {title}
+          </Title>
           {hint ? <span className="text-meta italic text-ink-soft">{hint}</span> : null}
         </div>
       ) : null}
@@ -37,6 +41,7 @@ export function NxList({
 
 const ROW = "grid min-h-12 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 rounded-row bg-bg px-3.5 py-1.5 text-body min-[641px]:min-h-11.5";
 const NEXT = "bg-cam/15 font-semibold inset-ring-[1.5px] inset-ring-cam";
+const PICK = "bg-cam/12 inset-ring-[1.5px] inset-ring-cam";
 
 /**
  * A row: a lead cell (number, letter tile, tick), the name (wraps to two lines), the state at the
@@ -53,7 +58,7 @@ export function NxRow({
   className,
 }: {
   lead?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   state?: ReactNode;
   why?: ReactNode;
   next?: boolean;
@@ -108,13 +113,13 @@ export function NxKind({
   className,
 }: {
   chip: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   why?: ReactNode;
   pick?: boolean;
   className?: string;
 }) {
   return (
-    <li className={cn("flex flex-col items-start gap-2 rounded-row bg-bg px-4 py-3.5", pick && NEXT, className)}>
+    <li className={cn("flex flex-col items-start gap-2 rounded-row bg-bg px-4 py-3.5", pick && PICK, className)}>
       <NxChip>{chip}</NxChip>
       <span className="text-body leading-snug">
         {children}

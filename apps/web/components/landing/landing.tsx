@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import { NxKind, NxList, NxRow } from "@/components/ui/nx-list";
+
 import { HeroBook } from "./hero-book";
 import { LandingRoot } from "./landing-root";
 import styles from "./landing.module.css";
@@ -135,7 +137,7 @@ const QA: ReadonlyArray<{ q: string; mark: ReactNode; a: ReactNode }> = [
 const TOC: ReadonlyArray<readonly [string, string, string, string?]> = [
   ["3.1", "Địa chỉ IP", "✓ Đã học", "nxR1"],
   ["3.2", "Chia mạng con", "✓ Đã học"],
-  ["3.3", "Định tuyến", "→ Tiếp theo", "nxNext"],
+  ["3.3", "Định tuyến", "Tiếp theo", "nxNext"],
   ["3.4", "Chuyển mạch", ""],
 ];
 
@@ -279,20 +281,20 @@ export function Landing() {
                 Mục lục môn Mạng máy tính: mục 3.1 và 3.2 đã học, mục 3.3 được gợi ý học tiếp, mục 3.4 chưa học. Gợi ý, bạn
                 chọn.
               </p>
-              <div className={styles.nxCard} aria-hidden="true">
-                <div className={styles.nxCardH}>
-                  <b>Mạng máy tính</b>
-                  <span className={styles.nxTag}>Gợi ý, bạn chọn</span>
-                </div>
-                <ul className={styles.nxToc}>
+              <div aria-hidden="true">
+                <NxList title="Mạng máy tính" hint="Gợi ý, bạn chọn" titleAs="b">
                   {TOC.map(([n, t, st, cls]) => (
-                    <li key={n} className={cls ? styles[cls] : undefined}>
-                      <span className={styles.nxN}>{n}</span>
-                      <span>{t}</span>
-                      <span className={styles.nxS}>{st}</span>
-                    </li>
+                    <NxRow
+                      key={n}
+                      lead={n}
+                      state={st}
+                      next={cls === "nxNext"}
+                      className={cls === "nxR1" ? "max-[700px]:hidden" : "max-[700px]:min-h-10 max-[700px]:gap-2.5 max-[700px]:px-3"}
+                    >
+                      {t}
+                    </NxRow>
                   ))}
-                </ul>
+                </NxList>
               </div>
             </div>
           </div>
@@ -310,18 +312,14 @@ export function Landing() {
             </div>
             <div className={styles.nxPic} data-reveal style={vars({ "--d": "140ms" })}>
               <p className={styles.sr}>Ba dạng câu; câu tính toán đứng đầu, được gợi ý luyện trước vì liên quan tới mục Định tuyến</p>
-              <div className={styles.nxCard} aria-hidden="true">
-                <ul className={styles.nxKinds}>
+              <div aria-hidden="true">
+                <NxList>
                   {KINDS.map(([chip, q, why]) => (
-                    <li key={chip} className={why ? styles.nxPick : undefined}>
-                      <span className={styles.nxChip}>{chip}</span>
-                      <span className={styles.nxQ}>
-                        {q}
-                        {why ? <span className={styles.nxWhy}>{why}</span> : null}
-                      </span>
-                    </li>
+                    <NxKind key={chip} chip={chip} why={why} pick={Boolean(why)}>
+                      {q}
+                    </NxKind>
                   ))}
-                </ul>
+                </NxList>
               </div>
             </div>
           </div>

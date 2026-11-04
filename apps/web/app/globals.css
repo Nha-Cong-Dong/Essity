@@ -71,7 +71,6 @@
   --color-paper: var(--bg);
   --color-subtle: var(--sunken);
   --color-miss: var(--pencil);
-  --color-hong-tint: var(--rose-100);
 
   /* shadcn/ui tokens, mapped onto the ones above: no new colours. */
   --color-background: var(--bg);
@@ -125,6 +124,10 @@
   --text-title--line-height: 1.15;
   --text-title--font-weight: 650;
   --text-title--letter-spacing: -0.02em;
+  --text-tile: clamp(20px, 1.2vw + 12px, 24px); /* the name of an NxList tile: 24px, 20px on a phone */
+  --text-tile--line-height: 1.2;
+  --text-tile--font-weight: 650;
+  --text-tile--letter-spacing: -0.01em;
   --text-display: clamp(44px, 2vw + 36px, 64px); /* the one number of a screen */
   --text-display--line-height: 1.15;
   --text-display--font-weight: 650;
