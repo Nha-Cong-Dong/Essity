@@ -609,7 +609,9 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
                 <>
                   {status === "done" && !node.excluded && <Tick />}
                   {status === "partial" && leaf && !node.excluded && <Half />}
-                  <span className="max-sm:sr-only">{stateText}</span>
+                  {/* On a phone the tick / half mark carries "Đã học" and the line under the name carries the pages;
+                      "Không thi" and a chapter's "3/5" stay visible (never colour or an icon alone). */}
+                  <span className={leaf && !node.excluded ? "max-sm:sr-only" : undefined}>{stateText}</span>
                 </>
               ) : null}
             </span>

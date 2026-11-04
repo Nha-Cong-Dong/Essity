@@ -124,3 +124,16 @@ describe("outline fold and editing (V22 g2)", () => {
     expect(onEditing).toHaveBeenLastCalledWith(false);
   });
 });
+
+describe("number column (V22 g2)", () => {
+  // Red when: a long number ("5.1.1.1.1.1") takes its own column and squeezes the title at 320 px.
+  it("splits a short number from the title and keeps a long one in it", () => {
+    const { container } = render(
+      <SyllabusTree label="Đề cương" nodes={[chapter("c", "Chương", [leaf("s", "3.1 Ngắn", 1), leaf("l", "5.1.1.1.1.1 Rất sâu", 2)])]} unit="page" total={9} onNodes={() => {}} say={() => {}} onEditing={() => {}} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Mở hết" }));
+    expect(container.querySelector('[data-node="s"] [data-row] .tabular-nums')?.textContent).toBe("3.1");
+    expect(container.querySelector('[data-node="l"] [data-row] .tabular-nums')).toBeNull();
+    expect(container.querySelector('[data-node="l"] [id$="-t"]')?.textContent).toContain("5.1.1.1.1.1 Rất sâu");
+  });
+});
