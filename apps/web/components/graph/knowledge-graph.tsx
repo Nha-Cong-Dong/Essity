@@ -93,6 +93,7 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
             id: c.id,
             label: shortLabel(c.title),
             color: bySubject.get(c.subjectId)?.color ?? ink,
+            subject: c.subjectId,
             size: 12 + 3 * Math.min(degree.get(c.id) ?? 0, 5),
           },
         })),
@@ -146,7 +147,7 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
       if (reduced) return;
       const list = cy.nodes().toArray();
       const index = new Map(list.map((n, i) => [n.id(), i] as const));
-      const sim: SimNode[] = list.map((n) => ({ id: n.id(), x: n.position("x"), y: n.position("y"), vx: 0, vy: 0, pinned: false }));
+      const sim: SimNode[] = list.map((n) => ({ id: n.id(), x: n.position("x"), y: n.position("y"), vx: 0, vy: 0, pinned: false, group: String(n.data("subject")) }));
       const links: SimEdge[] = cy
         .edges()
         .toArray()

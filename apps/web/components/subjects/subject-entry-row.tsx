@@ -6,15 +6,15 @@ export function SubjectEntryRow({ entries }: { entries: SubjectEntry[] }) {
   if (entries.length === 0) return null;
   return (
     <nav aria-label="Màn của môn" data-entry-row>
-      <ul className="m-0 flex list-none flex-wrap p-0">
+      <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
         {entries.map((entry) => (
-          <li key={entry.key} className="border-l border-line first:border-l-0">
+          <li key={entry.key}>
             <a
               href={entry.href}
               data-entry={entry.key}
-              className="flex min-h-11 flex-col justify-center px-4 py-1 first:pl-0 break-words"
+              className="flex min-h-11 flex-col justify-center rounded-full bg-sheet px-5 py-1 break-words no-underline inset-ring-1 inset-ring-line hover:bg-sunken"
             >
-              <span className="font-semibold underline">{entry.label}</span>
+              <span className="font-semibold">{entry.label}</span>
               {entry.note !== null && <span className="text-small text-ink-soft">{entry.note}</span>}
             </a>
           </li>
