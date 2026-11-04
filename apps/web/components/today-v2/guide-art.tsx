@@ -27,7 +27,7 @@ export function GuideArt({ step }: { step: number }) {
               <rect x="34" y={29 + i * 32} width={90 - i * 14} height="6" rx="3" fill="var(--ink-soft)" />
             </g>
           ))}
-          <rect className="guide-hop" x="20" y="20" width="184" height="24" rx="8" fill="none" stroke="var(--cam)" strokeWidth="3" />
+          <rect className="guide-hop" x="20" y="20" width="184" height="24" rx="8" fill="none" stroke="var(--ink)" strokeWidth="3" />
         </>
       )}
       {step === 2 && (
