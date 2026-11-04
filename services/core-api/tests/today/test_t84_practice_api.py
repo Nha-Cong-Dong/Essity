@@ -286,11 +286,27 @@ def test_pending_ai_reply_is_pending_too(learner: Learner, ai: FakeAi) -> None:
     assert read.json()["grading"] == "pending"
 
 
-def test_a_question_without_a_rubric_fails_closed_without_a_call(
+def test_a_bank_question_without_a_rubric_is_graded_on_its_answer(
     learner: Learner, db_session: Session, ai: FakeAi
 ) -> None:
-    # Plan review O3. Red when: a missing rubric reaches the AI, or loses the answer, or 500s.
+    # QA 05/11. Red when: a question imported from a bank (it never has a rubric) can never be
+    # graded: "Chưa chấm được" forever, whatever the learner answers.
+    ai.verdicts = ["correct"]
     attempt = learner.open(learner.question(rubric=None))["attempt_id"]
+    body = learner.submit(attempt)
+    assert body["grading"] == "graded"
+    assert [call["rubric"] for call in ai.graded] == [[practice_grading.NO_RUBRIC_IDEA]]
+    assert count(db_session, Grade) == 1
+
+
+def test_a_question_with_no_rubric_and_no_answer_fails_closed_without_a_call(
+    learner: Learner, db_session: Session, ai: FakeAi
+) -> None:
+    # Plan review O3. Red when: a missing answer reaches the AI, or loses the answer, or 500s.
+    ai.draft = None
+    attempt = learner.open(learner.question(rubric=None, answer_text=None, answer_origin=None))[
+        "attempt_id"
+    ]
     body = learner.submit(attempt)
     assert (body["grading"], body["failure"]) == ("failed", "not_ready")
     assert ai.graded == [] and count(db_session, Grade) == 0

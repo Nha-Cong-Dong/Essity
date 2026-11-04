@@ -92,6 +92,20 @@ def rubric_of(question: Question) -> list[str] | None:
     return ideas
 
 
+NO_RUBRIC_IDEA = "Nêu đúng nội dung của đáp án tham chiếu"
+
+
+def ideas_of(question: Question) -> list[str] | None:
+    """What the grader checks. A bank question has no rubric (the import never writes one): it is
+    graded on one idea, the answer it has (the bank's, the learner's fix or the AI's draft).
+    A rubric that is there but unusable (too long, not text) is still refused, and so is a
+    question with no answer at all."""
+    ideas = rubric_of(question)
+    if ideas is None and question.rubric is None and standard_answer(question) is not None:
+        return [NO_RUBRIC_IDEA]
+    return ideas
+
+
 def standard_answer(question: Question) -> str | None:
     """The answer the learner is graded against: the bank's, the learner's own fix, or the AI's
     draft (`answer_text`); an old review question has only `reference_answer`."""
@@ -231,7 +245,7 @@ def grade_practice_attempt(
     current = grades.latest_for_attempt(attempt.id)
     if current is not None:
         return PracticeOutcome("graded", current)
-    ideas = rubric_of(question)
+    ideas = ideas_of(question)
     ref_seconds = reference_time(session, question, len(ideas or []))
     if attempt.dont_remember:
         grade = _write(
@@ -315,7 +329,7 @@ def override_practice_grade(
         return current
     if current.id != grade.id:
         raise GradeNotCurrentError(grade_id)
-    ideas = rubric_of(question)
+    ideas = ideas_of(question)
     return _write(
         session,
         user_id,

@@ -62,7 +62,10 @@ def test_first_submit_not_ready_reload_says_failed(
 ) -> None:
     # US-05 AC14 (plan review O2). Red when: a question with no rubric reloads as "pending" with
     # nothing queued, so the screen promises a grading that never comes.
-    attempt = learner.open(learner.question(rubric=None))["attempt_id"]
+    ai.draft = None
+    attempt = learner.open(learner.question(rubric=None, answer_text=None, answer_origin=None))[
+        "attempt_id"
+    ]
     body = learner.submit(attempt)
     assert (body["grading"], body["failure"]) == ("failed", "not_ready")
     read = learner.client.get(f"/v1/practice/attempts/{attempt}", headers=learner.headers)

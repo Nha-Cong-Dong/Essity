@@ -100,6 +100,7 @@ def test_stats_leaves_under_an_excluded_section_are_excluded(
 
     user = signed_in(db_session)[0]
     document = uploaded(db_session, user)
+    document.role = "textbook"
     run(db_session, fake_storage, answer(fake_storage, document, BODY))
 
     leaves = StatsRepository(db_session, user.id).leaves()[document.subject_id]
