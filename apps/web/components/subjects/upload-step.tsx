@@ -102,7 +102,7 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
         ))}
       </Sheet>
       <OutlineCard />
-      <div className="flex justify-end max-[1023px]:sticky max-[1023px]:bottom-0 max-[1023px]:bg-ground max-[1023px]:py-3">{enter}</div>
+      <div className="flex justify-end max-[1023px]:sticky max-[1023px]:bottom-0 max-[1023px]:bg-bg max-[1023px]:py-3">{enter}</div>
     </section>
   );
 }

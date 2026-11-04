@@ -52,23 +52,39 @@ describe("base rules", () => {
   });
 });
 
-describe("the pink surface passes its own tokens down", () => {
+describe("the main sheet surface passes its own tokens down", () => {
   const surface = () => block('[data-surface="hong"]');
 
-  // Red when: the surface stops reading --on-surface-hong (text would be --ink on a pink fill
-  // in light mode) or stops swapping --focus for --focus-on-hong (hong ring on a hong tile).
-  it("text and focus come from the palette tokens the contrast test checks", () => {
+  // Red when: the surface stops reading --on-surface-hong or --focus-on-hong, or goes back to a
+  // gradient or a solid pink (V22: it is the flat --hong-tint).
+  it("text and focus come from the palette tokens the contrast test checks; flat tint, no gradient", () => {
     expect(surface()).toMatch(/color:\s*var\(--on-surface-hong\)/);
     expect(surface()).toMatch(/--focus:\s*var\(--focus-on-hong\)/);
-    expect(surface()).toMatch(/background:\s*var\(--hong-glow\)/);
+    expect(surface()).toMatch(/background:\s*var\(--hong-tint\)/);
+    expect(surface()).not.toMatch(/gradient/);
+  });
+});
+
+describe("V22 type: Newsreader for h1 and numbers, Be Vietnam Pro for words", () => {
+  it("the display and title steps are serif, 500, h1 40 and display 64 at most", () => {
+    const t = theme();
+    expect(t["--text-title--font-weight"]).toBe("500");
+    expect(t["--text-display--font-weight"]).toBe("500");
+    expect(t["--text-title"]).toMatch(/, 40px\)$/);
+    expect(t["--text-display"]).toMatch(/, 64px\)$/);
+    expect(t["--text-chip"]).toBe("13px");
+    expect(t["--font-serif"]).toMatch(/--font-newsreader/);
+    expect(t["--font-display"]).toMatch(/--font-be-vietnam-pro/);
   });
 
-  // Red when: the grain overlay can take clicks, or a later change drops `isolation` and the
-  // negative z-index overlay slides behind the tile's own background.
-  it("its grain never takes the pointer and stays inside the tile", () => {
-    const grain = block('[data-surface="hong"]::after');
-    expect(grain).toMatch(/pointer-events:\s*none/);
-    expect(surface()).toMatch(/isolation:\s*isolate/);
+  it("every big-number step draws in the serif face, unlayered so a font-display class cannot undo it", () => {
+    expect(CSS).toMatch(/\.text-title,\s*\.text-display,\s*\.text-mega,\s*\.text-verdict \{\s*font-family: var\(--font-serif\)/);
+  });
+
+  it("the one motif is a flat highlighter: one inset shadow, no gradient", () => {
+    const m = CSS.match(/@utility hl-word \{([^}]*)\}/);
+    expect(m?.[1]).toMatch(/box-shadow:\s*inset/);
+    expect(m?.[1]).not.toMatch(/gradient/);
   });
 });
 
@@ -102,14 +118,14 @@ describe("scale (final §2, §5, §7)", () => {
   });
 
   // Red when: reading text drops under 16px or small text under 14px (final §2 floor).
-  it("body is 16px, meta 14px, read and answer 18px: nothing readable under 14px", () => {
+  it("body is 16px, meta 14px, read and answer 18px: nothing readable under 14px except the 13px chip step", () => {
     const t = theme();
     expect(t["--text-body"]).toBe("16px");
     expect(t["--text-meta"]).toBe("14px");
     expect(t["--text-read"]).toBe("18px");
     expect(t["--text-answer"]).toBe("18px");
     const px = Object.entries(t)
-      .filter(([k, v]) => /^--text-[a-z]+$/.test(k) && /^\d+px$/.test(v))
+      .filter(([k, v]) => /^--text-[a-z]+$/.test(k) && /^\d+px$/.test(v) && k !== "--text-chip")
       .filter(([, v]) => Number.parseInt(v) < 14);
     expect(px).toEqual([]);
   });

@@ -62,9 +62,9 @@ describe("Button: edges", () => {
   // Red when: a compound variant is dropped or its height edited (§4.1: 52 / 60 pill; the quiet
   // button keeps a 44px touch target).
   it.each([
-    [{ variant: "primary-inverse" as const }, /\bh-15\b/],
-    [{ variant: "secondary" as const, size: "lg" as const }, /\bh-15\b/],
-    [{ variant: "secondary" as const }, /\bh-13\b/],
+    [{ variant: "primary-inverse" as const }, /\bh-12\b/],
+    [{ variant: "secondary" as const, size: "lg" as const }, /\bh-14\b/],
+    [{ variant: "secondary" as const }, /\bh-12\b/],
     [{ variant: "quiet" as const }, /\bh-11\b/],
   ])("%j has its height", (options, height) => {
     expect(buttonVariants(options)).toMatch(height);

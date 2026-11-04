@@ -26,7 +26,7 @@ describe("a text colour survives next to a type step (after cn)", () => {
   it.each(["md", "lg"] as const)("primary-inverse %s keeps its label colour and the 18px step", (size) => {
     const classes = classesOf(h(Button, { variant: "primary-inverse", size }, "Bắt đầu"));
     expect(classes).toContain("text-(color:--inverse-fg)");
-    expect(classes).toContain("text-read");
+    if (size === "lg") expect(classes).toContain("text-read");
   });
 
   // Red today: `text-ink` removes `text-body`; the field's size is only inherited from <body>

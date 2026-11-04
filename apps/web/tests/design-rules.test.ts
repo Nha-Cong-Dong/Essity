@@ -123,7 +123,7 @@ describe("design rules", () => {
 
   it("every custom property a component reads is declared in globals.css", () => {
     // Set by next/font in app/layout.tsx, not in CSS.
-    const runtime = new Set(["--font-be-vietnam-pro", "--font-bricolage", "--font-jetbrains-mono"]);
+    const runtime = new Set(["--font-be-vietnam-pro", "--font-newsreader", "--font-jetbrains-mono"]);
     const declared = new Set([...GLOBALS.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
     const used = [...UI, ...STYLES, "app/globals.css"].flatMap((file) =>
       [...read(file).matchAll(/var\((--[\w-]+)|\((--[\w-]+)\)/g)].map((m) => ({ file, name: m[1] ?? m[2] })),

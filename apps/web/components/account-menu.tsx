@@ -11,7 +11,7 @@ import { browserStorage, chooseTheme, readTheme, type Theme } from "@/lib/theme"
 // Chế độ hiển thị (Sáng / Tối / Theo hệ thống, §3.6) and Đăng xuất. Base UI gives Esc to close, arrow keys and focus back to the button (§11).
 
 const ITEM =
-  "flex h-11 w-full items-center justify-between rounded-control px-3 text-left text-body font-medium text-ink outline-none data-[highlighted]:bg-rose-50 data-[highlighted]:outline-2 data-[highlighted]:-outline-offset-2 data-[highlighted]:outline-focus";
+  "flex h-11 w-full items-center justify-between rounded-control px-3 text-left text-body font-medium text-ink outline-none data-[highlighted]:bg-sunken data-[highlighted]:outline-2 data-[highlighted]:-outline-offset-2 data-[highlighted]:outline-focus";
 
 const THEMES: [Theme, string][] = [
   ["light", "Sáng"],
@@ -45,10 +45,11 @@ export function AccountMenu({ email }: { email: string }) {
   }
 
   return (
+    <div className="flex min-w-0 items-center gap-3">
     <Menu.Root onOpenChange={(open) => open && setTheme(readTheme(browserStorage()))}>
       <Menu.Trigger
         aria-label="Tài khoản"
-        className="inline-flex size-10 items-center justify-center rounded-full bg-rose-100 text-meta font-semibold text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-sunken text-meta font-semibold text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         {initials(email)}
       </Menu.Trigger>
@@ -85,5 +86,8 @@ export function AccountMenu({ email }: { email: string }) {
         </Menu.Positioner>
       </Menu.Portal>
     </Menu.Root>
+    {/* The rail's account row (V22): the name beside the button, from 1024px. */}
+    <span className="hidden min-w-0 truncate text-meta text-ink-soft min-[1024px]:block">{email.split("@")[0]}</span>
+    </div>
   );
 }

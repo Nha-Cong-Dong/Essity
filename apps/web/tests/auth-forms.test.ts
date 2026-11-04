@@ -54,7 +54,7 @@ describe("LoginForm", () => {
   it("the submit button is full width and takes its height from the size scale", () => {
     const button = /<button[^>]*type="submit"[^>]*>/.exec(markup())?.[0] ?? "";
     expect(button).toMatch(/\bw-full\b/);
-    expect(button).toMatch(/\bh-13\b/);
+    expect(button).toMatch(/\bh-12\b/);
     expect(button).not.toMatch(/\bh-14\b/);
   });
 
