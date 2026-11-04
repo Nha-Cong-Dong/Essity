@@ -33,7 +33,10 @@ class StudyLedgerRepository(UserScopedRepository[StudyLedger]):
                 (Document.id == DocSection.document_id) & (Document.user_id == self.user_id),
             )
             .where(
-                DocSection.user_id == self.user_id, Document.status.not_in(("rejected", "failed"))
+                DocSection.user_id == self.user_id,
+                Document.status.not_in(("rejected", "failed")),
+                # The syllabus is the main textbook's; other files are not content to study.
+                Document.role == "textbook",
             )
         ).all()
         by_doc: dict[uuid.UUID, list[DocSection]] = defaultdict(list)
