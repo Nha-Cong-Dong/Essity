@@ -50,6 +50,23 @@ describe("Hôm nay v2 states", () => {
     expect(markup).toContain('aria-label="Mở luyện tập · Mạng máy tính"');
   });
 
+  // HACK-L4b. Red when: a section with no number reads "Phần Trang 1–10", or "→ Tiếp theo" takes the
+  // right column so the name breaks ("Xác suất / thống kê").
+  it("learn row: no 'Phần' without a number; the next label sits under the name", () => {
+    const item = {
+      subject: { id: "s9", name: "Xác suất thống kê" },
+      state: "next" as const,
+      section: { label: "", title: "Trang 1–10", pages: null },
+      reason: "",
+      pace: { sections_left: 3, days_left: 20, pages_left: null },
+    };
+    const markup = draw({ ...TODAY_STATES.learn, learn: { items: [item], empty_reason: null } });
+    expect(markup).not.toContain("Phần Trang");
+    expect(markup).toContain("Trang 1–10");
+    expect(markup).toMatch(/text-cam[^>]*>(<span[^>]*>→ <\/span>)?Tiếp theo/);
+    expect(markup).not.toMatch(/whitespace-nowrap[^>]*>(<span[^>]*>→ <\/span>)Tiếp theo/);
+  });
+
   it("US-15 AC7: a subject without a textbook keeps its own block while another is suggested", () => {
     const markup = draw(TODAY_STATES.learn);
     expect(markup).toContain("chưa có giáo trình chính");
