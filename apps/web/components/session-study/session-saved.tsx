@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { Mascot } from "@/components/mascot";
 import { Button, buttonVariants } from "@/components/ui/button";
 
 // T7.12a (DESIGN.md §6.7 vùng 5; design decision C13): after Lưu. The saved cards fold into three
@@ -21,21 +22,47 @@ export function SavedArea({
   stopHref: string;
   onContinue: () => void;
 }) {
+  // Phase B: the one celebrating moment of the session screen, on a quiet rose tile.
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1 text-body">
-        <p className="m-0">{kind === "free" ? `Đã lưu ${count} thẻ.` : `Đã lưu ${count} thẻ cho mục 3.2.`}</p>
-        {kind === "section" && <p className="m-0">Mục 3.2 đã học.</p>}
-        {kind === "partial" && <p className="m-0">Đã học tr. 52-55 của mục 3.2.</p>}
-        <p className="m-0 text-ink-soft">Thẻ mới vào ôn từ ngày học kế tiếp.</p>
+    <div
+      data-surface="rose"
+      className="flex flex-col gap-6 rounded-tile p-6 min-[901px]:p-8"
+    >
+      <div className="flex items-center gap-5">
+        <Mascot pose="chucmung" size="md" className="max-sm:size-24" />
+        <div className="flex flex-col gap-1 text-body">
+          <p className="m-0">
+            {kind === "free"
+              ? `Đã lưu ${count} thẻ.`
+              : `Đã lưu ${count} thẻ cho mục 3.2.`}
+          </p>
+          {kind === "section" && <p className="m-0">Mục 3.2 đã học.</p>}
+          {kind === "partial" && (
+            <p className="m-0">Đã học tr. 52-55 của mục 3.2.</p>
+          )}
+          <p className="m-0 text-ink-soft">
+            Thẻ mới vào ôn từ ngày học kế tiếp.
+          </p>
+        </div>
       </div>
       <div className="flex flex-col gap-3">
         <h3 className="m-0 font-display text-lead">Học tiếp hay dừng?</h3>
         <div className="flex flex-col gap-3 min-[481px]:flex-row">
-          <Button type="button" variant="secondary" className="max-[480px]:w-full" onClick={onContinue}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="max-[480px]:w-full"
+            onClick={onContinue}
+          >
             Học tiếp
           </Button>
-          <Link href={stopHref} className={buttonVariants({ variant: "secondary", className: "max-[480px]:w-full" })}>
+          <Link
+            href={stopHref}
+            className={buttonVariants({
+              variant: "secondary",
+              className: "max-[480px]:w-full",
+            })}
+          >
             Dừng
           </Link>
         </div>
