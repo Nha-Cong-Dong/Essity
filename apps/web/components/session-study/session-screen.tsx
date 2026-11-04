@@ -8,6 +8,7 @@ import { FocusShell } from "@/components/shells";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { FileRow, Suggestion } from "@/lib/fixtures/session-study";
 import { type FileRef, rowStateOf } from "@/lib/session-study/files";
+import { uploadPdf } from "@/lib/upload-client";
 import type { Piece, SessionApi } from "@/lib/session-study/api";
 import { rememberPendingSession } from "@/lib/session-study/pending";
 import { type Draft, draftsReducer } from "@/lib/session-study/drafts";
@@ -102,7 +103,10 @@ function Suggest({ suggestion, id }: { suggestion: Suggestion; id: string }) {
 }
 
 export function SessionScreen(props: SessionScreenProps) {
-  const { subject, subjectId, stopHref, docs, initial, api, footer } = props;
+  const { subject, subjectId, stopHref, initial, api, footer } = props;
+  // V11: a PDF, Word or PowerPoint file picked here goes to the subject's shared document store, so
+  // it can be @-mentioned at once, even before the session is finished. The list grows with them.
+  const [docs, setDocs] = useState(props.docs);
   const pieceMode = typeof api?.addPiece === "function";
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [recording, setRecording] = useState(false);
@@ -230,8 +234,23 @@ export function SessionScreen(props: SessionScreenProps) {
     setFiles((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   }
 
+  function startStoreUpload(id: string, file: File) {
+    patchRow(id, { state: "uploading", percent: 0 });
+    void uploadPdf(subjectId, file, (state) => {
+      if (state.kind === "uploading") patchRow(id, { state: "uploading", percent: state.percent });
+      else if (state.kind === "done" && state.documentId) {
+        const documentId = state.documentId;
+        const name = file.name.replace(/\.[^.]+$/, "");
+        setDocs((rows) => (rows.some((d) => d.id === documentId) ? rows : [...rows, { id: documentId, name, role: "auxiliary" }]));
+        patchRow(id, { state: "done" });
+        say(`Đã tải ${name} vào kho tài liệu của môn. Gõ @ để tham chiếu.`);
+      } else if (state.kind === "failed") patchRow(id, { state: rowStateOf(state.code === "unsupported_file_type" ? "unsupported" : state.code) });
+    });
+  }
+
   function startUpload(id: string, file: File) {
     if (!api) return;
+    if (/\.(pdf|docx|pptx)$/i.test(file.name)) return startStoreUpload(id, file);
     blobs.current.set(id, file);
     patchRow(id, { state: "uploading", percent: 0 });
     void api.upload(file, (state) => {
