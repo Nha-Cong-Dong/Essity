@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from core_api.config import DEV_ENVIRONMENTS, get_settings
 from core_api.db.engine import get_engine
 from core_api.db.models import (
+    Anchor,
     DocSection,
     Document,
     KnowledgeUnit,
@@ -236,6 +237,19 @@ def _fill(session: Session, user: User, subject_id: uuid.UUID, now: datetime, da
                 subject_id=subject_id,
                 unit_id=unit.id,
                 section_id=sections[section_index].id,
+            )
+        )
+        # Grading needs at least one source quote per unit (grading.build_request): without it
+        # the review session answered "Chưa chấm được" (hackathon V2).
+        session.add(
+            Anchor(
+                user_id=uid,
+                unit_id=unit.id,
+                source="document",
+                document_id=doc.id,
+                page_no=sections[section_index].first_page or 1,
+                quote_text=f"{summary} {answer}",
+                run_id=run_id,
             )
         )
         question = Question(
