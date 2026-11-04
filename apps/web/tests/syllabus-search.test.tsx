@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // V22 group 2: a 70-part outline needs a quick search and "Mở hết / Thu hết".
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SyllabusTree } from "@/components/syllabus/syllabus-tree";
 import type { SyllabusNode } from "@/lib/syllabus/tree";
@@ -92,5 +92,35 @@ describe("outline keyboard while searching (V22 g2)", () => {
     const withNext = [...next].filter((n) => n.textContent?.includes("Tiếp theo"));
     expect(withNext.length).toBe(1);
     expect(withNext[0].closest("[data-node]")?.getAttribute("data-node")).toBe("z");
+  });
+});
+
+describe("outline fold and editing (V22 g2)", () => {
+  // Red when: ArrowLeft on a chapter shown open by the search does not fold it.
+  it("ArrowLeft folds a chapter while searching", () => {
+    const { container } = show();
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "ky vong" } });
+    const branch = container.querySelector<HTMLElement>('[data-node="c2"]')!;
+    branch.focus();
+    expect(container.querySelector('[data-node="c"]')).not.toBeNull();
+    fireEvent.keyDown(branch, { key: "ArrowLeft" });
+    expect(container.querySelector('[data-node="c"]')).toBeNull();
+    fireEvent.keyDown(branch, { key: "ArrowRight" });
+    expect(container.querySelector('[data-node="c"]')).not.toBeNull();
+  });
+
+  // Red when: "Thu hết" closes the panel but the screen still thinks a range is being edited.
+  it("Thu het ends editing", () => {
+    const onEditing = vi.fn();
+    const { container } = render(
+      <SyllabusTree label="Đề cương" nodes={nodes} unit="page" total={99} onNodes={() => {}} say={() => {}} onEditing={onEditing} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Mở hết" }));
+    const row = container.querySelector<HTMLElement>('[data-node="a"]')!;
+    fireEvent.keyDown(row, { key: "Enter" });
+    fireEvent.click(screen.getByRole("button", { name: /Sửa khoảng/ }));
+    expect(onEditing).toHaveBeenLastCalledWith(true);
+    fireEvent.click(screen.getByRole("button", { name: "Thu hết" }));
+    expect(onEditing).toHaveBeenLastCalledWith(false);
   });
 });

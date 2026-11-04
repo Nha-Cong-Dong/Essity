@@ -387,7 +387,9 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
   const [query, setQuery] = useState("");
   const needle = norm(query.trim());
   const shown = needle === "" ? nodes : filterNodes(nodes, needle);
-  const openNow = needle === "" ? open : new Set(allBranchIds(shown));
+  // While searching every branch above a match is open; the learner can still fold one (reset by a new query).
+  const [searchFolded, setSearchFolded] = useState<Set<string>>(new Set());
+  const openNow = needle === "" ? open : new Set(allBranchIds(shown).filter((id) => !searchFolded.has(id)));
   const rows = visibleRows(shown, openNow);
   const nextId = firstUnstudied(nodes);
   const [active, setActive] = useState(initialPanel?.id ?? rows[0]?.node.id ?? "");
@@ -410,17 +412,18 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
   };
 
   function fold(id: string, to: boolean) {
-    const next = new Set(open);
-    if (to) next.add(id);
-    else {
-      next.delete(id);
+    const next = new Set(needle === "" ? open : searchFolded);
+    if (needle === "" ? to : !to) next.add(id);
+    else next.delete(id);
+    if (!to) {
       // A fold that hides the focused row moves focus up to the branch.
       const node = findNode(nodes, id);
-      const hidden = node ? visibleRows(node.children, open) : [];
+      const hidden = node ? visibleRows(node.children, openNow) : [];
       if (hidden.some((r) => r.node.id === active)) focusRow(id);
       if (panel && hidden.some((r) => r.node.id === panel.id)) setPanel(null);
     }
-    setOpen(next);
+    if (needle === "") setOpen(next);
+    else setSearchFolded(next);
   }
 
   function openPanel(id: string) {
@@ -661,7 +664,10 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
           aria-label="Tìm trong đề cương"
           placeholder="Tìm phần, ví dụ: hoán vị"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSearchFolded(new Set());
+          }}
           className="min-w-0 flex-1 basis-56"
         />
         {needle === "" && (
@@ -669,7 +675,10 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
             <button type="button" className="min-h-11 underline" onClick={() => setOpen(new Set(allBranchIds(nodes)))}>
               Mở hết
             </button>
-            <button type="button" className="min-h-11 underline" onClick={() => setOpen(new Set())}>
+            <button type="button" className="min-h-11 underline" onClick={() => {
+                setOpen(new Set());
+                setPanel(null);
+              }}>
               Thu hết
             </button>
           </span>
