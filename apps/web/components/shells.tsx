@@ -63,7 +63,7 @@ export function AppShell({
       <header
         className={cn(
           "sticky top-0 z-(--z-header) flex h-12 items-center gap-4 border-b border-line bg-bg px-4 sm:h-14",
-          "min-[1024px]:h-dvh min-[1024px]:w-58 min-[1024px]:shrink-0 min-[1024px]:flex-col min-[1024px]:items-stretch min-[1024px]:gap-0 min-[1024px]:self-start min-[1024px]:border-r min-[1024px]:border-b-0 min-[1024px]:px-4 min-[1024px]:pt-8 min-[1024px]:pb-6",
+          "lg:h-dvh lg:w-58 lg:shrink-0 lg:flex-col lg:items-stretch lg:gap-0 lg:self-start lg:border-r lg:border-b-0 lg:px-4 lg:pt-8 lg:pb-6",
         )}
       >
         <div className="flex items-center gap-2 min-[1024px]:px-3">

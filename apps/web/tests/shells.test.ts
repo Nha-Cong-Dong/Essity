@@ -32,8 +32,8 @@ describe("frames share one container (§5)", () => {
     const markup = renderToStaticMarkup(h(AppShell, { current: "/today", children: "x" }));
     expect(markup).toMatch(/bg-bg/);
     expect(markup).not.toMatch(/ground-dots|bg-ground|bg-rail/);
-    expect(markup).toMatch(/min-\[1024px\]:h-dvh/);
-    expect(markup).toMatch(/min-\[1024px\]:w-58/);
+    expect(markup).toMatch(/lg:h-dvh/);
+    expect(markup).toMatch(/lg:w-58/);
     expect(markup).toMatch(/sticky top-0/);
     expect(markup).toMatch(/aria-current="page"/);
     expect(markup).toMatch(/text-logo/);
