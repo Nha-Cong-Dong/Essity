@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Design preview: luyện tập thật
 export default function PracticeLivePreview() {
   return (
     <AppShell current="/subjects" account={<AccountMenu email="xem-thu@example.com" />}>
-      <PageColumn width="full">
+      <PageColumn width="wide">
         <PracticeLive
           subjectId={LIVE_SUBJECT.id}
           subjectName={LIVE_SUBJECT.name}

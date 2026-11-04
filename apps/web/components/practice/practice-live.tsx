@@ -1,7 +1,6 @@
 "use client";
 
 import { NX_CAM, NxChip } from "@/components/ui/nx-list";
-import { Sheet } from "@/components/ui/sheet";
 import { useEffect, useRef, useState } from "react";
 
 import { Pen } from "@/components/practice/practice-extras";
@@ -278,7 +277,7 @@ export function PracticeLive({
         </div>
       ) : (
         <div className="mt-6">
-          <Sheet variant="tile" tone="hong" className="flex flex-col gap-4 p-5 shadow-none" data-practice-today>
+          <div className="flex flex-col gap-4" data-practice-today>
           <div data-progress>
             <p data-summary className="m-0 text-read">
               Đã mở khóa {readyCount}/{live.length} câu
@@ -294,7 +293,7 @@ export function PracticeLive({
               </p>
             </div>
           )}
-          </Sheet>
+          </div>
           {firstReady === null && (
             <>
               <p className="m-0 mt-3">Chưa có câu hỏi nào sẵn sàng, hãy kết nối thêm kiến thức để mở khóa câu hỏi nhé!</p>
@@ -308,7 +307,6 @@ export function PracticeLive({
               <h2 id="practised" className="m-0 font-display text-lead max-[640px]:text-body max-[640px]:font-semibold">
                 Câu đã luyện tập
               </h2>
-              <span className="text-meta italic text-ink-soft">Gợi ý, bạn chọn</span>
             </div>
             <p className="m-0 mt-1 text-meta text-ink-soft">Sắp theo ngày mở khóa, mới nhất trước.</p>
             {unlockedRows.length === 0 ? (
