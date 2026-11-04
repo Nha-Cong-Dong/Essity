@@ -6,12 +6,14 @@ a question with no extra step (AC4). A section counts as excluded when it or an 
 
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from core_api.db.models import (
     DocSection,
     KnowledgeUnit,
+    PracticeState,
     Question,
     QuestionSection,
     QuestionType,
@@ -43,6 +45,8 @@ class ListedQuestion:
     answer_source: str  # "bank" | "ai": where the answer text came from
     state: Readiness
     waiting_titles: dict[uuid.UUID, str]  # section id -> title, for the waiting sections
+    unlocked_at: datetime | None = None  # when its last section got its first card (ready only)
+    due: bool = False  # ready, and never practised or due now (V19, V20)
 
 
 class QuestionListRepository(UserScopedRepository[Question]):
@@ -87,7 +91,9 @@ class QuestionListRepository(UserScopedRepository[Question]):
             for r in rows
         }
 
-    def list_for_subject(self, subject_id: uuid.UUID) -> list[ListedQuestion]:
+    def list_for_subject(
+        self, subject_id: uuid.UUID, now: datetime | None = None
+    ) -> list[ListedQuestion]:
         """The subject's questions in bank order."""
         sections = self._sections(subject_id)
         titles = {
@@ -118,6 +124,27 @@ class QuestionListRepository(UserScopedRepository[Question]):
                 .distinct()
             )
         ]
+        first_card: dict[uuid.UUID, datetime] = {
+            sid: at
+            for sid, at in self.session.execute(
+                select(UnitSection.section_id, func.min(KnowledgeUnit.created_at))
+                .join(KnowledgeUnit, KnowledgeUnit.id == UnitSection.unit_id)
+                .where(
+                    UnitSection.user_id == self.user_id,
+                    UnitSection.subject_id == subject_id,
+                    KnowledgeUnit.status == "canonical",
+                )
+                .group_by(UnitSection.section_id)
+            )
+        }
+        practice_due: dict[uuid.UUID, datetime] = {
+            qid: due
+            for qid, due in self.session.execute(
+                select(PracticeState.question_id, PracticeState.due).where(
+                    PracticeState.user_id == self.user_id, PracticeState.removed_at.is_(None)
+                )
+            )
+        }
         rows = self.session.execute(
             select(Question, QuestionType.name)
             .join(
@@ -139,6 +166,8 @@ class QuestionListRepository(UserScopedRepository[Question]):
         out: list[ListedQuestion] = []
         for question, type_name in rows:
             state = readiness(links.get(question.id, []), sections, cards)
+            ready = isinstance(state, Ready)
+            unlocked = [first_card[sid] for sid in links.get(question.id, []) if sid in first_card]
             out.append(
                 ListedQuestion(
                     id=question.id,
@@ -151,6 +180,10 @@ class QuestionListRepository(UserScopedRepository[Question]):
                     waiting_titles={}
                     if not isinstance(state, Waiting)
                     else {s.id: titles.get(s.id, "") for s in state.sections},
+                    unlocked_at=max(unlocked) if ready and unlocked else None,
+                    due=ready
+                    and now is not None
+                    and (question.id not in practice_due or practice_due[question.id] <= now),
                 )
             )
         return out

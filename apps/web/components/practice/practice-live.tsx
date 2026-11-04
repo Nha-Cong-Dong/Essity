@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pen } from "@/components/practice/practice-extras";
 import { PracticeAnswer } from "@/components/practice/practice-answer";
 import { Badge } from "@/components/ui/badge";
+import { CoverageBar } from "@/components/stats/stat-tile";
 import { Button } from "@/components/ui/button";
 import { go } from "@/lib/navigate";
 import { type PracticeApi, practiceApi, type PracticeType } from "@/lib/practice-client";
@@ -21,10 +22,19 @@ const OTHER_TYPE = "Chưa có dạng";
 
 type Group = { key: string; name: string; type: PracticeType | null; rows: QuestionRow[] };
 
-/** Ready first, then waiting; the list's own (newest-first) order is kept inside each. */
+/** Ready first (the latest unlocked first, V20), then waiting; the list's own order is kept otherwise. */
 function ordered(rows: QuestionRow[]): QuestionRow[] {
   const rank = { ready: 0, waiting: 1, unlinked: 2 } as const;
-  return rows.map((row, index) => ({ row, index })).sort((a, b) => rank[a.row.status] - rank[b.row.status] || a.index - b.index).map(({ row }) => row);
+  const at = (q: QuestionRow) => (q.unlocked_at ? Date.parse(q.unlocked_at) : 0);
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => rank[a.row.status] - rank[b.row.status] || at(b.row) - at(a.row) || a.index - b.index)
+    .map(({ row }) => row);
+}
+
+function unlockedOn(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
 export function groupQuestions(list: QuestionListOut, types: PracticeType[]): { groups: Group[]; unlinked: QuestionRow[] } {
@@ -80,6 +90,11 @@ function Row({
     <li data-question={q.id} className="flex flex-col gap-2 border-t border-line py-4 first:border-t-0">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <Badge variant="level">{q.origin === "bank" ? "Câu gốc" : "Câu sinh thêm"}</Badge>
+        {q.type_name !== "" && (
+          <span data-user className="rounded-control border border-line px-2 text-meta wrap-anywhere">
+            {q.type_name}
+          </span>
+        )}
         {q.status === "ready" && <span className="text-meta">{q.line}</span>}
         {q.status === "waiting" && (
           <a href={`/subjects/${subjectId}/syllabus`} className="text-meta underline">
@@ -88,6 +103,7 @@ function Row({
         )}
         {q.status === "unlinked" && <span className="text-meta text-ink-soft">Chưa gắn phần</span>}
         {q.number !== null && <span className="text-meta text-ink-soft">Câu {q.number}</span>}
+        {q.unlocked_at && <span className="text-meta text-ink-soft">Mở khóa {unlockedOn(q.unlocked_at)}</span>}
       </div>
       <p id={`sum-${q.id}`} data-user className="m-0 line-clamp-3 wrap-anywhere">
         {q.prompt}
@@ -165,8 +181,13 @@ export function PracticeLive({
   }
 
   const live = list.questions.filter((q) => !removed.has(q.id));
-  const firstReady = groups.flatMap((g) => g.rows).find((q) => q.status === "ready" && !removed.has(q.id))?.id ?? null;
+  const unlockedRows = ordered(list.questions.filter((q) => q.status === "ready"));
+  const waitingRows = list.questions.filter((q) => q.status === "waiting");
+  const firstReady = unlockedRows.find((q) => !removed.has(q.id))?.id ?? null;
+  const dueNow = list.questions.filter((q) => q.due === true && !removed.has(q.id));
+  const readyCount = live.filter((q) => q.status === "ready").length;
 
+  const dueButton = dueNow.length > 0; // then that button is the screen's primary
   const rows = (items: QuestionRow[], primaryId: string | null) => (
     <ul className="m-0 mt-3 flex list-none flex-col p-0">
       {items.map((q) => (
@@ -174,7 +195,7 @@ export function PracticeLive({
           key={q.id}
           q={q}
           subjectId={subjectId}
-          primary={q.id === primaryId}
+          primary={!dueButton && q.id === primaryId}
           removed={removed.has(q.id)}
           onDo={() => setDoing(q.id)}
           onRemove={() => void remove(q.id)}
@@ -210,9 +231,26 @@ export function PracticeLive({
         </div>
       ) : (
         <div className="mt-6">
-          <p data-summary className="m-0 text-read">
-            {live.length} câu · {live.filter((q) => q.status === "ready").length} sẵn sàng
-          </p>
+          <div data-progress>
+            <p data-summary className="m-0 text-read">
+              Đã mở khóa {readyCount}/{live.length} câu
+            </p>
+            <div className="mt-2">
+              <CoverageBar percent={live.length === 0 ? 0 : (readyCount / live.length) * 100} />
+            </div>
+          </div>
+          {list.due_today !== undefined && (
+            <div data-due className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <p className="m-0 text-read">
+                {dueNow.length > 0 ? `Hôm nay cần luyện ${dueNow.length} câu.` : "Hôm nay không có câu nào cần luyện."}
+              </p>
+              {dueNow.length > 0 && (
+                <Button className={FULL} onClick={() => setDoing(dueNow[0].id)}>
+                  Vào luyện tập ngay
+                </Button>
+              )}
+            </div>
+          )}
           {firstReady === null && (
             <>
               <p className="m-0 mt-3">Chưa có câu hỏi nào sẵn sàng, hãy kết nối thêm kiến thức để mở khóa câu hỏi nhé!</p>
@@ -221,24 +259,45 @@ export function PracticeLive({
               </Button>
             </>
           )}
-          {groups.map((g) => (
-            <section key={g.key} aria-labelledby={`g-${g.key}`} className="mt-8">
-              <h2 id={`g-${g.key}`} className="m-0 text-read font-semibold wrap-anywhere">
-                <span data-user>{g.name}</span>
+          <section aria-labelledby="practised" className="mt-8" data-practised>
+            <h2 id="practised" className="m-0 text-read font-semibold">
+              Câu đã luyện tập
+            </h2>
+            <p className="m-0 mt-1 text-meta text-ink-soft">Sắp theo ngày mở khóa, mới nhất trước.</p>
+            {unlockedRows.length === 0 ? (
+              <p className="m-0 mt-3 text-ink-soft">Chưa có câu nào mở khóa.</p>
+            ) : (
+              rows(unlockedRows, firstReady)
+            )}
+            {groups.some((g) => g.type !== null) && (
+              <details className="mt-4" data-types>
+                <summary className="flex min-h-11 cursor-pointer items-center text-meta underline">Theo dạng câu</summary>
+                {groups
+                  .filter((g) => g.type !== null)
+                  .map((g) => (
+                    <div key={g.key} className="mt-2">
+                      <p className="m-0 text-meta font-semibold wrap-anywhere">
+                        <span data-user>{g.name}</span>
+                      </p>
+                      <p data-mastery className="m-0 text-meta text-ink-soft">
+                        {g.type?.mastery_line}
+                      </p>
+                      <p data-sensitivity className="m-0 text-meta text-ink-soft">
+                        {g.type?.sensitivity_line}
+                      </p>
+                    </div>
+                  ))}
+              </details>
+            )}
+          </section>
+          {waitingRows.length > 0 && (
+            <section aria-labelledby="waiting" className="mt-8">
+              <h2 id="waiting" className="m-0 text-read font-semibold">
+                Chờ mở khóa
               </h2>
-              {g.type && (
-                <>
-                  <p data-mastery className="m-0 mt-1 text-meta text-ink-soft">
-                    {g.type.mastery_line}
-                  </p>
-                  <p data-sensitivity className="m-0 text-meta text-ink-soft">
-                    {g.type.sensitivity_line}
-                  </p>
-                </>
-              )}
-              {rows(g.rows, firstReady)}
+              {rows(waitingRows, null)}
             </section>
-          ))}
+          )}
           {unlinked.length > 0 && (
             <section aria-labelledby="unlinked" className="mt-8">
               <h2 id="unlinked" className="m-0 text-read font-semibold">

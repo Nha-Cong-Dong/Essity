@@ -1604,6 +1604,11 @@ export interface components {
              */
             answer_source: "bank" | "ai";
             /**
+             * Due
+             * @default false
+             */
+            due: boolean;
+            /**
              * Id
              * Format: uuid
              */
@@ -1626,6 +1631,8 @@ export interface components {
             status: "ready" | "waiting" | "unlinked";
             /** Type Name */
             type_name: string;
+            /** Unlocked At */
+            unlocked_at?: string | null;
             /** Waiting Sections */
             waiting_sections: components["schemas"]["WaitingSectionOut"][];
         };
@@ -2559,6 +2566,11 @@ export interface components {
         };
         /** QuestionListOut */
         QuestionListOut: {
+            /**
+             * Due Today
+             * @default 0
+             */
+            due_today: number;
             /** Questions */
             questions: components["schemas"]["BankQuestionOut"][];
             /** Ready */

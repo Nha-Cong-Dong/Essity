@@ -29,11 +29,12 @@ const FORBIDDEN = /(?<!\p{L})(streak|chuỗi|xếp hạng|ranking|kém|lười|b
 const list: QuestionListOut = {
   total: 3,
   ready: 2,
+  due_today: 0,
   types: [],
   questions: [
-    { id: Q1, number: 1, prompt: "So sánh TCP và UDP.", origin: "bank", status: "ready", answer_source: "bank", type_name: "So sánh", line: "Sẵn sàng", waiting_sections: [] },
-    { id: Q2, number: 2, prompt: "Định nghĩa MSS.", origin: "generated", status: "ready", answer_source: "ai", type_name: "Định nghĩa", line: "Sẵn sàng", waiting_sections: [] },
-    { id: "0b8f1d2e-0000-4000-8000-0000000000a3", number: 3, prompt: "Tính thông lượng.", origin: "bank", status: "waiting", answer_source: "bank", type_name: "So sánh", line: "Chờ học: phần 3.4", waiting_sections: [] },
+    { id: Q1, number: 1, prompt: "So sánh TCP và UDP.", origin: "bank", status: "ready", answer_source: "bank", type_name: "So sánh", line: "Sẵn sàng", waiting_sections: [], due: false },
+    { id: Q2, number: 2, prompt: "Định nghĩa MSS.", origin: "generated", status: "ready", answer_source: "ai", type_name: "Định nghĩa", line: "Sẵn sàng", waiting_sections: [], due: false },
+    { id: "0b8f1d2e-0000-4000-8000-0000000000a3", number: 3, prompt: "Tính thông lượng.", origin: "bank", status: "waiting", answer_source: "bank", type_name: "So sánh", line: "Chờ học: phần 3.4", waiting_sections: [], due: false },
   ],
 };
 const types = [
@@ -114,11 +115,12 @@ describe("PracticeLive (US-16 AC1, AC3, AC8)", () => {
     expect(primaries.length).toBe(1);
     expect(primaries[0].textContent).toBe("Làm câu này");
     expect(container.querySelector(`[data-question="${Q1}"] [data-variant='primary']`)).not.toBeNull();
-    const section = container.querySelector("section[aria-labelledby=g-t1]") as HTMLElement;
-    expect([...section.querySelectorAll("[data-question]")].map((li) => li.getAttribute("data-question")).at(-1)).toBe(
-      "0b8f1d2e-0000-4000-8000-0000000000a3",
-    );
-    expect(screen.getByText("3 câu · 2 sẵn sàng")).toBeTruthy();
+    // V20: one flat section of unlocked questions, then the waiting ones apart.
+    const section = container.querySelector("section[data-practised]") as HTMLElement;
+    expect(section.querySelectorAll("[data-question]").length).toBe(2);
+    expect(section.querySelector("[data-question='0b8f1d2e-0000-4000-8000-0000000000a3']")).toBeNull();
+    expect(screen.getByText("Câu đã luyện tập")).toBeTruthy();
+    expect(screen.getByText("Đã mở khóa 2/3 câu")).toBeTruthy();
   });
 
   // Red when: removing needs a dialog, or the row does not turn into the one-line note.
@@ -161,7 +163,7 @@ describe("PracticeLive (US-16 AC1, AC3, AC8)", () => {
 
   it("an empty bank offers the upload and no list", () => {
     const { container } = render(
-      <PracticeLive subjectId={SUBJECT} subjectName="Mạng" list={{ total: 0, ready: 0, types: [], questions: [] }} types={[]} api={fakeApi()} />,
+      <PracticeLive subjectId={SUBJECT} subjectName="Mạng" list={{ total: 0, ready: 0, due_today: 0, types: [], questions: [] }} types={[]} api={fakeApi()} />,
     );
     expect(container.querySelector("[data-empty]")).not.toBeNull();
     expect(container.querySelectorAll("[data-variant='primary']").length).toBe(1);
@@ -334,5 +336,19 @@ describe("a practice step in the Today review session (T8.5 review F1)", () => {
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Gửi" })));
     await act(async () => fireEvent.click(await screen.findByRole("button", { name: "Câu tiếp" })));
     expect(current).toHaveBeenCalledTimes(2);
+  });
+});
+
+// V20: a due question gives the screen one primary, "Vào luyện tập ngay", and the count of today.
+describe("PracticeLive due today (V20)", () => {
+  it("shows the due count and a button that opens the first due question", () => {
+    const due = {
+      ...list,
+      due_today: 1,
+      questions: list.questions.map((q, i) => ({ ...q, due: i === 0 && q.status === "ready", unlocked_at: "2026-11-02T00:00:00Z" })),
+    };
+    render(<PracticeLive subjectId={SUBJECT} subjectName="Mạng" list={due} types={types} api={fakeApi()} />);
+    expect(screen.getByText("Hôm nay cần luyện 1 câu.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Vào luyện tập ngay" })).toBeTruthy();
   });
 });

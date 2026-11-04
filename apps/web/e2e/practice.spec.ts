@@ -139,6 +139,8 @@ test("US-16 AC2 AC3 AC5 AC8: list, do a question, see what is missing, remove it
   const seen = await fakePractice(page);
   await open(page, 390, LIVE);
   // AC8: neutral words, "chưa đủ dữ liệu" for a type with under 3 answers.
+  // V19: the per-type lines sit under a collapsed "Theo dạng câu" summary.
+  await page.getByText("Theo dạng câu").click();
   await expect(page.getByText("đúng 7 trên 10 lần gần nhất")).toBeVisible();
   await expect(page.getByText("chưa đủ dữ liệu").first()).toBeVisible();
 
