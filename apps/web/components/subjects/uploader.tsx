@@ -87,23 +87,34 @@ function Status({ state }: { state: UploadState }) {
   );
 }
 
+// V15: the one small tag under a stored file, from the tab it was put in.
+const ROLE_TAG: Record<Role, string> = { main: "#giáo trình chính", supplementary: "#giáo trình phụ", bank: "#câu hỏi" };
+
 // T7.5 (US-01 AC4): once a file is stored, its role is chosen right under it (DocRole). The first
 // file is the main textbook when the subject has none yet; the rest are supplementary.
 export function Uploader({
   subjectId,
   hasMain = true,
   fixedRole,
+  onCount,
 }: {
   subjectId: string;
   hasMain?: boolean;
   /** H2: the upload tab decides the role of every file put in it. */
   fixedRole?: Role;
+  /** V14: how many files of this tab are stored, so the screen's own button can show. */
+  onCount?: (done: number) => void;
 }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [over, setOver] = useState(false);
   const next = useRef(0);
   const busy = useRef(Promise.resolve());
   const claimed = useRef(hasMain);
+
+  const doneCount = rows.filter((row) => row.state.kind === "done").length;
+  useEffect(() => {
+    onCount?.(doneCount);
+  }, [doneCount, onCount]);
 
   function update(key: number, state: UploadState) {
     setRows((all) =>
@@ -181,14 +192,17 @@ export function Uploader({
                   className="h-2 w-full accent-hong"
                 />
               ) : null}
-              {row.state.kind === "done" && row.state.documentId && row.role ? (
+              {row.state.kind === "done" && fixedRole ? (
+                <span className="w-fit rounded-control bg-rose-100 px-2 py-1 text-small font-semibold">{ROLE_TAG[fixedRole]}</span>
+              ) : null}
+              {row.state.kind === "done" && !fixedRole && row.state.documentId && row.role ? (
                 <DocRole subjectId={subjectId} documentId={row.state.documentId} name={row.name} initialRole={row.role} />
               ) : null}
             </li>
           ))}
         </ul>
       ) : null}
-      {rows.some((row) => row.state.kind === "done") ? (
+      {!fixedRole && rows.some((row) => row.state.kind === "done") ? (
         <div className="mt-6">
           <Button render={<a href={`/subjects/${subjectId}/syllabus`} />}>Vào môn học</Button>
         </div>
