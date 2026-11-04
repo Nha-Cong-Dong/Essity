@@ -2224,6 +2224,21 @@
             "title": "Remaining Chapters",
             "type": "integer"
           },
+          "reread": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pending",
+                  "failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reread"
+          },
           "sections": {
             "items": {
               "$ref": "#/components/schemas/SectionOut"
@@ -6407,6 +6422,47 @@
           }
         },
         "summary": "Confirm Upload"
+      }
+    },
+    "/v1/documents/{document_id}/reextract-outline": {
+      "post": {
+        "description": "Read the document's outline again (OUTLINE-FIX3): the same event as an upload goes to\nai-service, and its answer is laid over the outline the learner has worked on, keeping\ntheir progress, exclusions and edited ranges. The document shows as being read meanwhile.\n\nErrors: 404 `document_not_found` (another user's too); 409 `not_indexed` (not read yet,\nor failed); 429 once per document per 5 minutes (so a reading still `pending` can be asked\nfor again after that, and a lost answer never locks the document).",
+        "operationId": "reextract_outline_v1_documents__document_id__reextract_outline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reextract Outline"
       }
     },
     "/v1/documents/{document_id}/toc": {

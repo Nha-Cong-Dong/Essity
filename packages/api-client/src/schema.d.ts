@@ -366,6 +366,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/documents/{document_id}/reextract-outline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reextract Outline
+         * @description Read the document's outline again (OUTLINE-FIX3): the same event as an upload goes to
+         *     ai-service, and its answer is laid over the outline the learner has worked on, keeping
+         *     their progress, exclusions and edited ranges. The document shows as being read meanwhile.
+         *
+         *     Errors: 404 `document_not_found` (another user's too); 409 `not_indexed` (not read yet,
+         *     or failed); 429 once per document per 5 minutes (so a reading still `pending` can be asked
+         *     for again after that, and a lost answer never locks the document).
+         */
+        post: operations["reextract_outline_v1_documents__document_id__reextract_outline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/documents/{document_id}/toc": {
         parameters: {
             query?: never;
@@ -2309,6 +2335,8 @@ export interface components {
             reason: ("no_textbook" | "not_indexed" | "no_outline") | null;
             /** Remaining Chapters */
             remaining_chapters: number;
+            /** Reread */
+            reread?: ("pending" | "failed") | null;
             /** Sections */
             sections: components["schemas"]["SectionOut"][];
             /**
@@ -4183,6 +4211,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    reextract_outline_v1_documents__document_id__reextract_outline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

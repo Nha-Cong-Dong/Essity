@@ -6,6 +6,8 @@ inclusive, and a `weight` (units under it). Progress counts the leaves that are 
 much of it the learner has covered, so a partly covered section counts partly (US-13 AC6).
 """
 
+import re
+import unicodedata
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -166,3 +168,121 @@ def reweigh(
     for root in by_parent.get(None, []):
         weigh(root)
     return weights
+
+
+_NUMBER = re.compile(
+    r"^\s*((?:chương|chuong|phần|phan|bài|bai)\s+\d+|\d+(?:\.\d+)*)\s*[.:)\-–]?\s*", re.I
+)
+
+
+def _plain(text: str) -> str:
+    folded = unicodedata.normalize("NFD", text.casefold().replace("đ", "d"))
+    stripped = "".join(c for c in folded if not unicodedata.combining(c))
+    return " ".join(re.sub(r"[^\w]+", " ", stripped).split())
+
+
+def title_key(title: str) -> tuple[str, str]:
+    """(number, words) of a section title: "3.4. Ý nghĩa" -> ("3.4", "y nghia"). The number is
+    "" for a title without one; the words ignore case, accents and punctuation."""
+    found = _NUMBER.match(title)
+    if found is None:
+        return "", _plain(title)
+    number = found.group(1)
+    number = _plain(number).replace(" ", "") if number[0].isalpha() else number
+    return number, _plain(title[found.end() :])
+
+
+def _match_siblings(old: Sequence[str], new: Sequence[str]) -> dict[int, int]:
+    """Which old sibling each new sibling is: {new position: old position}. Each old one is used
+    once. Pass 1 takes number and words equal; pass 2, a number that is unique on both
+    sides (a title the reader fixed: ")" became "N(a,σ2)"); pass 3, equal words without a
+    number. A number held twice on a side is ambiguous: only pass 1 can match it."""
+    old_keys = [title_key(t) for t in old]
+    new_keys = [title_key(t) for t in new]
+    matched: dict[int, int] = {}
+    used: set[int] = set()
+
+    def take(pairs: Sequence[tuple[int, int]]) -> None:
+        for n, o in pairs:
+            if n not in matched and o not in used:
+                matched[n] = o
+                used.add(o)
+
+    first_old: dict[tuple[str, str], int] = {}
+    for o, key in enumerate(old_keys):
+        first_old.setdefault(key, o)
+    seen: set[tuple[str, str]] = set()
+    pairs: list[tuple[int, int]] = []
+    for n, key in enumerate(new_keys):
+        if key in first_old and key not in seen:
+            seen.add(key)
+            pairs.append((n, first_old[key]))
+    take(pairs)
+    # Duplicated keys on the new side: later ones pair with later old duplicates, in order.
+    for key in {k for k in new_keys if new_keys.count(k) > 1}:
+        news = [n for n, k in enumerate(new_keys) if k == key]
+        olds = [o for o, k in enumerate(old_keys) if k == key]
+        take(list(zip(news, olds, strict=False)))
+
+    def free(keys: Sequence[tuple[str, str]], skip: set[int]) -> dict[str, list[int]]:
+        by_number: dict[str, list[int]] = {}
+        for i, (number, _) in enumerate(keys):
+            if number and i not in skip:
+                by_number.setdefault(number, []).append(i)
+        return by_number
+
+    new_free = free(new_keys, set(matched))
+    old_free = free(old_keys, used)
+    all_new = free(new_keys, set())
+    all_old = free(old_keys, set())
+    take(
+        [
+            (ns[0], old_free[number][0])
+            for number, ns in new_free.items()
+            if len(ns) == 1
+            and len(all_new[number]) == 1
+            and len(old_free.get(number, [])) == 1
+            and len(all_old[number]) == 1
+        ]
+    )
+    by_words: dict[str, int] = {}
+    for o, (number, words) in enumerate(old_keys):
+        if not number and o not in used and words:
+            by_words.setdefault(words, o)
+    take(
+        [(n, by_words[w]) for n, (number, w) in enumerate(new_keys) if not number and w in by_words]
+    )
+    return matched
+
+
+def match_titles(
+    old: Sequence[str],
+    new: Sequence[str],
+    old_parent: Sequence[int | None],
+    new_parent: Sequence[int | None],
+) -> dict[int, int]:
+    """Which old section each new one is, top down: {new index: old index}. `*_parent` is the
+    index of each section's parent in its own list (None for a root; parents come first in
+    `new`). A section only matches an old one under the old section its parent matched (roots
+    only among roots), so a number reused in another chapter never moves a section there; a new
+    section with no matched parent matches nothing. Within one parent, `_match_siblings`."""
+    matched: dict[int, int] = {}
+    groups: dict[int | None, list[int]] = {}
+    for n, parent in enumerate(new_parent):
+        groups.setdefault(parent, []).append(n)
+    old_groups: dict[int | None, list[int]] = {}
+    for o, parent in enumerate(old_parent):
+        old_groups.setdefault(parent, []).append(o)
+    for parent in [None, *range(len(new))]:  # a parent is settled before its children
+        news = groups.get(parent, [])
+        if not news:
+            continue
+        if parent is None:
+            olds = old_groups.get(None, [])
+        elif parent in matched:
+            olds = old_groups.get(matched[parent], [])
+        else:
+            continue
+        found = _match_siblings([old[o] for o in olds], [new[n] for n in news])
+        matched.update({news[n]: olds[o] for n, o in found.items()})
+    return matched

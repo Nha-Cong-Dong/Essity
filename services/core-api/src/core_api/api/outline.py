@@ -75,6 +75,9 @@ class OutlineOut(BaseModel):
     temporary: bool
     # Chapters (top-level sections) not excluded that are not fully covered yet: the "còn n".
     remaining_chapters: int
+    # "Tách lại đề cương": `pending` while it is read again, `failed` when it could not be (the
+    # outline above is the old one, untouched).
+    reread: Literal["pending", "failed"] | None = None
     sections: list[SectionOut]
 
 
@@ -146,6 +149,7 @@ def outline_out(subject_id: uuid.UUID, view: OutlineView) -> OutlineOut:
         reason=_reason(document, view.sections),
         progress=view.progress,
         temporary=bool(view.sections) and all(s.source == "chunk10" for s in view.sections),
+        reread=None if document is None else document.reread,  # pyright: ignore[reportArgumentType]
         remaining_chapters=sum(1 for c in sections if not c.excluded_effective and not c.learned),
         sections=sections,
     )

@@ -35,3 +35,19 @@ def test_lost_capital_u_horn_comes_back() -> None:
     out = fix_tcvn3(text)
     assert "Chương 4. Ước lượng tham số. Ưu điểm" in out
     assert "\x19" not in out
+
+
+def test_capital_y_after_a_section_number_is_restored() -> None:
+    # Seen in a real textbook: the capital Y-acute is printed with the lowercase glyph (0xFD), so
+    # "3.4. Ý nghĩa" reads "3.4. ý nghĩa". Only a title right after a section number is capital.
+    text = "Ch­¬ng 3. Ch\xadng\r\n3.4. \xfd ngh\xdca thèng kª\r\nvà ý kiến, \xfd tưởng\r\n" * 4
+    out = fix_tcvn3(text)
+    assert "3.4. Ý nghĩa" in out
+    assert "và ý kiến" in out
+
+
+def test_capital_y_is_not_applied_to_the_body() -> None:
+    text = "Ch­¬ng 3. Ch\xadng\r\n3.4. \xfd ngh\xdca\r\nC\xf3 2 \xfd kiÕn\r\n2 \xfd kiÕn\r\n" * 4
+    out = fix_tcvn3(text)
+    assert "3.4. Ý nghĩa" in out
+    assert "2 ý kiến" in out and "2 Ý" not in out

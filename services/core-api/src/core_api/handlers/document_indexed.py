@@ -175,6 +175,9 @@ class OnDocumentIndexed:
         document = _apply_indexed(session, event)
         if document is None:
             return
+        # The learner asked to read the outline again: lay the answer over their work.
+        reread = document.reread == "pending"
+        document.reread = None
         if document.role == "question_bank":
             # Nothing else asks for the split: the screen only says "Đã đọc xong". Queue it here;
             # one waiting job per bank, and a re-run of the same answer adds none (AC8, AC9).
@@ -188,7 +191,9 @@ class OnDocumentIndexed:
         if parsed is None:
             _log.warning("document outline missing or refused", extra=extra)
             return
-        stored = OutlineService(session, document.user_id).store_outline(document, parsed[1])
+        stored = OutlineService(session, document.user_id).store_outline(
+            document, parsed[1], reread=reread
+        )
         _log.info("document outline stored", extra=extra | {"stored": stored})
 
 
@@ -197,6 +202,10 @@ def on_document_failed(session: Session, event: Event) -> None:
     payload = event.payload
     document = _answered(session, event)
     if document is None:
+        return
+    if document.status == "indexed" and document.reread == "pending":
+        # A new reading that failed: the document and its outline stay as they were.
+        document.reread = "failed"
         return
     document.status = "failed"
     document.failure_reason = payload.reason
