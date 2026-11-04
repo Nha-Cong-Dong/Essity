@@ -8,6 +8,7 @@ import { Marker } from "@/components/notebook";
 import { MarginRule } from "@/components/motifs";
 import { Mascot } from "@/components/mascot";
 import { AppShell, PageColumn } from "@/components/shells";
+import { OutlineCard } from "@/components/subjects/outline-card";
 import { StepIndicator } from "@/components/subjects/step-indicator";
 import { Sheet } from "@/components/ui/sheet";
 import { NewSubjectForm } from "@/components/subjects/new-subject-form";
@@ -39,6 +40,7 @@ export default function NewSubjectPage() {
               <Marker>Môn mới</Marker>
             </h1>
             <p className="m-0 mb-6 max-w-[48ch] text-read text-ink-soft">Đặt tên môn và ngày thi để app chia lịch học cho vừa sức.</p>
+            <h2 className="m-0 mb-4 font-display text-lead">1. Thông tin</h2>
             <Suspense fallback={<div aria-busy="true" className="h-60" />}>
               <NewSubject />
             </Suspense>
@@ -47,6 +49,15 @@ export default function NewSubjectPage() {
             <Mascot pose="chuanbi" size="md" />
           </div>
         </div>
+        <Sheet variant="tile" tone="rose" aria-labelledby="docs-next">
+          <h2 id="docs-next" className="m-0 font-display text-lead">
+            2. Tài liệu
+          </h2>
+          <p className="m-0 mt-2 text-read text-ink-soft">
+            Sau khi tạo môn, bạn tải giáo trình chính, giáo trình phụ hoặc bộ câu hỏi (PDF).
+          </p>
+        </Sheet>
+        <OutlineCard />
       </PageColumn>
     </AppShell>
   );
