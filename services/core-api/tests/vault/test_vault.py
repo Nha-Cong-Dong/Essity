@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from accounts import signed_in
 from core_api.api.deps import get_storage
 from core_api.api.vault import find_highlight
-from core_api.db.models import Anchor, NoteFile, QuestionUnit, StudySession
+from core_api.db.models import Anchor, NoteFile, QuestionUnit, StudySession, Submission
 from core_api.grading import units_of
 from fake_storage import FakeStorage
 from v2_rows import RUN, make_document, make_question, make_subject, make_unit
@@ -152,3 +152,47 @@ def test_g4_notes_source_lists_the_session_photos(client: TestClient, db_session
     rows = client.get(f"/v1/vault/cards/{unit.id}/sources", headers=headers).json()
     notes = next(r for r in rows if r["source"] == "notes")
     assert len(notes["note_image_urls"]) == 1 and "X-Amz-Expires=600" in notes["note_image_urls"][0]
+
+
+def test_v2_finished_session_is_listed(client: TestClient, db_session: Session):
+    """A v2 session ("Hoàn thành") stays a draft row; its done submission is what finishes it.
+    Red when: Kho counts or lists only v1 confirmed sessions, so the finished one is missing."""
+    user, headers = signed_in(db_session)
+    subject = make_subject(db_session, user)
+    ids: dict[str, uuid.UUID] = {}
+    for name, status in (("done", "done"), ("working", "processing")):
+        study = StudySession(
+            user_id=user.id,
+            subject_id=subject.id,
+            description_raw=f"Buổi {name}\nchi tiết",
+            extraction="proposed",
+            status="draft",
+        )
+        db_session.add(study)
+        db_session.flush()
+        ids[name] = study.id
+        finished = datetime.now(UTC) if status == "done" else None
+        db_session.add(
+            Submission(
+                user_id=user.id,
+                session_id=study.id,
+                status=status,
+                file_keys=[],
+                finished_at=finished,
+            )
+        )
+    make_unit(
+        db_session,
+        user,
+        subject,
+        title="Thẻ",
+        summary="x",
+        status="canonical",
+        session_id=ids["done"],
+    )
+    db_session.commit()
+    subjects = client.get("/v1/vault/subjects", headers=headers).json()
+    assert [(s["sessions"], s["cards"]) for s in subjects] == [(1, 1)]
+    sessions = client.get(f"/v1/vault/subjects/{subject.id}/sessions", headers=headers).json()
+    listed = [(x["id"], x["title"], x["cards"]) for x in sessions]
+    assert listed == [(str(ids["done"]), "Buổi done", 1)]
