@@ -12,7 +12,7 @@ import { uploadPdf } from "@/lib/upload-client";
 import type { Piece, SessionApi } from "@/lib/session-study/api";
 import { rememberPendingSession } from "@/lib/session-study/pending";
 import { type Draft, draftsReducer } from "@/lib/session-study/drafts";
-import type { DocRef, Mention } from "@/lib/session-study/mention";
+import { appendMention, type DocRef, type Mention } from "@/lib/session-study/mention";
 import { type Round, roundReducer } from "@/lib/session-study/round";
 
 import { FileDrop } from "./session-file-drop";
@@ -115,6 +115,11 @@ export function SessionScreen(props: SessionScreenProps) {
   const [drafts, dispatch] = useReducer(draftsReducer, initial.drafts);
   const [text, setText] = useState(initial.text);
   const [mentions, setMentions] = useState(initial.mentions);
+  // The upload callbacks outlive a render: they read the newest words and mentions from here.
+  const latest = useRef({ text: initial.text, mentions: initial.mentions });
+  useEffect(() => {
+    latest.current = { text, mentions };
+  }, [text, mentions]);
   const [files, setFiles] = useState(initial.files);
   const [scope, setScope] = useState(initial.scope);
   const [note, setNote] = useState("");
@@ -241,9 +246,15 @@ export function SessionScreen(props: SessionScreenProps) {
       else if (state.kind === "done" && state.documentId) {
         const documentId = state.documentId;
         const name = file.name.replace(/\.[^.]+$/, "");
+        const doc: DocRef = { id: documentId, name, role: "auxiliary" };
+        // V11: the file is mentioned for the learner, so "Ghi lại" works with only a file.
+        const next = appendMention(latest.current.text, doc, latest.current.mentions);
+        latest.current = next;
+        setText(next.text);
+        setMentions(next.mentions);
         setDocs((rows) => (rows.some((d) => d.id === documentId) ? rows : [...rows, { id: documentId, name, role: "auxiliary" }]));
         patchRow(id, { state: "done" });
-        say(`Đã tải ${name} vào kho tài liệu của môn. Gõ @ để tham chiếu.`);
+        say(`Đã tải ${name} vào kho tài liệu của môn và tham chiếu vào phần bạn đã học.`);
       } else if (state.kind === "failed") patchRow(id, { state: rowStateOf(state.code === "unsupported_file_type" ? "unsupported" : state.code) });
     });
   }
