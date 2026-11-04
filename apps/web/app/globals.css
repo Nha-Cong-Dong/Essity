@@ -582,3 +582,29 @@
   -webkit-mask-image: radial-gradient(60% 45% at 100% 100%, #000 0%, transparent 100%);
   mask-image: radial-gradient(60% 45% at 100% 100%, #000 0%, transparent 100%);
 }
+
+/* Phase B (04/11): the mascot's dots, the staggered reveal of a screen's blocks and the sticker
+   button. All of it stands still when motion is reduced. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes m-dot-hop {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  [data-mascot] .m-dot { animation: m-dot-hop 1.2s var(--ease-out) infinite; }
+  [data-mascot] .m-dot:nth-of-type(2) { animation-delay: 0.15s; }
+  [data-mascot] .m-dot:nth-of-type(3) { animation-delay: 0.3s; }
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+  [data-reveal] > * { animation: rise-in 240ms var(--ease-out) both; }
+  [data-reveal] > *:nth-child(2) { animation-delay: 60ms; }
+  [data-reveal] > *:nth-child(3) { animation-delay: 120ms; }
+  [data-reveal] > *:nth-child(4) { animation-delay: 180ms; }
+  [data-reveal] > *:nth-child(5) { animation-delay: 240ms; }
+  [data-reveal] > *:nth-child(n + 6) { animation-delay: 300ms; }
+  @media (hover: hover) {
+    [data-sticker-button]:hover { transform: rotate(-2.5deg) scale(1.05); box-shadow: var(--elev-hong); }
+    [data-sticker-button]:active { transform: rotate(0) scale(0.95); }
+  }
+}

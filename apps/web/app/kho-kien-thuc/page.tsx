@@ -72,7 +72,7 @@ async function Vault({ searchParams }: { searchParams: Promise<Search> }) {
         </a>
         <h1 className="m-0 text-title">Các buổi học</h1>
         {view.sessions.length === 0 ? (
-          <EmptyState title="Môn này chưa có buổi học nào." hint="Ghi một buổi học, thẻ sẽ xuất hiện ở đây." />
+          <EmptyState mascot="cho" title="Môn này chưa có buổi học nào." hint="Ghi một buổi học, thẻ sẽ xuất hiện ở đây." />
         ) : (
           <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {view.sessions.map((s) => (
@@ -95,6 +95,7 @@ async function Vault({ searchParams }: { searchParams: Promise<Search> }) {
       <h1 className="m-0 text-title">Kho kiến thức</h1>
       {view.subjects.length === 0 ? (
         <EmptyState
+          mascot="vui"
           title="Chưa có môn nào."
           hint="Tạo môn và ghi buổi học đầu tiên, các thẻ sẽ được lưu ở đây."
           action={

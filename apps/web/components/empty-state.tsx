@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { Mascot, type MascotPose } from "@/components/mascot";
 import { cn } from "@/lib/utils";
 
 /**
@@ -10,19 +11,28 @@ export function EmptyState({
   title,
   hint,
   action,
+  mascot,
   className,
 }: {
   title: ReactNode;
   hint?: ReactNode;
   /** The one action: a Button or a link. */
   action?: ReactNode;
+  /** Phase B: the mascot beside the words (above them on a phone). Words always stay. */
+  mascot?: MascotPose;
   className?: string;
 }) {
   return (
-    <div data-slot="empty-state" className={cn("flex flex-col items-start gap-2", className)}>
-      <p className="m-0 text-lead">{title}</p>
-      {hint ? <p className="m-0 text-body text-ink-soft">{hint}</p> : null}
-      {action ? <div className="mt-3">{action}</div> : null}
+    <div
+      data-slot="empty-state"
+      className={cn("flex flex-col items-start gap-2", mascot && "gap-4 sm:flex-row sm:items-center sm:gap-6", className)}
+    >
+      {mascot ? <Mascot pose={mascot} /> : null}
+      <div className="flex flex-col items-start gap-2">
+        <p className="m-0 text-lead">{title}</p>
+        {hint ? <p className="m-0 text-body text-ink-soft">{hint}</p> : null}
+        {action ? <div className="mt-3">{action}</div> : null}
+      </div>
     </div>
   );
 }

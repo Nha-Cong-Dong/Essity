@@ -1,7 +1,7 @@
 import { Marker } from "@/components/notebook";
 import { Sticker } from "@/components/motifs";
 import { LearnActions } from "@/components/today-v2/learn-actions";
-import { MascotPlaceholder } from "@/components/mascot-placeholder";
+import { Mascot } from "@/components/mascot";
 import { NextStudyCard } from "@/components/today-v2/next-study-card";
 import { StartButton } from "@/components/today/start-button";
 import { Button } from "@/components/ui/button";
@@ -110,7 +110,7 @@ export function ReviewTile({
         <h2 id="today-review" className="sr-only">
           {COPY.review}
         </h2>
-        <MascotPlaceholder />
+        <Mascot pose="vui" />
         <p className="m-0 font-display text-lead">
           {COPY.nothingDue}
         </p>
@@ -220,7 +220,7 @@ function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2[
       </h2>
       {practice.state === "none_ready" ? (
         <div className="mt-3 flex items-center gap-4">
-          <MascotPlaceholder />
+          <Mascot pose="cho" size="sm" />
           <p className="m-0 text-read text-ink-soft">{COPY.practiceNone}</p>
         </div>
       ) : (
