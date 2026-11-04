@@ -3,7 +3,6 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useState } from "react";
 
-import { SubjectMark } from "@/components/subject-mark";
 import { Button } from "@/components/ui/button";
 import { studyHref } from "@/lib/session-study/entry";
 import { paceLine, TODAY_V2_COPY as COPY, type LearnItem } from "@/lib/today-v2";
@@ -42,7 +41,6 @@ function SubjectRow({ item }: { item: LearnItem }) {
           onClick={() => setOpen(!open)}
           className="flex min-w-0 flex-1 basis-40 items-center gap-3 text-left text-section font-semibold break-words"
         >
-          <SubjectMark name={item.subject.name} />
           <span className="min-w-0">
             {item.subject.name}
             <span className="block text-meta font-normal text-ink-soft">

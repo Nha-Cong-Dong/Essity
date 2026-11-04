@@ -71,7 +71,7 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
       </div>
     );
   }
-  const subjects = withoutEmptyTwins(view.subjects);
+  const subjects = view.subjects;
   const totalCards = subjects.reduce((n, s) => n + s.cards, 0);
   const totalSessions = subjects.reduce((n, s) => n + s.sessions, 0);
   return (
@@ -121,17 +121,4 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
       )}
     </div>
   );
-}
-
-/** A subject with nothing in it is hidden when another subject of the same name has something. */
-export function withoutEmptyTwins(subjects: VaultSubject[]): VaultSubject[] {
-  const filled = new Set(subjects.filter((s) => s.cards > 0 || s.sessions > 0).map((s) => s.name.trim()));
-  const seen = new Set<string>();
-  return subjects.filter((s) => {
-    const key = s.name.trim();
-    const empty = s.cards === 0 && s.sessions === 0;
-    if (empty && (filled.has(key) || seen.has(key))) return false;
-    if (empty) seen.add(key);
-    return true;
-  });
 }

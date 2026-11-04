@@ -132,7 +132,9 @@ def _finished_session(user_id: uuid.UUID) -> ColumnElement[bool]:
 @router.get("/subjects")
 def vault_subjects(user: VerifiedUser, session: DbSession) -> list[VaultSubjectOut]:
     subjects = session.scalars(
-        select(Subject).where(Subject.user_id == user.id).order_by(Subject.created_at)
+        select(Subject)
+        .where(Subject.user_id == user.id, Subject.deleted_at.is_(None))
+        .order_by(Subject.created_at)
     ).all()
     sessions = dict(
         session.execute(
@@ -165,7 +167,9 @@ def vault_sessions(
     subject_id: uuid.UUID, user: VerifiedUser, session: DbSession
 ) -> list[VaultSessionOut]:
     found = session.scalar(
-        select(Subject.id).where(Subject.id == subject_id, Subject.user_id == user.id)
+        select(Subject.id).where(
+            Subject.id == subject_id, Subject.user_id == user.id, Subject.deleted_at.is_(None)
+        )
     )
     if found is None:
         raise _error(status.HTTP_404_NOT_FOUND, "subject_not_found")

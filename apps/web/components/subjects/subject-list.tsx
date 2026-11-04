@@ -5,7 +5,6 @@ import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 
 import { EmptyState } from "@/components/empty-state";
 import { FieldError } from "@/components/field-error";
 import { checkSubject, refusalErrors, type SubjectErrors, SubjectFields } from "@/components/subjects/subject-fields";
-import { SubjectMark } from "@/components/subject-mark";
 import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 import { Button } from "@/components/ui/button";
 import { NxList } from "@/components/ui/nx-list";
@@ -172,8 +171,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
     <li className="min-w-0 rounded-row bg-bg">
       {/* V22 (landing "nx"): a row of the subjects tile, letter | name + date line | "Sửa". The name
           wraps between words, never inside one. */}
-      <div className="grid min-h-12 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-2">
-        <SubjectMark name={subject.name} />
+      <div className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-2">
         <div className="flex min-w-0 flex-col">
           <a
             id={ids.name}
