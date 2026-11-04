@@ -45,8 +45,8 @@ export function MainNav({ current }: { current?: NavItem }) {
           href={href}
           aria-current={href === current ? "page" : undefined}
           className={cn(
-            "group relative flex min-h-11 min-w-16 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-chip font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink",
-            "min-[1024px]:h-10 min-[1024px]:flex-none min-[1024px]:flex-row min-[1024px]:justify-start min-[1024px]:gap-3 min-[1024px]:rounded-control min-[1024px]:px-3 min-[1024px]:text-body min-[1024px]:hover:bg-sunken",
+            "group relative flex min-h-11 min-w-16 flex-1 flex-col items-center justify-center gap-0.5 px-1 first:pl-3 last:pr-3 text-chip font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink",
+            "min-[1024px]:first:pl-3 min-[1024px]:last:pr-3 min-[1024px]:h-10 min-[1024px]:flex-none min-[1024px]:flex-row min-[1024px]:justify-start min-[1024px]:gap-3 min-[1024px]:rounded-control min-[1024px]:px-3 min-[1024px]:text-body min-[1024px]:hover:bg-sunken",
             // The current item: pink on the bar (with a dot), a sunken pill with a pink icon on the rail.
             "aria-[current=page]:font-semibold aria-[current=page]:text-hong min-[1024px]:aria-[current=page]:bg-sunken min-[1024px]:aria-[current=page]:text-ink min-[1024px]:aria-[current=page]:[&_svg]:text-hong",
             "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
