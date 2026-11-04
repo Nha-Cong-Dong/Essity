@@ -8,6 +8,7 @@ export const NAV = [
   { href: "/today", label: "Hôm nay" },
   { href: "/subjects", label: "Môn học" },
   { href: "/kho-kien-thuc", label: "Kho kiến thức" },
+  { href: "/graph", label: "Đồ thị" },
   { href: "/stats", label: "Thống kê" },
 ] as const;
 

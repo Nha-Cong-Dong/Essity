@@ -214,12 +214,14 @@ describe("the tray", () => {
 });
 
 describe("AC6: not a place to tend", () => {
-  // Red when: the main navigation or any shared shell links to the graph.
-  it("US-19 AC6: nothing in the main navigation links to /graph", async () => {
+  // V16 (04/11) reverses AC6: the graph is now a main-menu item. Shells and the account menu still
+  // do not link to it.
+  it("V16: the main navigation links to /graph; the shells do not", async () => {
     const { readFileSync } = await import("node:fs");
     const path = await import("node:path");
     const dir = path.resolve(import.meta.dirname, "..", "components");
-    for (const f of ["main-nav.tsx", "shells.tsx", "account-menu.tsx"]) {
+    expect(readFileSync(path.join(dir, "main-nav.tsx"), "utf-8")).toMatch(/"\/graph"/);
+    for (const f of ["shells.tsx", "account-menu.tsx"]) {
       expect(readFileSync(path.join(dir, f), "utf-8")).not.toMatch(/graph/i);
     }
   });
