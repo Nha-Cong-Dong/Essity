@@ -78,7 +78,7 @@ export function SubjectFields({
         label="Ngày thi"
         inputMode="numeric"
         autoComplete="off"
-        placeholder={example}
+        placeholder="ngày/tháng/năm"
         ref={dateInput}
         value={examDate}
         onChange={(event) => onExamDate(event.target.value)}
@@ -113,6 +113,7 @@ export function SubjectFields({
             />
           </div>
         )}
+        {!errors.examDate && <p className="m-0 text-meta text-ink-soft">Ví dụ: {example}</p>}
         {errors.examDate && <Message id={`${ids.date}-error`} code={errors.examDate} example={example} />}
       </AuthField>
     </>

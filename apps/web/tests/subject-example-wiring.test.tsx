@@ -43,7 +43,7 @@ describe("the pages pass the user's example (R24)", () => {
 
   // Red when: /subjects/new uses a fixed example or the server's (UTC) date.
   it("/subjects/new", async () => {
-    expect(await html(<NewSubjectPage />)).toContain('placeholder="15/12/2027"');
+    expect(await html(<NewSubjectPage />)).toMatch(/Ví dụ: (<!-- -->)?15\/12\/2027/);
   });
 
   // Red when: the list page hands no example (or a fixed one) to the edit forms.

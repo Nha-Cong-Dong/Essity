@@ -471,7 +471,7 @@ def chunk10(page_count: int) -> list[SyllabusNode]:
         end = min(start + CHUNK_PAGES, page_count)
         nodes.append(
             SyllabusNode(
-                title=f"Pages {start + 1}-{end}",
+                title=f"Trang {start + 1}–{end}",
                 level=0,
                 ord=order,
                 page_start=start + 1,

@@ -73,7 +73,7 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
         <div
           role="tablist"
           aria-label="Loại tài liệu"
-          className="mt-4 flex gap-1 overflow-x-auto border-b-2 border-rose-200"
+          className="mt-4 flex flex-wrap gap-1 border-b-2 border-rose-200"
         >
           {TABS.map((t) => (
             <button
