@@ -6409,6 +6409,47 @@
         "summary": "Confirm Upload"
       }
     },
+    "/v1/documents/{document_id}/reextract-outline": {
+      "post": {
+        "description": "Read the document's outline again (OUTLINE-FIX3): the same event as an upload goes to\nai-service, and its answer is laid over the outline the learner has worked on, keeping\ntheir progress, exclusions and edited ranges. The document shows as being read meanwhile.\n\nErrors: 404 `document_not_found` (another user's too); 409 `not_indexed` (not read yet,\nfailed, or already being read again); 429 once per document per 5 minutes.",
+        "operationId": "reextract_outline_v1_documents__document_id__reextract_outline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reextract Outline"
+      }
+    },
     "/v1/documents/{document_id}/toc": {
       "get": {
         "description": "The table of contents of an indexed document (US-02 AC2), read from its derived file.\n\nErrors: 404 `document_not_found` (another user's too); 409 `not_indexed`; 502 `toc_invalid`\n(the file is not JSON or too large); 503 `storage_unavailable`.",
