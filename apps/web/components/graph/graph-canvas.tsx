@@ -159,7 +159,7 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
         ref={host}
         aria-hidden="true"
         data-graph-canvas
-        className="h-[50vh] min-h-70 w-full touch-none overflow-hidden rounded-sheet border border-line bg-sheet"
+        className="h-[50vh] min-h-70 w-full touch-none overflow-hidden rounded-sheet bg-sheet shadow-sheet"
       />
       <div className="absolute right-2 bottom-2 flex gap-2">
         <button type="button" aria-label="Phóng to" className={ZOOM_BUTTON + " w-11"} onClick={() => zoomBy(1.3)}>

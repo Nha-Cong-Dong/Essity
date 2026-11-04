@@ -209,7 +209,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
         </Switch>
       </div>
 
-      <details className="mt-3 rounded-control border border-line px-3" data-kind-filter>
+      <details className="mt-3 rounded-control bg-sheet px-3 shadow-sheet" data-kind-filter>
         <summary className="flex h-11 cursor-pointer items-center text-caption font-semibold">
           Loại liên kết{kindsOff ? ` (${kinds.size}/${EDGE_KINDS.length})` : ""}
         </summary>

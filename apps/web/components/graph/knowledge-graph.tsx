@@ -146,7 +146,7 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
           ref={host}
           aria-label="Đồ thị tri thức"
           style={{ height }}
-          className="min-h-70 w-full touch-none overflow-hidden rounded-sheet border border-line bg-sheet"
+          className="min-h-70 w-full touch-none overflow-hidden rounded-sheet bg-sheet shadow-sheet"
         />
         <div className="absolute right-2 bottom-2 flex gap-2">
           <button type="button" aria-label="Phóng to" className={ZOOM} onClick={() => zoomBy(1.3)}>

@@ -34,7 +34,7 @@ async function Account() {
 }
 
 const LINK =
-  "block rounded-sheet border border-line border-t-4 border-t-hong p-5 text-ink no-underline hover:bg-rose-50";
+  "relative block rounded-sheet bg-sheet p-5 text-ink no-underline shadow-sheet hover:bg-rose-50";
 
 type View =
   | { level: "cards"; title: string; cards: VaultCard[] }
@@ -96,7 +96,7 @@ async function Vault({ searchParams }: { searchParams: Promise<Search> }) {
           <a href="/kho-kien-thuc" className="text-body text-ink-soft">
             ← Các môn
           </a>
-          <h1 className="m-0 font-display text-display">Các buổi học</h1>
+          <h1 className="m-0 font-display text-display">Các <span className="px-1" style={{ backgroundImage: "linear-gradient(to top, var(--hl-band) 35%, transparent 35%)" }}>buổi học</span></h1>
           {view.sessions.length === 0 ? (
             <EmptyState
               mascot="cho"
@@ -132,7 +132,7 @@ async function Vault({ searchParams }: { searchParams: Promise<Search> }) {
   }
   return (
     <div className="flex max-w-160 flex-col gap-4">
-      <h1 className="m-0 font-display text-display">Kho kiến thức</h1>
+      <h1 className="m-0 font-display text-display"><span className="px-1" style={{ backgroundImage: "linear-gradient(to top, var(--hl-band) 35%, transparent 35%)" }}>Kho</span> kiến thức</h1>
       {view.subjects.length === 0 ? (
         <EmptyState
           mascot="vui"
