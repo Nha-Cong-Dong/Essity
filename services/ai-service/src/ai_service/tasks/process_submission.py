@@ -77,12 +77,19 @@ from ai_service.messaging.session_result_v2 import (
     SessionResultV2,
     Skipped,
 )
-from ai_service.messaging.submission_context import SubmissionContext, parse_context
+from ai_service.messaging.submission_context import (
+    Mention,
+    OutlineDocument,
+    SubmissionContext,
+    parse_context,
+)
 from ai_service.pdf.pdfium_impl import open_pdf
 from ai_service.pdf.types import PdfError
 from ai_service.pptx.python_pptx_impl import read_pptx
 from ai_service.tasks import draft_units as draft_task
+from ai_service.tasks import merge_drafts as merge_task
 from ai_service.tasks import read_notes_image as read_task
+from ai_service.tasks import scope_resolve as scope_task
 from ai_service.tasks.chunk_units import (
     MAX_NOTES_CHARS,
     MAX_PAGE_CHARS,
@@ -228,7 +235,7 @@ class _Asker:
         self.event, self.run_id, self.payload = event, pipeline_run_id, payload
         self.calls = 0
 
-    def _call(self, prompt: ChunkPrompt | ReadPrompt) -> str:
+    def _call(self, prompt: "ChunkPrompt | ReadPrompt | _Pick") -> str:
         self.calls += 1
         images = (prompt.image,) if isinstance(prompt, ReadPrompt) else ()
         request = LlmRequest(
@@ -288,14 +295,16 @@ class ProcessSubmission:
         context = self._context(event)
         work = _Work()
         try:
-            pages = self._scope_pages(event, context, work)
             notes_parts = self._notes_parts(event, self.llm, work)
+            mentions = self._mentions(event, self.llm, context, notes_parts, work)
+            pages = self._scope_pages(event, mentions, work)
             if not pages and not notes_parts:
                 raise _Fail("unreadable", "nothing_readable")
             batches = _batches(pages, notes_parts)
             drafts = self._draft(event, self.llm, context, batches, work)
             if not drafts and work.malformed_batches:
                 raise _Fail("internal_error", "model_output")  # nothing usable: not a result
+            drafts, title = self._merge(event, self.llm, drafts)
         except _Fail:
             raise
         except (LlmUnavailableError, QuotaExceededError):
@@ -310,7 +319,7 @@ class ProcessSubmission:
             _log.exception("submission processing crashed")  # no text in exceptions (ADR-0013)
             raise _Fail("internal_error", "unexpected") from None
         try:
-            return self._dump(event, drafts, work)
+            return self._dump(event, drafts, work, title)
         except ValidationError:
             _log.error("result broke its own contract")
             raise _Fail("internal_error", "contract") from None
@@ -336,15 +345,86 @@ class ProcessSubmission:
 
     # --- the scope: pages of the mentioned documents -------------------------------------
 
+    def _mentions(
+        self,
+        event: SubmissionCreatedEvent,
+        llm: LlmClient,
+        context: SubmissionContext,
+        notes_parts: list[str],
+        work: _Work,
+    ) -> list[Mention]:
+        """The mentions with pages. One that names a document without positions is resolved
+        against the outline by number or title, else by one model call for the whole submission;
+        one that stays unresolved is left as it came (it is skipped, `no_text`, further on)."""
+        outline = {d.document_id: d for d in context.documents}
+        notes = "\n\n".join(notes_parts)
+        out: list[Mention] = []
+        unresolved: list[Mention] = []
+        for mention in context.mentions:
+            document = outline.get(mention.document_id)
+            if document is None or (mention.first_page and mention.last_page):
+                out.append(mention)
+                continue
+            if mention.section_id is not None:  # a section with no pages of its own
+                known = [s for s in document.sections if s.section_id == mention.section_id]
+                found = known
+            else:
+                found = scope_task.match_by_text(document, context.description, notes)
+            scopes = [sc for s in found if (sc := scope_task.scope_of(document, s))]
+            if scopes:
+                out.extend(_mention_of(sc) for sc in scopes)
+            else:
+                unresolved.append(mention)
+        if not unresolved:
+            return out
+        picked = self._pick(
+            event, llm, context, notes, [outline[m.document_id] for m in unresolved]
+        )
+        scopes = [sc for doc, s in picked if (sc := scope_task.scope_of(doc, s))]
+        if scopes:
+            out.extend(_mention_of(sc) for sc in scopes)
+        else:
+            out.append(unresolved[0])  # leaves its `no_text` skip: the result says so
+        return out
+
+    def _pick(
+        self,
+        event: SubmissionCreatedEvent,
+        llm: LlmClient,
+        context: SubmissionContext,
+        notes: str,
+        documents: list[OutlineDocument],
+    ) -> list[scope_task.Picked]:
+        unique = list({d.document_id: d for d in documents}.values())
+        prompt = scope_task.build_pick_prompt(unique, context.description, notes)
+        if prompt is None:
+            return []
+        run_id = self._start_run(event, scope_task.TASK, prompt)
+        asker = _Asker(
+            llm,
+            task="pick_sections",
+            version=prompt.version,
+            event=event,
+            pipeline_run_id=run_id,
+            payload={"outline": prompt.outline, "note": prompt.words},
+        )
+        try:
+            text = asker(_Pick(prompt.system, prompt.user))
+        except BaseException as error:
+            self._finish_run(run_id, _code(error))
+            raise
+        self._finish_run(run_id, None)
+        return scope_task.check_pick(text, prompt)
+
     def _scope_pages(
-        self, event: SubmissionCreatedEvent, context: SubmissionContext, work: _Work
+        self, event: SubmissionCreatedEvent, mentions: list[Mention], work: _Work
     ) -> list[_Page]:
         owner = f"users/{event.user_id}/"
         subject = f"{owner}subjects/{event.payload.subject_id}"
         by_doc: dict[uuid.UUID, dict[int, str] | None] = {}
         pages: dict[tuple[uuid.UUID, int], _Page] = {}
         truncated = False
-        for mention in context.mentions:
+        for mention in mentions:
             if mention.first_page is None or mention.last_page is None:
                 work.skip("page", 0, "no_text")  # no positions: nothing to read, nothing guessed
                 continue
@@ -619,13 +699,92 @@ class ProcessSubmission:
 
     # --- the result file ----------------------------------------------------------------
 
-    def _dump(self, event: SubmissionCreatedEvent, drafts: list[Draft], work: _Work) -> bytes:
+    def _merge(
+        self, event: SubmissionCreatedEvent, llm: LlmClient, drafts: list[Draft]
+    ) -> tuple[list[Draft], str | None]:
+        """The drafts with the ones that say the same thing made into one, and the session's
+        title by topic. One model call when there are two drafts or more; a failure of it leaves
+        the drafts as they are (`merge_drafts`)."""
+        if not drafts:
+            return drafts, None
+        fallback = merge_task.clean_title(drafts[0].title)
+        if len(drafts) < 2:
+            return drafts, fallback
+        prompt = merge_task.build_prompt(drafts)
+        if prompt is None:
+            return drafts, fallback
+        cache_key = self._merge_key(event, prompt)
+        cached = self._load_text(cache_key)
+        if cached is not None:  # a retry after a failure further on pays nothing twice
+            groups, title = merge_task.parse_answer(cached, prompt)
+            return merge_task.apply_groups(drafts, groups), title or fallback
+        run_id = self._start_run(event, merge_task.TASK, prompt)
+        asker = _Asker(
+            llm,
+            task="merge_drafts",
+            version=prompt.version,
+            event=event,
+            pipeline_run_id=run_id,
+            payload={"candidates": prompt.candidates},
+        )
+        try:
+            text = asker(_Pick(prompt.system, prompt.user, merge_task.OUTPUT_SCHEMA))
+        except (LlmUnavailableError, QuotaExceededError):
+            self._finish_run(run_id, "llm_unavailable")
+            return drafts, fallback  # a merge is a convenience: never lose the cards for it
+        except BaseException as error:
+            self._finish_run(run_id, _code(error))
+            raise
+        self._finish_run(run_id, None)
+        self._save_text(cache_key, text)
+        groups, title = merge_task.parse_answer(text, prompt)
+        return merge_task.apply_groups(drafts, groups), title or fallback
+
+    def _merge_key(self, event: SubmissionCreatedEvent, prompt: merge_task.MergePrompt) -> str:
+        digest = hashlib.sha256(json.dumps(prompt.candidates).encode()).hexdigest()[:32]
+        return (
+            f"users/{event.user_id}/derived/submission/{event.payload.submission_id}/"
+            f"merge-{prompt.version}-{digest}.json"
+        )
+
+    def _load_text(self, key: str) -> str | None:
+        try:
+            text = json.loads(self.storage.get(key, max_bytes=MAX_CACHED_BYTES))["text"]
+        except (ObjectNotFound, ObjectTooLarge, ValueError, KeyError, TypeError):
+            return None
+        except StorageUnavailable:
+            raise Deferred from None
+        return text if isinstance(text, str) else None
+
+    def _save_text(self, key: str, text: str) -> None:
+        try:
+            self.storage.put(
+                key, json.dumps({"text": text}, ensure_ascii=False).encode(), content_type=_JSON
+            )
+        except StorageUnavailable:
+            raise Deferred from None
+
+    def _dump(
+        self,
+        event: SubmissionCreatedEvent,
+        drafts: list[Draft],
+        work: _Work,
+        title: str | None,
+    ) -> bytes:
+        session_id = event.payload.study_session_id
+        keyed = [dataclasses.replace(d, draft_key=merge_task.key_of(session_id, d)) for d in drafts]
+        extra: dict[str, Any] = {}
+        if title:
+            extra["title"] = title
+        if not keyed:
+            extra["notice"] = "no_content_found"
         result = SessionResultV2(
             version=2,
-            study_session_id=event.payload.study_session_id,
-            drafts=[_wire(d) for d in drafts],
+            study_session_id=session_id,
+            drafts=[_wire(d) for d in keyed],
             dropped=WireDropped(anchors=work.dropped_anchors, drafts=work.dropped_drafts),
             skipped=work.skipped,
+            **extra,
         )
         return result.model_dump_json(exclude_unset=True).encode()
 
@@ -735,6 +894,24 @@ def _office_or_text(mime: str, raw: bytes) -> str | None:
     except Exception:  # the readers' errors name the file; "unreadable" is enough
         return None
     return None
+
+
+@dataclass(frozen=True)
+class _Pick:
+    """What `_Asker` reads of a prompt."""
+
+    system: str
+    user: str
+    output_schema: dict[str, Any] = field(default_factory=lambda: scope_task.OUTPUT_SCHEMA)
+
+
+def _mention_of(scope: scope_task.Scope) -> Mention:
+    return Mention(
+        document_id=scope.document_id,
+        section_id=scope.section_id,
+        first_page=scope.first_page,
+        last_page=scope.last_page,
+    )
 
 
 def _chunk_notes(parts: list[str]) -> list[tuple[int, str]]:

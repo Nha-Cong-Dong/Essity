@@ -23,6 +23,8 @@ Task = Literal[
     "generate_like",
     "judge_questions",
     "propose_edges",
+    "pick_sections",
+    "merge_drafts",
 ]
 # The providers a call can go to (CHECK provider_known on llm_call).
 ProviderName = Literal["anthropic", "fake"]
@@ -41,6 +43,8 @@ TASKS: tuple[Task, ...] = (
     "generate_like",
     "judge_questions",
     "propose_edges",
+    "pick_sections",
+    "merge_drafts",
 )
 
 
