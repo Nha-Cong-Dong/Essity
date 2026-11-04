@@ -2224,6 +2224,21 @@
             "title": "Remaining Chapters",
             "type": "integer"
           },
+          "reread": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pending",
+                  "failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reread"
+          },
           "sections": {
             "items": {
               "$ref": "#/components/schemas/SectionOut"

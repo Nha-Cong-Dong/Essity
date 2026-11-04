@@ -2334,6 +2334,8 @@ export interface components {
             reason: ("no_textbook" | "not_indexed" | "no_outline") | null;
             /** Remaining Chapters */
             remaining_chapters: number;
+            /** Reread */
+            reread?: ("pending" | "failed") | null;
             /** Sections */
             sections: components["schemas"]["SectionOut"][];
             /**
