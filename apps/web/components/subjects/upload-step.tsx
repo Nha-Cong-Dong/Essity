@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 
 import { AUTH_LINK } from "@/components/auth/fields";
 import { Mascot } from "@/components/mascot";
+import { OutlineCard } from "@/components/subjects/outline-card";
 import { StepIndicator } from "@/components/subjects/step-indicator";
 import { Uploader } from "@/components/subjects/uploader";
 import { Button } from "@/components/ui/button";
@@ -68,10 +69,11 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
             <Mascot pose="chuanbi" size="sm" />
           </div>
         </div>
+        <h2 className="m-0 mt-6 font-display text-lead">2. Tài liệu</h2>
         <div
           role="tablist"
           aria-label="Loại tài liệu"
-          className="mt-6 flex gap-1 overflow-x-auto rounded-full bg-sunken p-1"
+          className="mt-4 flex gap-1 overflow-x-auto border-b-2 border-rose-200"
         >
           {TABS.map((t) => (
             <button
@@ -82,8 +84,9 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
               aria-selected={tab === t.role}
               aria-controls={`panel-${t.role}`}
               onClick={() => setTab(t.role)}
-              className={`min-h-11 shrink-0 rounded-full px-4 text-read whitespace-nowrap ${
-                tab === t.role ? "bg-sheet font-semibold text-ink shadow-sheet" : "font-medium text-ink-soft"
+              style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}
+              className={`-mb-0.5 min-h-11 shrink-0 rounded-tile border-b-4 px-4 text-read whitespace-nowrap ${
+                tab === t.role ? "border-hong bg-sheet font-semibold text-ink" : "border-transparent bg-rose-100 font-medium text-ink-soft"
               }`}
             >
               {t.label}
@@ -97,8 +100,9 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
             <Uploader subjectId={subjectId} hasMain={hasMain} fixedRole={t.role} onCount={handlers[t.role]} />
           </div>
         ))}
-        <div className="mt-8 flex justify-end max-[1023px]:sticky max-[1023px]:bottom-0 max-[1023px]:bg-sheet max-[1023px]:py-3">{enter}</div>
       </Sheet>
+      <OutlineCard />
+      <div className="flex justify-end max-[1023px]:sticky max-[1023px]:bottom-0 max-[1023px]:bg-ground max-[1023px]:py-3">{enter}</div>
     </section>
   );
 }
