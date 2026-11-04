@@ -105,11 +105,9 @@
 /* --- Marker: vệt bút dạ quang dưới chữ --------------------------------------------------------- */
 
 .marker {
-  padding: 0 0.06em;
-  background-image: linear-gradient(100deg, transparent 1%, var(--hl) 3%, var(--hl) 95%, transparent 98%);
-  background-position: 0 86%;
-  background-repeat: no-repeat;
-  background-size: 100% 34%;
+  padding: 0 0.08em;
+  border-radius: 2px;
+  box-shadow: inset 0 -0.28em 0 var(--hl-band);
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
