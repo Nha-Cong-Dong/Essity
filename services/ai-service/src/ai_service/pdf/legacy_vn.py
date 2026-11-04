@@ -44,10 +44,12 @@ def looks_tcvn3(text: str) -> bool:
     return markers >= _MIN_MARKERS and markers / letters >= _MIN_SHARE
 
 
-# In the fonts seen so far the glyphs of "c", "e-acute" and "u-dot" have no Unicode mapping and come
-# out as control characters: a lone CR (not a CR LF line break), U+001C and U+001D.
+# In the fonts seen so far the glyphs of "c", "e-acute", "u-dot" and the capital U-horn have no
+# Unicode mapping and come out as control characters: a lone CR (not a CR LF line break), U+001C,
+# U+001D and U+0019.
 _LONE_CR = re.compile(r"\r(?!\n)")
-_CONTROL = {0x1C: "é", 0x1D: "ụ"}
+_CAPITAL_U_HORN = {0x19: "Ư"}
+_CONTROL = {**_CAPITAL_U_HORN, 0x1C: "é", 0x1D: "ụ"}
 _MIN_LONE_CR = 5
 
 
@@ -59,4 +61,4 @@ def fix_tcvn3(text: str) -> str:
         text = _LONE_CR.sub("c", text)
         # _CONTROL after _MAP: the e-acute it writes is itself a TCVN3 key.
         return text.translate(_MAP).translate(_CONTROL)
-    return text.translate(_MAP)
+    return text.translate(_MAP).translate(_CAPITAL_U_HORN)
