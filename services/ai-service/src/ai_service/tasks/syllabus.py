@@ -174,8 +174,27 @@ def load_prompt(version: str = PROMPT_VERSION) -> Prompt:
 _Heading = tuple[str, int, int]
 
 
+# The extractor loses the U-horn before "ớc" / "ơng": "ớc lượng" for "Ước lượng". No Vietnamese
+# word is spelled "ớc" or "ơng", so a word that is exactly that has lost its first letter.
+_LOST_U_HORN = re.compile(r"(?<!\w)(?P<word>[ớỚ]c|[ơƠ]ng)(?!\w)")
+
+
+_TITLE_LEAD = re.compile(
+    r"^(?:(?:ch\S{0,4}ng|chapter|ph\S{0,2}n|part)\s+)?[\d.ivxIVX]*[.:)]?\s*$", re.I
+)
+
+
+def _restore_u_horn(title: str) -> str:
+    def fix(found: re.Match[str]) -> str:
+        word = found.group("word")
+        starts_title = _TITLE_LEAD.match(title[: found.start()]) is not None
+        return ("Ư" if word[0].isupper() or starts_title else "ư") + word
+
+    return _LOST_U_HORN.sub(fix, title)
+
+
 def _single_line(title: str) -> str:
-    return re.sub(r"\s+", " ", title).strip()[:MAX_TITLE_CHARS]
+    return _restore_u_horn(re.sub(r"\s+", " ", title).strip()[:MAX_TITLE_CHARS])
 
 
 def _tidy(headings: Sequence[_Heading], page_count: int) -> list[_Heading]:
@@ -200,13 +219,11 @@ def _tidy(headings: Sequence[_Heading], page_count: int) -> list[_Heading]:
     for heading in reversed(fixed):
         following = result[-1] if result else None
         if following and following[2] == heading[2] and following[1] <= heading[1]:
-            # Sibling sections on one page (1.1.2 and 1.1.3 both start on page 4) own that page
-            # together. The title of the dropped one joins the kept one, so no section vanishes
-            # from the outline; a chapter sharing a page is dropped as before.
-            if following[1] == heading[1] and heading[1] >= 1:
-                merged = _single_line(f"{heading[0]} · {following[0]}")
-                result[-1] = (merged, following[1], following[2])
-            continue
+            # Sibling sections on one page (1.1.2 and 1.1.3 both start on page 4) each keep their
+            # own node and title: _tree gives the earlier one that single page. A chapter (or a
+            # heading above the later one) sharing a page is dropped as before.
+            if not (following[1] == heading[1] and heading[1] >= 1):
+                continue
         result.append(heading)
     result.reverse()
     return result
@@ -228,6 +245,8 @@ def _tree(headings: Sequence[_Heading], page_count: int, source: Source) -> list
             if later[1] <= level:
                 end = later[2]
                 break
+        # A sibling starting on the same page leaves this section that one page (shared).
+        end = max(end, start + 1)
         drafts.append((title, level, start, end))
         if index + 1 < n and items[index + 1][1] > level and items[index + 1][2] > start:
             drafts.append((title, level + 1, start, items[index + 1][2]))
@@ -464,10 +483,17 @@ def _tiles(nodes: Sequence[SyllabusNode], page_count: int) -> bool:
         n for i, n in enumerate(nodes) if i + 1 == len(nodes) or nodes[i + 1].level <= n.level
     ]
     expected = 1
+    previous: SyllabusNode | None = None
     for leaf in leaves:
-        if leaf.page_start != expected:
+        # A one-page section may share its page with the next one (both start there).
+        shared = (
+            previous is not None
+            and previous.page_start == previous.page_end == leaf.page_start == expected - 1
+        )
+        if leaf.page_start != expected and not shared:
             return False
-        expected = leaf.page_end + 1
+        expected = max(expected, leaf.page_end + 1)
+        previous = leaf
     return expected == page_count + 1
 
 

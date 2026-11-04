@@ -26,3 +26,12 @@ def test_lost_glyphs_come_back_as_c_e_acute_and_u_dot() -> None:
     out = fix_tcvn3(text)
     assert "các định lý, phép, Mục, tích, xác" in out
     assert out.endswith("\r\n")
+
+
+def test_lost_capital_u_horn_comes_back() -> None:
+    # Seen in a real textbook: the capital U-horn has no Unicode mapping and is U+0019, so
+    # "Ước lượng" and "Ưu điểm" lost their first letter downstream.
+    text = "Ch­¬ng 4. \x19í\r l­îng tham sè. \x19u ®iÓm, ph­¬ng ph¸p\r\n" * 6
+    out = fix_tcvn3(text)
+    assert "Chương 4. Ước lượng tham số. Ưu điểm" in out
+    assert "\x19" not in out

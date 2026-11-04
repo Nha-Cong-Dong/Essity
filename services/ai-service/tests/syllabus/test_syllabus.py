@@ -40,11 +40,15 @@ def _leaves(nodes: list[SyllabusNode]) -> list[SyllabusNode]:
 def _assert_tiles(nodes: list[SyllabusNode], page_count: int) -> None:
     leaves = _leaves(nodes)
     assert leaves[0].page_start == 1 and leaves[-1].page_end == page_count
+    shared = 0
     for a, b in zip(leaves, leaves[1:], strict=False):
-        assert b.page_start == a.page_end + 1
+        if b.page_start == a.page_end and a.page_start == a.page_end:
+            shared += 1  # sibling sections starting on one page: the earlier keeps that page
+        else:
+            assert b.page_start == a.page_end + 1
     assert all(n.page_start <= n.page_end and n.weight >= 1 for n in nodes)
     assert all(n.weight == n.page_end - n.page_start + 1 for n in nodes)
-    assert sum(n.weight for n in leaves) == page_count
+    assert sum(n.weight for n in leaves) == page_count + shared
     assert [n.ord for n in nodes] == list(range(len(nodes)))
     assert all(n.unit == "page" for n in nodes)
 

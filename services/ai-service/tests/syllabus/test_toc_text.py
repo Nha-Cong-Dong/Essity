@@ -100,4 +100,52 @@ def test_sections_sharing_a_page_all_stay_in_the_outline() -> None:
     for number in ("1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7"):
         assert number in text, number
     leaves = [n for n in nodes if not any(m.ord == n.ord + 1 and m.level > n.level for m in nodes)]
-    assert sum(n.weight for n in leaves) == 10  # still tiles every page once
+    assert min(n.page_start for n in leaves) == 1 and max(n.page_end for n in leaves) == 10
+
+
+def test_same_page_sections_keep_their_own_titles_and_never_run_backwards() -> None:
+    """4.2.1 and 4.2.2 start on one page: two nodes, no joined title, no page_end below
+    page_start, and every page is still covered."""
+    toc = "\n".join(
+        [
+            "Mục lục",
+            "Chương 4. Ước lượng tham số . . . . . . . . . . . 3",
+            "4.2.1. Khái niệm . . . . . . . . . . . . . . . . . 4",
+            "4.2.2. Ước lượng kỳ vọng toán . . . . . . . . . . 4",
+            "4.2.3. Ước lượng tỷ lệ . . . . . . . . . . . . . . 6",
+            "4.2.4. Bài tập . . . . . . . . . . . . . . . . . . 8",
+        ]
+    )
+    nodes = build_syllabus(10, [], _pages("Bìa", toc, *["x"] * 8), _no_ask)
+    assert {n.source for n in nodes} == {"toc_text"}
+    assert not any("·" in n.title for n in nodes)
+    by_title = {n.title: n for n in nodes}
+    first = by_title["4.2.1. Khái niệm"]
+    second = by_title["4.2.2. Ước lượng kỳ vọng toán"]
+    assert first.page_start == second.page_start
+    assert first.page_end >= first.page_start and first.weight >= 1
+    assert second.page_end == 5
+    assert all(n.page_end >= n.page_start and n.weight >= 1 for n in nodes)
+    leaves = [n for n in nodes if not any(m.ord == n.ord + 1 and m.level > n.level for m in nodes)]
+    assert min(n.page_start for n in leaves) == 1 and max(n.page_end for n in leaves) == 10
+
+
+def test_a_lost_capital_u_horn_is_restored_in_titles() -> None:
+    """The extractor drops U-horn before "ớc": "Chương 4. ớc lượng tham số" for "Ước lượng"."""
+    toc = "\n".join(
+        [
+            "Mục lục",
+            "Chương 3. Mẫu . . . . . . . . . . . . . . . . . . 3",
+            "3.1. Khái niệm . . . . . . . . . . . . . . . . . . 3",
+            "Chương 4. ớc lượng tham số . . . . . . . . . . . . 5",
+            "4.2.3. ớc lượng tỷ lệ . . . . . . . . . . . . . . . 6",
+            "4.2.4. Phép ớc lượng . . . . . . . . . . . . . . . . 8",
+            "Chương 5. Đường và Ơ-clit . . . . . . . . . . . . . 9",
+        ]
+    )
+    nodes = build_syllabus(10, [], _pages("Bìa", toc, *["x"] * 8), _no_ask)
+    titles = [n.title for n in nodes]
+    assert "Chương 4. Ước lượng tham số" in titles
+    assert "4.2.3. Ước lượng tỷ lệ" in titles
+    assert "4.2.4. Phép ước lượng" in titles
+    assert "Chương 5. Đường và Ơ-clit" in titles
