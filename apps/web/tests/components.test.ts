@@ -33,14 +33,13 @@ describe("Button (§4.1)", () => {
     expect(classes).toMatch(/disabled:translate-y-0/);
   });
 
-  it("V22: the secondary button is sunken, no border", () => {
-    expect(buttonVariants({ variant: "secondary" })).toMatch(/bg-sunken/);
-    expect(buttonVariants({ variant: "secondary" })).not.toMatch(/ring|border/);
+  it("the secondary border is line-strong (3:1), drawn inside", () => {
+    expect(buttonVariants({ variant: "secondary" })).toMatch(/inset-ring-line-strong/);
   });
 
-  it("lg is 56px, md 48px (44 from 640px)", () => {
-    expect(buttonVariants({ variant: "primary", size: "lg" })).toMatch(/\bh-14\b/);
-    expect(buttonVariants({ variant: "primary" })).toMatch(/\bh-12\b/);
+  it("lg is 60px, md 52px", () => {
+    expect(buttonVariants({ variant: "primary", size: "lg" })).toMatch(/\bh-15\b/);
+    expect(buttonVariants({ variant: "primary" })).toMatch(/\bh-13\b/);
   });
 
   it("a pending button is busy, cannot be pressed twice, and keeps focus (review of 4b86dc4)", () => {
@@ -81,8 +80,8 @@ describe("Input (§4.2)", () => {
     expect(classes).toMatch(/focus-visible:outline-focus/);
   });
 
-  it("is a 48px box with the control radius and a line-strong border", () => {
-    expect(markup()).toMatch(/\bh-12\b/);
+  it("is a 52px box with the control radius and a line-strong border", () => {
+    expect(markup()).toMatch(/\bh-13\b/);
     expect(markup()).toMatch(/\brounded-control\b/);
     expect(markup()).toMatch(/\bborder-line-strong\b/);
   });
@@ -105,24 +104,24 @@ describe("Label", () => {
 
 describe("Sheet and Tile (§4.3)", () => {
   it.each([
-    ["sheet", /rounded-card/, /border-line/],
+    ["sheet", /rounded-tile/, /border-line/],
     ["over", /rounded-sheet/, /shadow-over/],
-    ["sunken", /rounded-card/, /bg-sunken/],
-    ["tile", /rounded-card/, /border-line/],
+    ["sunken", /rounded-tile/, /bg-sunken/],
+    ["tile", /rounded-tile/, /border-line/],
   ] as const)("%s", (variant, radius, surface) => {
     const markup = html(h(Sheet, { variant }, "x"));
     expect(markup).toMatch(radius);
     expect(markup).toMatch(surface);
   });
 
-  it("a pink tile is the main sheet (flat tint)", () => {
+  it("a pink tile is the flat --hong-tint tile (V22)", () => {
     expect(html(h(Sheet, { variant: "tile", tone: "hong" }, "x"))).toContain('data-surface="hong"');
   });
 
-  it("a rose tile is the main sheet: tint, r24, no border", () => {
+  it("a rose tile is the --hong-tint tile: no border, no shadow", () => {
     const markup = html(h(Sheet, { variant: "tile", tone: "rose" }, "x"));
     expect(markup).toMatch(/bg-hong-tint/);
-    expect(markup).toMatch(/rounded-sheet/);
+    expect(markup).not.toMatch(/shadow/);
   });
 
   it("Card is gone: Sheet replaces it", () => {

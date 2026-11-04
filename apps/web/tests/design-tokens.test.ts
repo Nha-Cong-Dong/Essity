@@ -21,10 +21,12 @@ const TEXT: Record<Mode, Pair[]> = {
     ["--on-hong", "--hong"],
     ["--hong", "--on-hong"],
     ["--bg", "--ink"],
-    // V22: the main sheet and the page.
-    ...["--hong-tint", "--sunken"].map((bg): Pair => ["--ink", bg]),
-    ...["--hong-tint", "--sunken"].map((bg): Pair => ["--ink-soft", bg]),
+    // V22: the --hong-tint tile and the cam "suggested" row (cam 15% over --bg is --cam-row).
+    ["--ink", "--hong-tint"],
+    ["--ink-soft", "--hong-tint"],
     ["--hong", "--hong-tint"],
+    ["--cam", "--bg"],
+    ["--cam", "--hong-tint"],
   ],
   dark: [
     ...["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200", "--cover", "--hl-stroke"].map(
@@ -43,9 +45,11 @@ const TEXT: Record<Mode, Pair[]> = {
     ["--on-hong", "--hong"],
     ["--hong", "--on-hong"],
     ["--bg", "--ink"],
-    ...["--hong-tint"].map((bg): Pair => ["--ink", bg]),
-    ...["--hong-tint"].map((bg): Pair => ["--ink-soft", bg]),
+    ["--ink", "--hong-tint"],
+    ["--ink-soft", "--hong-tint"],
     ["--hong", "--hong-tint"],
+    ["--cam", "--bg"],
+    ["--cam", "--hong-tint"],
   ],
 };
 
@@ -86,7 +90,8 @@ const FORBIDDEN: Record<Mode, Pair[]> = {
   ],
   dark: [
     ["--hong", "--hl", "--bg"],
-      ],
+    ["--line-strong", "--cover"],
+  ],
 };
 
 const label = ([fg, bg, base]: Pair) => `${fg} on ${bg}${base ? ` over ${base}` : ""}`;
@@ -111,9 +116,9 @@ describe.each(["light", "dark"] as const)("%s palette", (mode) => {
   );
 });
 
-// V22: the "pink" surface is the flat --hong-tint now: text and focus on it, and the highlighter
-// (--hl) under ink, which is what the one motif is made of.
-describe.each(["light", "dark"] as const)("%s main sheet", (mode) => {
+// V22: the "pink" surface is the flat --hong-tint tile (the landing's nx lists): text and focus on
+// it, and the highlighter (--hl, --hl-band) under ink, which is what the one motif is made of.
+describe.each(["light", "dark"] as const)("%s tile", (mode) => {
   it.each([
     ["--on-surface-hong", 4.5],
     ["--hong-soft-text", 4.5],
@@ -122,9 +127,14 @@ describe.each(["light", "dark"] as const)("%s main sheet", (mode) => {
     expect(contrast(palette(mode), fg, "--hong-tint")).toBeGreaterThanOrEqual(limit);
   });
   it("--ink reads on the highlighter band under an h1 phrase (≥ 4.5)", () => {
-    const base = mode === "light" ? "--bg" : "--bg";
-    expect(contrast(palette(mode), "--ink", "--hl", base)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(palette(mode), "--ink", "--hl-band", base)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(palette(mode), "--ink", "--hl", "--bg")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(palette(mode), "--ink", "--hl-band", "--bg")).toBeGreaterThanOrEqual(4.5);
+  });
+  it("the cam row (cam 15% over --bg) keeps its text and its --cam label readable", () => {
+    const t = palette(mode);
+    const row = mode === "light" ? "#f4e5dc" : "#32231f";
+    expect(contrastOn(t, "--ink", row)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastOn(t, "--cam", row)).toBeGreaterThanOrEqual(4.5);
   });
 });
 
@@ -137,16 +147,16 @@ describe.each(["light", "dark"] as const)("%s primary-inverse", (mode) => {
 describe("token tables", () => {
   it("checks the number of pairs it means to (a dropped pair fails here)", () => {
     const count = (table: Record<Mode, Pair[]>) => table.light.length + table.dark.length;
-    expect([count(TEXT), count(EDGES), count(FORBIDDEN)]).toEqual([87, 30, 4]);
+    expect([count(TEXT), count(EDGES), count(FORBIDDEN)]).toEqual([89, 30, 5]);
   });
 
   it("matches the spec on a few exact values, to catch a mistyped hex", () => {
     const light = palette("light");
     const dark = palette("dark");
-    expect(contrast(light, "--hong", "--bg")).toBeCloseTo(6.29, 1);
-    expect(contrast(light, "--ink", "--hl")).toBeCloseTo(8.95, 1);
-    expect(contrast(dark, "--hong", "--bg")).toBeCloseTo(8.3, 1);
-    expect(contrast(dark, "--ink", "--hl", "--bg")).toBeCloseTo(8.44, 1);
+    expect(contrast(light, "--hong", "--bg")).toBeCloseTo(6.79, 1);
+    expect(contrast(light, "--ink", "--hl")).toBeCloseTo(8.83, 1);
+    expect(contrast(dark, "--hong", "--bg")).toBeCloseTo(8.17, 1);
+    expect(contrast(dark, "--ink", "--hl", "--bg")).toBeCloseTo(8.24, 1);
   });
 });
 
@@ -159,9 +169,9 @@ describe("palette copies", () => {
     expect(Object.keys(palette("dark")).sort()).toEqual(Object.keys(palette("light")).sort());
   });
 
-  it("no orange and no --right are left", () => {
+  it("no --right is left; --cam is the one second colour (V22 decisions #9)", () => {
     for (const mode of ["light", "dark"] as const) {
-      expect(Object.keys(palette(mode))).not.toContain("--cam");
+      expect(Object.keys(palette(mode))).toContain("--cam");
       expect(Object.keys(palette(mode))).not.toContain("--right");
     }
   });

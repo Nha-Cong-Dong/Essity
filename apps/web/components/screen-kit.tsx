@@ -103,13 +103,11 @@ export function FeatureTile({
   );
 }
 
-/** A section's heading with the highlighter band under the words, as the landing's. */
+/** A section's heading (V22: plain; the highlighter belongs to the h1 of a screen only). */
 export function SectionHead({ title, aside }: { title: ReactNode; aside?: ReactNode }) {
   return (
     <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-      <h2 className="m-0 font-display text-lead">
-        <span className="px-1" style={{ backgroundImage: "linear-gradient(to top, var(--hl-band) 35%, transparent 35%)" }}>{title}</span>
-      </h2>
+      <h2 className="m-0 font-display text-lead">{title}</h2>
       {aside ? <div className="text-meta text-ink-soft">{aside}</div> : null}
     </div>
   );
@@ -121,5 +119,129 @@ export function RevealStack({ children, className }: { children: ReactNode; clas
     <div data-reveal className={className}>
       {children}
     </div>
+  );
+}
+
+/**
+ * The head of a screen (V22): an optional breadcrumb, the h1 with the one highlighter
+ * band under `highlight` (a phrase of the title, once per screen, none on deep screens), a one-line
+ * conclusion under it and a primary action on the right. The h1 breaks between words only.
+ */
+export function ScreenHeader({
+  title,
+  highlight,
+  crumb,
+  lede,
+  action,
+  className,
+}: {
+  title: string;
+  /** A phrase inside `title`; omit it on deep screens (syllabus, practice, graph, forms). */
+  highlight?: string;
+  crumb?: ReactNode;
+  lede?: ReactNode;
+  action?: ReactNode;
+  className?: string;
+}) {
+  const at = highlight ? title.indexOf(highlight) : -1;
+  return (
+    <header className={cn("mb-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-4 min-[1024px]:mb-8", className)}>
+      <div className="flex min-w-0 flex-1 basis-80 flex-col gap-2">
+        {crumb ? <p className="m-0 text-meta text-ink-soft">{crumb}</p> : null}
+        <h1 className="m-0 text-title tracking-tight text-balance [overflow-wrap:normal] [word-break:normal] hyphens-manual">
+          {at < 0 ? (
+            title
+          ) : (
+            <>
+              {title.slice(0, at)}
+              <span data-motif="hl-word" className="hl-word">
+                {highlight}
+              </span>
+              {title.slice(at + (highlight?.length ?? 0))}
+            </>
+          )}
+        </h1>
+        {lede ? <p className="m-0 max-w-prose text-body text-ink-soft">{lede}</p> : null}
+      </div>
+      {action ? <div className="max-sm:w-full">{action}</div> : null}
+    </header>
+  );
+}
+
+/**
+ * A figure (V22): the label above in meta, the number in the display face, an optional unit beside it.
+ * Without data show "—" and a short line, never "chưa có" at figure size. No background: several
+ * Stats sit in one card divided by 1px lines.
+ */
+export function Stat({
+  label,
+  value,
+  unit,
+  hint,
+  size = "stat",
+  className,
+}: {
+  label: ReactNode;
+  /** `null` draws "—" at body size. */
+  value: ReactNode | null;
+  unit?: ReactNode;
+  hint?: ReactNode;
+  /** `display` is the one big number of a screen (64, mobile 44). */
+  size?: "stat" | "display";
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
+      <span className="text-meta text-ink-soft">{label}</span>
+      {value === null ? (
+        <span className="text-body text-ink-soft">—</span>
+      ) : (
+        <span className="flex items-baseline gap-2">
+          <span className={size === "display" ? "text-display" : "text-verdict"}>{value}</span>
+          {unit ? <span className="text-meta text-ink-soft">{unit}</span> : null}
+        </span>
+      )}
+      {hint ? <span className="text-meta text-ink-soft">{hint}</span> : null}
+    </div>
+  );
+}
+
+/**
+ * A list row (V22): a fixed 36px lead cell, a title and a meta line, a trailing slot; 56px high
+ * (64 with a meta line), divided from the next by a 1px line inside its card, no zebra. With `href`
+ * the whole row is the link and hovers to --sunken.
+ */
+export function Row({
+  lead,
+  title,
+  meta,
+  trailing,
+  href,
+  className,
+}: {
+  lead?: ReactNode;
+  title: ReactNode;
+  meta?: ReactNode;
+  trailing?: ReactNode;
+  href?: string;
+  className?: string;
+}) {
+  const body = (
+    <>
+      <span className="flex size-9 shrink-0 items-center justify-center">{lead}</span>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="text-body font-semibold break-words">{title}</span>
+        {meta ? <span className="text-meta text-ink-soft break-words">{meta}</span> : null}
+      </span>
+      {trailing ? <span className="shrink-0 text-meta text-ink-soft">{trailing}</span> : null}
+    </>
+  );
+  const cls = cn("flex items-center gap-3 border-b border-line py-2 last:border-b-0", meta ? "min-h-16" : "min-h-14", className);
+  return href ? (
+    <a href={href} className={cn(cls, "text-ink no-underline hover:bg-sunken")}>
+      {body}
+    </a>
+  ) : (
+    <div className={cls}>{body}</div>
   );
 }

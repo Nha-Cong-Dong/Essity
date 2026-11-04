@@ -41,8 +41,15 @@ describe("design rules", () => {
     expect(STYLES).toContain(path.join("components", "notebook", "notebook.module.css"));
   });
 
-  it("§6: no colour named right (it collides with text-align) and no orange", () => {
-    expect(offenders(UI, /\b(text|bg|border|decoration|fill|stroke)-(right|cam)\b/)).toEqual([]);
+  it("§6: no colour named right (it collides with text-align)", () => {
+    expect(offenders(UI, /\b(text|bg|border|decoration|fill|stroke)-right\b/)).toEqual([]);
+  });
+
+  // V22 decisions #9: --cam is the one second colour, for "suggested / next" rows only. It may be
+  // named in the NxList components and nowhere else, so it cannot spread to status, charts or buttons.
+  it("V22: cam appears only in ui/nx-list.tsx", () => {
+    const named = UI.filter((f) => /\b(?:text|bg|border|ring|inset-ring|fill|stroke)-cam\b|\(--cam\)/.test(read(f)));
+    expect(named.map((f) => f.replace(/\/g, "/"))).toEqual(["components/ui/nx-list.tsx"]);
   });
 
   // UI-1a: one left edge. A page is drawn in PageColumn (mr-auto), never in its own centred
@@ -123,7 +130,7 @@ describe("design rules", () => {
 
   it("every custom property a component reads is declared in globals.css", () => {
     // Set by next/font in app/layout.tsx, not in CSS.
-    const runtime = new Set(["--font-be-vietnam-pro", "--font-newsreader", "--font-jetbrains-mono"]);
+    const runtime = new Set(["--font-be-vietnam-pro", "--font-bricolage", "--font-jetbrains-mono"]);
     const declared = new Set([...GLOBALS.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
     const used = [...UI, ...STYLES, "app/globals.css"].flatMap((file) =>
       [...read(file).matchAll(/var\((--[\w-]+)|\((--[\w-]+)\)/g)].map((m) => ({ file, name: m[1] ?? m[2] })),

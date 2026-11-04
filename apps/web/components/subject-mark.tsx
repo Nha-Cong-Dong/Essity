@@ -8,7 +8,7 @@ export function SubjectMark({ name, className = "" }: { name: string; className?
     <span
       aria-hidden="true"
       data-subject-mark
-      className={`inline-flex h-11 w-9 shrink-0 items-center justify-center rounded-slip border-l-8 border-hong bg-rose-100 font-display text-lead leading-none text-hong ${className}`}
+      className={`inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-hong-tint font-display text-body font-semibold leading-none text-hong ${className}`}
     >
       {letter}
     </span>

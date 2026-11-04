@@ -32,8 +32,7 @@
 
 @theme inline {
   --font-sans: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif; /* V22: one sans; Bricolage is gone */
-  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif; /* h1 and every big number */
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-display);
   --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, monospace;
 
@@ -43,6 +42,7 @@
   --color-raised: var(--raised);
   --color-sunken: var(--sunken);
   --color-hong-tint: var(--hong-tint);
+  --color-cam: var(--cam);
   --color-book-cover: var(--cover); /* not --color-cover: `bg-cover` is also background-size */
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
@@ -119,29 +119,29 @@
   --text-question--font-weight: 500;
   --text-verdict: clamp(28px, 1.6vw + 22px, 36px);
   --text-verdict--line-height: 1.2;
-  --text-verdict--font-weight: 500;
+  --text-verdict--font-weight: 650;
   --text-verdict--letter-spacing: -0.02em;
-  --text-title: clamp(30px, 1.2vw + 25px, 40px); /* h1 of a screen: Newsreader 500 (V22) */
+  --text-title: clamp(32px, 3.4vw, 44px); /* h1 of a screen = the landing's h2 step (V22) */
   --text-title--line-height: 1.15;
-  --text-title--font-weight: 500;
+  --text-title--font-weight: 650;
   --text-title--letter-spacing: -0.02em;
-  --text-display: clamp(44px, 2vw + 36px, 64px); /* one number or answer per screen: Newsreader 500 */
+  --text-display: clamp(44px, 2vw + 36px, 64px); /* the one number of a screen */
   --text-display--line-height: 1.15;
-  --text-display--font-weight: 500;
+  --text-display--font-weight: 650;
   --text-display--letter-spacing: -0.02em;
   --text-mega: clamp(88px, 9vw, 144px); /* numbers only (14 câu, 6/7) */
   --text-mega--line-height: 1;
-  --text-mega--font-weight: 500;
+  --text-mega--font-weight: 650;
   --text-mega--letter-spacing: -0.05em;
   --text-hero: clamp(46px, 5.8vw, 88px); /* landing H1 only */
   --text-hero--line-height: 1.15;
-  --text-hero--font-weight: 600;
+  --text-hero--font-weight: 650;
   --text-hero--letter-spacing: -0.02em;
   --text-chip: 13px; /* chips, tabs and bottom-bar labels only (V22 decisions #2) */
   --text-chip--line-height: 1.4;
   --text-logo: 24px;
   --text-logo--line-height: 1;
-  --text-logo--font-weight: 600;
+  --text-logo--font-weight: 700;
   --text-logo--letter-spacing: -0.03em;
   /* old names */
   --text-caption: 14px;
@@ -161,9 +161,9 @@
      role names: Tailwind's xl/2xl stay 12/16px, smaller than lg here. */
   --radius-control: 12px;
   --radius-slip: 14px;
-  --radius-card: 16px; /* a white card; the main sheet is --radius-sheet */
   --radius-sheet: 24px;
-  --radius-tile: 28px;
+  --radius-tile: 24px;
+  --radius-row: 10px; /* a row inside a tile (NxRow) */
   --radius-cover-spine: 10px;
   --radius-cover-edge: 28px;
   --radius-sm: 12px;
@@ -180,7 +180,6 @@
 
 :root {
   /* Frame, spacing, layers and durations do not change with the mode. */
-  --font-bricolage: var(--font-be-vietnam-pro); /* alias, removed in a later clean-up (V22 decisions #4) */
   --page-max: 1280px;
   --page-gutter: clamp(16px, 5.5vw, 80px);
   --col-read: 68ch;
@@ -211,29 +210,30 @@
    one). Variables declared on an element win over inherited ones. */
 :root,
 [data-tone="light"] {
-  --bg: #f7f6f7;
+  --bg: #ffffff;
   --sheet: #ffffff;
   --raised: #ffffff;
-  --sunken: #efedef;
+  --sunken: #f7f0f3;
   --cover: var(--rose-100);
-  --ink: #1f1a1d;
-  --ink-soft: #5e5459;
-  --line: #e6e2e5;
-  --line-strong: #7c737a; /* not #9a6f82: that is only 2.92 on rose-200 (plan V16) */
+  --ink: #221b1b;
+  --ink-soft: #6b4a59;
+  --line: #eedde4;
+  --line-strong: #946a7d; /* not #9a6f82: that is only 2.92 on rose-200 (plan V16) */
   --hong: #a8255f;
   --on-hong: #ffffff;
 --hong-soft-text: var(--ink-soft);
-  --rose-50: #fbeff4;
-  --hong-tint: #fbeff4; /* wide tint: the main sheet, empty states, the selected row */
-  --rose-100: #f6e6ee;
-  --rose-200: #ecd0dd;
-  --rose-300: #e0b3c7;
+  --rose-50: #fdf0f5;
+  --hong-tint: #f9f0f4; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
+  --cam: #8f5322; /* the one second colour: "suggested / next" rows only */
+  --rose-100: #fae3ec;
+  --rose-200: #f4ccdc;
+  --rose-300: #eaafc7;
   --rose-700: #8e1e50;
   --grid-1: color-mix(in srgb, var(--hong) 60%, transparent); /* activity grid levels 1-4 (T9.5a): level 1 reaches 3:1 on --sheet */
   --grid-2: color-mix(in srgb, var(--hong) 75%, transparent);
   --grid-3: color-mix(in srgb, var(--hong) 88%, transparent);
   --grid-4: color-mix(in srgb, var(--hong) 100%, transparent);
---on-surface-hong: var(--ink); /* text on the main sheet (the "pink" surface is --hong-tint now) */
+--on-surface-hong: var(--ink); /* text on the tile ("pink" surface = --hong-tint) */
 --focus-on-hong: var(--hong);
 --inverse-bg: var(--hong); /* primary-inverse = the primary button */
 --inverse-fg: var(--on-hong);
@@ -252,7 +252,7 @@
   --pencil: #625c5a;
   --focus: var(--hong);
   --grain-opacity: 0.1;
-  --elev-sheet: none; /* V22: cards are flat, a hairline border instead of a shadow */
+  --elev-sheet: none; /* V22: cards are flat: a hairline border or the --hong-tint tile, no shadow */
   --elev-over: 0 0 0 1px rgb(110 23 62 / 0.06), 0 28px 64px -24px rgb(110 23 62 / 0.4);
   --elev-cover: 0 1px 2px rgb(110 23 62 / 0.08), 0 24px 48px -20px rgb(110 23 62 / 0.4);
   --elev-hong: 0 10px 24px -10px rgb(168 37 95 / 0.6);
@@ -268,29 +268,30 @@
 /* Dark palette, following the OS. Same values as the block below. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #141113;
-    --sheet: #1d191c;
-    --raised: #272125;
-    --sunken: #252024;
+    --bg: #161314;
+    --sheet: #221d1e;
+    --raised: #2d2728;
+    --sunken: #1f181c;
     --cover: #4a2e3d;
-    --ink: #f3eef0;
-    --ink-soft: #b9aeb4;
-    --line: #2e282c;
-    --line-strong: #8f858b;
+    --ink: #f4eeec;
+    --ink-soft: #c9aab8;
+    --line: #3d2c34;
+    --line-strong: #8a6b7a;
     --hong: #f28dba;
-    --on-hong: #2a0f1c;
+    --on-hong: #161314;
 --hong-soft-text: var(--ink-soft);
-    --rose-50: #241a20;
-    --hong-tint: #2a1b23; /* wide tint: the main sheet, empty states, the selected row */
-    --rose-100: #2a1b23;
-    --rose-200: #37242f;
+    --rose-50: #221820;
+    --hong-tint: #251b20; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
+    --cam: #e0a36a; /* the one second colour: "suggested / next" rows only */
+    --rose-100: #2c1d27;
+    --rose-200: #3a2432;
     --rose-300: #5a3a4a;
     --rose-700: #e77faf;
     --grid-1: color-mix(in srgb, var(--hong) 55%, transparent); /* activity grid levels 1-4, dark */
     --grid-2: color-mix(in srgb, var(--hong) 72%, transparent);
     --grid-3: color-mix(in srgb, var(--hong) 86%, transparent);
     --grid-4: color-mix(in srgb, var(--hong) 100%, transparent);
---on-surface-hong: var(--ink); /* text on the main sheet (the "pink" surface is --hong-tint now) */
+--on-surface-hong: var(--ink); /* text on the tile ("pink" surface = --hong-tint) */
 --focus-on-hong: var(--hong);
 --inverse-bg: var(--hong); /* primary-inverse = the primary button */
 --inverse-fg: var(--on-hong);
@@ -309,7 +310,7 @@
     --pencil: #ada8a6;
     --focus: var(--hong);
     --grain-opacity: 0.14;
-    --elev-sheet: none; /* V22: cards are flat, a hairline border instead of a shadow */
+    --elev-sheet: none; /* V22: cards are flat: a hairline border or the --hong-tint tile, no shadow */
     --elev-over: 0 0 0 1px var(--line), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 28px 64px -16px rgb(0 0 0 / 0.7);
     --elev-cover: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 48px -16px rgb(0 0 0 / 0.7);
     --elev-hong: 0 10px 28px -10px rgb(242 141 186 / 0.45);
@@ -327,29 +328,30 @@
    evening the pink tile is a muted block; only its number and button stay bright. */
 :root[data-theme="dark"],
 [data-tone="dark"] {
-  --bg: #141113;
-  --sheet: #1d191c;
-  --raised: #272125;
-  --sunken: #252024;
+  --bg: #161314;
+  --sheet: #221d1e;
+  --raised: #2d2728;
+  --sunken: #1f181c;
   --cover: #4a2e3d;
-  --ink: #f3eef0;
-  --ink-soft: #b9aeb4;
-  --line: #2e282c;
-  --line-strong: #8f858b;
+  --ink: #f4eeec;
+  --ink-soft: #c9aab8;
+  --line: #3d2c34;
+  --line-strong: #8a6b7a;
   --hong: #f28dba;
-  --on-hong: #2a0f1c;
+  --on-hong: #161314;
 --hong-soft-text: var(--ink-soft);
-  --rose-50: #241a20;
-  --hong-tint: #2a1b23; /* wide tint: the main sheet, empty states, the selected row */
-  --rose-100: #2a1b23;
-  --rose-200: #37242f;
+  --rose-50: #221820;
+  --hong-tint: #251b20; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
+  --cam: #e0a36a; /* the one second colour: "suggested / next" rows only */
+  --rose-100: #2c1d27;
+  --rose-200: #3a2432;
   --rose-300: #5a3a4a;
   --rose-700: #e77faf;
   --grid-1: color-mix(in srgb, var(--hong) 55%, transparent); /* activity grid levels 1-4, dark */
   --grid-2: color-mix(in srgb, var(--hong) 72%, transparent);
   --grid-3: color-mix(in srgb, var(--hong) 86%, transparent);
   --grid-4: color-mix(in srgb, var(--hong) 100%, transparent);
---on-surface-hong: var(--ink); /* text on the main sheet (the "pink" surface is --hong-tint now) */
+--on-surface-hong: var(--ink); /* text on the tile ("pink" surface = --hong-tint) */
 --focus-on-hong: var(--hong);
 --inverse-bg: var(--hong); /* primary-inverse = the primary button */
 --inverse-fg: var(--on-hong);
@@ -368,7 +370,7 @@
   --pencil: #ada8a6;
   --focus: var(--hong);
   --grain-opacity: 0.14;
-  --elev-sheet: none; /* V22: cards are flat, a hairline border instead of a shadow */
+  --elev-sheet: none; /* V22: cards are flat: a hairline border or the --hong-tint tile, no shadow */
   --elev-over: 0 0 0 1px var(--line), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 28px 64px -16px rgb(0 0 0 / 0.7);
   --elev-cover: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 48px -16px rgb(0 0 0 / 0.7);
   --elev-hong: 0 10px 28px -10px rgb(242 141 186 / 0.45);
@@ -424,8 +426,8 @@
 
 /* Written values (label values, pencil notes, dates): the body face in italic, not a
    handwriting font, which made the app look childish (type and colour review, 19/10). */
-/* V22: the one motif of the app. A flat highlighter band under the key phrase of a screen's h1,
-   one per screen: a single inset shadow, no gradient, no tilt. Decoration only. */
+/* V22: the one motif of the app, as the landing's. A flat highlighter band under the key phrase of a
+   screen's h1, one per screen: a single inset shadow, no gradient, no tilt. Decoration only. */
 @utility hl-word {
   box-shadow: inset 0 -0.28em 0 var(--hl-band);
   border-radius: 2px;
@@ -436,14 +438,6 @@
 @utility font-hand {
   font-family: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
   font-style: italic;
-}
-
-.text-title,
-.text-display,
-.text-mega,
-.text-verdict {
-  font-family: var(--font-serif);
-  font-variant-numeric: lining-nums tabular-nums;
 }
 
 @layer base {
@@ -464,9 +458,7 @@
   body {
     @apply bg-bg text-ink text-body;
   }
-  h1 {
-    @apply font-serif;
-  }
+  h1,
   h2,
   h3 {
     @apply font-display;
