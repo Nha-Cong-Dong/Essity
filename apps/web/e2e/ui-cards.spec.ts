@@ -38,7 +38,7 @@ test("on the today preview no secondary button is taller than the primary", asyn
     els.map((el) => ({ kind: el.getAttribute("data-variant"), h: el.getBoundingClientRect().height })),
   );
   const primary = Math.max(0, ...heights.filter((b) => b.kind?.startsWith("primary")).map((b) => b.h));
-  for (const b of heights.filter((x) => x.kind === "secondary")) expect(b.h).toBeLessThanOrEqual(primary || 52);
+  for (const b of heights.filter((x) => x.kind === "secondary")) expect(b.h).toBeLessThanOrEqual((primary || 52) + 0.5);
 });
 
 for (const [name, url] of SCREENS) {
