@@ -200,6 +200,12 @@ def _tidy(headings: Sequence[_Heading], page_count: int) -> list[_Heading]:
     for heading in reversed(fixed):
         following = result[-1] if result else None
         if following and following[2] == heading[2] and following[1] <= heading[1]:
+            # Sibling sections on one page (1.1.2 and 1.1.3 both start on page 4) own that page
+            # together. The title of the dropped one joins the kept one, so no section vanishes
+            # from the outline; a chapter sharing a page is dropped as before.
+            if following[1] == heading[1] and heading[1] >= 1:
+                merged = _single_line(f"{heading[0]} · {following[0]}")
+                result[-1] = (merged, following[1], following[2])
             continue
         result.append(heading)
     result.reverse()
