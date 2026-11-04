@@ -597,3 +597,83 @@
     [data-sticker-button]:active { transform: rotate(0) scale(0.95); }
   }
 }
+
+/* "Hướng dẫn học": small looping drawings, one per step. Still under prefers-reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .guide-step {
+    animation: guide-in 320ms ease-out both;
+  }
+  .guide-press {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: guide-press 2.4s ease-in-out infinite;
+  }
+  .guide-press-late {
+    animation-delay: 1.2s;
+  }
+  .guide-ring {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: guide-ring 2.4s ease-out infinite;
+  }
+  .guide-hop {
+    animation: guide-hop 3.6s steps(1, end) infinite;
+  }
+  .guide-type {
+    transform-box: fill-box;
+    transform-origin: left center;
+    animation: guide-type 3s ease-out infinite;
+  }
+  .guide-type-2 {
+    animation-delay: 0.4s;
+  }
+  .guide-type-3 {
+    animation-delay: 0.8s;
+  }
+  .guide-pop {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: guide-pop 2.4s ease-out infinite;
+  }
+  .guide-card {
+    animation: guide-card 3.6s ease-in-out infinite;
+  }
+  .guide-card-1 {
+    animation-delay: 0.5s;
+  }
+  .guide-card-2 {
+    animation-delay: 1s;
+  }
+}
+@keyframes guide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes guide-press {
+  0%, 55%, 100% { transform: scale(1); }
+  65% { transform: scale(0.94); }
+}
+@keyframes guide-ring {
+  0%, 55% { opacity: 0; transform: scale(0.6); }
+  65% { opacity: 0.8; }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+@keyframes guide-hop {
+  0%, 100% { transform: translateY(0); }
+  33% { transform: translateY(32px); }
+  66% { transform: translateY(64px); }
+}
+@keyframes guide-type {
+  0% { transform: scaleX(0); }
+  40%, 100% { transform: scaleX(1); }
+}
+@keyframes guide-pop {
+  0%, 50% { opacity: 0; transform: scale(0.5); }
+  65%, 90% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; }
+}
+@keyframes guide-card {
+  0% { transform: translate(0, 0); opacity: 1; }
+  60% { transform: translate(132px, 46px) scale(0.7); opacity: 1; }
+  80%, 100% { transform: translate(132px, 56px) scale(0.6); opacity: 0; }
+}
