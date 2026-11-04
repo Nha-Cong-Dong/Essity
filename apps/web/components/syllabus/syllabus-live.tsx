@@ -10,6 +10,7 @@ import {
   outlineView,
   patchSection,
   readOutline,
+  reextractOutline,
 } from "@/lib/syllabus/api";
 import { anyEdited, sourceLabel, type SyllabusNode } from "@/lib/syllabus/tree";
 
@@ -33,6 +34,16 @@ const REFUSED: Record<string, string> = {
   offline: "Chưa lưu được vì mất kết nối. Thử lại.",
 };
 const NOT_SAVED = "Chưa lưu được. Thử lại.";
+const REREAD = {
+  button: "Tách lại đề cương",
+  ask: "Đọc lại mục lục của giáo trình? Phần bạn đã học, đã loại và đã sửa vẫn giữ nguyên.",
+  go: "Tách lại",
+  cancel: "Thôi",
+  rate_limited: "Vừa tách lại xong. Thử lại sau vài phút.",
+  not_indexed: "Giáo trình đang được đọc. Chờ một chút rồi thử lại.",
+  offline: "Chưa tách lại được vì mất kết nối. Thử lại.",
+  other: "Chưa tách lại được. Thử lại.",
+} as const;
 
 export function SyllabusLive({
   subjectId,
@@ -50,6 +61,7 @@ export function SyllabusLive({
   const [failure, setFailure] = useState<string | null>(null);
   const [, setEditing] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [rereading, setRereading] = useState<"ask" | "busy" | null>(null);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const view = outlineView(outline);
   const nodes = local ?? (view.kind === "ready" ? view.nodes : []);
@@ -57,6 +69,7 @@ export function SyllabusLive({
   useEffect(() => {
     nodesRef.current = nodes;
   });
+  const documentId = outline.document?.id ?? null;
   const waiting = view.kind === "none" && view.reason === "not_indexed";
   const subjectHref = `/subjects/${subjectId}`;
 
@@ -150,6 +163,25 @@ export function SyllabusLive({
     );
   }
 
+  async function reread(documentId: string) {
+    setRereading("busy");
+    setFailure(null);
+    const sent = await reextractOutline(documentId);
+    setRereading(null);
+    if (!sent.ok) {
+      const text = sent.code === "offline" ? REREAD.offline : sent.code in REREAD ? REREAD[sent.code as "rate_limited" | "not_indexed"] : REREAD.other;
+      setFailure(text);
+      setLive(text);
+      return;
+    }
+    // The document is "being read" now: the screen asks again every few seconds until it is done.
+    const next = await readOutline(subjectId);
+    if (next.ok) {
+      setOutline(next.data);
+      setLocal(null);
+    }
+  }
+
   const exclude = (ids: string[]) => {
     const mark = (list: SyllabusNode[]): SyllabusNode[] =>
       list.map((n) => ({ ...n, excluded: n.excluded || ids.includes(n.id), children: mark(n.children) }));
@@ -180,10 +212,28 @@ export function SyllabusLive({
       )}
       <div className="mt-4 flex flex-col gap-3">
         {!removing && (
-          <div>
+          <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" onClick={() => setRemoving(true)}>
               Chỉnh sửa
             </Button>
+            {rereading === null && (
+              <Button variant="secondary" onClick={() => setRereading("ask")} data-reread>
+                {REREAD.button}
+              </Button>
+            )}
+          </div>
+        )}
+        {!removing && rereading !== null && documentId !== null && (
+          <div className="rounded-sheet bg-sunken p-4" data-reread-confirm>
+            <p className="m-0 text-body">{REREAD.ask}</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Button disabled={rereading === "busy"} onClick={() => void reread(documentId)}>
+                {REREAD.go}
+              </Button>
+              <Button variant="secondary" disabled={rereading === "busy"} onClick={() => setRereading(null)}>
+                {REREAD.cancel}
+              </Button>
+            </div>
           </div>
         )}
         {removing ? (

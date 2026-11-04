@@ -11,6 +11,7 @@ const api = vi.hoisted(() => ({
   putTextbook: vi.fn(),
   patchSection: vi.fn(),
   readOutline: vi.fn(),
+  reextractOutline: vi.fn(),
 }));
 
 vi.mock("@/lib/syllabus/api", async (original) => ({
@@ -174,5 +175,67 @@ describe("SyllabusLive (US-13)", () => {
     expect(api.patchSection).toHaveBeenCalledWith("1.1", { first_page: 2, last_page: 9 });
     expect(document.querySelector("[data-save-failure]")!.textContent).toContain("ngoài phần cha");
     expect(document.querySelector("[data-node='1.1']")!.textContent).toContain("tr. 1–10");
+  });
+});
+
+describe("SyllabusLive: Tách lại đề cương (OUTLINE-FIX3)", () => {
+  const outline = (reason: OutlineOut["reason"]): OutlineOut =>
+    ({
+      subject_id: SUBJECT,
+      document: { id: DOC, short_name: "GT", page_count: 40 },
+      reason,
+      progress: 0,
+      temporary: false,
+      remaining_chapters: 1,
+      sections: [
+        {
+          id: "s1",
+          parent_id: null,
+          title: "1. Xác suất",
+          first_page: 1,
+          last_page: 40,
+          weight: 40,
+          unit: "page",
+          source: "heading",
+          excluded: false,
+          excluded_effective: false,
+          progress: 0,
+          studied: false,
+          learned: false,
+          children: [],
+        },
+      ],
+    }) as OutlineOut;
+
+  // Red when: the call goes out without the learner's confirmation, or it is not for this document.
+  it("asks first, then reads again and shows the waiting state", async () => {
+    api.reextractOutline.mockResolvedValue({ ok: true, data: {} });
+    api.readOutline.mockResolvedValue({ ok: true, data: outline("not_indexed") });
+    render(<SyllabusLive subjectId={SUBJECT} subjectName="XSTK" initial={outline(null)} />);
+    fireEvent.click(screen.getByRole("button", { name: "Tách lại đề cương" }));
+    expect(api.reextractOutline).not.toHaveBeenCalled();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Tách lại" })));
+    await flush();
+    expect(api.reextractOutline).toHaveBeenCalledWith(DOC);
+    expect(screen.getByText("Đang đọc mục lục…")).toBeTruthy();
+  });
+
+  // Red when: a refusal is silent.
+  it("tells the learner when it was just done", async () => {
+    api.reextractOutline.mockResolvedValue({ ok: false, code: "rate_limited" });
+    render(<SyllabusLive subjectId={SUBJECT} subjectName="XSTK" initial={outline(null)} />);
+    fireEvent.click(screen.getByRole("button", { name: "Tách lại đề cương" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Tách lại" })));
+    await flush();
+    expect(screen.getByRole("alert").textContent).toContain("Vừa tách lại xong");
+  });
+
+  // Red when: cancelling still sends the call.
+  it("Thôi sends nothing", async () => {
+    render(<SyllabusLive subjectId={SUBJECT} subjectName="XSTK" initial={outline(null)} />);
+    fireEvent.click(screen.getByRole("button", { name: "Tách lại đề cương" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thôi" }));
+    expect(api.reextractOutline).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Tách lại đề cương" })).toBeTruthy();
   });
 });

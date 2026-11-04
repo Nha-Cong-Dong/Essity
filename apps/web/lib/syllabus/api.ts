@@ -124,3 +124,5 @@ export const putTextbook = (subjectId: string, documentId: string, confirm: bool
   send<OutlineOut>("PUT", `/api/subjects/${subjectId}/textbook`, { document_id: documentId, confirm });
 export const patchDocument = (id: string, body: { role?: ApiRole; short_name?: string }) =>
   send<unknown>("PATCH", `/api/documents/${id}`, body);
+export const reextractOutline = (documentId: string) =>
+  send<unknown>("POST", `/api/documents/${documentId}/reextract-outline`);
