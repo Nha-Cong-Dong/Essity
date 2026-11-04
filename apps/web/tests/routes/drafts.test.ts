@@ -38,7 +38,7 @@ describe("draft routes (T7.12)", () => {
   it("submissions pass the sentence and the mentions on, nothing else", async () => {
     const out = { submission_id: OTHER, session_id: ID, status: "queued", mentions: [] };
     const calls = fakeCoreApi(() => Response.json(out, { status: 201 }));
-    const body = { session_id: ID, description: "học @Giáo trình mục 3.2", mentions: [{ document_id: OTHER, start: 4, end: 14 }] };
+    const body = { session_id: ID, description: "học @Giáo trình phần 3.2", mentions: [{ document_id: OTHER, start: 4, end: 14 }] };
     const response = await submit(browserPost("/x", body, SIGNED_IN));
     expect(calls[0].path).toBe("/v1/submissions");
     // T7.19 F1: with no file the sentence is also the note (core-api refuses "nothing_submitted" else).
@@ -104,7 +104,7 @@ describe("draft routes (T7.12)", () => {
   // US-02 AC4. Red when: the index of the mention that did not resolve is not passed on, or the
   // text core-api quotes back (`part`) reaches the browser.
   it("submissions turn a mention refusal into its code and index, without the text", async () => {
-    fakeCoreApi(() => refusal(422, { code: "scope_not_found", mention: 1, part: "mục 9.9", candidates: [] }));
+    fakeCoreApi(() => refusal(422, { code: "scope_not_found", mention: 1, part: "phần 9.9", candidates: [] }));
     const body = { session_id: ID, description: "x", mentions: [] };
     const response = await submit(browserPost("/x", body, SIGNED_IN));
     expect(response.status).toBe(422);

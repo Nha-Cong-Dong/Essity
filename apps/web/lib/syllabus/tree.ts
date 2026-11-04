@@ -1,5 +1,5 @@
 // T7.5a (US-13 AC4-AC6; DESIGN §6.6, design-decisions.md R2.3-R2.4): the pure rules of the syllabus
-// tree. One counting rule everywhere: a "mục" is a leaf that is not excluded, itself or through an
+// tree. One counting rule everywhere: a "phần" is a leaf that is not excluded, itself or through an
 // ancestor. The shape is a guess until T7.4 defines the API; the rules do not depend on it.
 
 export type Unit = "page" | "slide" | "est_page";
@@ -161,7 +161,7 @@ export function validateRange(from: number, to: number, ctx: RangeContext, unit:
     return unit === "slide" ? `Bài giảng chỉ có ${ctx.total} slide.` : `Giáo trình chỉ có ${ctx.total} trang.`;
   }
   if (ctx.parent && (from < ctx.parent[0] || to > ctx.parent[1])) {
-    return `Khoảng này nằm ngoài mục cha (${rangeText(ctx.parent[0], ctx.parent[1], unit)}).`;
+    return `Khoảng này nằm ngoài phần cha (${rangeText(ctx.parent[0], ctx.parent[1], unit)}).`;
   }
   return null;
 }
@@ -189,9 +189,9 @@ export function describeNode(node: SyllabusNode, unit: Unit): string {
   if (node.excluded) return "không thi";
   if (!isLeaf(node)) {
     const n = countCountable(node);
-    if (n === 0) return "không có mục tính";
+    if (n === 0) return "không có phần tính";
     const done = countable(node).filter((l) => l.done).length;
-    return `${n} mục, đã học ${done}/${n} mục`;
+    return `${n} phần, đã học ${done}/${n} phần`;
   }
   if (node.done) return "đã học";
   if (node.part) {

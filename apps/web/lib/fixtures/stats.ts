@@ -87,7 +87,7 @@ function eventsFor(subject: SubjectSpan, from: string, to: string, every: number
     events.push({
       day: iso(ms),
       subjectId: subject.id,
-      sections: [`Mục ${1 + (i % 7)}.${1 + (i % 4)}`],
+      sections: [`Phần ${1 + (i % 7)}.${1 + (i % 4)}`],
       cardsSaved: cards,
       questionsAnswered: answered,
     });
@@ -106,8 +106,8 @@ export function statsFixture(state: StatsState): StatsData {
         today: TODAY,
         subjects: [{ ...OS, examOn: "2026-12-15", daysLeft: 46, bank: null }],
         events: [
-          { day: "2026-10-27", subjectId: OS.id, sections: ["Mục 1.1"], cardsSaved: 4, questionsAnswered: 0 },
-          { day: "2026-10-29", subjectId: OS.id, sections: ["Mục 1.2", "Mục 1.3"], cardsSaved: 7, questionsAnswered: 5 },
+          { day: "2026-10-27", subjectId: OS.id, sections: ["Phần 1.1"], cardsSaved: 4, questionsAnswered: 0 },
+          { day: "2026-10-29", subjectId: OS.id, sections: ["Phần 1.2", "Phần 1.3"], cardsSaved: 7, questionsAnswered: 5 },
         ],
       };
     case "no-exam":

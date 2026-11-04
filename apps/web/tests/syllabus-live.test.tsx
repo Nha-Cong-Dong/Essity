@@ -107,7 +107,7 @@ describe("DocRole (US-01 AC4, AC5)", () => {
 
 type Section = OutlineOut["sections"][number];
 const sec = (over: Partial<Section> & { id: string }): Section => ({
-  parent_id: null, title: `${over.id} Mục`, first_page: 1, last_page: 10, weight: 10, unit: "page", source: "bookmark",
+  parent_id: null, title: `${over.id} Phần`, first_page: 1, last_page: 10, weight: 10, unit: "page", source: "bookmark",
   excluded: false, excluded_effective: false, progress: 0, studied: false, learned: false, children: [], ...over,
 });
 const outline = (sections: Section[], over: Partial<OutlineOut> = {}): OutlineOut => ({
@@ -155,7 +155,7 @@ describe("SyllabusLive (US-13)", () => {
     await act(async () => fireEvent.click(screen.getByRole("button", { name: /Đánh dấu đã học/ })));
     await flush();
     expect(api.patchSection).toHaveBeenCalledWith("1.1", { studied: true });
-    expect(document.querySelector("[data-totals]")!.textContent).toContain("đã học 1/2 mục");
+    expect(document.querySelector("[data-totals]")!.textContent).toContain("đã học 1/2 phần");
   });
 
   // Red when: a refused range stays on screen as if it were saved, or the refusal is silent.
@@ -172,7 +172,7 @@ describe("SyllabusLive (US-13)", () => {
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Lưu" })));
     await flush();
     expect(api.patchSection).toHaveBeenCalledWith("1.1", { first_page: 2, last_page: 9 });
-    expect(document.querySelector("[data-save-failure]")!.textContent).toContain("ngoài mục cha");
+    expect(document.querySelector("[data-save-failure]")!.textContent).toContain("ngoài phần cha");
     expect(document.querySelector("[data-node='1.1']")!.textContent).toContain("tr. 1–10");
   });
 });

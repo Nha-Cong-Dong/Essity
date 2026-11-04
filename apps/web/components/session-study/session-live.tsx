@@ -12,7 +12,7 @@ import { SessionScreen, type SessionInitial } from "./session-screen";
 // T7.12 (US-02, US-02b): the study session on core-api. A session opened from a suggestion shows
 // its section (T7.19 F2); every other one is the free session.
 
-const FREE = { kind: "free", text: "Buổi học tự do. Bài nộp không gắn mục đề cương." } as const;
+const FREE = { kind: "free", text: "Buổi học tự do. Bài nộp không gắn phần đề cương." } as const;
 
 export function SessionLive({
   sessionId,

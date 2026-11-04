@@ -24,7 +24,7 @@ export function CommandPreview({ state }: { state: CommandState }) {
   return (
     <PageColumn width="full">
       <h1 className="m-0 font-display text-title [overflow-wrap:anywhere]">{practice ? "Luyện tập" : SUBJECT.name}</h1>
-      <p className="mt-1 text-meta text-ink-soft">Môn học · 12 mục, 40 thẻ</p>
+      <p className="mt-1 text-meta text-ink-soft">Môn học · 12 phần, 40 thẻ</p>
       <CommandBar
         key={state}
         example={practice ? PRACTICE_EXAMPLE : EXAMPLE}

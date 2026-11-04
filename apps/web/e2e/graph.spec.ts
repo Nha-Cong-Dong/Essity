@@ -134,7 +134,7 @@ test("US-19 AC3: a table from 768 px, a list of cards below", async ({ page }) =
 
 test("US-19 AC3: many cards: the neutral line, 300 nodes, and a hint to use the list", async ({ page }) => {
   await open(page, 390, "/design-preview/graph?state=many");
-  await expect(page.getByText("Hiển thị 300 thẻ đầu của mục này. Chọn mục nhỏ hơn để xem đủ.")).toBeVisible();
+  await expect(page.getByText("Hiển thị 300 thẻ đầu của phần này. Chọn phần nhỏ hơn để xem đủ.")).toBeVisible();
   await expect(page.getByText("Nhiều thẻ, chọn qua danh sách sẽ dễ hơn.")).toBeVisible();
   await expect.poll(() => page.locator("[data-graph-canvas]").evaluate((el) => (el as CyHost).__cy?.nodes(".card").length ?? 0)).toBe(300);
 });

@@ -181,7 +181,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
       <div className="mt-4 flex flex-col gap-3 min-[768px]:flex-row min-[768px]:items-end">
         <div className="flex min-w-0 flex-1 flex-col gap-1 min-[768px]:max-w-sm">
           <label htmlFor="graph-section" className="text-meta text-ink-soft">
-            Mục
+            Phần
           </label>
           <Select
             id="graph-section"

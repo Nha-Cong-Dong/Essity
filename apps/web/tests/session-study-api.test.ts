@@ -74,9 +74,9 @@ describe("createSessionApi", () => {
   it("submits the sentence with its mentions and answers the status", async () => {
     const { fn, calls } = fakeFetch(() => Response.json({ submission_id: "s", session_id: SID, status: "queued", mentions: [] }, { status: 201 }));
     const api = createSessionApi(SID, DOCS, fn);
-    const result = await api.submit("học @Giáo trình mục 3.2", [{ docId: DOC, name: "Giáo trình", start: 4, end: 14 }]);
+    const result = await api.submit("học @Giáo trình phần 3.2", [{ docId: DOC, name: "Giáo trình", start: 4, end: 14 }]);
     expect(calls[0].url).toBe("/api/submissions");
-    expect(calls[0].body).toEqual({ session_id: SID, description: "học @Giáo trình mục 3.2", mentions: [{ document_id: DOC, start: 4, end: 14 }] });
+    expect(calls[0].body).toEqual({ session_id: SID, description: "học @Giáo trình phần 3.2", mentions: [{ document_id: DOC, start: 4, end: 14 }] });
     expect(result).toEqual({ ok: true, data: { status: "queued" } });
   });
 

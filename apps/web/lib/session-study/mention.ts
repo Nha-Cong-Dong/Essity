@@ -1,6 +1,6 @@
 // T7.12a (US-02 AC2-AC4; DESIGN.md §6.7 vùng 2; design decisions C2-C4): `@name` in the
 // description. A mention is the document the user chose, kept by document id and character range,
-// never guessed from the text. What follows it ("mục 3.2") is resolved by the backend on submit.
+// never guessed from the text. What follows it ("phần 3.2") is resolved by the backend on submit.
 
 export type DocRef = { id: string; name: string; role: string };
 export type Mention = { docId: string; name: string; start: number; end: number };

@@ -91,7 +91,7 @@ function Suggest({ suggestion, id }: { suggestion: Suggestion; id: string }) {
               onClick={() => setWhy((value) => !value)}
               className="min-h-11 text-body underline decoration-line-strong decoration-[1.5px] underline-offset-[5px]"
             >
-              Vì sao mục này?
+              Vì sao phần này?
             </button>
             {why && <p className="m-0 w-full rounded-control bg-sunken p-4 text-body">{suggestion.pace}</p>}
           </div>
@@ -380,7 +380,7 @@ export function SessionScreen(props: SessionScreenProps) {
 
         {round.phase === "compose" ? (
           <>
-            <Suggest suggestion={isFree ? { kind: "free", text: "Buổi học tự do. Bài nộp không gắn mục đề cương." } : suggestion} id="suggest" />
+            <Suggest suggestion={isFree ? { kind: "free", text: "Buổi học tự do. Bài nộp không gắn phần đề cương." } : suggestion} id="suggest" />
             <Region phase="compose" title="Bạn đã học gì?">
               <MentionBox
                 value={text}

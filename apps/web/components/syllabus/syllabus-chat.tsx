@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 /** The outline on screen reads itself again when the chat changed it. */
 export const SYLLABUS_CHANGED = "essity:syllabus-changed";
 
-const EXAMPLES = ["gộp mục 1.2 với 1.3", "bỏ phần phụ lục", "tách chương 3"];
+const EXAMPLES = ["gộp phần 1.2 với 1.3", "bỏ phần phụ lục", "tách chương 3"];
 const OFFLINE = "Chưa gửi được. Bạn kiểm tra kết nối rồi thử lại nhé.";
 
 type Answer = { tone: "ok" | "info"; text: string };
@@ -71,7 +71,7 @@ export function OutlineChat({ subjectId, onChanged }: { subjectId: string; onCha
           value={text}
           maxLength={500}
           autoComplete="off"
-          placeholder="Ví dụ: gộp mục 1.2 với 1.3"
+          placeholder="Ví dụ: gộp phần 1.2 với 1.3"
           onChange={(e) => setText(e.target.value)}
           className="min-w-0 flex-1"
         />

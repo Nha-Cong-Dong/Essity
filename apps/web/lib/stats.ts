@@ -131,5 +131,5 @@ export function levelLegend(): string {
 /** Up to five section names, then a count of the rest. */
 export function sectionsText(sections: string[]): string {
   if (sections.length <= 5) return sections.join(", ");
-  return `${sections.slice(0, 5).join(", ")} và ${sections.length - 5} mục khác`;
+  return `${sections.slice(0, 5).join(", ")} và ${sections.length - 5} phần khác`;
 }

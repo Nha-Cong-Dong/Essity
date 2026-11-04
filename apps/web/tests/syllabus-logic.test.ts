@@ -22,7 +22,7 @@ import {
 
 const leaf = (id: string, from: number, to: number, extra: Partial<SyllabusNode> = {}): SyllabusNode => ({
   id,
-  title: `Mục ${id}`,
+  title: `Phần ${id}`,
   from,
   to,
   weight: to - from + 1,
@@ -124,7 +124,7 @@ describe("range (US-13 AC4)", () => {
   it.each([
     [60, 50, "Trang bắt đầu phải nhỏ hơn hoặc bằng trang kết thúc."],
     [50, 900, "Giáo trình chỉ có 820 trang."],
-    [10, 20, "Khoảng này nằm ngoài mục cha (tr. 45–98)."],
+    [10, 20, "Khoảng này nằm ngoài phần cha (tr. 45–98)."],
   ])("%i-%i is refused: %s", (from, to, message) => {
     expect(validateRange(from, to, ctx, "page")).toBe(message);
   });
@@ -165,7 +165,7 @@ describe("labels", () => {
     const t = tree();
     expect(describeNode(findNode(t, "1.2")!, "page")).toBe("đã học tr. 11–14 trong tr. 11–20");
     expect(describeNode(findNode(t, "2.2")!, "page")).toBe("không thi");
-    expect(describeNode(t[0], "page")).toBe("2 mục, đã học 1/2 mục");
+    expect(describeNode(t[0], "page")).toBe("2 phần, đã học 1/2 phần");
   });
 });
 

@@ -19,8 +19,8 @@ const SUBJECT = "c3d4e5f6-7a8b-4c9d-8e1f-2a3b4c5d6e7f";
 const FOR_SECTION = {
   kind: "section",
   text: "Nội dung học tập: 3.2 TCP flow control",
-  reason: "Mục chưa học đầu tiên trong đề cương.",
-  pace: "còn 12 mục, 20 ngày",
+  reason: "Phần chưa học đầu tiên trong đề cương.",
+  pace: "còn 12 phần, 20 ngày",
 } as const;
 
 async function Preview({ searchParams }: { searchParams: Promise<{ section?: string | string[] }> }) {

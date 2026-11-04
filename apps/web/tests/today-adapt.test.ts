@@ -8,7 +8,7 @@ const A = "0b8f1d2e-0000-4000-8000-000000000001";
 const B = "0b8f1d2e-0000-4000-8000-000000000002";
 const SID = "5f0c0000-0000-4000-8000-000000000001";
 
-const pace = { remaining_chapters: 12, remaining_leaves: 12, remaining_weight: 12, unit: "mục", days_left: 20, text: "còn 12 mục, 20 ngày" };
+const pace = { remaining_chapters: 12, remaining_leaves: 12, remaining_weight: 12, unit: "phần", days_left: 20, text: "còn 12 phần, 20 ngày" };
 const next = (over = {}) => ({
   subject_id: A,
   subject_name: "Mạng máy tính",
@@ -17,8 +17,8 @@ const next = (over = {}) => ({
   section_title: "3.2 TCP flow control" as string | null,
   partial: false,
   remaining: null,
-  unit: "mục",
-  reason: "Môn thi sau 20 ngày, còn 12 mục.",
+  unit: "phần",
+  reason: "Môn thi sau 20 ngày, còn 12 phần.",
   pace,
   units: [] as { section_id: string; title: string; chapter_title: string | null }[],
   nothing_today: false,
@@ -105,8 +105,8 @@ describe("toTodayV2", () => {
       state: "next",
       subject: { id: A, name: "Mạng máy tính" },
       section: { label: "3.2", title: "TCP flow control", pages: null },
-      reason: "Môn thi sau 20 ngày, còn 12 mục.",
-      pace: { text: "còn 12 mục, 20 ngày" },
+      reason: "Môn thi sau 20 ngày, còn 12 phần.",
+      pace: { text: "còn 12 phần, 20 ngày" },
     });
   });
 

@@ -9,7 +9,7 @@ export const NAME_MAX = 60;
 export type Diff = {
   /** "bỏ", "sửa", "đổi": the app's own words. */
   verb: string;
-  /** What is touched, singular or plural noun: "mục", "thẻ". */
+  /** What is touched, singular or plural noun: "phần", "thẻ". */
   noun: string;
   /** Words between the noun and the target: "khỏi đề cương thi". */
   tail?: string;
@@ -32,7 +32,7 @@ const clip = (text: string, max: number): string => {
 /** Cuts a user's name (never a number) to NAME_MAX code points, ending in an ellipsis. */
 export const truncateName = (name: string): string => clip(name, NAME_MAX);
 
-/** "bỏ 9 mục khỏi đề cương thi (chương 7)": the count is in the sentence when N > 1. */
+/** "bỏ 9 phần khỏi đề cương thi (chương 7)": the count is in the sentence when N > 1. */
 export function summarize(diff: Diff): string {
   const parts = [diff.verb, ...(diff.count > 1 ? [String(diff.count)] : []), diff.noun];
   if (diff.tail) parts.push(diff.tail);

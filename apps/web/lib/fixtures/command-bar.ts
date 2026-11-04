@@ -5,16 +5,16 @@ import type { Outcome, Tray, UndoOutcome } from "@/components/command/types";
 // busiest state has one unbroken long name and a long old and new value.
 
 export const SUBJECT = { id: "0b8f1d2e-0000-4000-8000-000000000001", name: "Mạng máy tính" };
-export const EXAMPLE = "mục 3.4 kết thúc ở trang 80";
+export const EXAMPLE = "phần 3.4 kết thúc ở trang 80";
 export const PRACTICE_EXAMPLE = "đổi câu 4 thành tự luận";
 export const PRACTICE_EXHAUSTED =
   "Thanh lệnh tạm tắt vì hết lượt AI. Bạn vẫn sửa trực tiếp được, trừ đổi dạng câu và gắn lại câu.";
 
 export const LONG_NAME = "Sosánhhaigiaothứcvậnchuyểnnângcao_tínhtoánđộtrễtruyềnvàthônglượng_kỳthi_chương_bảy_phầnhai";
 
-export const PAGES: Diff = { verb: "đổi", noun: "trang kết thúc của mục", target: "3.4", count: 1, from: "78", to: "80" };
-export const EXCLUDE: Diff = { verb: "bỏ", noun: "mục", tail: "khỏi đề cương thi", scope: "chương 7", count: 9 };
-export const MANY: Diff = { verb: "đánh dấu đã học", noun: "mục", scope: "chương 3", count: 14 };
+export const PAGES: Diff = { verb: "đổi", noun: "trang kết thúc của phần", target: "3.4", count: 1, from: "78", to: "80" };
+export const EXCLUDE: Diff = { verb: "bỏ", noun: "phần", tail: "khỏi đề cương thi", scope: "chương 7", count: 9 };
+export const MANY: Diff = { verb: "đánh dấu đã học", noun: "phần", scope: "chương 3", count: 14 };
 export const LONG: Diff = {
   verb: "sửa",
   noun: "thẻ",
@@ -69,7 +69,7 @@ export function initialFor(state: CommandState): Initial {
       return tray({ kind: "too-long" }, [PAGES], TOO_LONG_TEXT);
     case "pending-ai":
     case "pending-ai-practice":
-      return tray({ kind: "pending-ai" }, [PAGES], "mục 3.5 kết thúc ở trang 92");
+      return tray({ kind: "pending-ai" }, [PAGES], "phần 3.5 kết thúc ở trang 92");
     case "error":
       return tray({ kind: "error", certain: true }, [], "bỏ chương 7 khỏi đề cương thi");
     case "error-unsure":

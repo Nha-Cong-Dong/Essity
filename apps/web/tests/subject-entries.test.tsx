@@ -21,9 +21,9 @@ const keys = (e: ReturnType<typeof entryRow>) => e.map((x) => x.key);
 
 describe("entryRow", () => {
   // Red when: the entry is missing, or counts something other than studied/total sections.
-  it("US-13: Đề cương shows 'đã học x/y mục' with a link to the outline", () => {
+  it("US-13: Đề cương shows 'đã học x/y phần' with a link to the outline", () => {
     const e = entryRow(ID, { outline: outline([leaf("1", true), leaf("2", false), leaf("3", false)]), questions: null, graphCards: null });
-    expect(e[0]).toEqual({ key: "syllabus", label: "Đề cương", href: `/subjects/${ID}/syllabus`, note: "đã học 1/3 mục" });
+    expect(e[0]).toEqual({ key: "syllabus", label: "Đề cương", href: `/subjects/${ID}/syllabus`, note: "đã học 1/3 phần" });
   });
 
   // Red when: an entry whose screen has nothing to show (no textbook, no questions, no cards) is drawn.
@@ -54,7 +54,7 @@ describe("SubjectEntryRow", () => {
     const html = renderToStaticMarkup(
       <SubjectEntryRow entries={entryRow(ID, { outline: outline([leaf("1", true)]), questions: { ready: 2, total: 2 }, graphCards: 1 })} />,
     );
-    expect(html).toContain("đã học 1/1 mục");
+    expect(html).toContain("đã học 1/1 phần");
     expect(html).toContain("2 câu sẵn sàng");
     expect((html.match(/<a /g) ?? []).length).toBe(4);
   });

@@ -15,7 +15,7 @@ export function SubjectStatsBlock({ stats }: { stats: ViewSubject }) {
         <div>
           <dt className="text-meta text-ink-soft">Đã học</dt>
           <dd className="m-0 font-display text-lead">
-            {syllabus.studied}/{syllabus.leaves} mục
+            {syllabus.studied}/{syllabus.leaves} phần
           </dd>
         </div>
         <div>

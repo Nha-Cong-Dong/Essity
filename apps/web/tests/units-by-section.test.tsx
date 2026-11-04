@@ -19,9 +19,9 @@ const reply = (status: number, body: unknown) => vi.fn(async () => new Response(
 describe("AC14 units by section", () => {
   it("AC14 shows a group per section and the cards in none under their own heading", async () => {
     render(<UnitsBySection subjectId="x" fetchFn={reply(200, GROUPS)} />);
-    await waitFor(() => expect(screen.getByRole("heading", { name: /Thẻ theo mục/ })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("heading", { name: /Thẻ theo phần/ })).toBeTruthy());
     expect(screen.getByRole("heading", { name: /Chương 1/ })).toBeTruthy();
-    const loose = screen.getByRole("heading", { name: /Chưa gắn mục/ }).parentElement!;
+    const loose = screen.getByRole("heading", { name: /Chưa gắn phần/ }).parentElement!;
     expect(within(loose).getByText(/Thẻ B/)).toBeTruthy();
     expect(within(loose).getByText(/nháp/)).toBeTruthy();
   });

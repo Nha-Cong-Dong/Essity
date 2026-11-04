@@ -52,8 +52,8 @@ describe("/today page (T2.14)", () => {
             partial: false,
             remaining: null,
             unit: null,
-            reason: "Mục chưa học đầu tiên trong đề cương.",
-            pace: { remaining_leaves: 3, remaining_weight: 3, unit: null, days_left: 55, text: "còn 3 mục, 55 ngày" },
+            reason: "Phần chưa học đầu tiên trong đề cương.",
+            pace: { remaining_leaves: 3, remaining_weight: 3, unit: null, days_left: 55, text: "còn 3 phần, 55 ngày" },
           },
         ],
         empty_reason: null,
@@ -64,7 +64,7 @@ describe("/today page (T2.14)", () => {
     expect(markup).toContain("Tuyệt vời, không có nội dung nào cần ôn tập hôm nay");
     expect(markup).toContain("TCP flow control");
     expect(markup).toContain("Xem tất cả");
-    expect(markup).toContain("còn 3 mục, 55 ngày");
+    expect(markup).toContain("còn 3 phần, 55 ngày");
     expect(markup).toContain("Chưa có câu hỏi nào sẵn sàng");
   });
 

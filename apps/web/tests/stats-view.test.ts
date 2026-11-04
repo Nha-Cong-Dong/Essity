@@ -39,7 +39,7 @@ const OUT: Out = {
       future: false,
       exam_day: false,
       subjects: [{ id: SUBJECT, name: "Mạng máy tính" }],
-      sections: [{ id: "s1", name: "Mục 1.1" }],
+      sections: [{ id: "s1", name: "Phần 1.1" }],
       cards_saved: 7,
       questions_answered: 5,
     },
@@ -68,7 +68,7 @@ describe("toStatsData", () => {
     const [cell] = toStatsData(OUT).cells;
     expect(cell).toEqual({
       day: "2026-10-29", column: 0, row: 3, level: 2, future: false, examDay: false,
-      subjects: [SUBJECT], sections: ["Mục 1.1"], cardsSaved: 7, questionsAnswered: 5,
+      subjects: [SUBJECT], sections: ["Phần 1.1"], cardsSaved: 7, questionsAnswered: 5,
     });
   });
 

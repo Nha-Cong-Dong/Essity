@@ -53,7 +53,7 @@ describe("CommandLive", () => {
     fireEvent.change(input, { target: { value: "bỏ chương 7" } });
     fireEvent.submit(input.closest("form")!);
     await screen.findByText(/Đã làm:/);
-    expect(screen.getByText("bỏ 3 mục khỏi đề cương thi")).toBeTruthy();
+    expect(screen.getByText("bỏ 3 phần khỏi đề cương thi")).toBeTruthy();
     expect(refresh).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Hoàn tác" }));
     await screen.findByText(/Đã hoàn tác:/);

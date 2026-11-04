@@ -76,9 +76,9 @@ const SUGGESTION = {
     section_title: "3.2 TCP flow control",
     partial: false,
     remaining: null,
-    unit: "mục",
-    reason: "Môn thi sau 20 ngày, còn 12 mục.",
-    pace: { remaining_leaves: 12, remaining_weight: 12, unit: "mục", days_left: 20, text: "còn 12 mục, 20 ngày" },
+    unit: "phần",
+    reason: "Môn thi sau 20 ngày, còn 12 phần.",
+    pace: { remaining_leaves: 12, remaining_weight: 12, unit: "phần", days_left: 20, text: "còn 12 phần, 20 ngày" },
   },
 };
 
@@ -99,7 +99,7 @@ test("US-15 AC6: Hôm nay -> Gợi ý cho hôm nay -> Vào buổi học", async 
   await page.goto("/design-preview/subject-live?state=not-suggested");
   await settled(page);
   await page.getByRole("button", { name: "Gợi ý cho hôm nay" }).click();
-  await expect(page.getByText("Nội dung hôm nay: mục 3.2")).toBeVisible();
+  await expect(page.getByText("Nội dung hôm nay: phần 3.2")).toBeVisible();
   expect(asked).toBe(1);
   const study = page.getByRole("button", { name: /^Vào buổi học/ });
   await expect(study).toHaveAttribute("href", `/subjects/${SUBJECT}/sessions/study?section=${SUGGESTION.suggestion.section_id}`);
@@ -135,7 +135,7 @@ test("T7.13b: the subject page's entry row opens Đề cương and Đồ thị",
   await page.goto("/design-preview/subject-live?state=not-suggested");
   await settled(page);
   const row = page.locator("[data-entry-row]");
-  await expect(row.getByText("đã học 1/2 mục")).toBeVisible();
+  await expect(row.getByText("đã học 1/2 phần")).toBeVisible();
   await expect(row.getByText("5 câu sẵn sàng")).toBeVisible();
   await expect(row.locator("[data-entry=graph]")).toHaveAttribute("href", `/subjects/${SUBJECT}/graph`);
   await expect(row.locator("[data-entry=stats]")).toHaveAttribute("href", `/stats?subject=${SUBJECT}`);

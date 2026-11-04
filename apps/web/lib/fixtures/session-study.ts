@@ -19,20 +19,20 @@ export type Suggestion = { kind: "section"; text: string; reason: string; pace: 
 export const SUGGESTION: Suggestion = {
   kind: "section",
   text: "Nội dung học tập: 3.2 TCP flow control (tr. 52-58)",
-  reason: "Mục kế tiếp trong đề cương. Còn 12 mục (86 trang), 20 ngày.",
-  pace: "Mục 3.2 chưa học. Mục 3.1 đã xong hôm kia.",
+  reason: "Phần kế tiếp trong đề cương. Còn 12 phần (86 trang), 20 ngày.",
+  pace: "Phần 3.2 chưa học. Phần 3.1 đã xong hôm kia.",
 };
 
 export const NEXT_SUGGESTION: Suggestion = {
   kind: "section",
-  text: "Tiếp theo nên học: mục 3.3 TCP congestion control (tr. 59-66)",
-  reason: "Mục kế tiếp trong đề cương. Còn 11 mục (78 trang), 20 ngày.",
-  pace: "Mục 3.2 vừa học xong.",
+  text: "Tiếp theo nên học: phần 3.3 TCP congestion control (tr. 59-66)",
+  reason: "Phần kế tiếp trong đề cương. Còn 11 phần (78 trang), 20 ngày.",
+  pace: "Phần 3.2 vừa học xong.",
 };
 
 export const FREE_SUGGESTION: Suggestion = {
   kind: "free",
-  text: "Buổi học tự do. Bài nộp không gắn mục đề cương.",
+  text: "Buổi học tự do. Bài nộp không gắn phần đề cương.",
 };
 
 const quote = (id: string, kind: Anchor["kind"], label: string, text: string): Anchor => ({ id, kind, label, quote: text });

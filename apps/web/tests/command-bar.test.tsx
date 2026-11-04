@@ -82,10 +82,10 @@ describe("a command", () => {
   // US-18 AC1. Red when: Gửi does not send, or the field keeps the text of an applied command.
   it("AC1: Gửi sends the command with an id; done shows the change and clears the field", async () => {
     const { run } = bar();
-    type("  mục 3.4 kết thúc ở trang 80 ");
+    type("  phần 3.4 kết thúc ở trang 80 ");
     await send();
     expect(run).toHaveBeenCalledOnce();
-    expect(run.mock.calls[0][0].text).toBe("mục 3.4 kết thúc ở trang 80");
+    expect(run.mock.calls[0][0].text).toBe("phần 3.4 kết thúc ở trang 80");
     expect(run.mock.calls[0][0].id).toMatch(/^[0-9a-f-]{36}$/);
     expect(screen.getByText(/Đã làm:/)).toBeTruthy();
     expect(field().value).toBe("");
@@ -94,7 +94,7 @@ describe("a command", () => {
 
   it("AC1: Enter in the field sends (the form submits)", async () => {
     const { run } = bar();
-    type("sửa mục 3.4");
+    type("sửa phần 3.4");
     await act(async () => {
       fireEvent.submit(screen.getByRole("form", { name: "Thanh lệnh" }));
     });
@@ -128,7 +128,7 @@ describe("a command", () => {
     let finish: (o: Outcome) => void = () => {};
     const run = vi.fn(() => new Promise<Outcome>((resolve) => (finish = resolve)));
     bar({ run });
-    type("sửa mục 3.4");
+    type("sửa phần 3.4");
     await send();
     expect(field().readOnly).toBe(true);
     expect(screen.getByText("Đang hiểu lệnh…")).toBeTruthy();
@@ -181,12 +181,12 @@ describe("errors", () => {
   it("Thử lại and Gửi with the same words reuse the command id; changed words get a new one", async () => {
     const run = failing(false);
     bar({ run });
-    type("sửa mục 3.4");
+    type("sửa phần 3.4");
     await send();
     expect(screen.getByText(/Chưa chắc lệnh đã chạy/)).toBeTruthy();
     await click("Thử lại");
     await send();
-    type("sửa mục 3.5");
+    type("sửa phần 3.5");
     await send();
     const ids = run.mock.calls.map((c) => (c[0] as Command).id);
     expect(ids[1]).toBe(ids[0]);
@@ -196,11 +196,11 @@ describe("errors", () => {
 
   it("a sure failure says nothing changed; Thử lại is described by the reason", async () => {
     bar({ run: failing(true) });
-    type("sửa mục 3.4");
+    type("sửa phần 3.4");
     await send();
     expect(screen.getByText("Không chạy được lệnh. Chưa có gì thay đổi.")).toBeTruthy();
     expect(describedBy(screen.getByRole("button", { name: "Thử lại" }))?.textContent).toContain("Chưa có gì");
-    expect(field().value).toBe("sửa mục 3.4");
+    expect(field().value).toBe("sửa phần 3.4");
   });
 
   // Red when: a hung request keeps "Đang hiểu lệnh…" forever.
@@ -208,7 +208,7 @@ describe("errors", () => {
     vi.useFakeTimers();
     try {
       bar({ run: () => new Promise<Outcome>(() => {}) });
-      type("sửa mục 3.4");
+      type("sửa phần 3.4");
       await send();
       await act(async () => {
         await vi.advanceTimersByTimeAsync(TIMEOUT_MS + 1);
@@ -293,7 +293,7 @@ describe("quota (US-18 AC8)", () => {
     bar({ initial: initialFor("pending-ai") });
     expect(field().readOnly).toBe(true);
     expect(field().getAttribute("aria-disabled")).toBe("true");
-    expect(field().value).toBe("mục 3.5 kết thúc ở trang 92");
+    expect(field().value).toBe("phần 3.5 kết thúc ở trang 92");
     expect((screen.getByRole("button", { name: "Gửi" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("Thanh lệnh tạm tắt vì hết lượt AI. Bạn vẫn sửa trực tiếp được.")).toBeTruthy();
     expect(describedBy(field())?.textContent).toContain("hết lượt AI");
@@ -307,13 +307,13 @@ describe("quota (US-18 AC8)", () => {
   it("entering pending_ai moves focus to the field for a pointer and to the tray on touch", async () => {
     const run = async (): Promise<Outcome> => ({ kind: "pending-ai" });
     bar({ run });
-    type("sửa mục 3.4");
+    type("sửa phần 3.4");
     await send();
     expect(document.activeElement).toBe(field());
     cleanup();
     touch();
     bar({ run });
-    type("sửa mục 3.4");
+    type("sửa phần 3.4");
     await send();
     expect(document.activeElement).toBe(document.querySelector("[data-tray]"));
   });
@@ -334,7 +334,7 @@ describe("focus after a button vanishes", () => {
 
   it("an error moves focus to Thử lại for a pointer", async () => {
     bar({ run: async () => ({ kind: "error", certain: true }) });
-    type("sửa mục 3.4");
+    type("sửa phần 3.4");
     await send();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Thử lại" }));
   });

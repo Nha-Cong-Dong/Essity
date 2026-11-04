@@ -92,7 +92,7 @@ export function DraftCard(props: DraftCardProps) {
       <div className={sections.length === 0 && draft.source === "both" ? "hidden" : "flex flex-wrap items-center gap-2"}>
         {sections.length > 0 && (<>
         <label className="sr-only" htmlFor={`${id}-section`}>
-          Mục đề cương của thẻ {label}
+          Phần đề cương của thẻ {label}
         </label>
         <select
           id={`${id}-section`}
@@ -102,10 +102,10 @@ export function DraftCard(props: DraftCardProps) {
         >
           {sections.map((section) => (
             <option key={section} value={section}>
-              Mục {section}
+              Phần {section}
             </option>
           ))}
-          <option value={NO_SECTION}>Chưa gắn mục</option>
+          <option value={NO_SECTION}>Chưa gắn phần</option>
         </select>
         </>)}
         {draft.source !== "both" && <span className="text-meta text-ink-soft">{SOURCE_NOTE[draft.source]}</span>}

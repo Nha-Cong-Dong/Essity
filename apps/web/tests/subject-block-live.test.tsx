@@ -13,8 +13,8 @@ const NEXT = {
   label: "3.2",
   title: "TCP flow control",
   pages: null,
-  reason: "Mục chưa học đầu tiên trong đề cương.",
-  pace: { sections_left: 3, pages_left: null, days_left: 5, text: "còn 3 mục, 5 ngày" },
+  reason: "Phần chưa học đầu tiên trong đề cương.",
+  pace: { sections_left: 3, pages_left: null, days_left: 5, text: "còn 3 phần, 5 ngày" },
 };
 
 function show(props: Partial<React.ComponentProps<typeof SubjectSuggestion>> = {}) {
@@ -44,7 +44,7 @@ describe("subject block (T7.13)", () => {
   it("US-15 AC6: the answer shows the section and no reason is asked", async () => {
     show({ resolve: async () => ({ kind: "suggested", next: NEXT }) });
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Gợi ý cho hôm nay" })));
-    expect(screen.getByText("Nội dung hôm nay: mục 3.2")).toBeTruthy();
+    expect(screen.getByText("Nội dung hôm nay: phần 3.2")).toBeTruthy();
     expect(screen.queryByText(/không phải ngày/i)).toBeNull();
   });
 

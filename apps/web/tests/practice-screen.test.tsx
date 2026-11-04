@@ -63,7 +63,7 @@ describe("home", () => {
     const section = container.querySelector("section[aria-labelledby=g-g1]") as HTMLElement;
     const order = [...section.querySelectorAll("[data-question]")].map((li) => li.getAttribute("data-question"));
     expect(order.at(-1)).toBe("q9");
-    expect(within(section).getByText("Chờ học: mục 3.4")).toBeTruthy();
+    expect(within(section).getByText("Chờ học: phần 3.4")).toBeTruthy();
   });
 
   // US-16 AC2. Red when: mastery or timing is missing, or a type with under 3 attempts shows a ratio.
@@ -79,7 +79,7 @@ describe("home", () => {
   it("AC4: an unlinked question names the command bar fix once; an AI answer is labelled", () => {
     render(<PracticeScreen state="home" />);
     expect(screen.getAllByText(/Sửa bằng thanh lệnh/).length).toBe(1);
-    expect(screen.getByText(/Chưa gắn mục · Câu 7/)).toBeTruthy();
+    expect(screen.getByText(/Chưa gắn phần · Câu 7/)).toBeTruthy();
     expect(screen.getAllByText("đáp án do AI soạn").length).toBe(1);
   });
 
@@ -163,9 +163,9 @@ describe("no bank", () => {
   it("AC1: upload primary; generate only for studied sections; one generation at a time", async () => {
     const { container } = render(<PracticeScreen state="no-bank" />);
     expect(container.querySelector(PRIMARY)?.textContent).toBe("Tải bộ câu hỏi");
-    const buttons = screen.getAllByText("Sinh câu luyện tập cho mục này");
+    const buttons = screen.getAllByText("Sinh câu luyện tập cho phần này");
     expect(buttons.length).toBe(2);
-    expect(screen.getByText("2 mục chưa học xong: học xong mới sinh câu.")).toBeTruthy();
+    expect(screen.getByText("2 phần chưa học xong: học xong mới sinh câu.")).toBeTruthy();
     fireEvent.click(buttons[0]);
     expect(buttons[1].closest("button")?.getAttribute("aria-disabled")).toBe("true");
     await waitFor(() => expect(container.querySelector("[data-candidates]")).toBeTruthy());
@@ -174,8 +174,8 @@ describe("no bank", () => {
 
   it("AC1: with no studied section it says so and offers no generate button", () => {
     render(<PracticeScreen state="no-bank" sections={[{ id: "s3", label: "3.3", studied: false }]} />);
-    expect(screen.getByText("Chưa có mục nào học xong. Hoàn thành một buổi học để sinh câu luyện tập.")).toBeTruthy();
-    expect(screen.queryByText("Sinh câu luyện tập cho mục này")).toBeNull();
+    expect(screen.getByText("Chưa có phần nào học xong. Hoàn thành một buổi học để sinh câu luyện tập.")).toBeTruthy();
+    expect(screen.queryByText("Sinh câu luyện tập cho phần này")).toBeNull();
   });
 });
 

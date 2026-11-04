@@ -178,7 +178,7 @@ export function StatsScreen({
           lead
           label="Nội dung đã học"
           value={`${t.unitsLearned}`}
-          note={`/ ${t.unitsTotal} mục · ${t.sessions} buổi học`}
+          note={`/ ${t.unitsTotal} phần · ${t.sessions} buổi học`}
         />
         <Kpi label="Thẻ đã ôn" value={`${t.cardsReviewed}`} note={`${t.cardsSaved} thẻ đã lưu`} />
         <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />

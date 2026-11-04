@@ -36,7 +36,7 @@ describe("QuestionList", () => {
         number: 2,
         type_name: "So sánh",
         status: "waiting",
-        line: "Chờ học: mục 2, 3.10",
+        line: "Chờ học: phần 2, 3.10",
         waiting_sections: [{ id: "s", number: "2", title: "UDP" }],
       }),
     ]);
@@ -44,14 +44,14 @@ describe("QuestionList", () => {
     expect(out).toContain("Giải thích");
     expect(out).toContain("So sánh");
     expect(out).toContain("Sẵn sàng");
-    expect(out).toContain("Chờ học: mục 2, 3.10");
+    expect(out).toContain("Chờ học: phần 2, 3.10");
     expect(out).toContain(`href="/subjects/${SUBJECT}/syllabus"`);
   });
 
   it("puts unlinked questions apart with one line to fix them (AC3)", () => {
-    const out = html([row({}), row({ id: "q3", number: 3, status: "unlinked", line: "Chưa gắn mục. Sửa bằng thanh lệnh." })]);
-    expect(out).toContain("Chưa gắn mục. Sửa bằng thanh lệnh.");
-    expect(out.indexOf("Chưa gắn mục")).toBeGreaterThan(out.indexOf("TCP là gì?"));
+    const out = html([row({}), row({ id: "q3", number: 3, status: "unlinked", line: "Chưa gắn phần. Sửa bằng thanh lệnh." })]);
+    expect(out).toContain("Chưa gắn phần. Sửa bằng thanh lệnh.");
+    expect(out.indexOf("Chưa gắn phần")).toBeGreaterThan(out.indexOf("TCP là gì?"));
   });
 
   it("labels an answer the AI wrote and a question with no type", () => {
