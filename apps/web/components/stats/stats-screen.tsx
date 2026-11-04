@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Watermark } from "@/components/motifs";
+import { Mascot } from "@/components/mascot";
+import { NxList, NxRow } from "@/components/ui/nx-list";
 import { Sheet } from "@/components/ui/sheet";
 import type { GridCell } from "@/lib/stats";
 import { NO_TOTALS, type StatsView } from "@/lib/stats-view";
@@ -27,23 +28,23 @@ function Skeleton() {
   );
 }
 
-/** Phase B: the first number of the page is the one solid pink block; the others are quiet. */
+/** V22: the numbers are plain type on the page, no surface; the lead one is the screen's answer. */
 function Kpi({ label, value, note, lead = false }: { label: string; value: string; note?: string; lead?: boolean }) {
   if (lead) {
     return (
-      <div data-surface="hong" data-kpi className="min-w-0 rounded-tile p-8">
-        <p className="m-0 text-read">{label}</p>
-        <p className="m-0 mt-1 font-display text-mega tabular-nums">{value}</p>
-        {note && <p className="m-0 mt-1 text-meta">{note}</p>}
+      <div data-kpi className="min-w-0">
+        <p className="m-0 text-meta text-ink-soft">{label}</p>
+        <p className="m-0 mt-1 font-display text-display tabular-nums">{value}</p>
+        {note && <p className="m-0 mt-1 text-meta text-ink-soft">{note}</p>}
       </div>
     );
   }
   return (
-    <Sheet variant="tile" tone="rose" className="min-w-0 self-start" data-kpi>
+    <div data-kpi className="min-w-0 border-line max-[900px]:border-t max-[900px]:pt-4 min-[901px]:border-l min-[901px]:pl-6">
       <p className="m-0 text-meta text-ink-soft">{label}</p>
-      <p className="m-0 mt-1 font-display text-display tabular-nums">{value}</p>
+      <p className="m-0 mt-1 font-display text-lead tabular-nums">{value}</p>
       {note && <p className="m-0 mt-1 text-meta text-ink-soft">{note}</p>}
-    </Sheet>
+    </div>
   );
 }
 
@@ -139,10 +140,10 @@ export function StatsScreen({
   }
   if (subjects.length === 0) {
     return (
-      <div className="relative">
-        <Watermark />
-        <h1 className="relative z-1 m-0 text-title">Thống kê</h1>
-        <div className="relative z-1 mt-8 flex flex-col items-start gap-4">
+      <div>
+        <h1 className="m-0 text-title">Thống kê</h1>
+        <div className="mt-8 flex flex-col items-start gap-4">
+          <Mascot pose="cho" size="lg" className="size-18" />
           <p className="m-0 max-w-xl text-read">
             Thống kê hiện sau tuần học đầu tiên. Tạo một môn rồi nộp bài ở buổi học đầu tiên để bắt đầu.
           </p>
@@ -157,25 +158,24 @@ export function StatsScreen({
   const hasDays = cells.some((c) => c.cardsSaved + c.questionsAnswered > 0);
   return (
     <>
-      <div className="flex flex-col gap-4 min-[768px]:flex-row min-[768px]:items-end min-[768px]:justify-between">
-        <div>
-          <h1 className="m-0 font-display text-display">
-            <span className="px-1" style={{ backgroundImage: "linear-gradient(to top, var(--hl-band) 35%, transparent 35%)" }}>Thống kê</span>
-          </h1>
-          <p className="m-0 mt-1 text-meta text-ink-soft">Tổng quan việc học của bạn, mọi môn cộng lại.</p>
+      <div className="grid gap-x-4 gap-y-3 min-[901px]:grid-cols-12 min-[901px]:items-end">
+        <div className="min-[901px]:col-span-8">
+          <h1 className="m-0 text-title text-balance">Thống kê</h1>
+          <p className="m-0 mt-2 text-body text-ink-soft">Tổng quan việc học của bạn, mọi môn cộng lại.</p>
         </div>
-        <Button
-          render={<a href="/api/export" download />}
-          nativeButton={false}
-          variant="secondary"
-          className="max-sm:w-full"
-        >
-          Tải dữ liệu (CSV)
-        </Button>
+        <div className="min-[901px]:col-span-4 min-[901px]:justify-self-end">
+          <a
+            href="/api/export"
+            download
+            className="inline-flex min-h-11 items-center text-meta text-ink-soft underline underline-offset-4 hover:text-ink"
+          >
+            Tải dữ liệu (CSV)
+          </a>
+        </div>
       </div>
 
-      <div className="mt-8 grid gap-(--bento-gap) min-[901px]:grid-cols-12" data-totals>
-        <div className="min-[901px]:col-span-7 [&>*]:h-full">
+      <div className="mt-12 grid gap-x-6 gap-y-6 min-[901px]:grid-cols-12 min-[901px]:items-start" data-totals>
+        <div className="min-[901px]:col-span-7">
           <Kpi
             lead
             label="Nội dung đã học"
@@ -183,32 +183,26 @@ export function StatsScreen({
             note={`/ ${t.unitsTotal} phần · ${t.sessions} buổi học`}
           />
         </div>
-        <div className="grid gap-(--bento-gap) min-[901px]:col-span-5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))] min-[901px]:grid-cols-1">
+        <div className="grid gap-6 min-[901px]:col-span-5">
           <Kpi label="Thẻ đã ôn" value={`${t.cardsReviewed}`} note={`${t.cardsSaved} thẻ đã lưu`} />
           <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
         </div>
       </div>
 
-      <div className="mt-(--bento-gap) grid gap-(--bento-gap) min-[901px]:grid-cols-12">
-        <div className="min-w-0 min-[901px]:col-span-5 [&>*]:h-full">
+      <div className="mt-14 grid gap-x-6 gap-y-8 min-[901px]:grid-cols-12">
+        <div className="min-w-0 min-[901px]:col-span-7 [&>*]:h-full">
           <Trend cells={cells} />
         </div>
-        <Sheet variant="tile" tone="rose" className="min-w-0 min-[901px]:col-span-7" aria-labelledby="subjects-h" role="region">
-          <h2 id="subjects-h" className="m-0 mb-3 text-read font-semibold">
-            Môn đang học
-          </h2>
-          <ul className="m-0 grid list-none gap-2 p-0 [grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr))]">
-            {subjects.map((s) => (
-              <li key={s.id} className="flex min-w-0 flex-col rounded-control bg-sheet px-3 py-2">
-                <span className="font-semibold wrap-anywhere">{s.name}</span>
-                <span className="text-meta text-ink-soft">{s.examOn ? `Thi ${s.examOn}` : "Chưa có ngày thi"}</span>
-              </li>
-            ))}
-          </ul>
-        </Sheet>
+        <NxList title="Môn đang học" className="min-[901px]:col-span-5">
+          {subjects.map((s) => (
+            <NxRow key={s.id} lead={s.name.trim().charAt(0).toUpperCase()} state={s.examOn ? `Thi ${s.examOn}` : "Chưa có ngày thi"}>
+              <span className="font-semibold wrap-anywhere">{s.name}</span>
+            </NxRow>
+          ))}
+        </NxList>
       </div>
 
-      <Sheet id="activity" className="mt-(--bento-gap) min-w-0" aria-labelledby="activity-h" role="region">
+      <Sheet id="activity" className="mt-14 min-w-0" aria-labelledby="activity-h" role="region">
         <h2 id="activity-h" className="m-0 mb-4 text-read font-semibold">
           Hoạt động cả năm
         </h2>

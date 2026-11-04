@@ -9,32 +9,24 @@ const DESKTOP = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
 
 for (const path of ["/login", "/register", "/forgot-password"]) {
-  test(`AC1: ${path} at 1440 is a 5/7 split, poster left, form at most 400px`, async ({ page }) => {
+  test(`AC1: ${path} at 1440 is one card, at most 420px, centred`, async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await page.goto(path);
     await settled(page);
-    const poster = await page.locator('[data-auth="poster"]').boundingBox();
-    const panel = await page.locator("main > div").boundingBox();
-    expect(poster).not.toBeNull();
-    expect(panel).not.toBeNull();
-    expect(poster!.x).toBe(0);
-    expect(Math.abs(poster!.width - (DESKTOP.width * 5) / 12)).toBeLessThan(2);
-    expect(panel!.width).toBeLessThanOrEqual(400.5);
-    expect(panel!.x).toBeGreaterThanOrEqual(poster!.width);
-    // The tilted notebook is a picture: nothing in it can be focused or read as the page.
-    await expect(page.locator('[data-auth="poster"] [aria-hidden="true"]').first()).toBeAttached();
+    const card = await page.locator("main > div").boundingBox();
+    expect(card).not.toBeNull();
+    expect(card!.width).toBeLessThanOrEqual(420.5);
+    expect(Math.abs(card!.x + card!.width / 2 - DESKTOP.width / 2)).toBeLessThan(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
-  test(`AC1: ${path} at 390 is a 72px poster strip with the logo only, then the form`, async ({ page }) => {
+  test(`AC1: ${path} at 390 is the logo, then the card filling the width`, async ({ page }) => {
     await page.setViewportSize(PHONE);
     await page.goto(path);
     await settled(page);
-    const poster = await page.locator('[data-auth="poster"]').boundingBox();
-    expect(poster!.height).toBeCloseTo(72, 0);
-    expect(poster!.width).toBeCloseTo(PHONE.width, 0);
-    await expect(page.locator('[data-auth="poster"] a')).toHaveText("Essity");
-    await expect(page.getByText("Tối nay ôn gì")).toBeHidden();
+    await expect(page.locator('[data-auth="top"] a')).toHaveText("Essity");
+    const card = await page.locator("main > div").boundingBox();
+    expect(card!.width).toBeGreaterThan(PHONE.width - 40);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }

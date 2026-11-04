@@ -79,7 +79,7 @@ export function AnswerBox({ id, value, onChange, onSubmit, onForgot, save, pendi
             send();
           }
         }}
-        className="mt-5 block field-sizing-content max-h-112 min-h-40 w-full resize-none rounded-none border-0 bg-transparent bg-[linear-gradient(transparent_31px,var(--line)_31px,var(--line)_32px)] bg-size-[100%_32px] [background-attachment:local] p-0 text-answer text-hong outline-none placeholder:text-ink-soft focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus aria-invalid:rounded-control aria-invalid:outline-2 aria-invalid:outline-offset-8 aria-invalid:outline-partial aria-invalid:outline-dashed"
+        className="mt-5 block field-sizing-content max-h-112 min-h-40 w-full resize-none rounded-none border-0 bg-transparent bg-[linear-gradient(transparent_31px,var(--line)_31px,var(--line)_32px)] bg-size-[100%_32px] [background-attachment:local] p-0 scroll-mb-24 text-answer text-hong outline-none placeholder:text-ink-soft focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus aria-invalid:rounded-control aria-invalid:outline-2 aria-invalid:outline-offset-8 aria-invalid:outline-partial aria-invalid:outline-dashed"
       />
       <p className="m-0 mt-2.5 flex justify-between gap-3 text-meta text-ink-soft" aria-live="polite">
         <SaveLine save={save} />
@@ -103,8 +103,8 @@ export function AnswerBox({ id, value, onChange, onSubmit, onForgot, save, pendi
           </FieldError>
         </div>
       )}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Button type="button" pending={pending === "submit"} disabled={busy && pending !== "submit"} onClick={send}>
+      <div className="sticky bottom-0 z-10 mt-6 flex flex-wrap items-center gap-3 bg-bg py-3 min-[641px]:static min-[641px]:bg-transparent min-[641px]:py-0">
+        <Button type="button" className="max-[640px]:flex-1" pending={pending === "submit"} disabled={busy && pending !== "submit"} onClick={send}>
           Gửi
         </Button>
         <Button

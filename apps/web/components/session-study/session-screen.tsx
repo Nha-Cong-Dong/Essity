@@ -397,7 +397,7 @@ export function SessionScreen(props: SessionScreenProps) {
 
   return (
     <FocusShell position={0} total={0} exit={exit} title={<span title={subject}>{subject}</span>}>
-      <div className="mx-auto flex w-full max-w-(--col-session) flex-col gap-10">
+      <div className="mx-auto flex w-full max-w-170 flex-col gap-10">
         <p className="sr-only" role="status" aria-live="polite">
           {note || round.announce}
         </p>
@@ -444,7 +444,7 @@ export function SessionScreen(props: SessionScreenProps) {
                   else patchRow(id, { state: "done" });
                 }}
               />
-              <div className="flex flex-col items-start gap-2">
+              <div className="sticky bottom-0 z-10 flex flex-col items-start gap-2 bg-bg py-3 max-[640px]:[&>button]:w-full min-[641px]:static min-[641px]:bg-transparent min-[641px]:py-0">
                 <Button
                   type="button"
                   className="max-[480px]:w-full"

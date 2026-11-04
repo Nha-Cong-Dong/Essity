@@ -14,13 +14,13 @@ function SourceCite({ source }: { source: Source }) {
 
 export function SourceQuote({ source }: { source: Source }) {
   return (
-    <figure className="m-0">
+    <figure className="m-0 rounded-row bg-bg px-3.5 py-3">
       <blockquote className="m-0 border-l border-line-strong pl-3.5 text-body leading-[1.75] wrap-anywhere">
         <mark className="animate-hl-sweep [background:linear-gradient(var(--hl-band),var(--hl-band))_0_100%/100%_38%_no-repeat] px-px text-ink [box-decoration-break:clone]">
           {source.quote_text}
         </mark>
       </blockquote>
-      <figcaption className="mt-1 pl-3.75 text-meta text-ink-soft">
+      <figcaption className="mt-1 pl-3.5 text-meta text-ink-soft">
         <SourceCite source={source} />
       </figcaption>
     </figure>
