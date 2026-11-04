@@ -22,6 +22,7 @@ from core_api.repositories.subject import SubjectNotFoundError, SubjectRepositor
 
 __all__ = [
     "DocumentNotFoundError",
+    "DocumentNotIndexedError",
     "NameTakenError",
     "NoChangeError",
     "OutlineService",
@@ -41,6 +42,10 @@ class SectionNotFoundError(LookupError):
 
 class DocumentNotFoundError(LookupError):
     """No such document for this user."""
+
+
+class DocumentNotIndexedError(ValueError):
+    """The document is not in the state a new reading starts from (read, with an outline)."""
 
 
 class NoChangeError(ValueError):
@@ -128,14 +133,43 @@ class OutlineService:
 
     # --- storing what indexing read ------------------------------------------------------
 
-    def store_outline(self, document: Document, nodes: Sequence[NewSection]) -> bool:
+    def store_outline(
+        self, document: Document, nodes: Sequence[NewSection], *, reread: bool = False
+    ) -> bool:
         """Save the tree ai-service read. Idempotent: the same answer again leaves the same tree.
         An outline the learner has touched (an edit of theirs, covered pages, linked cards) is
-        never replaced, whatever the new reading says. True when the tree was written."""
+        never replaced, whatever the new reading says, unless the learner asked for a new
+        reading (`reread`): then the new tree is laid over theirs and their work stays
+        (`DocSectionRepository.merge`). True when the tree was written."""
         if self.sections.touched(document.id):
-            return False
+            if not reread:
+                return False
+            self.sections.merge(document.id, document.subject_id, nodes)
+            return True
         self.sections.replace(document.id, document.subject_id, nodes)
         return True
+
+    def request_reextract(self, document_id: uuid.UUID) -> Document:
+        """Start reading the document's outline again (OUTLINE-FIX3). The document goes back to
+        `uploaded`, the state that says "being read"; the caller sends `document.uploaded.v1`.
+        The answer is laid over the outline the learner has worked on, so their progress stays.
+        Raises DocumentNotFoundError, DocumentNotIndexedError (not read yet, failed, or already
+        being read again)."""
+        found = self.documents.get(document_id)
+        if found is None or self.subjects.get(found.subject_id) is None:
+            raise DocumentNotFoundError
+        document = self.documents.lock(document_id)
+        if document is None:
+            raise DocumentNotFoundError
+        if document.status != "indexed" or not self.sections.of_document(document.id):
+            raise DocumentNotIndexedError
+        document.status = "uploaded"
+        # What "indexed" stands on goes until the new answer brings it back (the table's check).
+        document.run_id = document.page_count = None
+        document.toc_key = document.page_labels_key = document.page_text_key = None
+        document.thumbnails_prefix = None
+        self.session.flush()
+        return document
 
     # --- editing -------------------------------------------------------------------------
 

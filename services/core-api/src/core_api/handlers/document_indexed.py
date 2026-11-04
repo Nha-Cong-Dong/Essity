@@ -172,6 +172,9 @@ class OnDocumentIndexed:
 
     def __call__(self, session: Session, event: Event) -> None:
         assert isinstance(event, DocumentIndexedEvent)
+        before = DocumentRepository(session, event.user_id).get(event.payload.document_id)
+        # "uploaded" with an outline already stored: the learner asked to read it again.
+        reread = before is not None and before.status == "uploaded"
         document = _apply_indexed(session, event)
         if document is None:
             return
@@ -188,7 +191,9 @@ class OnDocumentIndexed:
         if parsed is None:
             _log.warning("document outline missing or refused", extra=extra)
             return
-        stored = OutlineService(session, document.user_id).store_outline(document, parsed[1])
+        stored = OutlineService(session, document.user_id).store_outline(
+            document, parsed[1], reread=reread
+        )
         _log.info("document outline stored", extra=extra | {"stored": stored})
 
 

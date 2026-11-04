@@ -45,9 +45,10 @@ from core_api.repositories.document import (
     StorageFullError,
 )
 from core_api.repositories.subject import SubjectNotFoundError, SubjectRepository
-from core_api.security.rate_limit import RateLimit, RateLimiter, get_rate_limiter
+from core_api.security.rate_limit import Cooldown, RateLimit, RateLimiter, get_rate_limiter
 from core_api.services.outline import (
     DocumentNotFoundError,
+    DocumentNotIndexedError,
     NameTakenError,
     NoChangeError,
     OutlineService,
@@ -289,6 +290,52 @@ def confirm_upload(
 
     document.status = "uploaded"
     document.uploaded_at = now
+    enqueue_event(
+        session,
+        DocumentUploaded(
+            document_id=document.id,
+            subject_id=document.subject_id,
+            object_key=document.object_key,
+            format=document.format,  # pyright: ignore[reportArgumentType]
+        ),
+        user_id=user.id,
+        now=now,
+    )
+    return _out(document)
+
+
+REEXTRACT_COOLDOWN = Cooldown("document_reextract", timedelta(minutes=5))
+
+
+@router.post(
+    "/documents/{document_id}/reextract-outline",
+    response_model=DocumentOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def reextract_outline(
+    document_id: uuid.UUID,
+    user: VerifiedUser,
+    session: DbSession,
+    limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
+    now: Now,
+) -> DocumentOut:
+    """Read the document's outline again (OUTLINE-FIX3): the same event as an upload goes to
+    ai-service, and its answer is laid over the outline the learner has worked on, keeping
+    their progress, exclusions and edited ranges. The document shows as being read meanwhile.
+
+    Errors: 404 `document_not_found` (another user's too); 409 `not_indexed` (not read yet,
+    failed, or already being read again); 429 once per document per 5 minutes.
+    """
+    service = OutlineService(session, user.id)
+    if DocumentRepository(session, user.id).get(document_id) is None:
+        raise _error(404, "document_not_found")
+    limiter.enforce_cooldown(REEXTRACT_COOLDOWN, str(document_id))
+    try:
+        document = service.request_reextract(document_id)
+    except DocumentNotFoundError:
+        raise _error(404, "document_not_found") from None
+    except DocumentNotIndexedError:
+        raise _error(409, "not_indexed") from None
     enqueue_event(
         session,
         DocumentUploaded(

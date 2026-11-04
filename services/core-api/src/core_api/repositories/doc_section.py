@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from core_api.db.models import DocSection, KnowledgeUnit, UnitSection
+from core_api.db.models import DocSection, KnowledgeUnit, QuestionSection, UnitSection
+from core_api.domain import outline as rules
 from core_api.repositories.base import UserScopedRepository
 
 # unit.status values that count as a card the learner owns (not a draft, not retired).
@@ -119,6 +120,36 @@ class DocSectionRepository(UserScopedRepository[DocSection]):
         )
         return bool(owned) or self.linked_cards(document_id) > 0
 
+    def referenced_ids(self, document_id: uuid.UUID) -> set[uuid.UUID]:
+        """Sections of the document that a card or a question hangs on (a link or `section_id`)."""
+        ids = select(DocSection.id).where(
+            DocSection.user_id == self.user_id, DocSection.document_id == document_id
+        )
+        found: set[uuid.UUID] = set(
+            self.session.scalars(
+                select(UnitSection.section_id).where(
+                    UnitSection.user_id == self.user_id, UnitSection.section_id.in_(ids)
+                )
+            )
+        )
+        found.update(
+            self.session.scalars(
+                select(QuestionSection.section_id).where(
+                    QuestionSection.user_id == self.user_id, QuestionSection.section_id.in_(ids)
+                )
+            )
+        )
+        found.update(
+            sid
+            for sid in self.session.scalars(
+                select(KnowledgeUnit.section_id).where(
+                    KnowledgeUnit.user_id == self.user_id, KnowledgeUnit.section_id.in_(ids)
+                )
+            )
+            if sid is not None
+        )
+        return found
+
     def linked_cards(self, document_id: uuid.UUID) -> int:
         """Live cards linked to a section of the document."""
         return (
@@ -166,5 +197,79 @@ class DocSectionRepository(UserScopedRepository[DocSection]):
             self.add(row)
             made.append(row)
             assert index == len(made) - 1
+        self.session.flush()
+        return made
+
+    def merge(
+        self, document_id: uuid.UUID, subject_id: uuid.UUID, nodes: Sequence[NewSection]
+    ) -> list[DocSection]:
+        """Lay a new reading over the sections the learner has worked on, keeping their ids (so
+        cards, questions and the ledger stay linked). A new section matching an old one
+        (`domain.outline.match_titles`) takes its title, unit and, unless the learner set the
+        range, its pages, weight and place; progress and exclusion stay. A new section with no
+        match is added. An old one the reading no longer has is deleted only when nothing hangs
+        on it (no coverage, no edit, no link); else it is kept and excluded."""
+        old = self.of_document(document_id)
+        matched = rules.match_titles([o.title for o in old], [n.title for n in nodes])
+        referenced = self.referenced_ids(document_id)
+        made: list[DocSection] = []
+        siblings: dict[int | None, int] = {}
+        for index, node in enumerate(nodes):
+            position = siblings.get(node.parent, 0)
+            siblings[node.parent] = position + 1
+            parent_id = None if node.parent is None else made[node.parent].id
+            if index in matched:
+                row = old[matched[index]]
+                row.title, row.unit = node.title, node.unit
+                row.parent_id, row.ord = parent_id, position
+                if row.source != "user":
+                    previous = row.weight
+                    row.first_page, row.last_page = node.first_page, node.last_page
+                    row.weight, row.source, row.excluded = node.weight, node.source, node.excluded
+                    full = row.studied_weight >= previous > 0
+                    row.studied_weight = row.weight if full else min(row.studied_weight, row.weight)
+                made.append(row)
+                continue
+            row = DocSection(
+                subject_id=subject_id,
+                document_id=document_id,
+                parent_id=parent_id,
+                ord=position,
+                title=node.title,
+                first_page=node.first_page,
+                last_page=node.last_page,
+                weight=node.weight,
+                unit=node.unit,
+                source=node.source,
+                excluded=node.excluded,
+            )
+            row.id = uuid.uuid4()
+            self.add(row)
+            made.append(row)
+        self.session.flush()  # parents re-pointed before anything is deleted
+        kept = {m.id for m in made}
+        gone = [o for o in old if o.id not in kept]
+        held = {
+            o.id for o in gone if o.studied_weight > 0 or o.source == "user" or o.id in referenced
+        }
+        parent_of = {o.id: o.parent_id for o in gone}
+        for section_id in list(held):  # an old parent of a kept section stays too
+            above = parent_of.get(section_id)
+            while above is not None and above in parent_of and above not in held:
+                held.add(above)
+                above = parent_of[above]
+        for o in gone:
+            if o.id in held:
+                o.excluded = True
+        drop = [o.id for o in gone if o.id not in held]
+        if drop:
+            for o in gone:
+                if o.id in drop:
+                    self.session.expunge(o)
+            self.session.execute(
+                delete(DocSection).where(
+                    DocSection.user_id == self.user_id, DocSection.id.in_(drop)
+                )
+            )
         self.session.flush()
         return made
