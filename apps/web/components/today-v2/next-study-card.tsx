@@ -1,3 +1,4 @@
+import { SubjectMark } from "@/components/subject-mark";
 import { Button } from "@/components/ui/button";
 import { paceLine, TODAY_V2_COPY as COPY, type LearnItem } from "@/lib/today-v2";
 
@@ -19,15 +20,18 @@ export function NextStudyCard({ item }: { item: LearnItem; primary?: boolean }) 
   return (
     <article aria-labelledby={nameId} className="flex flex-col gap-2">
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4">
-        <span aria-hidden="true" className="h-10 w-8 rounded-slip bg-(color:--rose-200) shadow-sheet" />
+        <SubjectMark name={item.subject.name} />
         <h3 id={nameId} className="m-0 min-w-0 text-section font-semibold break-words hyphens-auto">
           {item.subject.name}
         </h3>
       </div>
       {item.state === "next" && (
         <>
+          {item.section.chapter ? (
+            <p className="m-0 text-meta font-semibold text-ink-soft wrap-anywhere">{item.section.chapter}</p>
+          ) : null}
           <p className="m-0 text-lead wrap-anywhere">
-            Mục {item.section.label} {item.section.title}
+            Phần {item.section.label} {item.section.title}
             {item.section.pages ? ` · ${item.section.pages}` : ""}
           </p>
           <PaceLine pace={item.pace} />

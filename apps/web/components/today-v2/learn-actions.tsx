@@ -3,6 +3,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useState } from "react";
 
+import { SubjectMark } from "@/components/subject-mark";
 import { Button } from "@/components/ui/button";
 import { studyHref } from "@/lib/session-study/entry";
 import { paceLine, TODAY_V2_COPY as COPY, type LearnItem } from "@/lib/today-v2";
@@ -36,9 +37,15 @@ function SubjectRow({ item }: { item: LearnItem }) {
           aria-expanded={open}
           aria-controls={id}
           onClick={() => setOpen(!open)}
-          className="min-w-0 flex-1 basis-40 text-left text-section font-semibold wrap-anywhere"
+          className="flex min-w-0 flex-1 basis-40 items-center gap-3 text-left text-section font-semibold wrap-anywhere"
         >
-          {item.subject.name}
+          <SubjectMark name={item.subject.name} />
+          <span className="min-w-0">
+            {item.subject.name}
+            <span className="block text-meta font-normal text-ink-soft">
+              {open ? "Bấm để thu gọn" : "Bấm để xem nội dung cụ thể"} {open ? "▴" : "▾"}
+            </span>
+          </span>
         </button>
         {next && (
           <Button
@@ -56,7 +63,7 @@ function SubjectRow({ item }: { item: LearnItem }) {
           {next ? (
             <>
               <p className="m-0">
-                Mục {next.section.label} {next.section.title}
+                {next.section.chapter ? `${next.section.chapter} · ` : ""}Phần {next.section.label} {next.section.title}
                 {next.section.pages ? ` · ${next.section.pages}` : ""}
               </p>
               <p className="m-0 text-meta text-ink-soft">{paceLine(next.pace)}</p>
