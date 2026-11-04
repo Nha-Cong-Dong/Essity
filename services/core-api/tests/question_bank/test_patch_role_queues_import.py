@@ -60,3 +60,17 @@ def test_other_role_changes_queue_none(client: TestClient, db_session: Session) 
     )
     assert response.status_code == 200
     assert jobs(db_session, document.id) == 0
+
+
+def test_role_change_on_an_unread_document_queues_none(
+    client: TestClient, db_session: Session
+) -> None:
+    user, headers = signed_in(db_session)
+    document = uploaded(db_session, user, "uploaded")
+    assert document.status != "indexed"
+
+    response = client.patch(
+        f"/v1/documents/{document.id}", json={"role": "question_bank"}, headers=headers
+    )
+    assert response.status_code == 200
+    assert jobs(db_session, document.id) == 0

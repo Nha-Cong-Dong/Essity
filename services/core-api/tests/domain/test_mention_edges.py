@@ -165,7 +165,7 @@ def test_a_lone_at_sign_is_plain_text_not_a_mention() -> None:
     # makes "Hoàn thành" refuse the whole session with mention_not_found, and the piece was
     # already saved, so the learner cannot fix it.
     docs = [BOOK]
-    for text in ("xem lại @ và làm bài", "xong @", "gửi @ \n tiếp"):
+    for text in ("xem lại @ và làm bài", "xong @", "gửi @ \n tiếp", "a @, b", "c @. d"):
         assert resolve_mentions(text, docs, {}) == []
     # A real mention next to a lone one still resolves.
     found = resolve_mentions("@ rồi @Sách", docs, {})

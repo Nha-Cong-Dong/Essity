@@ -44,7 +44,7 @@ class CmdWorld:
     def __init__(self, db: Session, user: User) -> None:
         self.db, self.user = db, user
         self.subject: Subject = make_subject(db, user)
-        self.document: Document = make_document(db, user, self.subject)
+        self.document: Document = make_document(db, user, self.subject, role="textbook")
         self.parent: DocSection = make_section(
             db, user, self.document, ord=0, title="Ch 1", weight=0
         )

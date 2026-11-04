@@ -35,8 +35,8 @@ class StudyLedgerRepository(UserScopedRepository[StudyLedger]):
             .where(
                 DocSection.user_id == self.user_id,
                 Document.status.not_in(("rejected", "failed")),
-                # A question bank is not content to study: its pages are never leaves.
-                Document.role != "question_bank",
+                # Progress is the main textbook's outline: other files' pages are never leaves.
+                Document.role == "textbook",
             )
         ).all()
         by_doc: dict[uuid.UUID, list[DocSection]] = defaultdict(list)

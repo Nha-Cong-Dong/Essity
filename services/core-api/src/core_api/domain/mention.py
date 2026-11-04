@@ -99,14 +99,14 @@ def _is_word(char: str) -> bool:
 
 def _mention_starts(text: str) -> list[int]:
     """Indexes of each `@` that begins a mention: not inside a word (an e-mail address), and
-    followed by a name (a lone `@`, typed and dismissed, is plain text)."""
+    followed by a letter or digit (a lone `@`, or `@,`, is plain text)."""
     return [
         i
         for i, char in enumerate(text)
         if char == "@"
         and (i == 0 or not _is_word(text[i - 1]))
         and i + 1 < len(text)
-        and not text[i + 1].isspace()
+        and _is_word(text[i + 1])
     ]
 
 
