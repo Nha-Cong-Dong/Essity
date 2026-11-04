@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from core_api.clients.storage import ObjectStorage
 from core_api.db.models import Document
 from core_api.db.models.document import UNCONFIRMED
+from core_api.handlers.question_bank_import import enqueue_import
 from core_api.messaging.envelope import DocumentFailedEvent, DocumentIndexedEvent, Event
 from core_api.repositories.doc_section import NewSection
 from core_api.repositories.document import DocumentRepository
@@ -172,7 +173,13 @@ class OnDocumentIndexed:
     def __call__(self, session: Session, event: Event) -> None:
         assert isinstance(event, DocumentIndexedEvent)
         document = _apply_indexed(session, event)
-        if document is None or document.toc_key is None or document.page_count is None:
+        if document is None:
+            return
+        if document.role == "question_bank":
+            # Nothing else asks for the split: the screen only says "Đã đọc xong". Queue it here;
+            # one waiting job per bank, and a re-run of the same answer adds none (AC8, AC9).
+            enqueue_import(session, document.user_id, document)
+        if document.toc_key is None or document.page_count is None:
             return
         extra = {"event_id": str(event.event_id), "document_id": str(document.id)}
         key = document.toc_key.rsplit("/", 1)[0] + "/" + OUTLINE_NAME
