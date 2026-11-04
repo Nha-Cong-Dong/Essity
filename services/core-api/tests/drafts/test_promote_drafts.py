@@ -92,3 +92,18 @@ def test_the_cli_command_runs_and_prints_the_counts(
     assert "would promote 1 cards of 1 sessions" in capsys.readouterr().out
     assert cli.run(world.db, ["promote-drafts"]) == 0
     assert "promoted 1 cards" in capsys.readouterr().out
+
+
+def test_old_cards_are_saved_when_they_were_made_not_all_today(world: World) -> None:
+    # Red when: every old draft is saved "now", so Hôm nay gets all of them on one day.
+    from datetime import timedelta
+
+    old, new = draft(world, 1), draft(world, 2)
+    old.created_at = FROZEN_NOW - timedelta(days=5)
+    new.created_at = FROZEN_NOW - timedelta(hours=1)
+    world.db.flush()
+    promote_drafts(world.db, now=FROZEN_NOW)
+    world.db.refresh(old)
+    world.db.refresh(new)
+    assert old.saved_at == old.created_at and new.saved_at == new.created_at
+    assert old.saved_learning_day != new.saved_learning_day

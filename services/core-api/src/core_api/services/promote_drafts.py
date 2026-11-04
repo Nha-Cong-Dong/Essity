@@ -75,12 +75,16 @@ def promote_drafts(session: Session, *, now: datetime, dry_run: bool = False) ->
         cards += len(drafts)
         if dry_run:
             continue
-        review.promote(
-            study,
-            drafts,
-            now=now,
-            tz=ZoneInfo(user.timezone),
-            day_start_hour=user.day_start_hour,
-            ranges=_ranges(session, user_id, [u.id for u in drafts]),
-        )
+        # Each card is saved at the moment it was made (never later than `now`), so the old
+        # cards enter review on the days they would have, not all on one.
+        ranges = _ranges(session, user_id, [u.id for u in drafts])
+        for unit in drafts:
+            review.promote(
+                study,
+                [unit],
+                now=min(now, unit.created_at),
+                tz=ZoneInfo(user.timezone),
+                day_start_hour=user.day_start_hour,
+                ranges=ranges,
+            )
     return PromoteReport(users=len(users), sessions=sessions, cards=cards)
