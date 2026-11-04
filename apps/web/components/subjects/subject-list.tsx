@@ -358,7 +358,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
               />
             ),
           )}
-          <li className="contents">
+          <li>
             <a
               href="/subjects/new"
               className="flex min-h-12 items-center justify-center rounded-row border border-dashed border-line-strong bg-bg px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"

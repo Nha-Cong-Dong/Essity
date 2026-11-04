@@ -33,7 +33,6 @@ function Suggested({ id, subjectId, subjectName, next }: { id: string; subjectId
       </h2>
       <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
         <NxRow lead={next.label} next state="Tiếp theo" why={next.reason || undefined}>
-          {next.label ? <span className="sr-only">Phần {next.label} </span> : null}
           {next.title}
           {next.pages ? ` · ${next.pages}` : ""}
         </NxRow>

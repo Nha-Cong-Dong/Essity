@@ -100,6 +100,7 @@ test("US-15 AC6: Hôm nay -> Gợi ý cho hôm nay -> Vào buổi học", async 
   await settled(page);
   await page.getByRole("button", { name: "Gợi ý cho hôm nay" }).click();
   await expect(page.getByText("Nội dung hôm nay", { exact: true })).toBeVisible();
+  await expect(page.getByText("3.2", { exact: true })).toBeVisible();
   expect(asked).toBe(1);
   const study = page.getByRole("button", { name: /^Vào buổi học/ });
   await expect(study).toHaveAttribute("href", `/subjects/${SUBJECT}/sessions/study?section=${SUGGESTION.suggestion.section_id}`);

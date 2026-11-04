@@ -45,6 +45,7 @@ describe("subject block (T7.13)", () => {
     show({ resolve: async () => ({ kind: "suggested", next: NEXT }) });
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Gợi ý cho hôm nay" })));
     expect(screen.getByText("Nội dung hôm nay")).toBeTruthy();
+    expect(screen.getByText(/3\.2/)).toBeTruthy(); // the section number, once
     expect(screen.queryByText(/không phải ngày/i)).toBeNull();
   });
 
