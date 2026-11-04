@@ -63,11 +63,15 @@ function Props({ pose }: { pose: MascotPose }) {
   if (pose === "chuanbi")
     return (
       <>
-        <path d="M30 100 h60" className="stroke-line-strong stroke-[2] [stroke-linecap:round]" />
-        <path d="M78 98 l16 -22 5 3 -16 22z" className="fill-pencil" />
-        <circle cx="26" cy="30" r="2.5" className="fill-rose-300 m-dot" />
-        <circle cx="36" cy="24" r="2.5" className="fill-rose-300 m-dot" />
-        <circle cx="46" cy="30" r="2.5" className="fill-rose-300 m-dot" />
+        <path d="M24 100 h58" className="stroke-line-strong fill-none stroke-[2] [stroke-linecap:round]" />
+        <path d="M30 98 q4 -7 8 0 t8 0 t8 0" className="stroke-hong fill-none stroke-[2.5] [stroke-linecap:round]" />
+        <g transform="rotate(32 66 100)">
+          <rect x="62.5" y="58" width="7" height="38" rx="1.5" className="fill-pencil" />
+          <path d="M62.5 96 h7 l-3.5 6z" className="fill-ink" />
+        </g>
+        <circle cx="12" cy="14" r="2.5" className="fill-rose-300 m-dot" />
+        <circle cx="22" cy="10" r="2.5" className="fill-rose-300 m-dot" />
+        <circle cx="32" cy="14" r="2.5" className="fill-rose-300 m-dot" />
       </>
     );
   return (
