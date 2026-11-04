@@ -41,8 +41,25 @@ describe("design rules", () => {
     expect(STYLES).toContain(path.join("components", "notebook", "notebook.module.css"));
   });
 
-  it("§6: no colour named right (it collides with text-align) and no orange", () => {
-    expect(offenders(UI, /\b(text|bg|border|decoration|fill|stroke)-(right|cam)\b/)).toEqual([]);
+  it("§6: no colour named right (it collides with text-align)", () => {
+    expect(offenders(UI, /\b(text|bg|border|decoration|fill|stroke)-right\b/)).toEqual([]);
+  });
+
+  // V22 decisions #9: --cam is the one second colour, for "suggested / next" rows only. It may be
+  // named in the NxList components and nowhere else, so it cannot spread to status, charts or buttons.
+  it("V22: cam appears only in ui/nx-list.tsx", () => {
+    const named = UI.filter((f) => /\b(?:text|bg|border|ring|inset-ring|fill|stroke)-cam\b|\(--cam\)/.test(read(f)));
+    expect(named.map((f) => f.replaceAll("\\", "/"))).toEqual(["components/ui/nx-list.tsx"]);
+  });
+
+  // V22 decisions #9: a tile holds at most one cam row, so a screen file uses `next` or `pick` at most once.
+  it("V22: a screen file uses the next/pick variant at most once", () => {
+    const over = UI.filter((f) => !f.endsWith("nx-list.tsx") && !f.startsWith(path.join("app", "design-preview")))
+      .map((f) => [f, (read(f).match(/<Nx(?:Row|Kind)[^>]*(?:next|pick)/g) ?? []).length] as const)
+      .filter(([, n]) => n > 1)
+      .map(([f]) => f.replaceAll("\\", "/"));
+    // The landing draws one tile per section; its rows are data-driven (one `next` entry in TOC).
+    expect(over).toEqual([]);
   });
 
   // UI-1a: one left edge. A page is drawn in PageColumn (mr-auto), never in its own centred

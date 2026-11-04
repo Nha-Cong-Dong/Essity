@@ -48,3 +48,12 @@ test("a long Vietnamese title wraps inside the column at 320px", async ({ page }
   const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(wide).toBeLessThanOrEqual(0);
 });
+
+// V22: the rail is as tall as the window from 1024px, so its right border runs the full height.
+test("the rail is window-high at 1440px", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/design-preview/subjects");
+  await settled(page);
+  const rail = await page.locator("header").first().boundingBox();
+  expect(rail?.height).toBeGreaterThanOrEqual(899);
+});

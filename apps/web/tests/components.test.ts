@@ -104,24 +104,24 @@ describe("Label", () => {
 
 describe("Sheet and Tile (§4.3)", () => {
   it.each([
-    ["sheet", /rounded-sheet/, /shadow-sheet/],
+    ["sheet", /rounded-tile/, /border-line/],
     ["over", /rounded-sheet/, /shadow-over/],
-    ["sunken", /rounded-sheet/, /bg-sunken/],
-    ["tile", /rounded-tile/, /shadow-sheet/],
+    ["sunken", /rounded-tile/, /bg-sunken/],
+    ["tile", /rounded-tile/, /border-line/],
   ] as const)("%s", (variant, radius, surface) => {
     const markup = html(h(Sheet, { variant }, "x"));
     expect(markup).toMatch(radius);
     expect(markup).toMatch(surface);
   });
 
-  it("a pink tile is the solid pink surface", () => {
+  it("a pink tile is the flat --hong-tint tile (V22)", () => {
     expect(html(h(Sheet, { variant: "tile", tone: "hong" }, "x"))).toContain('data-surface="hong"');
   });
 
-  it("a rose tile has no shadow until hovered", () => {
+  it("a rose tile is the --hong-tint tile: no border, no shadow", () => {
     const markup = html(h(Sheet, { variant: "tile", tone: "rose" }, "x"));
-    expect(markup).toMatch(/bg-rose-100/);
-    expect(markup).toMatch(/hover:shadow-sheet/);
+    expect(markup).toMatch(/bg-hong-tint/);
+    expect(markup).not.toMatch(/shadow/);
   });
 
   it("Card is gone: Sheet replaces it", () => {

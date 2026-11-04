@@ -28,12 +28,13 @@ describe("frames share one container (§5)", () => {
     expect(containers(auth)).toHaveLength(2);
   });
 
-  it("AppShell (V21): top bar 64px, pink ground with dots, a 96px spine from 901px, five nav items", () => {
+  it("AppShell (V22): a neutral page, a sticky full-height rail from 1024px, a top bar below, five nav items", () => {
     const markup = renderToStaticMarkup(h(AppShell, { current: "/today", children: "x" }));
-    expect(markup).toMatch(/h-\(--header-h\)/);
-    expect(markup).toMatch(/bg-ground/);
-    expect(markup).toMatch(/ground-dots/);
-    expect(markup).toMatch(/min-\[901px\]:w-24/);
+    expect(markup).toMatch(/bg-bg/);
+    expect(markup).not.toMatch(/ground-dots|bg-ground|bg-rail/);
+    expect(markup).toMatch(/lg:h-dvh/);
+    expect(markup).toMatch(/lg:w-58/);
+    expect(markup).toMatch(/sticky top-0/);
     expect(markup).toMatch(/aria-current="page"/);
     expect(markup).toMatch(/text-logo/);
     for (const label of ["Hôm nay", "Môn học", "Đồ thị", "Thống kê"]) expect(markup).toContain(label);
@@ -76,9 +77,9 @@ describe("frames share one container (§5)", () => {
     }
   });
 
-  it("the account menu is a raised sheet; its button a 40px rose circle", () => {
+  it("the account menu is a raised sheet; its button a 40px sunken circle", () => {
     const source = readFileSync(path.resolve(import.meta.dirname, "../components/account-menu.tsx"), "utf-8");
     expect(source).toMatch(/rounded-sheet[^"]*bg-raised[^"]*shadow-over/);
-    expect(source).toMatch(/size-10[^"]*rounded-full[^"]*bg-rose-100/);
+    expect(source).toMatch(/size-10[^"]*rounded-full[^"]*bg-sunken/);
   });
 });

@@ -2,19 +2,19 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
-// Design system v3.1 §4.3, in place of shadcn's Card.
-// - sheet: a notebook page, a confirmation card, a book label.
-// - over: menus, the source panel, the page in the focus frame.
+// Design system v3.2 (V22), after the landing: flat, no shadow.
+// - sheet / tile: a white card with a 1px line, r24: forms, a long list, a bento cell.
+//   tone="rose" or tone="hong": the --hong-tint tile of the landing's "nx" lists (r24, no border);
+//   put an NxList in it. At most one per screen region.
+// - over: menus, the source panel, the page in the focus frame (the only shadow of the app).
 // - sunken: "Vì sao câu này?", skeletons.
-// - tile: a bento cell. tone="rose" for a secondary tile with an action; tone="hong" for the one
-//   pink tile a screen may have (today's session, session done), on the solid pink surface.
 const sheetVariants = cva("", {
   variants: {
     variant: {
-      sheet: "rounded-sheet bg-sheet p-6 shadow-sheet sm:p-8",
+      sheet: "rounded-tile border border-line bg-sheet p-4 sm:p-6",
       over: "rounded-sheet bg-raised px-2 py-2 shadow-over sm:px-8 sm:py-8",
-      sunken: "rounded-sheet bg-sunken p-4 sm:p-6",
-      tile: "rounded-tile bg-sheet p-6 shadow-sheet min-[901px]:p-8",
+      sunken: "rounded-tile bg-sunken p-4 sm:p-5",
+      tile: "rounded-tile border border-line bg-sheet p-4 min-[901px]:p-6",
     },
     tone: {
       plain: "",
@@ -23,12 +23,7 @@ const sheetVariants = cva("", {
     },
   },
   compoundVariants: [
-    { variant: "tile", tone: "rose", className: "bg-rose-100 shadow-none hover:shadow-sheet" },
-    {
-      variant: "tile",
-      tone: "hong",
-      className: "p-10 shadow-[0_30px_60px_-30px_rgb(110_23_62/0.55)] min-[901px]:p-11",
-    },
+    { variant: ["sheet", "tile"], tone: ["rose", "hong"], className: "border-transparent bg-hong-tint" },
   ],
   defaultVariants: {
     variant: "sheet",

@@ -46,7 +46,7 @@ describe("landing v2 (T0.16)", () => {
 
   it("block A and B carry text labels and a screen-reader sentence", () => {
     expect(html).toContain("✓ Đã học");
-    expect(html).toContain("→ Tiếp theo");
+    expect(html).toMatch(/→ <\/span>Tiếp theo/);
     expect(html).toContain("→ Gợi ý: liên quan tới Định tuyến");
     expect(html).toContain("câu tính toán đứng đầu, được gợi ý luyện trước vì liên quan tới mục Định tuyến");
   });

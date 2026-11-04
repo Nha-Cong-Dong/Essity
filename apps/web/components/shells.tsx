@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { MainNav, type NavItem } from "@/components/main-nav";
+import { Mascot } from "@/components/mascot";
 import { cn } from "@/lib/utils";
 
 // The three frames of design system v3.1 §5. Header and content share one container, so the
@@ -42,10 +43,11 @@ export function PageColumn({
 }
 
 /**
- * Regular frame (V21, "cuốn vở"): a pink ground with a dot grid. From 901px a 96px spine on the
- * left holds the logo, the nav and the account button; below it a thin top bar keeps the logo and
- * the account button, and the nav becomes a tab bar at the foot (see MainNav). The page content
- * is one container beside the spine.
+ * Regular frame (V22, "giấy trắng, một bút hồng"): a neutral page. From 1024px a 232px rail on the
+ * same ground holds the logo, the nav and the account row; it is sticky and as tall as the window
+ * (100dvh), so it covers a long page. Below, a 48/56px top bar keeps the logo and the account
+ * button and the nav becomes a tab bar at the foot (see MainNav). The page is one container
+ * beside the rail.
  */
 export function AppShell({
   current,
@@ -57,32 +59,23 @@ export function AppShell({
   children: ReactNode;
 }) {
   return (
-    <div className="ground-dots flex min-h-full flex-1 flex-col bg-ground min-[901px]:pl-24">
+    <div className="flex min-h-full flex-1 flex-col bg-bg min-[1024px]:flex-row">
       <header
         className={cn(
-          "sticky top-0 z-(--z-header) border-b border-line bg-ground",
-          "min-[901px]:fixed min-[901px]:inset-y-0 min-[901px]:left-0 min-[901px]:w-24 min-[901px]:border-b-0 min-[901px]:bg-rail",
+          "sticky top-0 z-(--z-header) flex h-12 items-center gap-4 border-b border-line bg-bg px-4 sm:h-14",
+          "lg:h-dvh lg:w-58 lg:shrink-0 lg:flex-col lg:items-stretch lg:gap-0 lg:self-start lg:border-r lg:border-b-0 lg:px-4 lg:pt-8 lg:pb-6",
         )}
       >
-        <div
-          className={cn(
-            "flex h-(--header-h) items-center gap-4 px-(--page-gutter)",
-            "min-[901px]:h-full min-[901px]:flex-col min-[901px]:items-center min-[901px]:justify-start min-[901px]:gap-0 min-[901px]:px-0 min-[901px]:pt-7",
-          )}
-        >
-          <Logo className="min-[901px]:text-on-rail" />
-          <div className="ml-auto flex min-w-10 justify-end min-[901px]:fixed min-[901px]:bottom-28 min-[901px]:left-0 min-[901px]:ml-0 min-[901px]:w-24 min-[901px]:justify-center">
-            {account}
-          </div>
-          <span aria-hidden="true" data-motif="holes" className="hidden min-[901px]:fixed min-[901px]:bottom-5 min-[901px]:left-0 min-[901px]:flex min-[901px]:w-24 min-[901px]:flex-col min-[901px]:items-center min-[901px]:gap-5">
-            {[0, 1, 2].map((k) => (
-              <i key={k} className="size-3 rounded-full bg-ground shadow-[inset_0_2px_3px_rgb(0_0_0/0.35)]" />
-            ))}
-          </span>
+        <div className="flex items-center gap-2 min-[1024px]:px-3">
+          <Logo />
+          <Mascot pose="vui" size="sm" className="hidden size-6 min-[1024px]:block" />
+        </div>
+        <MainNav current={current} />
+        <div className="ml-auto flex min-w-10 justify-end min-[1024px]:mt-auto min-[1024px]:ml-0 min-[1024px]:justify-start">
+          {account}
         </div>
       </header>
-      <MainNav current={current} />
-      <main className={cn(CONTAINER, "flex flex-1 flex-col pt-10 pb-24 max-[900px]:pt-6 max-[900px]:pb-28")}>
+      <main className={cn(CONTAINER, "flex min-w-0 flex-1 flex-col pt-6 pb-[calc(56px+env(safe-area-inset-bottom)+16px)] min-[1024px]:pt-10 min-[1024px]:pb-24")}>
         {/* T9.3: the subject's command bar is drawn here (components/command-live.tsx). */}
         <div data-command-slot className="empty:hidden" />
         {children}

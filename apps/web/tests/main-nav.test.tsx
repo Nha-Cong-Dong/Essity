@@ -53,12 +53,13 @@ describe("MainNav (T2.3c, R46)", () => {
   });
 
   // Red when: the current item loses its state (colour alone is not enough: aria-current + weight).
-  it("marks the current item by weight and background, not colour alone", () => {
+  it("marks the current item by weight and colour, with a dot on the bar and a pill on the rail", () => {
     render(<MainNav current="/subjects" />);
     const current = screen.getByRole("link", { name: "Môn học" });
     expect(current.className).toMatch(/aria-\[current=page\]:font-semibold/);
-    expect(current.className).toMatch(/aria-\[current=page\]:bg-rose-100/);
-    expect(current.className).toMatch(/min-\[901px\]:aria-\[current=page\]:bg-ground/);
+    expect(current.className).toMatch(/aria-\[current=page\]:text-hong/);
+    expect(current.className).toMatch(/min-\[1024px\]:aria-\[current=page\]:bg-sunken/);
+    expect(current.querySelector('span[aria-hidden="true"]')).not.toBeNull();
   });
 
   it("keeps the nav landmark that shrinks and scrolls (review of 96bebab)", () => {

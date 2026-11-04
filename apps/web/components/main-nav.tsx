@@ -16,11 +16,11 @@ export const NAV = [
 export type NavItem = (typeof NAV)[number]["href"];
 
 /**
- * The notebook spine of AppShell (V21): a 96px rail on the left from 901px up, a 64px tab bar at
- * the foot of the screen below. The current item is "stuck" to the page (ground colour, rounded
- * on the page side) on the rail, and gets a rose tab on the bar. Touch targets stay ≥ 44px and
- * labels ≥ 12px. Where the bar still has to scroll (enlarged text), the current item is brought
- * into view along the nav only: `nearest` on both axes never scrolls the page.
+ * The navigation of AppShell (V22): a column in the left rail from 1024px up (the current item on a
+ * sunken pill, its icon pink), a 56px tab bar at the foot of the screen below (the current item
+ * pink with a 4px dot; 13px labels on one line, "Kho" for the long one). Every item is ≥ 44px.
+ * Where the bar still has to scroll (enlarged text), the current item is brought into view along the
+ * nav only: `nearest` on both axes never scrolls the page.
  */
 export function MainNav({ current }: { current?: NavItem }) {
   const ref = useRef<HTMLElement>(null);
@@ -32,11 +32,11 @@ export function MainNav({ current }: { current?: NavItem }) {
       ref={ref}
       aria-label="Chính"
       className={cn(
-        "z-(--z-header) flex min-w-0 bg-rail text-on-rail",
-        // Phone: tab bar at the foot.
-        "fixed inset-x-0 bottom-0 h-16 flex-row justify-around overflow-x-auto px-2",
+        "z-(--z-header) flex min-w-0 bg-sheet",
+        // Phone and tablet: tab bar at the foot, above the home indicator.
+        "fixed inset-x-0 bottom-0 h-[calc(56px+env(safe-area-inset-bottom))] flex-row justify-around overflow-x-auto border-t border-line pb-[env(safe-area-inset-bottom)]",
         // Desktop: a column under the logo, inside the rail.
-        "min-[901px]:inset-x-auto min-[901px]:top-24 min-[901px]:bottom-auto min-[901px]:left-0 min-[901px]:h-auto min-[901px]:w-24 min-[901px]:flex-col min-[901px]:justify-start min-[901px]:gap-1.5 min-[901px]:overflow-visible min-[901px]:bg-transparent min-[901px]:px-0",
+        "min-[1024px]:static min-[1024px]:mt-8 min-[1024px]:h-auto min-[1024px]:flex-col min-[1024px]:justify-start min-[1024px]:gap-1 min-[1024px]:overflow-visible min-[1024px]:border-t-0 min-[1024px]:bg-transparent min-[1024px]:pb-0",
       )}
     >
       {NAV.map(({ href, label, icon: Icon }) => (
@@ -45,25 +45,25 @@ export function MainNav({ current }: { current?: NavItem }) {
           href={href}
           aria-current={href === current ? "page" : undefined}
           className={cn(
-            "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-meta leading-tight font-medium text-on-rail no-underline",
-            "min-[901px]:ml-5 min-[901px]:flex-none min-[901px]:[border-radius:14px_0_0_14px] min-[901px]:py-2.5 min-[901px]:text-center",
-            // The current item: a rose tab on the bar, merged into the page on the rail.
-            "aria-[current=page]:bg-rose-100 aria-[current=page]:font-semibold aria-[current=page]:text-ink min-[901px]:aria-[current=page]:bg-ground",
-            // Phone only: the tab carries its own rounded corners.
-            "max-[900px]:aria-[current=page]:rounded-control",
-            // The nav may scroll and clips what is outside it: the ring goes inside; on the pink
-            // rail it is the page colour (≥ 3:1 on the rail).
-            "[--focus:var(--on-rail)] aria-[current=page]:[--focus:var(--ink)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
+            "group relative flex min-h-11 min-w-16 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-chip font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink",
+            "min-[1024px]:h-10 min-[1024px]:flex-none min-[1024px]:flex-row min-[1024px]:justify-start min-[1024px]:gap-3 min-[1024px]:rounded-control min-[1024px]:px-3 min-[1024px]:text-body min-[1024px]:hover:bg-sunken",
+            // The current item: pink on the bar (with a dot), a sunken pill with a pink icon on the rail.
+            "aria-[current=page]:font-semibold aria-[current=page]:text-hong min-[1024px]:aria-[current=page]:bg-sunken min-[1024px]:aria-[current=page]:text-ink min-[1024px]:aria-[current=page]:[&_svg]:text-hong",
+            "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
           )}
         >
-          <Icon aria-hidden="true" focusable="false" strokeWidth={1.8} className="size-[22px] shrink-0" />
+          <Icon aria-hidden="true" focusable="false" strokeWidth={1.8} className="size-[22px] shrink-0 min-[1024px]:size-5" />
           {label.startsWith("Kho") ? (
             <span>
-              Kho<span className="max-[900px]:hidden">{" " + label.slice(4)}</span>
+              Kho<span className="hidden min-[1024px]:inline">{" " + label.slice(4)}</span>
             </span>
           ) : (
             <span>{label}</span>
           )}
+          <span
+            aria-hidden="true"
+            className="absolute bottom-0.5 hidden size-1 rounded-full bg-hong group-aria-[current=page]:block min-[1024px]:group-aria-[current=page]:hidden"
+          />
         </a>
       ))}
     </nav>

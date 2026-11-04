@@ -21,11 +21,12 @@ const TEXT: Record<Mode, Pair[]> = {
     ["--on-hong", "--hong"],
     ["--hong", "--on-hong"],
     ["--bg", "--ink"],
-    // V21: the pink ground and the spine.
-    ["--ink", "--ground"],
-    ["--ink-soft", "--ground"],
-    ["--hong", "--ground"],
-    ["--on-rail", "--rail"],
+    // V22: the --hong-tint tile and the cam "suggested" row (cam 15% over --bg is --cam-row).
+    ["--ink", "--hong-tint"],
+    ["--ink-soft", "--hong-tint"],
+    ["--hong", "--hong-tint"],
+    ["--cam", "--bg"],
+    ["--cam", "--hong-tint"],
   ],
   dark: [
     ...["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200", "--cover", "--hl-stroke"].map(
@@ -44,10 +45,11 @@ const TEXT: Record<Mode, Pair[]> = {
     ["--on-hong", "--hong"],
     ["--hong", "--on-hong"],
     ["--bg", "--ink"],
-    ["--ink", "--ground"],
-    ["--ink-soft", "--ground"],
-    ["--hong", "--ground"],
-    ["--on-rail", "--rail"],
+    ["--ink", "--hong-tint"],
+    ["--ink-soft", "--hong-tint"],
+    ["--hong", "--hong-tint"],
+    ["--cam", "--bg"],
+    ["--cam", "--hong-tint"],
   ],
 };
 
@@ -114,18 +116,38 @@ describe.each(["light", "dark"] as const)("%s palette", (mode) => {
   );
 });
 
-// Final §1.3 "on buttons and the pink tile": text and focus on every stop of the tile's gradient.
-describe.each(["light", "dark"] as const)("%s pink tile", (mode) => {
+// V22: the "pink" surface is the flat --hong-tint tile (the landing's nx lists): text and focus on
+// it, and the highlighter (--hl, --hl-band) under ink, which is what the one motif is made of.
+describe.each(["light", "dark"] as const)("%s tile", (mode) => {
   it.each([
     ["--on-surface-hong", 4.5],
     ["--hong-soft-text", 4.5],
     ["--focus-on-hong", 3],
-    ["--inverse-bg", 3], // the primary-inverse fill is the button's only edge (review of cf1c9a0)
-  ] as const)("%s on every stop of --hong-glow", (fg, limit) => {
-    const tokens = palette(mode);
-    const found = stops(tokens, "--hong-glow");
-    expect(found).toHaveLength(3);
-    for (const stop of found) expect(contrastOn(tokens, fg, stop)).toBeGreaterThanOrEqual(limit);
+  ] as const)("%s on --hong-tint", (fg, limit) => {
+    expect(contrast(palette(mode), fg, "--hong-tint")).toBeGreaterThanOrEqual(limit);
+  });
+  it("--ink reads on the highlighter band under an h1 phrase (≥ 4.5)", () => {
+    expect(contrast(palette(mode), "--ink", "--hl", "--bg")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(palette(mode), "--ink", "--hl-band", "--bg")).toBeGreaterThanOrEqual(4.5);
+  });
+  it("the cam row (cam 15% over --bg) keeps its text and its --cam label readable", () => {
+    const t = palette(mode);
+    const row = mixHex(t["--cam"], 0.15, t["--bg"]); // the row is opaque: cam 15% over --bg, as in nx-list.tsx
+    expect(contrastOn(t, "--ink", row)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastOn(t, "--cam", row)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+/** sRGB mix of two #rrggbb tokens: `a` at `share`, `b` for the rest (CSS color-mix in srgb). */
+function mixHex(a: string, share: number, b: string): string {
+  const ch = (hex: string, i: number) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
+  return `#${[0, 1, 2].map((i) => Math.round(ch(a, i) * share + ch(b, i) * (1 - share)).toString(16).padStart(2, "0")).join("")}`;
+}
+
+describe("--elev-sheet keeps a hairline", () => {
+  it.each(["light", "dark"] as const)("%s: a card shadow is never none", (mode) => {
+    expect(palette(mode)["--elev-sheet"]).not.toBe("none");
+    expect(palette(mode)["--elev-sheet"]).toMatch(/var\(--line\)/);
   });
 });
 
@@ -138,7 +160,7 @@ describe.each(["light", "dark"] as const)("%s primary-inverse", (mode) => {
 describe("token tables", () => {
   it("checks the number of pairs it means to (a dropped pair fails here)", () => {
     const count = (table: Record<Mode, Pair[]>) => table.light.length + table.dark.length;
-    expect([count(TEXT), count(EDGES), count(FORBIDDEN)]).toEqual([87, 30, 5]);
+    expect([count(TEXT), count(EDGES), count(FORBIDDEN)]).toEqual([89, 30, 5]);
   });
 
   it("matches the spec on a few exact values, to catch a mistyped hex", () => {
@@ -160,9 +182,9 @@ describe("palette copies", () => {
     expect(Object.keys(palette("dark")).sort()).toEqual(Object.keys(palette("light")).sort());
   });
 
-  it("no orange and no --right are left", () => {
+  it("no --right is left; --cam is the one second colour (V22 decisions #9)", () => {
     for (const mode of ["light", "dark"] as const) {
-      expect(Object.keys(palette(mode))).not.toContain("--cam");
+      expect(Object.keys(palette(mode))).toContain("--cam");
       expect(Object.keys(palette(mode))).not.toContain("--right");
     }
   });

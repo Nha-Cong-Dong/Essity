@@ -52,35 +52,46 @@ describe("base rules", () => {
   });
 });
 
-describe("the pink surface passes its own tokens down", () => {
+describe("the tile surface passes its own tokens down", () => {
   const surface = () => block('[data-surface="hong"]');
 
-  // Red when: the surface stops reading --on-surface-hong (text would be --ink on a pink fill
-  // in light mode) or stops swapping --focus for --focus-on-hong (hong ring on a hong tile).
-  it("text and focus come from the palette tokens the contrast test checks", () => {
+  // Red when: the surface stops reading --on-surface-hong or --focus-on-hong, or goes back to a
+  // gradient or a solid pink (V22: it is the flat --hong-tint tile of the landing's lists).
+  it("text and focus come from the palette tokens the contrast test checks; flat tint, no gradient", () => {
     expect(surface()).toMatch(/color:\s*var\(--on-surface-hong\)/);
     expect(surface()).toMatch(/--focus:\s*var\(--focus-on-hong\)/);
-    expect(surface()).toMatch(/background:\s*var\(--hong-glow\)/);
+    expect(surface()).toMatch(/background:\s*var\(--hong-tint\)/);
+    expect(surface()).not.toMatch(/gradient/);
+  });
+});
+
+describe("V22 type, after the landing: Bricolage 650 titles, h1 32-44, one display number 44-64", () => {
+  it("the title and display steps", () => {
+    const t = theme();
+    expect(t["--text-title"]).toBe("clamp(32px, 3.4vw, 44px)");
+    expect(t["--text-title--font-weight"]).toBe("650");
+    expect(t["--text-display"]).toMatch(/clamp\(44px, .*, 64px\)$/);
+    expect(t["--text-chip"]).toBe("13px");
+    expect(t["--font-display"]).toMatch(/--font-bricolage/);
   });
 
-  // Red when: the grain overlay can take clicks, or a later change drops `isolation` and the
-  // negative z-index overlay slides behind the tile's own background.
-  it("its grain never takes the pointer and stays inside the tile", () => {
-    const grain = block('[data-surface="hong"]::after');
-    expect(grain).toMatch(/pointer-events:\s*none/);
-    expect(surface()).toMatch(/isolation:\s*isolate/);
+  it("the one motif is a flat highlighter: one inset shadow, no gradient", () => {
+    const m = CSS.match(/@utility hl-word \{([^}]*)\}/);
+    expect(m?.[1]).toMatch(/box-shadow:\s*inset/);
+    expect(m?.[1]).not.toMatch(/gradient/);
   });
 });
 
 describe("scale (final §2, §5, §7)", () => {
   // Red when: a role radius is edited alone (`--radius-control: 8px`...). V1 fixed them.
-  it("role radii: control 12, slip 14, sheet 24, tile 28; the shadcn aliases keep the old order", () => {
+  it("role radii: control 12, slip 14, row 10, sheet 24, tile 24; the shadcn aliases keep the old order", () => {
     const t = theme();
     expect(t).toMatchObject({
       "--radius-control": "12px",
       "--radius-slip": "14px",
       "--radius-sheet": "24px",
-      "--radius-tile": "28px",
+      "--radius-tile": "24px",
+      "--radius-row": "10px",
       "--radius-cover-spine": "10px",
       "--radius-cover-edge": "28px",
     });
@@ -109,7 +120,7 @@ describe("scale (final §2, §5, §7)", () => {
     expect(t["--text-read"]).toBe("18px");
     expect(t["--text-answer"]).toBe("18px");
     const px = Object.entries(t)
-      .filter(([k, v]) => /^--text-[a-z]+$/.test(k) && /^\d+px$/.test(v))
+      .filter(([k, v]) => /^--text-[a-z]+$/.test(k) && /^\d+px$/.test(v) && k !== "--text-chip")
       .filter(([, v]) => Number.parseInt(v) < 14);
     expect(px).toEqual([]);
   });
@@ -157,7 +168,8 @@ describe("Tailwind tokens", () => {
 
   // Red when: `--color-right` / `--color-cam` is declared in @theme again (text-right would then
   // mean a colour AND an alignment; orange is out of the palette).
-  it("@theme declares no colour named right or cam", () => {
-    expect(Object.keys(theme()).filter((k) => /^--color-(right|cam)$/.test(k))).toEqual([]);
+  it("@theme declares no colour named right (--cam is the one second colour, V22)", () => {
+    expect(Object.keys(theme()).filter((k) => /^--color-right$/.test(k))).toEqual([]);
+    expect(theme()["--color-cam"]).toBe("var(--cam)");
   });
 });

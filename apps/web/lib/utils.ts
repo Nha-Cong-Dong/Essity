@@ -14,8 +14,10 @@ export const TYPE_STEPS = [
   "title",
   "display",
   "mega",
+  "tile",
   "hero",
   "logo",
+  "chip",
   "caption",
   "small",
   "source",
@@ -28,7 +30,7 @@ export const cn = createCn({
     classGroups: {
       "font-size": [{ text: [...TYPE_STEPS] }],
       shadow: [{ shadow: ["sheet", "over", "cover", "hong", "elev", "panel", "book"] }],
-      rounded: [{ rounded: ["control", "slip", "sheet", "tile"] }],
+      rounded: [{ rounded: ["control", "slip", "row", "sheet", "tile"] }],
     },
   },
 });
