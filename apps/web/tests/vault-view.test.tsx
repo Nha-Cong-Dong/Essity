@@ -12,6 +12,9 @@ describe("VaultView subjects", () => {
     expect(html).toMatch(/min-\[1100px\]:grid-cols-3/);
     expect(html).toMatch(/text-display[^>]*>41</);
     expect(html).toContain("6 buổi học");
+    // UI-A: one display-size number (the whole vault); the tile's own count is smaller.
+    expect(html).toMatch(/data-vault-total/);
+    expect(html).toMatch(/text-title[^>]*data-vault-cards/);
     expect(html).not.toMatch(/tabular-nums text-ink-soft">M</);
   });
 });

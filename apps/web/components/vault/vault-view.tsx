@@ -81,9 +81,18 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
           <span className="hl-word">Kho</span> kiến thức
         </h1>
         {subjects.length > 0 && (
-          <p className="m-0 mt-2 text-read text-ink-soft" data-vault-sub>
-            {totalCards} thẻ · {totalSessions} buổi học · {subjects.length} môn
-          </p>
+          // UI-A: the one big number of the screen is the whole vault; the tiles below carry smaller ones.
+          <div className="mt-6" data-vault-sub>
+            <p className="m-0 flex items-baseline gap-3">
+              <span className="font-display text-display tabular-nums" data-vault-total>
+                {totalCards}
+              </span>
+              <span className="text-lead font-semibold">thẻ trong kho</span>
+            </p>
+            <p className="m-0 mt-1 text-read text-ink-soft">
+              {totalSessions} buổi học · {subjects.length} môn
+            </p>
+          </div>
         )}
       </div>
       {subjects.length === 0 ? (
@@ -109,7 +118,7 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
                 <span className="block text-lead font-semibold [overflow-wrap:anywhere]">{s.name}</span>
                 <span className="flex flex-col">
                   <span className="flex items-baseline gap-2">
-                    <span className="font-display text-display tabular-nums">{s.cards}</span>
+                    <span className="font-display text-title tabular-nums" data-vault-cards>{s.cards}</span>
                     <span className="text-body">thẻ</span>
                   </span>
                   <span className="text-meta text-ink-soft">{s.sessions} buổi học</span>
