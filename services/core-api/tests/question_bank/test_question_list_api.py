@@ -236,3 +236,17 @@ def test_an_unverified_account_is_refused(bench: Bench, db_session: Session) -> 
     subject = make_subject(db_session, user)
     response = bench.client.get(f"/v1/subjects/{subject.id}/questions", headers=headers)
     assert response.status_code == 403
+
+
+def test_ready_question_has_unlock_date_and_is_due_today_v19_v20(bench: Bench) -> None:
+    done = bench.section("TCP")
+    bench.card(done)
+    ready = bench.question(done)
+    waiting = bench.question(bench.section("UDP", studied=False))
+    body = bench.client.get(
+        f"/v1/subjects/{bench.subject.id}/questions", headers=bench.headers
+    ).json()
+    rows = {q["id"]: q for q in body["questions"]}
+    assert rows[str(ready.id)]["unlocked_at"] is not None and rows[str(ready.id)]["due"] is True
+    assert rows[str(waiting.id)]["unlocked_at"] is None and rows[str(waiting.id)]["due"] is False
+    assert body["due_today"] == 1

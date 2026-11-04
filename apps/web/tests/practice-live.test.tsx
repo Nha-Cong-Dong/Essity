@@ -118,7 +118,7 @@ describe("PracticeLive (US-16 AC1, AC3, AC8)", () => {
     expect([...section.querySelectorAll("[data-question]")].map((li) => li.getAttribute("data-question")).at(-1)).toBe(
       "0b8f1d2e-0000-4000-8000-0000000000a3",
     );
-    expect(screen.getByText("3 câu · 2 sẵn sàng")).toBeTruthy();
+    expect(screen.getByText("Đã mở khóa 2/3 câu")).toBeTruthy();
   });
 
   // Red when: removing needs a dialog, or the row does not turn into the one-line note.
@@ -334,5 +334,19 @@ describe("a practice step in the Today review session (T8.5 review F1)", () => {
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Gửi" })));
     await act(async () => fireEvent.click(await screen.findByRole("button", { name: "Câu tiếp" })));
     expect(current).toHaveBeenCalledTimes(2);
+  });
+});
+
+// V20: a due question gives the screen one primary, "Vào luyện tập ngay", and the count of today.
+describe("PracticeLive due today (V20)", () => {
+  it("shows the due count and a button that opens the first due question", () => {
+    const due = {
+      ...list,
+      due_today: 1,
+      questions: list.questions.map((q, i) => ({ ...q, due: i === 0 && q.status === "ready", unlocked_at: "2026-11-02T00:00:00Z" })),
+    };
+    render(<PracticeLive subjectId={SUBJECT} subjectName="Mạng" list={due} types={types} api={fakeApi()} />);
+    expect(screen.getByText("Hôm nay cần luyện 1 câu.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Vào luyện tập ngay" })).toBeTruthy();
   });
 });

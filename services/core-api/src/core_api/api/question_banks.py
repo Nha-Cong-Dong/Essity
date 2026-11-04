@@ -10,13 +10,14 @@ imports again later, and what was stored never doubles.
 
 import logging
 import uuid
+from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from core_api.api.attempts import GRADINGS_PER_USER, Limiter
-from core_api.api.deps import Storage, VerifiedUser, verified_user
+from core_api.api.deps import Now, Storage, VerifiedUser, verified_user
 from core_api.api.ping import get_ai_client
 from core_api.clients.ai_client import AiServiceClient
 from core_api.db.session import DbSession
@@ -108,6 +109,8 @@ class BankQuestionOut(BaseModel):
     status: Literal["ready", "waiting", "unlinked"]
     line: str  # the one neutral line the list shows
     waiting_sections: list[WaitingSectionOut]
+    unlocked_at: datetime | None = None  # ready only: when it became practisable
+    due: bool = False  # ready and due for practice today
 
 
 class TypeCountOut(BaseModel):
@@ -118,18 +121,19 @@ class TypeCountOut(BaseModel):
 class QuestionListOut(BaseModel):
     total: int
     ready: int
+    due_today: int = 0
     types: list[TypeCountOut]
     questions: list[BankQuestionOut]
 
 
 @router.get("/subjects/{subject_id}/questions")
 def list_questions(
-    subject_id: uuid.UUID, user: VerifiedUser, session: DbSession
+    subject_id: uuid.UUID, user: VerifiedUser, session: DbSession, now: Now
 ) -> QuestionListOut:
     """The subject's bank questions with readiness (T8.2, US-14 AC3-AC6)."""
     if SubjectRepository(session, user.id).get(subject_id) is None:
         raise _error(status.HTTP_404_NOT_FOUND, "subject_not_found")
-    listed = QuestionListRepository(session, user.id).list_for_subject(subject_id)
+    listed = QuestionListRepository(session, user.id).list_for_subject(subject_id, now)
     out: list[BankQuestionOut] = []
     counts: dict[str, int] = {}
     for q in listed:
@@ -158,11 +162,14 @@ def list_questions(
                 else "unlinked",
                 line=display_line(state),
                 waiting_sections=waiting,
+                unlocked_at=q.unlocked_at,
+                due=q.due,
             )
         )
     return QuestionListOut(
         total=len(out),
         ready=sum(1 for q in out if q.status == "ready"),
+        due_today=sum(1 for q in out if q.due),
         types=[TypeCountOut(name=n, count=c) for n, c in counts.items()],
         questions=out,
     )

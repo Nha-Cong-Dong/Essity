@@ -18,6 +18,7 @@ import { loadOutline } from "@/lib/outline";
 import { loadQuestionList } from "@/lib/question-list";
 import { ReviewStack, type StackCard } from "@/components/subjects/review-stack";
 import { SubjectOutlineAside } from "@/components/subjects/subject-chapters-aside";
+import { SubjectPracticeBlock } from "@/components/subjects/subject-practice-block";
 import { SubjectStatsBlock } from "@/components/subjects/subject-stats-block";
 import { CoverageBar } from "@/components/stats/stat-tile";
 import { getStats } from "@/lib/stats-api";
@@ -70,7 +71,7 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
     questions: questions && { ready: questions.ready, total: questions.total },
     graphCards: graph && graph.cards.length,
   });
-  const rowEntries = entries.filter((e) => e.key !== "syllabus" && e.key !== "stats");
+  const rowEntries = entries.filter((e) => e.key !== "syllabus" && e.key !== "stats" && e.key !== "practice");
   return (
     <PageColumn width="full" data-reveal className="flex flex-col gap-8">
       <a href="/subjects" className="text-small">
@@ -100,6 +101,14 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
             <SubjectScreenBlock subjectId={subject.id} subjectName={subject.name} state={state} nothingDue={nothingDue} />
             <ReviewStack subjectId={subject.id} cards={dueCards} />
           </div>
+          {questions !== null && (
+            <SubjectPracticeBlock
+              subjectId={subject.id}
+              total={questions.total}
+              ready={questions.ready}
+              dueToday={questions.due_today ?? null}
+            />
+          )}
           {stats !== null && <SubjectStatsBlock stats={stats} />}
           <SubjectEntryRow entries={rowEntries} />
         </div>
