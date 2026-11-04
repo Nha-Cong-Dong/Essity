@@ -338,10 +338,11 @@ describe("UploadStep (US-01 AC7, plan K5; T4.6)", () => {
     render(<UploadStep name="Mạng máy tính" subjectId="9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b" />);
   });
 
-  it("US-01 AC7: names the subject and offers \"Làm sau\" back to /subjects", () => {
+  it("US-01 AC7: names the subject, no Làm sau (V13), a Sẵn sàng học thôi button outside the tabs (V14)", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Tải tài liệu cho Mạng máy tính");
     expect(screen.queryByText("Sắp có")).toBeNull();
-    expect(screen.getByRole("link", { name: "Làm sau" }).getAttribute("href")).toBe("/subjects");
+    expect(screen.queryByText("Làm sau")).toBeNull();
+    expect(screen.getByRole("button", { name: "Sẵn sàng học thôi!" }).hasAttribute("disabled")).toBe(true);
   });
 
   // Red when: the step goes back to a disabled zone, or takes files other than PDF.
