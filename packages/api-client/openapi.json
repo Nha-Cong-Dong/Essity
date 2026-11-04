@@ -313,6 +313,11 @@
             "title": "Answer Source",
             "type": "string"
           },
+          "due": {
+            "default": false,
+            "title": "Due",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -357,6 +362,18 @@
           "type_name": {
             "title": "Type Name",
             "type": "string"
+          },
+          "unlocked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unlocked At"
           },
           "waiting_sections": {
             "items": {
@@ -2904,6 +2921,11 @@
       },
       "QuestionListOut": {
         "properties": {
+          "due_today": {
+            "default": 0,
+            "title": "Due Today",
+            "type": "integer"
+          },
           "questions": {
             "items": {
               "$ref": "#/components/schemas/BankQuestionOut"
