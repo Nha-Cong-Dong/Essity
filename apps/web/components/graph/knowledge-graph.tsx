@@ -62,12 +62,11 @@ function CardPopup({ card, subject, color, onClose }: { card: MultiCard; subject
   );
 }
 
-export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGraph[]; height?: string }) {
+export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15rem))" }: { graphs: SubjectGraph[]; height?: string }) {
   const merged = useMemo(() => mergeGraphs(graphs), [graphs]);
   const host = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(null);
-  const [filterOpen, setFilterOpen] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const bySubject = useMemo(() => new Map(merged.subjects.map((s) => [s.id, s] as const)), [merged]);
   const picked = merged.cards.find((c) => c.id === pickedId) ?? null;
@@ -78,6 +77,11 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
       cytoscape.use(fcose);
       registered = true;
     }
+    const degree = new Map<string, number>();
+    for (const e of merged.edges) {
+      degree.set(e.from, (degree.get(e.from) ?? 0) + 1);
+      degree.set(e.to, (degree.get(e.to) ?? 0) + 1);
+    }
     const css = getComputedStyle(document.documentElement);
     const ink = css.getPropertyValue("--ink").trim() || "#221b1b";
     const line = css.getPropertyValue("--line-strong").trim() || "#8a6b7a";
@@ -85,17 +89,26 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
       container: host.current,
       elements: [
         ...merged.cards.map((c) => ({
-          data: { id: c.id, label: shortLabel(c.title), color: bySubject.get(c.subjectId)?.color ?? ink },
+          data: {
+            id: c.id,
+            label: shortLabel(c.title),
+            color: bySubject.get(c.subjectId)?.color ?? ink,
+            size: 12 + 3 * Math.min(degree.get(c.id) ?? 0, 5),
+          },
         })),
         ...merged.edges.map((e) => ({ data: { id: e.id, source: e.from, target: e.to } })),
       ],
-      style: multiStylesheet(ink, line),
+      style: multiStylesheet(ink, line, css.getPropertyValue("--sheet").trim() || "#ffffff"),
       minZoom: 0.2,
       maxZoom: 3,
       wheelSensitivity: 0.3,
       boxSelectionEnabled: false,
     });
     cyRef.current = cy;
+    // Labels appear once the reader is zoomed in far enough to read them; a hovered node always shows its own.
+    const labelByZoom = () => cy.nodes().toggleClass("labelled", cy.zoom() >= 0.9);
+    cy.on("zoom", labelByZoom);
+    labelByZoom();
     cy.on("tap", "node", (ev) => setPickedId(ev.target.id()));
     // Hover lights a node and its neighbours; the rest dims (Obsidian-style).
     cy.on("mouseover", "node", (ev) => {
@@ -111,8 +124,8 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
       animate: false,
       randomize: true,
       fit: true,
-      padding: 48,
-      nodeDimensionsIncludeLabels: true,
+      padding: 56,
+      nodeDimensionsIncludeLabels: false,
       idealEdgeLength: 90,
       nodeRepulsion: 6500,
     } as cytoscape.LayoutOptions);
@@ -205,7 +218,7 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
     };
   }, [merged, bySubject]);
 
-  // The subjects ticked off in "Lọc" are not drawn (their edges go with them).
+  // The subjects switched off in the chips are not drawn (their edges go with them).
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
@@ -235,7 +248,7 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
       <div className="flex flex-col items-start gap-3 rounded-tile bg-hong-tint p-6" data-empty>
         <p className="m-0 text-read">Chưa có thẻ kiến thức nào. Ghi một buổi học, các thẻ sẽ hiện thành đồ thị ở đây.</p>
         {graphs[0] && (
-          <a href={`/subjects/${graphs[0].id}/sessions/new`} className="inline-flex min-h-11 items-center font-semibold rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
+          <a href={`/subjects/${graphs[0].id}/sessions/new`} className="inline-flex min-h-11 items-center font-semibold rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
             Ghi buổi học
           </a>
         )}
@@ -245,40 +258,29 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
   const subject = picked ? bySubject.get(picked.subjectId) : undefined;
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          aria-expanded={filterOpen}
-          aria-controls="graph-filter"
-          onClick={() => setFilterOpen((v) => !v)}
-          className="inline-flex h-11 items-center gap-2 rounded-full bg-sheet px-4 text-meta font-semibold text-ink inset-ring-[1.5px] inset-ring-line-strong hover:bg-sunken"
-        >
-          Lọc
-          {hidden.size > 0 ? <span className="text-ink-soft">({merged.subjects.length - hidden.size}/{merged.subjects.length} môn)</span> : null}
-        </button>
-        <p className="m-0 text-meta text-ink-soft">{merged.cards.length} thẻ</p>
+      {/* One row on top: the card count, then each subject as a colour chip that also hides / shows it. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="m-0 mr-2 font-display text-lead">{merged.cards.length} thẻ</p>
+        {merged.subjects.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            aria-pressed={!hidden.has(s.id)}
+            onClick={() => toggle(s.id)}
+            className="inline-flex h-11 max-w-full items-center gap-2 rounded-full bg-sheet px-4 text-meta font-medium text-ink inset-ring-1 inset-ring-line hover:bg-sunken aria-pressed:inset-ring-[1.5px] aria-pressed:inset-ring-line-strong aria-[pressed=false]:text-ink-soft aria-[pressed=false]:line-through"
+          >
+            <span aria-hidden="true" className="inline-block size-3 shrink-0 rounded-full" style={{ background: s.color }} />
+            <span className="truncate">{s.name}</span>
+            <span className="text-ink-soft">{s.cards}</span>
+          </button>
+        ))}
       </div>
-      {filterOpen && (
-        <ul id="graph-filter" aria-label="Chú thích màu" className="m-0 flex list-none flex-wrap gap-x-5 gap-y-2 p-0 text-meta">
-          {merged.subjects.map((s) => (
-            <li key={s.id}>
-              <label className="flex min-h-11 cursor-pointer items-center gap-2">
-                <input type="checkbox" checked={!hidden.has(s.id)} onChange={() => toggle(s.id)} className="size-4 accent-hong" />
-                <span aria-hidden="true" className="inline-block h-3.5 w-3.5 rounded-full" style={{ background: s.color }} />
-                <span className="wrap-anywhere">
-                  {s.name} · {s.cards} thẻ
-                </span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      )}
       <div className="relative">
         <div
           ref={host}
           aria-label="Đồ thị tri thức"
           style={{ height }}
-          className="min-h-70 w-full cursor-grab touch-none overflow-hidden rounded-tile bg-hong-tint active:cursor-grabbing"
+          className="min-h-70 w-full cursor-grab touch-none overflow-hidden rounded-tile bg-sheet inset-ring-1 inset-ring-line active:cursor-grabbing"
         />
         <div className="absolute right-2 bottom-2 flex gap-2">
           <button type="button" aria-label="Phóng to" className={ZOOM} onClick={() => zoomBy(1.3)}>

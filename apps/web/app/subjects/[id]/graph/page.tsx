@@ -40,7 +40,7 @@ async function Graph({
       <PageColumn width="session">
         <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
           <p className="m-0 font-semibold">Không tải được đồ thị.</p>
-          <a href={`/subjects/${subject.id}/graph`} className="mt-3 inline-flex min-h-11 items-center font-semibold rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
+          <a href={`/subjects/${subject.id}/graph`} className="mt-3 inline-flex min-h-11 items-center font-semibold rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
             Thử lại
           </a>
         </div>

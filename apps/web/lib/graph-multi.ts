@@ -4,16 +4,8 @@ import type { GraphCard, GraphData, GraphEdge } from "@/lib/graph";
 // only ever joins two cards of one subject (core-api builds the graph per subject).
 
 /** Colours of the subjects in order; fixed so a subject keeps its colour on every visit. */
-export const SUBJECT_COLORS = [
-  "#d6336c",
-  "#1c7ed6",
-  "#2f9e44",
-  "#f08c00",
-  "#7048e8",
-  "#0c8599",
-  "#c2255c",
-  "#5c940d",
-] as const;
+// UI-A: four tones in the app's own family (brand pink, a steel blue, brass, warm grey): no lime or violet.
+export const SUBJECT_COLORS = ["#a8255f", "#3b6f8f", "#8a6a2e", "#6b5b66"] as const;
 
 export type SubjectGraph = { id: string; name: string; data: GraphData };
 export type MultiCard = GraphCard & { subjectId: string };

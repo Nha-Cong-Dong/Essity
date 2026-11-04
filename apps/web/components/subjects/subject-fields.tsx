@@ -90,7 +90,7 @@ export function SubjectFields({
             <button
               type="button"
               onClick={openCalendar}
-              className="inline-flex min-h-11 items-center gap-2 text-body font-medium text-ink rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line"
+              className="inline-flex min-h-11 items-center gap-2 text-body font-medium text-ink rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken"
             >
               <CalendarDays className="size-5" aria-hidden="true" />
               Chọn ngày trên lịch

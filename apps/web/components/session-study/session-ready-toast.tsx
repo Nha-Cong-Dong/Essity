@@ -63,7 +63,7 @@ export function SessionReadyToast() {
     <div className="fixed right-4 bottom-4 z-50 flex max-w-sm flex-col gap-2" role="status" aria-live="polite">
       {ready.map((item) => (
         <div key={item.sessionId} className="flex items-start gap-3 rounded-control border border-line bg-sunken p-4">
-          <Link href={`/kho-kien-thuc/${item.subjectId}`} className="text-body inline-flex items-center justify-center min-h-11 rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
+          <Link href={`/kho-kien-thuc/${item.subjectId}`} className="text-body inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
             Các thẻ của buổi học môn {item.subject} đã sẵn sàng
           </Link>
           <button

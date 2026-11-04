@@ -111,7 +111,7 @@ export function SyllabusLive({
 
   const header = (
     <>
-      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta wrap-anywhere rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
+      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta wrap-anywhere rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
         ‹ {subjectName}
       </a>
       <div className="flex items-center justify-between gap-3">

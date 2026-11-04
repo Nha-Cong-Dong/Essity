@@ -142,7 +142,7 @@ export function ReviewArea({
       {lateCount > 0 && <p className="m-0 text-meta text-ink-soft">Có {lateCount} thẻ nháp mới ở cuối danh sách.</p>}
       {scope.length > 0 && <ScopeBlock rows={scope} />}
       {drafts.length >= 6 && (
-        <a href="#session-save" className="self-start text-body inline-flex items-center justify-center min-h-11 rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
+        <a href="#session-save" className="self-start text-body inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
           Xuống nút lưu
         </a>
       )}
