@@ -345,9 +345,11 @@ def _whole_entries(lines: Sequence[str]) -> list[tuple[str, int]]:
                 del carry[:-4]
             continue
         title, page = found
-        if len(title) <= _FRAGMENT_TAIL:
+        if len(title) <= _FRAGMENT_TAIL and not title[:1].isalpha():
             starts = [
-                i for i, c in enumerate(carry) if _TOC_NUMBER.match(c) or _TOC_CHAPTER.match(c)
+                i
+                for i, c in enumerate(carry)
+                if _TOC_NUMBER.match(c.rstrip()) or _TOC_CHAPTER.match(c.rstrip())
             ]
             if starts:
                 title = _join_fragments(

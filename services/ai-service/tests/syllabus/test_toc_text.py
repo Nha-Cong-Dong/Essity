@@ -171,3 +171,35 @@ def test_a_formula_broken_across_lines_stays_in_its_own_title() -> None:
     assert "2.3.1. Quy luật chuẩn N(a,σ2)" in titles
     assert "2.3.2. Quy luật khi bình phương-χ2" in titles
     assert ")" not in titles
+
+
+def test_a_short_fragment_after_a_formula_is_not_a_title() -> None:
+    """A fragment "2 " after a title that broke at a glyph is not a section of its own."""
+    toc = TOC + "\r\n".join(
+        [
+            "",
+            "2.3. Quy luật chuẩn . . . . . . . . . . . . 11",
+            "2.3.2. Quy luật khi bình phương-χ",
+            "2 ",
+            ". . . . . . . . . . . . . . . . . 13",
+        ]
+    )
+    nodes = build_syllabus(15, [], _pages("Bìa", toc, *["Nội dung trang"] * 13), _no_ask)
+    titles = [n.title for n in nodes]
+    assert "2.3.2. Quy luật khi bình phương-χ2" in titles
+    assert "2" not in [t.strip() for t in titles]
+
+
+def test_a_real_short_title_after_a_line_without_page_is_not_glued() -> None:
+    """A 3-letter real title after a line that lost its page number stays an entry."""
+    toc = TOC + "\r\n".join(
+        [
+            "",
+            "2.3. Quy luật chuẩn . . . . . . . . . . . . 11",
+            "2.3.4. Quy luật mất số trang",
+            "2.4. Lời . . . . . . . . . . . . . . . . . 14",
+        ]
+    )
+    nodes = build_syllabus(15, [], _pages("Bìa", toc, *["Nội dung trang"] * 13), _no_ask)
+    titles = [n.title for n in nodes]
+    assert "2.4. Lời" in titles
