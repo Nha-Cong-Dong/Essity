@@ -134,7 +134,7 @@ const LONG: SyllabusFixture = {
     branch("1", "Chương 1 Các mô hình và giao thức tầng giao vận trong mạng máy tính hiện đại: so sánh, đánh giá hiệu năng và ứng dụng thực tế", 1, 60, [
       node("1.1", `1.1 ${LONG_WORD}`, 1, 20, { done: true }),
       node("1.2", "1.2 Ặẫỡữ ẳằắ ỗ ộ ề ế ể: tiêu đề có nhiều dấu chồng nhau để thử chiều cao dòng", 21, 40, { part: [21, 30] }),
-      node("1.3", "1.3 Mục đã bỏ khỏi đề cương thi nhưng có tiêu đề rất dài để thử nhãn không thi nằm gọn", 41, 60, { excluded: true }),
+      node("1.3", "1.3 Phần đã bỏ khỏi đề cương thi nhưng có tiêu đề rất dài để thử nhãn không thi nằm gọn", 41, 60, { excluded: true }),
     ]),
     branch("2", `Chương 2 ${LONG_WORD}`, 61, 120, [
       node("2.1", "2.1 Một tiêu đề dài vừa phải để xuống dòng ở màn hình hẹp", 61, 90),
@@ -147,7 +147,7 @@ const DEEP_TITLES = ["Chương 5", "5.1", "5.1.1", "5.1.1.1", "5.1.1.1.1", "5.1.
 const deepNode = (level: number): SyllabusNode => {
   const id = DEEP_TITLES[level - 1];
   const from = 300 + level;
-  const own = node(id, `${id} Tiêu đề của mục ở cấp ${level}, đủ dài để xuống dòng khi thụt sâu`, from, 330, level === 6 ? { part: [from, from + 3] } : {});
+  const own = node(id, `${id} Tiêu đề của phần ở cấp ${level}, đủ dài để xuống dòng khi thụt sâu`, from, 330, level === 6 ? { part: [from, from + 3] } : {});
   return level === 6 ? own : { ...own, children: [deepNode(level + 1)] };
 };
 const DEEP: SyllabusFixture = {

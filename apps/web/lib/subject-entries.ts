@@ -22,7 +22,7 @@ export function entryRow(subjectId: string, src: EntrySources): SubjectEntry[] {
   const view = src.outline === null ? null : outlineView(src.outline);
   if (view?.kind === "ready") {
     const p = progress(view.nodes);
-    entries.push({ key: "syllabus", label: "Đề cương", href: `${base}/syllabus`, note: `đã học ${p.done}/${p.total} mục` });
+    entries.push({ key: "syllabus", label: "Đề cương", href: `${base}/syllabus`, note: `đã học ${p.done}/${p.total} phần` });
   }
   if (src.questions !== null && src.questions.total > 0) {
     entries.push({ key: "practice", label: "Luyện tập", href: `${base}/practice`, note: `${src.questions.ready} câu sẵn sàng` });

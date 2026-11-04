@@ -36,7 +36,7 @@ test.describe("AC14 cards by section", () => {
     await expect(heads).toHaveCount(3);
     await expect(heads.nth(0)).toContainText("Chương 3");
     await expect(heads.nth(1)).toContainText("Chương 4");
-    await expect(heads.nth(2)).toContainText("Chưa gắn mục");
+    await expect(heads.nth(2)).toContainText("Chưa gắn phần");
     await expect(page.getByText("Thẻ lẻ")).toBeVisible();
   });
 

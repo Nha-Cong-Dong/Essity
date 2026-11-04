@@ -30,7 +30,7 @@ export type MentionBoxProps = {
   problem: string | null;
 };
 
-const PLACEHOLDER = "Tối nay mình học @Giáo trình mục 3.2 và xem lại @slide c3 tr. 10–14.";
+const PLACEHOLDER = "Tối nay mình học @Giáo trình phần 3.2 và xem lại @slide c3 tr. 10–14.";
 
 export function MentionBox({ value, mentions, docs, onChange, say, rejectedDoc, problem }: MentionBoxProps) {
   const id = useId();
@@ -212,7 +212,7 @@ export function MentionBox({ value, mentions, docs, onChange, say, rejectedDoc, 
       )}
       {rejected && (
         <FieldError id={`${id}-rejected`}>
-          Chưa rõ phần sau {rejected.name}. Thử viết &quot;mục 3.2&quot; hoặc &quot;tr. 40–55&quot;; câu của bạn vẫn được giữ.
+          Chưa rõ phần sau {rejected.name}. Thử viết &quot;phần 3.2&quot; hoặc &quot;tr. 40–55&quot;; câu của bạn vẫn được giữ.
         </FieldError>
       )}
       {problem && <FieldError id={`${id}-problem`}>{problem}</FieldError>}

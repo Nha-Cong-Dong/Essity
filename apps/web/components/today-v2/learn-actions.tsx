@@ -17,8 +17,8 @@ const BACKDROP = "fixed inset-0 z-(--z-menu) bg-ink/40";
 
 const STEPS = [
   { title: "1. Tải tài liệu", body: "Vào môn học, tải giáo trình, đề cương hoặc đề cũ lên. Essity đọc và ghi nhớ chúng giúp bạn." },
-  { title: "2. Xem đề cương", body: "Essity dựng đề cương từ tài liệu. Bạn chỉnh lại mục, trang, ngày thi bằng một câu lệnh." },
-  { title: "3. Vào buổi học", body: "Chọn một mục rồi học: đọc, rồi tự viết lại điều bạn nhớ. Chưa hoàn hảo cũng được." },
+  { title: "2. Xem đề cương", body: "Essity dựng đề cương từ tài liệu. Bạn chỉnh lại phần, trang, ngày thi bằng một câu lệnh." },
+  { title: "3. Vào buổi học", body: "Chọn một phần rồi học: đọc, rồi tự viết lại điều bạn nhớ. Chưa hoàn hảo cũng được." },
   { title: "4. Duyệt thẻ", body: "Sau buổi học, Essity tạo thẻ nháp. Bạn giữ thẻ nào có ích và bỏ thẻ còn lại." },
   { title: "5. Ôn tập và luyện tập", body: "Mỗi ngày ôn các thẻ đến hạn, rồi làm câu luyện tập đúng dạng đề thi." },
 ] as const;

@@ -136,7 +136,7 @@ export function shortLabel(title: string): string {
 
 export const COPY = {
   empty: "Chưa có liên kết nào. Liên kết hiện ra khi bạn lưu thêm thẻ.",
-  truncated: "Hiển thị 300 thẻ đầu của mục này. Chọn mục nhỏ hơn để xem đủ.",
+  truncated: "Hiển thị 300 thẻ đầu của phần này. Chọn phần nhỏ hơn để xem đủ.",
   error: "Không tải được đồ thị.",
   noKind: "Không có liên kết thuộc loại đã chọn.",
 } as const;

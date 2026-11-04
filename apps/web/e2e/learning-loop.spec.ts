@@ -35,7 +35,7 @@ async function fakeCore(page: Page) {
     anchors: [],
     revisions: [{ rev: 0, origin: "ai", content: {} }],
   }));
-  const pace = { remaining_leaves: 5, days_left: 20, remaining_weight: 5, unit: null, text: "Còn 5 mục, 20 ngày: ổn." };
+  const pace = { remaining_leaves: 5, days_left: 20, remaining_weight: 5, unit: null, text: "Còn 5 phần, 20 ngày: ổn." };
   const json = (route: Route, body: unknown, status = 200) => route.fulfill({ status, json: body });
 
   await page.route("**/api/**", async (route) => {
@@ -50,7 +50,7 @@ async function fakeCore(page: Page) {
         subject_name: "Mạng máy tính",
         section_id: "s32",
         section_title: state.studied ? "3.3 Điều khiển tắc nghẽn" : "3.2 Điều khiển luồng",
-        reason: "Mục kế tiếp trong giáo trình.",
+        reason: "Phần kế tiếp trong giáo trình.",
         pace,
         partial: false,
         remaining: 5,
@@ -98,7 +98,7 @@ test("the loop: suggestion, sentence, photo, cards, Lưu", async ({ page }) => {
   expect((await page.goto("/design-preview/subject-live?state=not-suggested"))?.status()).toBe(200);
   await settled(page);
   await page.getByRole("button", { name: "Gợi ý cho hôm nay" }).click();
-  await expect(page.getByText("Nội dung hôm nay: mục 3.2")).toBeVisible();
+  await expect(page.getByText("Nội dung hôm nay: phần 3.2")).toBeVisible();
 
   // 2. The session: a sentence, then a note photo; the cards come back (US-02 AC1).
   expect((await page.goto("/design-preview/session-live"))?.status()).toBe(200);

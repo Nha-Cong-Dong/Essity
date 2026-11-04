@@ -83,7 +83,7 @@ test.describe("keyboard only", () => {
   test("type, Enter, Tab to Hoàn tác, Enter", async ({ page }) => {
     await open(page, 1440, "idle");
     await page.getByLabel("Gõ một lệnh để sửa").focus();
-    await page.keyboard.type("mục 3.4 kết thúc ở trang 80");
+    await page.keyboard.type("phần 3.4 kết thúc ở trang 80");
     await page.keyboard.press("Enter");
     await expect(page.getByText("Đã làm:")).toBeVisible();
     await expect(page.getByLabel("Gõ một lệnh để sửa")).toHaveValue("");
@@ -137,7 +137,7 @@ test.describe("live bar", () => {
     );
     await page.getByLabel(FIELD).fill("bỏ chương 7 khỏi đề cương");
     await page.getByRole("button", { name: "Gửi" }).click();
-    await expect(page.getByText("bỏ 9 mục khỏi đề cương thi")).toBeVisible();
+    await expect(page.getByText("bỏ 9 phần khỏi đề cương thi")).toBeVisible();
     await expect(page.locator("[data-refreshed]")).toHaveAttribute("data-refreshed", "1");
     await page.getByRole("button", { name: "Hoàn tác" }).click();
     await expect(page.getByText("Đã hoàn tác:")).toBeVisible();

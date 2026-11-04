@@ -120,7 +120,7 @@ describe("copy helpers", () => {
 import { cellLabel, dayLabel, levelLegend, sectionsText } from "@/lib/stats";
 
 describe("day copy", () => {
-  const cells = buildGrid([span("a", "2026-10-26", "2026-11-04")], [ev("2026-10-28", "a", 12, 8, ["Mục 1.1"])], "2026-10-30");
+  const cells = buildGrid([span("a", "2026-10-26", "2026-11-04")], [ev("2026-10-28", "a", 12, 8, ["Phần 1.1"])], "2026-10-30");
   const at = (day: string) => cells.find((c) => c.day === day)!;
 
   it("dayLabel names the weekday and the day/month", () => {
@@ -144,6 +144,6 @@ describe("day copy", () => {
 
   it("sectionsText lists at most five and counts the rest", () => {
     expect(sectionsText(["a", "b"])).toBe("a, b");
-    expect(sectionsText(["a", "b", "c", "d", "e", "f", "g"])).toBe("a, b, c, d, e và 2 mục khác");
+    expect(sectionsText(["a", "b", "c", "d", "e", "f", "g"])).toBe("a, b, c, d, e và 2 phần khác");
   });
 });

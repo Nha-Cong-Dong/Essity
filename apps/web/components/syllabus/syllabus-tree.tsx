@@ -58,7 +58,7 @@ type Props = {
 const INDENT =
   "pl-[calc(min(var(--lvl),var(--cap))*var(--step))] [--lvl:0] [--cap:3] [--step:16px] sm:[--cap:4] sm:[--step:28px]";
 // The visible mark is 28 px; its touch area is 44 px (after:) without widening the indent step.
-// Panel buttons wrap their label (a long one such as "Đánh dấu 12 mục chưa học là đã học" must fit 320 px).
+// Panel buttons wrap their label (a long one such as "Đánh dấu 12 phần chưa học là đã học" must fit 320 px).
 const WRAP = "h-auto min-h-11 max-w-full shrink whitespace-normal py-2 text-left";
 const HIT = "relative after:absolute after:-inset-2 after:content-['']";
 
@@ -186,7 +186,7 @@ function Panel({
     onNodes(applyRange(nodes, node.id, f, t));
     setState(null);
     focusRow(node.id);
-    say(`Đã lưu: mục ${node.title.split(" ")[0]} ${rangeText(f, t, unit)}.`);
+    say(`Đã lưu: phần ${node.title.split(" ")[0]} ${rangeText(f, t, unit)}.`);
   }
 
   function act(next: SyllabusNode[], text: string) {
@@ -235,9 +235,9 @@ function Panel({
                   <Button
                     variant="quiet"
                     className={WRAP}
-                    onClick={() => act(applyMark(nodes, node.id, true), `Đã đánh dấu ${counts.toStudied} mục đã học.`)}
+                    onClick={() => act(applyMark(nodes, node.id, true), `Đã đánh dấu ${counts.toStudied} phần đã học.`)}
                   >
-                    Đánh dấu {counts.toStudied} mục chưa học là đã học
+                    Đánh dấu {counts.toStudied} phần chưa học là đã học
                     {name}
                   </Button>
                 )}
@@ -245,9 +245,9 @@ function Panel({
                   <Button
                     variant="quiet"
                     className={WRAP}
-                    onClick={() => act(applyMark(nodes, node.id, false), `Đã đánh dấu ${counts.toUnstudied} mục là chưa học.`)}
+                    onClick={() => act(applyMark(nodes, node.id, false), `Đã đánh dấu ${counts.toUnstudied} phần là chưa học.`)}
                   >
-                    Đánh dấu {counts.toUnstudied} mục là chưa học
+                    Đánh dấu {counts.toUnstudied} phần là chưa học
                     {name}
                   </Button>
                 )}
@@ -264,8 +264,8 @@ function Panel({
                   next,
                   now.excluded
                     ? leaf
-                      ? "Mục này không thi."
-                      : `Mục ${node.title.split(" ")[0]} không thi; ${count} mục con không tính.`
+                      ? "Phần này không thi."
+                      : `Phần ${node.title.split(" ")[0]} không thi; ${count} phần con không tính.`
                     : "Đã đưa lại vào đề cương thi.",
                 );
               }}

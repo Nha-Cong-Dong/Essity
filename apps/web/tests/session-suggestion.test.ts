@@ -6,11 +6,11 @@ import type { SuggestionsApi } from "@/lib/today-adapt";
 
 const A = "0b8f1d2e-0000-4000-8000-000000000001";
 const SEC = "5f0c0000-0000-4000-8000-000000000001";
-const pace = { remaining_chapters: 12, remaining_leaves: 12, remaining_weight: 12, unit: "mục", days_left: 20, text: "còn 12 mục, 20 ngày" };
+const pace = { remaining_chapters: 12, remaining_leaves: 12, remaining_weight: 12, unit: "phần", days_left: 20, text: "còn 12 phần, 20 ngày" };
 const one = (over = {}) => ({
   subject_id: A, subject_name: "Mạng", kind: "next_leaf" as const, section_id: SEC,
-  section_title: "3.2 TCP flow control", partial: false, remaining: null, unit: "mục",
-  reason: "Mục chưa học đầu tiên.", pace, units: [] as { section_id: string; title: string; chapter_title: string | null }[], nothing_today: false, remaining_chapters: 12, ...over,
+  section_title: "3.2 TCP flow control", partial: false, remaining: null, unit: "phần",
+  reason: "Phần chưa học đầu tiên.", pace, units: [] as { section_id: string; title: string; chapter_title: string | null }[], nothing_today: false, remaining_chapters: 12, ...over,
 });
 const all = (suggestions: ReturnType<typeof one>[]): SuggestionsApi => ({ today: "2026-11-03", suggestions, finished: [], empty: null });
 
@@ -20,8 +20,8 @@ describe("sessionSuggestion", () => {
     expect(sessionSuggestion(all([one()]), A, SEC)).toEqual({
       kind: "section",
       text: "Nội dung học tập: 3.2 TCP flow control",
-      reason: "Mục chưa học đầu tiên.",
-      pace: "còn 12 mục, 20 ngày",
+      reason: "Phần chưa học đầu tiên.",
+      pace: "còn 12 phần, 20 ngày",
     });
   });
 

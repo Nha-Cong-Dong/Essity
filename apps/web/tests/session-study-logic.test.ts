@@ -66,7 +66,7 @@ describe("applyMention and reconcileMentions (US-02 AC2, AC3: a reference is exa
   // pointing at the wrong characters.
   it("keeps a mention when text is added after it and shifts it when text is added before", () => {
     const m = [{ docId: "d1", name: "Giáo trình", start: 4, end: 15 }];
-    expect(reconcileMentions("học @Giáo trình ", "học @Giáo trình mục 3.2", m)).toEqual({ mentions: m, removed: [] });
+    expect(reconcileMentions("học @Giáo trình ", "học @Giáo trình phần 3.2", m)).toEqual({ mentions: m, removed: [] });
     const shifted = reconcileMentions("học @Giáo trình ", "tối nay học @Giáo trình ", m);
     expect(shifted.mentions[0]).toMatchObject({ start: 12, end: 23 });
   });

@@ -28,8 +28,8 @@ const POLL_MS = 4000;
 const REFUSED: Record<string, string> = {
   invalid_range: "Khoảng trang này không hợp lệ.",
   outside_document: "Khoảng này vượt quá số trang của giáo trình.",
-  outside_parent: "Khoảng này nằm ngoài mục cha.",
-  children_outside: "Khoảng này không phủ hết các mục con.",
+  outside_parent: "Khoảng này nằm ngoài phần cha.",
+  children_outside: "Khoảng này không phủ hết các phần con.",
   offline: "Chưa lưu được vì mất kết nối. Thử lại.",
 };
 const NOT_SAVED = "Chưa lưu được. Thử lại.";

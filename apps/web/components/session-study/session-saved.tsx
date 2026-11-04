@@ -34,11 +34,11 @@ export function SavedArea({
           <p className="m-0">
             {kind === "free"
               ? `Đã lưu ${count} thẻ.`
-              : `Đã lưu ${count} thẻ cho mục 3.2.`}
+              : `Đã lưu ${count} thẻ cho phần 3.2.`}
           </p>
-          {kind === "section" && <p className="m-0">Mục 3.2 đã học.</p>}
+          {kind === "section" && <p className="m-0">Phần 3.2 đã học.</p>}
           {kind === "partial" && (
-            <p className="m-0">Đã học tr. 52-55 của mục 3.2.</p>
+            <p className="m-0">Đã học tr. 52-55 của phần 3.2.</p>
           )}
           <p className="m-0 text-ink-soft">
             Thẻ mới vào ôn từ ngày học kế tiếp.

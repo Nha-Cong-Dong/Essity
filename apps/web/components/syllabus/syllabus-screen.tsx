@@ -38,7 +38,7 @@ export const NOTICE = {
     long: "File này là ảnh chụp nên chưa đọc được chữ. Đề cương tạm chia theo khối 10 trang. Bạn có thể sửa trực tiếp.",
     short: "File này là ảnh chụp nên chưa đọc được chữ.",
   },
-  flat: { long: "Mỗi slide là một mục. Chưa nhóm theo chương.", short: "Mỗi slide là một mục. Chưa nhóm theo chương." },
+  flat: { long: "Mỗi slide là một phần. Chưa nhóm theo chương.", short: "Mỗi slide là một phần. Chưa nhóm theo chương." },
 } as const;
 
 export function Skeleton() {
@@ -58,14 +58,14 @@ export function Totals({ nodes, unit }: { nodes: SyllabusNode[]; unit: SyllabusF
   return (
     <div className="mt-6">
       <p className="m-0 text-body" data-totals>
-        đã học {p.done}/{p.total} mục · {p.pagesDone}/{p.pagesTotal} {word}
+        đã học {p.done}/{p.total} phần · {p.pagesDone}/{p.pagesTotal} {word}
       </p>
       <div aria-hidden="true" className="mt-2 h-1 w-full overflow-hidden rounded-full bg-sunken">
         <div className="h-full rounded-full bg-correct" style={{ width: `${pct}%` }} />
       </div>
       {p.excluded > 0 && (
         <p className="m-0 mt-2 text-meta text-ink-soft">
-          {p.excluded} mục không thi, không tính vào đây.
+          {p.excluded} phần không thi, không tính vào đây.
         </p>
       )}
     </div>

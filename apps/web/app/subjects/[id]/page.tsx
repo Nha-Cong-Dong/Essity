@@ -30,7 +30,7 @@ import type { SuggestionState } from "@/components/subjects/subject-suggestion";
 
 export const metadata: Metadata = { title: "Môn học · Essity" };
 
-// T7.13 (US-15 AC6, AC7; DESIGN §6.5): one subject with "Hôm nay nên học: mục X" or the
+// T7.13 (US-15 AC6, AC7; DESIGN §6.5): one subject with "Hôm nay nên học: phần X" or the
 // "Gợi ý cho hôm nay" button. A failed read of the suggestions leaves the button, so the learner
 // can still ask; someone else's subject or a bad id is the 404 page.
 async function Subject({ params }: { params: Promise<{ id: string }> }) {
@@ -89,7 +89,7 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
       {prog !== null && prog.total > 0 && (
         <div className="flex flex-col gap-1" data-subject-progress>
           <p className="m-0 text-meta text-ink-soft">
-            Tiến độ: đã học {prog.done}/{prog.total} mục
+            Tiến độ: đã học {prog.done}/{prog.total} phần
           </p>
           <CoverageBar percent={(prog.done / prog.total) * 100} />
         </div>

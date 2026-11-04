@@ -12,7 +12,7 @@ const SIGNED_IN = { cookies: { [SESSION_COOKIE]: TOKEN } };
 const CMD = "11111111-2222-4333-8444-555555555555";
 const SCREEN = "21111111-2222-4333-8444-555555555555";
 const SUBJECT = "31111111-2222-4333-8444-555555555555";
-const body = { command_id: CMD, screen_session_id: SCREEN, subject_id: SUBJECT, text: "mục 3.4 kết thúc ở trang 80" };
+const body = { command_id: CMD, screen_session_id: SCREEN, subject_id: SUBJECT, text: "phần 3.4 kết thúc ở trang 80" };
 const params = (id = CMD) => ({ params: Promise.resolve({ id }) });
 const refusal = (status: number, detail: unknown) => Response.json({ detail }, { status });
 

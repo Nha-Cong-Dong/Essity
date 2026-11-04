@@ -23,7 +23,7 @@ import { initialRound, type Round } from "@/lib/session-study/round";
 // T7.12a: the study session over typed fixtures. Each scenario is the state the screen starts in;
 // "Trống" and "Học tự do" run on by themselves (a send ends in its cards after a moment).
 
-const TEXT = "Tối nay mình học @Giáo trình mục 3.2 và xem lại @slide c3 tr. 10–14.";
+const TEXT = "Tối nay mình học @Giáo trình phần 3.2 và xem lại @slide c3 tr. 10–14.";
 const MENTIONS: Mention[] = [
   { docId: "d-textbook", name: "Giáo trình", start: 17, end: 28 },
   { docId: "d-slide", name: "slide c3", start: 48, end: 57 },

@@ -66,7 +66,7 @@ export function Legend() {
           <svg width="56" height="16" viewBox="0 0 56 16" aria-hidden="true" className="shrink-0 text-line-strong">
             <rect x="2" y="2" width="52" height="12" rx="4" fill="none" stroke="currentColor" strokeWidth="1" />
           </svg>
-          <span>Thẻ thuộc mục: khung mảnh quanh các thẻ cùng mục</span>
+          <span>Thẻ thuộc phần: khung mảnh quanh các thẻ cùng phần</span>
         </li>
         <li className="flex items-center gap-3">
           <span aria-hidden="true" className="w-14 shrink-0 text-center text-ink-soft">
