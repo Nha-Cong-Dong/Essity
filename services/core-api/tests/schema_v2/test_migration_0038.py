@@ -1,4 +1,4 @@
-"""CARDS-V3, migration 0037: a study session may carry a title (at most 200 characters), a
+"""CARDS-V3, migration 0038: a study session may carry a title (at most 200 characters), a
 submission may carry a notice from a closed list. Schema only: the old drafts are moved by
 `promote-drafts`, not here."""
 
@@ -11,7 +11,7 @@ from core_api.db.models import Submission
 from v2_rows import World, make_study_session
 
 
-def test_single_alembic_head_after_0037(alembic_cfg: Config) -> None:
+def test_single_alembic_head_after_0038(alembic_cfg: Config) -> None:
     assert len(ScriptDirectory.from_config(alembic_cfg).get_heads()) == 1
 
 

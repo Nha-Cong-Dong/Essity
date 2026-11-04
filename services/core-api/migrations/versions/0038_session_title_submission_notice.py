@@ -1,7 +1,7 @@
 """session title and submission notice
 
-Revision ID: 0037
-Revises: 0036
+Revision ID: 0038
+Revises: 0037
 Create Date: 2026-11-05 09:00:00.000000
 
 CARDS-V3 (05/11): the session is named by the topic of its cards (`study_session.title`, chosen
@@ -17,8 +17,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0037"
-down_revision: str | Sequence[str] | None = "0036"
+revision: str = "0038"
+down_revision: str | Sequence[str] | None = "0037"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
