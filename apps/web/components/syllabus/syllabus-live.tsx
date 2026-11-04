@@ -43,6 +43,8 @@ const REREAD = {
   not_indexed: "Giáo trình đang được đọc. Chờ một chút rồi thử lại.",
   offline: "Chưa tách lại được vì mất kết nối. Thử lại.",
   other: "Chưa tách lại được. Thử lại.",
+  reading: "Đang tách lại đề cương. Đề cương cũ vẫn dùng được trong lúc này.",
+  failed: "Chưa tách lại được, đề cương cũ vẫn giữ.",
 } as const;
 
 export function SyllabusLive({
@@ -70,7 +72,7 @@ export function SyllabusLive({
     nodesRef.current = nodes;
   });
   const documentId = outline.document?.id ?? null;
-  const waiting = view.kind === "none" && view.reason === "not_indexed";
+  const waiting = (view.kind === "none" && view.reason === "not_indexed") || outline.reread === "pending";
   const subjectHref = `/subjects/${subjectId}`;
 
   // While the textbook is read, ask again; it stops when the outline (or a final state) arrives.
@@ -203,6 +205,16 @@ export function SyllabusLive({
             <span className="max-sm:hidden">{note.long}</span>
           </p>
         </div>
+      )}
+      {outline.reread === "pending" && (
+        <p role="status" className="m-0 mt-4 text-body text-ink-soft" data-rereading>
+          {REREAD.reading}
+        </p>
+      )}
+      {outline.reread === "failed" && !failure && (
+        <p role="alert" className="m-0 mt-4 text-body" data-reread-failed>
+          {REREAD.failed}
+        </p>
       )}
       <Totals nodes={nodes} unit={view.unit} />
       {failure && (

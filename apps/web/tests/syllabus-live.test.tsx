@@ -179,11 +179,12 @@ describe("SyllabusLive (US-13)", () => {
 });
 
 describe("SyllabusLive: Tách lại đề cương (OUTLINE-FIX3)", () => {
-  const outline = (reason: OutlineOut["reason"]): OutlineOut =>
+  const outline = (reason: OutlineOut["reason"], reread: OutlineOut["reread"] = null): OutlineOut =>
     ({
       subject_id: SUBJECT,
       document: { id: DOC, short_name: "GT", page_count: 40 },
       reason,
+      reread,
       progress: 0,
       temporary: false,
       remaining_chapters: 1,
@@ -210,14 +211,14 @@ describe("SyllabusLive: Tách lại đề cương (OUTLINE-FIX3)", () => {
   // Red when: the call goes out without the learner's confirmation, or it is not for this document.
   it("asks first, then reads again and shows the waiting state", async () => {
     api.reextractOutline.mockResolvedValue({ ok: true, data: {} });
-    api.readOutline.mockResolvedValue({ ok: true, data: outline("not_indexed") });
+    api.readOutline.mockResolvedValue({ ok: true, data: outline(null, "pending") });
     render(<SyllabusLive subjectId={SUBJECT} subjectName="XSTK" initial={outline(null)} />);
     fireEvent.click(screen.getByRole("button", { name: "Tách lại đề cương" }));
     expect(api.reextractOutline).not.toHaveBeenCalled();
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Tách lại" })));
     await flush();
     expect(api.reextractOutline).toHaveBeenCalledWith(DOC);
-    expect(screen.getByText("Đang đọc mục lục…")).toBeTruthy();
+    expect(document.body.textContent).toContain("Đang tách lại đề cương");
   });
 
   // Red when: a refusal is silent.
@@ -228,6 +229,13 @@ describe("SyllabusLive: Tách lại đề cương (OUTLINE-FIX3)", () => {
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Tách lại" })));
     await flush();
     expect(screen.getByRole("alert").textContent).toContain("Vừa tách lại xong");
+  });
+
+  // Red when: a failed reading hides the old outline or says nothing.
+  it("a failed reading keeps the outline and says so", () => {
+    render(<SyllabusLive subjectId={SUBJECT} subjectName="XSTK" initial={outline(null, "failed")} />);
+    expect(screen.getByRole("alert").textContent).toBe("Chưa tách lại được, đề cương cũ vẫn giữ.");
+    expect(document.body.textContent).toContain("1. Xác suất");
   });
 
   // Red when: cancelling still sends the call.
