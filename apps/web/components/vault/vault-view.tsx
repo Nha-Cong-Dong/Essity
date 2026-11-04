@@ -139,7 +139,7 @@ export function VaultView({
               <li key={s.id} className="min-w-0">
                 <a
                   href={`/kho-kien-thuc?subject=${s.id}`}
-                  className="flex h-full min-h-44 flex-col justify-between gap-6 rounded-tile bg-hong-tint p-5 text-ink no-underline hover:bg-sunken"
+                  className={`flex h-full min-h-44 flex-col justify-between gap-6 rounded-tile p-5 no-underline hover:bg-sunken ${s.cards === 0 ? "bg-sunken text-ink-soft" : "bg-hong-tint text-ink"}`}
                 >
                   <span className="block text-lead font-semibold [overflow-wrap:anywhere]">
                     {s.name}

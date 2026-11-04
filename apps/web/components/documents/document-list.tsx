@@ -100,7 +100,7 @@ export function DocumentsFrame({ name, children }: { name: string; children: Rea
         Môn học
       </a>
       <h1 className="m-0 mb-8 font-display text-title wrap-anywhere">
-        <Marker>{name}</Marker>
+        {name}
       </h1>
       {children}
     </PageColumn>

@@ -68,7 +68,7 @@ describe("the tile surface passes its own tokens down", () => {
 describe("V22 type, after the landing: Bricolage 650 titles, h1 32-44, one display number 44-64", () => {
   it("the title and display steps", () => {
     const t = theme();
-    expect(t["--text-title"]).toBe("clamp(32px, 3.4vw, 44px)");
+    expect(t["--text-title"]).toBe("clamp(24px, 1.2vw + 19px, 32px)");
     expect(t["--text-title--font-weight"]).toBe("650");
     expect(t["--text-display"]).toMatch(/clamp\(44px, .*, 64px\)$/);
     expect(t["--text-chip"]).toBe("13px");

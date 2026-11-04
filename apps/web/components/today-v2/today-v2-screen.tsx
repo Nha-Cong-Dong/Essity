@@ -184,7 +184,7 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
           </nav>
         </div>
       )}
-      <div className="mt-auto">
+      <div>
         <LearnActions items={items} primary={primary && first >= 0} />
       </div>
     </section>
@@ -255,7 +255,7 @@ export function TodayV2Screen({
   return (
     <>
       <Heading day={today.learning_day} />
-      <div className="grid gap-x-4 gap-y-8 min-[901px]:grid-cols-12 min-[901px]:gap-y-10">
+      <div className="grid gap-x-4 gap-y-8 min-[901px]:grid-cols-12 min-[901px]:items-start min-[901px]:gap-y-10">
         {today.unfinished.length > 0 && <ResumeStrip items={today.unfinished} />}
         <ReviewTile review={today.review} primary={primary === "review"} preview={preview} />
         <LearnSection today={today} primary={primary === "learn"} />

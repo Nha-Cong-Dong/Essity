@@ -40,7 +40,12 @@ export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; toda
       <h2 id="today-week" className="m-0 font-display text-lead">
         Hoạt động mỗi ngày
       </h2>
-      <ol className="m-0 mt-4 grid h-28 list-none grid-cols-7 items-end gap-3 p-0">
+      {cells.every((cell) => cell.count === 0) ? (
+        <p className="m-0 mt-3 text-read text-ink-soft" data-week-empty>
+          Chưa có hoạt động nào trong tuần này.
+        </p>
+      ) : null}
+      <ol hidden={cells.every((cell) => cell.count === 0)} className="m-0 mt-4 grid h-28 list-none grid-cols-7 items-end gap-3 p-0">
         {cells.map((cell, index) => {
           const on = cell.count > 0;
           const isToday = cell.day === today;
@@ -53,10 +58,13 @@ export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; toda
               <b className="font-display text-ink tabular-nums">{cell.count}</b>
               <span
                 aria-hidden="true"
-                className={cn("w-full max-w-9 rounded-slip", on ? "bg-hong" : "bg-line-strong", isToday && "outline-2 outline-offset-2 outline-ink")}
+                className={cn("w-full max-w-9 rounded-slip", on ? "bg-hong" : "bg-line-strong")}
                 style={{ height: on ? `${Math.max(12, (cell.count / top) * 56)}px` : "2px" }}
               />
-              <span className={cn(isToday && "font-semibold text-ink")}>{NAMES[index]}</span>
+              <span className={cn(isToday && "font-semibold text-ink")}>
+                {NAMES[index]}
+                {isToday ? <span aria-hidden="true" className="mx-auto mt-1 block size-1.5 rounded-full bg-ink" /> : null}
+              </span>
               <span className="sr-only">{on ? "hoạt động" : "nghỉ"}</span>
             </li>
           );
