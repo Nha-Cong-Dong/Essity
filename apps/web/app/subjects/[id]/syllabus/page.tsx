@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
-import { AppShell } from "@/components/shells";
+import { AppShell, PageColumn } from "@/components/shells";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { SyllabusLive } from "@/components/syllabus/syllabus-live";
 import { loadOutline } from "@/lib/outline";
@@ -28,7 +28,7 @@ async function Syllabus({ params }: { params: Promise<{ id: string }> }) {
   }
   if (outline === null) {
     return (
-      <div>
+      <PageColumn width="wide">
         <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
           <p className="m-0 font-semibold">Không tải được đề cương.</p>
           <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
@@ -36,22 +36,26 @@ async function Syllabus({ params }: { params: Promise<{ id: string }> }) {
             Thử lại
           </a>
         </div>
-      </div>
+      </PageColumn>
     );
   }
-  return <SyllabusLive subjectId={subject.id} subjectName={subject.name} initial={outline} />;
+  return (
+    <PageColumn width="wide">
+      <SyllabusLive subjectId={subject.id} subjectName={subject.name} initial={outline} />
+    </PageColumn>
+  );
 }
 
 export default function SyllabusPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <div className="mx-auto flex w-full min-w-0 max-w-240 flex-col gap-8">
-        <Suspense fallback={<div aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
+      <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start">
+        <Suspense fallback={<PageColumn width="wide" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
           <Syllabus params={params} />
         </Suspense>
         <aside
           aria-label="Chỉnh đề cương bằng lời"
-          className="flex min-w-0 flex-col gap-2 rounded-sheet border border-line bg-sheet p-5 has-[[data-command-slot-bottom]:empty]:hidden "
+          className="flex min-w-0 flex-col gap-2 rounded-sheet border border-line bg-sheet p-5 has-[[data-command-slot-bottom]:empty]:hidden lg:sticky lg:top-6"
         >
           <h2 className="m-0 text-body font-semibold">Chưa hài lòng với cách chia đề cương?</h2>
           <p className="m-0 text-meta text-ink-soft">
