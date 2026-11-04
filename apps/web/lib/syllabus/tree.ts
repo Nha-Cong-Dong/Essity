@@ -177,6 +177,18 @@ const SOURCE_LABEL: Record<Source, string> = {
   user: "bạn đã sửa",
 };
 
+/** UI-A: only what the learner should know: the temporary tree and their own edits, not "từ heading". */
+export const sourceNote = (source: Source, edited: boolean): string | null =>
+  edited || source === "chunk10" || source === "user" ? sourceLabel(source, edited) : null;
+
+/** A file name used as a title ("giao-trinh_xstk.pdf") reads as words ("Giao trinh xstk"); real titles stay. */
+export function prettyDocName(name: string | null): string {
+  const raw = (name ?? "").trim().replace(/\.(pdf|docx?|pptx?)$/iu, "");
+  if (!raw || /\s/u.test(raw) || !/[-_]/u.test(raw)) return raw;
+  const words = raw.replace(/[-_]+/gu, " ").trim();
+  return words.charAt(0).toLocaleUpperCase("vi") + words.slice(1);
+}
+
 export const sourceLabel = (source: Source, edited: boolean): string => SOURCE_LABEL[edited ? "user" : source];
 
 export function rangeText(from: number, to: number, unit: Unit): string {

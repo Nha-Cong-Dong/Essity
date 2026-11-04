@@ -557,7 +557,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
             data-row
             style={{ ["--lvl" as string]: level - 1 }}
             onClick={() => (branch ? fold(node.id, !isOpen) : openPanel(node.id))}
-            className={`${INDENT_M} mb-1.5 flex min-h-12 cursor-pointer items-center gap-2 max-sm:gap-1 rounded-row bg-bg px-3 max-sm:px-2 py-1.5 sm:min-h-11.5 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus ${isNext ? `${NX_CAM.row} font-semibold` : ""}`}
+            className={`${INDENT_M} mb-1.5 flex min-h-12 cursor-pointer items-start gap-2 max-sm:gap-1 rounded-row bg-bg px-3 max-sm:px-2 py-2 sm:min-h-11.5 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus ${isNext ? `${NX_CAM.row} font-semibold` : ""}`}
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center">
               {branch && (
@@ -577,12 +577,12 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
               )}
             </span>
             {num && (
-              <span aria-hidden="true" className="w-9 shrink-0 text-body tabular-nums text-ink-soft max-sm:w-8">
+              <span aria-hidden="true" className="w-14 shrink-0 text-body leading-7 tabular-nums text-ink-soft max-sm:w-12">
                 {num}
               </span>
             )}
             <span className="flex min-w-0 flex-1 flex-col">
-              <span id={`ti-${node.id}-t`} data-user className={`wrap-anywhere text-body ${node.excluded ? "text-ink-soft" : ""} ${branch ? "font-semibold" : ""}`}>
+              <span id={`ti-${node.id}-t`} data-user className={`wrap-anywhere text-body leading-7 ${node.excluded ? "text-ink-soft" : ""} ${branch ? "font-semibold" : ""}`}>
                 {num && <span className="sr-only">{num} </span>}
                 {name}
               </span>
@@ -598,7 +598,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
               {isNext && why && <span className={`mt-0.5 text-meta ${NX_CAM.text}`}>{why}</span>}
             </span>
             <span
-              className={`flex shrink-0 items-center gap-1 whitespace-nowrap text-meta ${isNext ? `${NX_CAM.text} max-sm:hidden` : "text-ink-soft"}`}
+              className={`flex h-7 shrink-0 items-center gap-1 whitespace-nowrap text-meta ${isNext ? `${NX_CAM.text} max-sm:hidden` : "text-ink-soft"}`}
               data-state-cell
             >
               {isNext ? (
@@ -680,10 +680,10 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
         />
         {needle === "" && (
           <span className="flex gap-3 text-meta">
-            <button type="button" className="min-h-11 underline" onClick={() => setOpen(new Set(allBranchIds(nodes)))}>
+            <button type="button" className="min-h-11 inline-flex items-center justify-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken" onClick={() => setOpen(new Set(allBranchIds(nodes)))}>
               Mở hết
             </button>
-            <button type="button" className="min-h-11 underline" onClick={() => {
+            <button type="button" className="min-h-11 inline-flex items-center justify-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken" onClick={() => {
                 setOpen(new Set());
                 setPanel(null);
               }}>

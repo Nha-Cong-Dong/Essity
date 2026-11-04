@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-// V21 "Tuần này bạn đã học": seven cells Mon..Sun, the number of sections learned each day. No streak,
+// "Hoạt động mỗi ngày": seven cells Mon..Sun, the number of activities (cards saved + questions answered) each day. No streak,
 // no counter of missed days: resting is fine (the pressure metrics are dropped, PRD US-11).
 
 export type WeekCell = { day: string; count: number };
@@ -25,19 +25,20 @@ export function weekFor(today: string, counts: Map<string, number>): WeekCell[] 
   });
 }
 
+/** Activity of a day = cards saved + practice questions answered (the same count the year heatmap uses). */
 export function weekFromCells(
-  cells: { day: string; sections: string[]; future?: boolean }[],
+  cells: { day: string; cardsSaved: number; questionsAnswered: number; future?: boolean }[],
   today = new Date().toISOString().slice(0, 10),
 ): WeekCell[] {
-  return weekFor(today, new Map(cells.map((cell) => [cell.day, cell.sections.length])));
+  return weekFor(today, new Map(cells.map((cell) => [cell.day, cell.cardsSaved + cell.questionsAnswered])));
 }
 
 export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; today: string; className?: string }) {
   const top = Math.max(1, ...cells.map((cell) => cell.count));
   return (
-    <section aria-labelledby="today-week" className={cn("min-w-0", className)}>
-      <h2 id="today-week" className="m-0 text-body font-semibold">
-        Tuần này bạn đã học
+    <section aria-labelledby="today-week" className={cn("min-w-0 rounded-tile bg-hong-tint p-4 min-[901px]:p-6", className)}>
+      <h2 id="today-week" className="m-0 font-display text-lead">
+        Hoạt động mỗi ngày
       </h2>
       <ol className="m-0 mt-4 grid h-28 list-none grid-cols-7 items-end gap-3 p-0">
         {cells.map((cell, index) => {
@@ -56,12 +57,11 @@ export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; toda
                 style={{ height: on ? `${Math.max(12, (cell.count / top) * 56)}px` : "2px" }}
               />
               <span className={cn(isToday && "font-semibold text-ink")}>{NAMES[index]}</span>
-              <span className="sr-only">{on ? "phần đã học" : "nghỉ"}</span>
+              <span className="sr-only">{on ? "hoạt động" : "nghỉ"}</span>
             </li>
           );
         })}
       </ol>
-      <p className="m-0 mt-3 text-meta text-ink-soft">Mỗi cột là số phần đã học trong ngày. Nghỉ một hôm cũng không sao.</p>
     </section>
   );
 }

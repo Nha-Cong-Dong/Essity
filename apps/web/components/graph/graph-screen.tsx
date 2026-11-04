@@ -177,7 +177,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
       onKeyDownCapture={() => (lastKey.current = true)}
       onPointerDownCapture={() => (lastKey.current = false)}
     >
-      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta underline">
+      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
         Về môn {subjectName}
       </a>
       <h1 className="m-0 text-title">
@@ -245,12 +245,12 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
               {view.cards.length === 0 && live && (
                 <a
                   href={`/subjects/${live.subjectId}/sessions/new`}
-                  className="mt-3 mr-4 inline-flex min-h-11 items-center font-semibold underline"
+                  className="mt-3 mr-4 inline-flex min-h-11 items-center font-semibold rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken"
                 >
                   Ghi buổi học
                 </a>
               )}
-              <a href={subjectHref} className="mt-3 inline-flex min-h-11 items-center text-meta underline">
+              <a href={subjectHref} className="mt-3 inline-flex min-h-11 items-center text-meta rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
                 Về môn
               </a>
             </div>

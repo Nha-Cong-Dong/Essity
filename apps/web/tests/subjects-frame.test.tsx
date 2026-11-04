@@ -80,8 +80,7 @@ describe("/subjects frame (T2.3c, R44, plan G15)", () => {
     );
     render(<SubjectList subjects={[MMT]} example="15/12/2031" />);
     const before = title();
-    fireEvent.click(screen.getByRole("button", { name: `Sửa ${MMT.name}` }));
-    fireEvent.click(screen.getByRole("button", { name: "Xóa môn" }));
+    fireEvent.click(screen.getByRole("button", { name: `Xóa ${MMT.name}` }));
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Xóa môn" })));
     await screen.findByText("Đã xóa môn.");
     expect(title()).toBe(before);

@@ -26,7 +26,8 @@ const paceOf = (s: SuggestionApi): Pace => ({
 
 /** "3.2 TCP flow control" -> label "3.2", title "TCP flow control"; no number: no label. */
 export function splitTitle(raw: string | null): { label: string; title: string } {
-  const text = (raw ?? "").trim();
+  // An older build titled the fallback outline "Pages 1-10"; say "Trang 1–10" like the current one.
+  const text = (raw ?? "").trim().replace(/^Pages\s+(\d+)\s*[-–]\s*(\d+)$/u, "Trang $1–$2");
   const match = /^(\d+(?:\.\d+)*)[.)]?\s+(.*)$/u.exec(text) ?? /^(\d+(?:\.\d+)*)$/u.exec(text);
   if (!match) return { label: "", title: text };
   return { label: match[1], title: match[2] ?? "" };

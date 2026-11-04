@@ -19,7 +19,7 @@ const subscribe = (cb: () => void) => {
 const snapshot = () => (hasMedia() ? window.matchMedia(WIDE).matches : false);
 
 const LINK =
-  "min-h-11 min-w-0 rounded-control px-2 py-2 text-left font-medium underline decoration-line-strong decoration-[1.5px] underline-offset-[5px] wrap-anywhere outline-none hover:decoration-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus aria-pressed:bg-hong-tint";
+  "min-h-11 min-w-0 py-2 text-left font-medium wrap-anywhere outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus aria-pressed:bg-hong-tint inline-flex items-center justify-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken";
 
 type Props = {
   view: GraphView;
@@ -68,7 +68,7 @@ export function EdgeList({ view, selectedId, onSelectCard }: Props) {
     <div data-edge-list className="flex min-w-0 flex-col gap-4">
       <a
         href="#after-list"
-        className="w-fit text-caption underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className="w-fit text-caption focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken"
       >
         Bỏ qua danh sách
       </a>

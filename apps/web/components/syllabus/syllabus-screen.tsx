@@ -11,7 +11,7 @@ import {
   type SyllabusState,
   SUBJECT,
 } from "@/lib/fixtures/syllabus";
-import { anyEdited, progress, sourceLabel, type SyllabusNode } from "@/lib/syllabus/tree";
+import { anyEdited, prettyDocName, progress, sourceNote, type SyllabusNode } from "@/lib/syllabus/tree";
 
 import { SyllabusTree } from "./syllabus-tree";
 
@@ -74,7 +74,7 @@ export function Totals({ nodes, unit }: { nodes: SyllabusNode[]; unit: SyllabusF
         đã học {p.done}/{p.total} phần · {p.pagesDone}/{p.pagesTotal} {word}
       </p>
       <div aria-hidden="true" className="mt-2 h-1 w-full overflow-hidden rounded-full bg-sunken">
-        <div className="h-full rounded-full bg-correct" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-hong" style={{ width: `${pct}%` }} />
       </div>
       {p.excluded > 0 && (
         <p className="m-0 mt-2 text-meta text-ink-soft">
@@ -95,7 +95,7 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
 
   const header = (
     <>
-      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta text-ink-soft underline wrap-anywhere">
+      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta wrap-anywhere rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
         ‹ {SUBJECT.name}
       </a>
       <div className="flex items-center justify-between gap-3">
@@ -185,8 +185,8 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
     <div data-state={state}>
       {header}
       <p className="m-0 mt-1 flex flex-wrap items-baseline gap-x-3 text-read wrap-anywhere" data-main>
-        <span data-user>{fixture.mainName}</span>
-        <PencilNote>{sourceLabel(fixture.source, anyEdited(nodes))}</PencilNote>
+        <span data-user>{prettyDocName(fixture.mainName)}</span>
+        {sourceNote(fixture.source, anyEdited(nodes)) && <PencilNote>{sourceNote(fixture.source, anyEdited(nodes))}</PencilNote>}
       </p>
       {note && (
         <div className="mt-4 rounded-sheet bg-sunken p-4 text-body" data-notice={fixture.notice}>

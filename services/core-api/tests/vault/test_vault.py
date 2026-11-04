@@ -60,6 +60,19 @@ def test_g1_subjects_sessions_cards(client: TestClient, db_session: Session):
     assert cards[0]["id"] == str(unit.id) and cards[0]["content"] == "Giao thức tin cậy"
 
 
+def test_g1_deleted_subject_is_not_in_the_vault(client: TestClient, db_session: Session):
+    _, headers, subject, _, _ = _world(db_session)
+    subject.deleted_at = datetime.now(UTC)
+    db_session.commit()
+    assert client.get("/v1/vault/subjects", headers=headers).json() == []
+    r = client.get(f"/v1/vault/subjects/{subject.id}/sessions", headers=headers)
+    assert r.status_code == 404
+    # A session of the deleted subject is not reachable by typing its URL either.
+    study_id = db_session.query(StudySession.id).filter_by(subject_id=subject.id).scalar()
+    r = client.get(f"/v1/vault/sessions/{study_id}/cards", headers=headers)
+    assert r.status_code == 404
+
+
 def test_g1_other_user_gets_404(client: TestClient, db_session: Session):
     _, _, subject, study, unit = _world(db_session)
     _, other = signed_in(db_session)

@@ -45,8 +45,7 @@ for (const width of WIDTHS) {
   test(`R44-k the delete confirmation stays inside the row and the page @ ${width}px`, async ({ page }) => {
     await open(page, width);
     const row = page.locator("main li").nth(1);
-    await row.getByRole("button", { name: /^Sửa / }).click();
-    await row.getByRole("button", { name: "Xóa môn" }).click();
+    await row.getByRole("button", { name: /^Xóa / }).click();
     await expect(row.getByRole("button", { name: "Giữ môn" })).toBeFocused();
     await withinRow(row, row.locator("button, p:not(.sr-only)"));
     expect(await noPageScroll(page)).toBe(true);

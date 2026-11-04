@@ -49,7 +49,7 @@ export function SubjectOutlineAside({ nodes, subjectId }: { nodes: SyllabusNode[
         ))}
       </ul>
       <div className="flex justify-end">
-        <a href={`/subjects/${subjectId}/syllabus`} className="inline-flex min-h-11 items-center text-small font-semibold underline">
+        <a href={`/subjects/${subjectId}/syllabus`} className="inline-flex min-h-11 items-center text-small font-semibold rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
           Tùy chỉnh đề cương
         </a>
       </div>

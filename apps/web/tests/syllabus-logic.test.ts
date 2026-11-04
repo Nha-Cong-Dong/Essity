@@ -14,7 +14,9 @@ import {
   nodeStatus,
   progress,
   rangeText,
+  prettyDocName,
   sourceLabel,
+  sourceNote,
   type SyllabusNode,
   validateRange,
   visibleRows,
@@ -205,5 +207,20 @@ describe("role picker rules (US-01 AC4, AC7; DESIGN §6.4)", () => {
   it("switchMain swaps directly: the old main falls back to supplementary", () => {
     const files = [f("a", "pdf", "main"), f("b", "pdf")];
     expect(switchMain(files, "b").map((x) => x.role)).toEqual(["supplementary", "main"]);
+  });
+});
+
+// UI-A: the outline header says what the learner needs: a readable file name, no "từ heading".
+describe("prettyDocName / sourceNote", () => {
+  it("turns a file-name slug into words and leaves real titles alone", () => {
+    expect(prettyDocName("giao-trinh_xstk.pdf")).toBe("Giao trinh xstk");
+    expect(prettyDocName("Giáo trình Mạng máy tính (Kurose)")).toBe("Giáo trình Mạng máy tính (Kurose)");
+    expect(prettyDocName(null)).toBe("");
+  });
+  it("hides the technical source, keeps the temporary tree and the learner's edits", () => {
+    expect(sourceNote("heading", false)).toBeNull();
+    expect(sourceNote("bookmark", false)).toBeNull();
+    expect(sourceNote("chunk10", false)).toBe("tạm: chia khối 10 trang");
+    expect(sourceNote("heading", true)).toBe("bạn đã sửa");
   });
 });

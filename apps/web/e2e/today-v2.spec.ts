@@ -56,11 +56,11 @@ for (const width of WIDTHS) {
       expect(await page.locator('[data-variant="primary"], [data-variant="primary-inverse"]').count()).toBe(1);
     });
 
-    // Red when: the review start button falls outside its pink tile.
-    test("US-03 AC1: review: Ôn ngay sits inside the pink tile", async ({ page }) => {
+    // Red when: the review start button falls outside the review block it belongs to (UI-A: flat, no tile).
+    test("US-03 AC1: review: Ôn ngay sits inside the review block", async ({ page }) => {
       await open(page, width, "/design-preview/today?state=review");
       const start = page.getByRole("button", { name: "Ôn ngay" });
-      expect(inside(await box(start), await box(page.locator('[data-surface="hong"]')))).toBe(true);
+      expect(inside(await box(start), await box(page.locator('section[aria-labelledby="today-review"]')))).toBe(true);
     });
 
     // Red when: the block spills sideways or the pace line overlaps its neighbours.

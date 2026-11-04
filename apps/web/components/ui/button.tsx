@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 // Design system v3.1 (docs/design/visual-system.md §4.1): pills, four kinds, no more.
 // - primary: at most one per screen. Bắt đầu, Gửi, Câu tiếp...
 // - secondary: Ôn thêm, Ghi buổi học, Thực ra tôi đúng / sai, Gửi lại...
-// - quiet: text only, for one-tap actions that must not shout: Không nhớ, Dừng tại đây,
+// - quiet: a soft pill (no underline, V22), for one-tap actions that must not shout: Không nhớ, Dừng tại đây,
 //   Chấm sai, Bỏ câu này, Sửa bằng một câu.
 // - primary-inverse: the primary button on a pink surface ([data-surface="hong"]).
 // No destructive variant: nothing in the app is red. A disabled button is sunken, never faded
@@ -20,7 +20,7 @@ const buttonVariants = cva(
         secondary:
           "rounded-full bg-transparent px-6 text-ink inset-ring-[1.5px] inset-ring-line-strong hover:bg-sunken disabled:bg-sunken disabled:text-ink-soft disabled:inset-ring-line",
         quiet:
-          "h-11 rounded-control px-3 font-medium text-ink underline decoration-line-strong decoration-[1.5px] underline-offset-[5px] hover:decoration-ink disabled:text-ink-soft disabled:no-underline",
+          "h-11 rounded-full bg-sheet px-5 font-medium text-ink inset-ring-1 inset-ring-line hover:bg-sunken disabled:bg-sunken disabled:text-ink-soft",
         "primary-inverse":
           "rounded-full bg-(color:--inverse-bg) px-6 text-(color:--inverse-fg) hover:-translate-y-px hover:shadow-[0_12px_28px_-12px_rgb(0_0_0/0.45)] disabled:bg-sunken disabled:text-ink-soft",
       },

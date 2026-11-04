@@ -45,8 +45,6 @@ export function ActivityGrid({
   );
   const [focused, setFocused] = useState(start);
   const [pinned, setPinned] = useState(start);
-  const [hover, setHover] = useState<number | null>(null);
-  const [onCell, setOnCell] = useState(false);
   const [announce, setAnnounce] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
   const refs = useRef<Map<number, HTMLButtonElement>>(new Map());
@@ -116,13 +114,13 @@ export function ActivityGrid({
   }
 
   if (cells.length === 0) return null;
-  const cell = cells[hover ?? (onCell ? focused : pinned)];
+  // The detail follows a click (or Enter / Space), never the pointer or the focus (user 05/11).
+  const cell = cells[pinned];
   const worked = cell.cardsSaved + cell.questionsAnswered > 0;
   const subjectText = cell.subjects
     .map((id) => names.get(id) ?? "")
     .filter(Boolean)
     .join(", ");
-  const workedDays = cells.filter((c) => c.cardsSaved + c.questionsAnswered > 0).reverse();
   const hasExam = cells.some((c) => c.examDay);
   const range = `${dayLabel(cells[0].day)} tới ${dayLabel(cells[cells.length - 1].day)}`;
 
@@ -170,14 +168,9 @@ export function ActivityGrid({
                         setFocused(i);
                         pin(i);
                       }}
-                      onFocus={() => {
-                        setFocused(i);
-                        setOnCell(true);
-                      }}
-                      onBlur={() => setOnCell(false)}
+                      aria-pressed={i === pinned}
+                      onFocus={() => setFocused(i)}
                       onKeyDown={(e) => onKey(e, i)}
-                      onMouseEnter={() => setHover(i)}
-                      onMouseLeave={() => setHover(null)}
                     />
                   </span>
                 );
@@ -186,7 +179,7 @@ export function ActivityGrid({
           ))}
         </div>
       </div>
-      <p className="sr-only">Dùng phím mũi tên để đổi ngày; Enter để xem chi tiết.</p>
+      <p className="sr-only">Dùng phím mũi tên để chuyển ô; Enter hoặc Space để chọn ngày và xem chi tiết.</p>
       <p role="status" className="sr-only">
         {announce}
       </p>
@@ -256,51 +249,6 @@ export function ActivityGrid({
           </Button>
         </div>
       </Sheet>
-
-      <details className="mt-4">
-        <summary className="flex min-h-11 cursor-pointer items-center text-body font-medium underline decoration-line-strong decoration-[1.5px] underline-offset-[5px]">
-          Xem dạng danh sách
-        </summary>
-        <div role="region" tabIndex={0} aria-labelledby="alt-caption" className={styles.alt} data-alt-list>
-          <table className="w-full [border-collapse:collapse] text-meta">
-            <caption id="alt-caption" className="py-2 text-left font-semibold">
-              Lượng việc theo ngày (chỉ những ngày có ghi nhận)
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col" className="py-1 pr-4 text-left font-semibold">
-                  Ngày
-                </th>
-                <th scope="col" className="py-1 pr-4 text-left font-semibold">
-                  Thẻ đã lưu
-                </th>
-                <th scope="col" className="py-1 text-left font-semibold">
-                  Câu đã làm
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {workedDays.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="py-2 text-ink-soft">
-                    Chưa có ngày nào được ghi.
-                  </td>
-                </tr>
-              ) : (
-                workedDays.map((c) => (
-                  <tr key={c.day} className="border-t border-line">
-                    <th scope="row" className="py-1 pr-4 text-left font-normal">
-                      {dayLabel(c.day)}
-                    </th>
-                    <td className="py-1 pr-4 tabular-nums">{c.cardsSaved}</td>
-                    <td className="py-1 tabular-nums">{c.questionsAnswered}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </details>
     </div>
   );
 }

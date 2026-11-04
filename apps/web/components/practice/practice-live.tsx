@@ -1,7 +1,6 @@
 "use client";
 
 import { NX_CAM, NxChip } from "@/components/ui/nx-list";
-import { Sheet } from "@/components/ui/sheet";
 import { useEffect, useRef, useState } from "react";
 
 import { Pen } from "@/components/practice/practice-extras";
@@ -117,7 +116,7 @@ function Row({
         <span className="text-meta text-ink-soft">{q.origin === "bank" ? "Câu gốc" : "Câu sinh thêm"}</span>
         {q.number !== null && <span className="text-meta text-ink-soft">Câu {q.number}</span>}
         {q.status === "waiting" ? (
-          <a href={`/subjects/${subjectId}/syllabus`} className="text-meta text-ink-soft underline">
+          <a href={`/subjects/${subjectId}/syllabus`} className="text-meta inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
             {q.line}
           </a>
         ) : q.status === "unlinked" ? (
@@ -143,7 +142,8 @@ function Row({
             Làm câu này
           </Button>
         )}
-        <Button variant="quiet" aria-describedby={`sum-${q.id}`} onClick={onRemove}>
+        {/* One main button per card; removing is a small ghost pill kept apart (ux-critic 05/11). */}
+        <Button variant="quiet" aria-describedby={`sum-${q.id}`} className="mt-3 self-start sm:mt-0 sm:ml-2" onClick={onRemove}>
           Gỡ khỏi luyện tập
         </Button>
       </div>
@@ -238,7 +238,7 @@ export function PracticeLive({
 
   return (
     <div ref={root} className="w-full max-w-240">
-      <a href={`/subjects/${subjectId}`} className="text-meta text-ink-soft underline wrap-anywhere">
+      <a href={`/subjects/${subjectId}`} className="text-meta wrap-anywhere inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
         ← {subjectName}
       </a>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-3" data-practice-head>
@@ -278,7 +278,7 @@ export function PracticeLive({
         </div>
       ) : (
         <div className="mt-6">
-          <Sheet variant="tile" tone="hong" className="flex flex-col gap-4 p-5 shadow-none" data-practice-today>
+          <div className="flex flex-col gap-4" data-practice-today>
           <div data-progress>
             <p data-summary className="m-0 text-read">
               Đã mở khóa {readyCount}/{live.length} câu
@@ -294,7 +294,7 @@ export function PracticeLive({
               </p>
             </div>
           )}
-          </Sheet>
+          </div>
           {firstReady === null && (
             <>
               <p className="m-0 mt-3">Chưa có câu hỏi nào sẵn sàng, hãy kết nối thêm kiến thức để mở khóa câu hỏi nhé!</p>
@@ -308,7 +308,6 @@ export function PracticeLive({
               <h2 id="practised" className="m-0 font-display text-lead max-[640px]:text-body max-[640px]:font-semibold">
                 Câu đã luyện tập
               </h2>
-              <span className="text-meta italic text-ink-soft">Gợi ý, bạn chọn</span>
             </div>
             <p className="m-0 mt-1 text-meta text-ink-soft">Sắp theo ngày mở khóa, mới nhất trước.</p>
             {unlockedRows.length === 0 ? (
@@ -318,7 +317,7 @@ export function PracticeLive({
             )}
             {groups.some((g) => g.type !== null) && (
               <details className="mt-4" data-types>
-                <summary className="flex min-h-11 cursor-pointer items-center text-meta underline">Theo dạng câu</summary>
+                <summary className="flex min-h-11 cursor-pointer items-center text-meta rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">Theo dạng câu</summary>
                 {groups
                   .filter((g) => g.type !== null)
                   .map((g) => (

@@ -1,4 +1,3 @@
-import { SubjectMark } from "@/components/subject-mark";
 import { NxRow } from "@/components/ui/nx-list";
 import { studyHref } from "@/lib/session-study/entry";
 import { paceLine, TODAY_V2_COPY as COPY, type LearnItem } from "@/lib/today-v2";
@@ -14,13 +13,25 @@ export function PaceLine({ pace }: { pace: Extract<LearnItem, { state: "next" }>
 export function NextStudyRow({ item, next = false }: { item: LearnItem; next?: boolean }) {
   const base = `/subjects/${item.subject.id}`;
   const name = <span className="block font-semibold break-words">{item.subject.name}</span>;
-  const lead = <SubjectMark name={item.subject.name} />;
   if (item.state === "next") {
     return (
-      <NxRow lead={lead} state={next ? COPY.nextState : undefined} next={next} href={studyHref(item.subject.id, item.section.id)}>
+      <NxRow
+                next={next}
+        // The "next" label sits under the name, so a narrow column keeps the whole name line.
+        why={
+          next ? (
+            <>
+              <span aria-hidden="true">→ </span>
+              {COPY.nextState}
+            </>
+          ) : undefined
+        }
+        href={studyHref(item.subject.id, item.section.id)}
+      >
         {name}
         <span className="block font-normal break-words">
-          Phần {item.section.label} {item.section.title}
+          {item.section.label ? `Phần ${item.section.label} ` : ""}
+          {item.section.title}
           {item.section.pages ? ` · ${item.section.pages}` : ""}
         </span>
         <PaceLine pace={item.pace} />
@@ -29,7 +40,7 @@ export function NextStudyRow({ item, next = false }: { item: LearnItem; next?: b
   }
   if (item.state === "no_textbook") {
     return (
-      <NxRow lead={lead} state={COPY.uploadTextbook} href={`${base}/documents`}>
+      <NxRow state={COPY.uploadTextbook} href={`${base}/documents`}>
         {name}
         <span className="block text-meta font-normal text-ink-soft break-words">
           Môn {item.subject.name} {COPY.noTextbook}
@@ -38,7 +49,7 @@ export function NextStudyRow({ item, next = false }: { item: LearnItem; next?: b
     );
   }
   return (
-    <NxRow lead={lead}>
+    <NxRow>
       {name}
       <span className="block text-meta font-normal text-ink-soft">{COPY.finished}</span>
     </NxRow>

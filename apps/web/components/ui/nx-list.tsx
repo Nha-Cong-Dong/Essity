@@ -67,18 +67,20 @@ export function NxRow({
 }) {
   const body = (
     <>
-      <span className="tabular-nums text-ink-soft">{lead}</span>
-      <span className="min-w-0 break-words [overflow-wrap:normal]">
+      {lead !== undefined ? <span className="tabular-nums text-ink-soft">{lead}</span> : null}
+      <span className="min-w-0 [overflow-wrap:anywhere]">
         {children}
         {why ? <span className="mt-1 block text-meta font-semibold text-cam">{why}</span> : null}
       </span>
-      <span className={cn("text-meta whitespace-nowrap text-ink-soft", next && "font-semibold text-cam")}>
-        {next ? <span aria-hidden="true">→ </span> : null}
-        {state}
-      </span>
+      {state ? (
+        <span className={cn("text-meta whitespace-nowrap text-ink-soft", next && "font-semibold text-cam")}>
+          {next ? <span aria-hidden="true">→ </span> : null}
+          {state}
+        </span>
+      ) : null}
     </>
   );
-  const cls = cn(ROW, next && NEXT, href && "text-ink no-underline hover:bg-sunken", className);
+  const cls = cn(ROW, lead === undefined && "grid-cols-[minmax(0,1fr)_auto]", next && NEXT, href && "text-ink no-underline hover:bg-sunken", className);
   return href ? (
     <li>
       <a href={href} className={cls}>

@@ -1,14 +1,24 @@
 "use client";
 
-import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { EmptyState } from "@/components/empty-state";
 import { FieldError } from "@/components/field-error";
-import { checkSubject, refusalErrors, type SubjectErrors, SubjectFields } from "@/components/subjects/subject-fields";
-import { SubjectMark } from "@/components/subject-mark";
+import {
+  checkSubject,
+  refusalErrors,
+  type SubjectErrors,
+  SubjectFields,
+} from "@/components/subjects/subject-fields";
 import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 import { Button } from "@/components/ui/button";
-import { NxList } from "@/components/ui/nx-list";
 import { daysLeftText, formatExamDate } from "@/lib/exam-date";
 import { go } from "@/lib/navigate";
 import { SUBJECT_MESSAGES } from "@/lib/subject-copy";
@@ -38,12 +48,17 @@ async function patchSubject(id: string, body: Record<string, string>) {
   } catch {
     return { status: 0 } as const;
   }
-  const json = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  const json = (await response.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >;
   return { status: response.status, json };
 }
 
 /** DELETE through web's route: deleted (204, or 404: already gone), refused, or not answered. */
-async function deleteSubject(id: string): Promise<"deleted" | "history" | "signed_out" | "unavailable"> {
+async function deleteSubject(
+  id: string,
+): Promise<"deleted" | "history" | "signed_out" | "unavailable"> {
   let response: Response;
   try {
     response = await fetch(`/api/subjects/${id}`, { method: "DELETE" });
@@ -61,9 +76,11 @@ type RowProps = {
   example: string;
   onOpen: () => void;
   onDeleted: () => void;
+  /** Tells the list a row is being edited or asked about deletion, so it can hide "Thêm môn". */
+  onBusy: (id: string, busy: boolean) => void;
 };
 
-function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
+function SubjectRow({ initial, example, onOpen, onDeleted, onBusy }: RowProps) {
   const [subject, setSubject] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(initial.name);
@@ -89,12 +106,21 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
   };
 
   useEffect(() => {
+    onBusy(initial.id, editing || confirming);
+    return () => onBusy(initial.id, false);
+  }, [initial.id, editing, confirming, onBusy]);
+
+  useEffect(() => {
     if (focusTo.current === null) return;
-    ({ keep: keepRef, delete: deleteRef, history: historyRef })[focusTo.current].current?.focus();
+    ({ keep: keepRef, delete: deleteRef, history: historyRef })[
+      focusTo.current
+    ].current?.focus();
     focusTo.current = null;
   });
 
   function askToDelete() {
+    onOpen();
+    setSaved(false);
     setDeleteFailed(false);
     setConfirming(true);
     focusTo.current = "keep";
@@ -134,6 +160,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
     setErrors({});
     setFormError(false);
     setSaved(false);
+    setConfirming(false);
     setEditing(true);
   }
 
@@ -142,7 +169,12 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
     const checked = checkSubject(name, examDate);
     setErrors(checked.errors);
     setFormError(false);
-    if (checked.errors.name || checked.errors.examDate || checked.iso === undefined) return;
+    if (
+      checked.errors.name ||
+      checked.errors.examDate ||
+      checked.iso === undefined
+    )
+      return;
 
     // Only what changed: core-api checks the date only when it changes (plan B11).
     const body: Record<string, string> = {};
@@ -154,7 +186,10 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
     setBusy(true);
     const result = await patchSubject(subject.id, body);
     setBusy(false);
-    const changed = result.status === 200 ? (result.json?.subject as ListedSubject | undefined) : undefined;
+    const changed =
+      result.status === 200
+        ? (result.json?.subject as ListedSubject | undefined)
+        : undefined;
     if (changed) {
       setSubject(changed);
       setEditing(false);
@@ -163,42 +198,71 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
     }
     if (result.status === 401) return go("/login");
     const refused =
-      result.status === 404 ? { name: "subject_not_found" as const } : refusalErrors(result.status, result.json);
+      result.status === 404
+        ? { name: "subject_not_found" as const }
+        : refusalErrors(result.status, result.json);
     if (refused) setErrors(refused);
     else setFormError(true);
   }
 
   return (
-    <li className="min-w-0 rounded-row bg-bg">
+    <li
+      className={`flex min-w-0 flex-col rounded-tile bg-hong-tint ${editing ? "col-span-full" : ""}`}
+    >
       {/* V22 (landing "nx"): a row of the subjects tile, letter | name + date line | "Sửa". The name
           wraps between words, never inside one. */}
-      <div className="grid min-h-12 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-2">
-        <SubjectMark name={subject.name} />
+      <div className="flex min-h-40 flex-1 flex-col justify-between gap-4 p-5">
         <div className="flex min-w-0 flex-col">
           <a
             id={ids.name}
             href={`/subjects/${subject.id}`}
-            className="min-w-0 text-body font-semibold break-words text-inherit no-underline hover:underline"
+            className="min-w-0 text-lead font-semibold break-words text-inherit no-underline"
           >
             {subject.name}
           </a>
           {/* The space between the halves keeps them two words for a screen reader (plan G9). */}
           <span className="flex flex-wrap gap-x-2 text-meta">
-            <span className="whitespace-nowrap">thi {formatExamDate(subject.exam_date)}</span>{" "}
-            <span className="whitespace-nowrap text-ink-soft">{daysLeftText(subject.days_until_exam)}</span>
+            <span className="whitespace-nowrap">
+              thi {formatExamDate(subject.exam_date)}
+            </span>{" "}
+            <span className="whitespace-nowrap text-ink-soft">
+              {daysLeftText(subject.days_until_exam)}
+            </span>
           </span>
         </div>
-        {!editing && (
-          <Button variant="quiet" onClick={open} aria-label={`Sửa ${subject.name}`} className="px-2">
-            Sửa
-          </Button>
+        {!editing && !confirming && (
+          <div className="flex flex-wrap items-center gap-2 self-end">
+            <Button
+              variant="quiet"
+              onClick={open}
+              aria-label={`Sửa ${subject.name}`}
+            >
+              Sửa
+            </Button>
+            {!hasHistory && (
+              <Button
+                ref={deleteRef}
+                variant="quiet"
+                onClick={askToDelete}
+                aria-label={`Xóa ${subject.name}`}
+                aria-describedby={ids.name}
+              >
+                Xóa
+              </Button>
+            )}
+          </div>
         )}
       </div>
       {/* Always on the page, so a screen reader reads "Đã lưu." when it appears (plan F7). */}
-      <p role="status" className={saved ? "m-0 px-3.5 pb-3 text-small text-ink-soft" : "sr-only"}>
+      <p
+        role="status"
+        className={
+          saved ? "m-0 px-3.5 pb-3 text-small text-ink-soft" : "sr-only"
+        }
+      >
         {saved ? SUBJECT_MESSAGES.saved : ""}
       </p>
-      {editing && confirming && (
+      {confirming && (
         <div
           role="group"
           aria-labelledby={`${ids.name} ${ids.confirm}`}
@@ -209,7 +273,11 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
             Xóa môn này khỏi danh sách và phiên ôn?
           </p>
           <div role="alert">
-            {deleteFailed && <FieldError id={ids.deleteError}>{SUBJECT_MESSAGES.unavailable}</FieldError>}
+            {deleteFailed && (
+              <FieldError id={ids.deleteError}>
+                {SUBJECT_MESSAGES.unavailable}
+              </FieldError>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <Button
@@ -221,14 +289,25 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
             >
               Xóa môn
             </Button>
-            <Button ref={keepRef} type="button" variant="quiet" disabled={deleting} onClick={keep}>
+            <Button
+              ref={keepRef}
+              type="button"
+              variant="quiet"
+              disabled={deleting}
+              onClick={keep}
+            >
               Giữ môn
             </Button>
           </div>
         </div>
       )}
       {editing && !confirming && (
-        <form method="post" onSubmit={save} className="flex max-w-120 flex-col gap-5 px-3.5 pb-4" noValidate>
+        <form
+          method="post"
+          onSubmit={save}
+          className="flex max-w-120 flex-col gap-5 px-3.5 pb-4"
+          noValidate
+        >
           <SubjectFields
             idPrefix={`edit-${subject.id}-`}
             name={name}
@@ -238,35 +317,33 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
             onName={setName}
             onExamDate={setExamDate}
           />
-          {formError && <FieldError id={`edit-${subject.id}-error`}>{SUBJECT_MESSAGES.unavailable}</FieldError>}
+          {formError && (
+            <FieldError id={`edit-${subject.id}-error`}>
+              {SUBJECT_MESSAGES.unavailable}
+            </FieldError>
+          )}
           <div className="flex flex-wrap items-center gap-4">
             <Button type="submit" variant="secondary" pending={busy}>
               Lưu
             </Button>
-            <Button type="button" variant="quiet" onClick={() => setEditing(false)}>
+            <Button
+              type="button"
+              variant="quiet"
+              onClick={() => setEditing(false)}
+            >
               Hủy
             </Button>
           </div>
         </form>
       )}
-      {editing && !confirming && (
-        <div className="mx-3.5 max-w-120 border-t border-line py-4">
-          {hasHistory ? (
-            <p ref={historyRef} tabIndex={-1} className="m-0 text-small text-ink-soft">
-              Môn này đã có bài ôn nên chưa xóa được ở đây.
-            </p>
-          ) : (
-            <Button
-              ref={deleteRef}
-              type="button"
-              variant="quiet"
-              onClick={askToDelete}
-              aria-describedby={ids.name}
-            >
-              Xóa môn
-            </Button>
-          )}
-        </div>
+      {hasHistory && !editing && !confirming && (
+        <p
+          ref={historyRef}
+          tabIndex={-1}
+          className="m-0 px-5 pb-4 text-small text-ink-soft"
+        >
+          Môn này đã có bài ôn nên chưa xóa được ở đây.
+        </p>
       )}
     </li>
   );
@@ -277,7 +354,7 @@ function DeletedRow() {
   const ref = useRef<HTMLParagraphElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
-    <li className="rounded-row bg-bg px-3.5 py-3">
+    <li className="rounded-tile bg-hong-tint p-5">
       <p ref={ref} tabIndex={-1} className="m-0 text-small text-ink-soft">
         Đã xóa môn.
       </p>
@@ -285,27 +362,53 @@ function DeletedRow() {
   );
 }
 
-export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; example: string }) {
+export function SubjectList({
+  subjects,
+  example,
+}: {
+  subjects: ListedSubject[];
+  example: string;
+}) {
   // One placeholder at a time (plan F7): a new delete, or "Sửa" on any row, drops the old one.
   // One state, updated from its latest value: two deletes answered in turn must not bring the
   // first subject back from a stale render (review 1ac2df7 #1).
-  const [{ rows, deletedId }, setList] = useState<{ rows: ListedSubject[]; deletedId: string | null }>({
+  const [{ rows, deletedId }, setList] = useState<{
+    rows: ListedSubject[];
+    deletedId: string | null;
+  }>({
     rows: subjects,
     deletedId: null,
   });
   const remaining = rows.filter((subject) => subject.id !== deletedId);
+  // Rows being edited or asked about deletion: no "Tạo môn" / "Thêm môn" meanwhile (user 05/11).
+  const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(new Set());
+  const setBusy = useCallback((id: string, busy: boolean) => {
+    setBusyIds((cur) => {
+      if (cur.has(id) === busy) return cur;
+      const next = new Set(cur);
+      if (busy) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+  const anyBusy = busyIds.size > 0;
 
   function dropPlaceholder() {
     setList((list) =>
       list.deletedId === null
         ? list
-        : { rows: list.rows.filter((subject) => subject.id !== list.deletedId), deletedId: null },
+        : {
+            rows: list.rows.filter((subject) => subject.id !== list.deletedId),
+            deletedId: null,
+          },
     );
   }
 
   function deleted(id: string) {
     setList((list) => ({
-      rows: list.rows.filter((subject) => subject.id === id || subject.id !== list.deletedId),
+      rows: list.rows.filter(
+        (subject) => subject.id === id || subject.id !== list.deletedId,
+      ),
       deletedId: id,
     }));
   }
@@ -317,7 +420,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
   return (
     <SubjectsFrame
       action={
-        remaining.length > 0 ? (
+        remaining.length > 0 && !anyBusy ? (
           <Button render={<a href="/subjects/new" />} nativeButton={false}>
             Tạo môn
           </Button>
@@ -344,7 +447,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
           />
         </>
       ) : (
-        <NxList>
+        <ul className="m-0 grid list-none gap-4 p-0 min-[640px]:grid-cols-2 min-[1100px]:grid-cols-3">
           {rows.map((subject) =>
             subject.id === deletedId ? (
               <DeletedRow key={subject.id} />
@@ -355,18 +458,21 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
                 example={example}
                 onOpen={dropPlaceholder}
                 onDeleted={() => deleted(subject.id)}
+                onBusy={setBusy}
               />
             ),
           )}
-          <li>
-            <a
-              href="/subjects/new"
-              className="flex min-h-12 items-center justify-center rounded-row border border-dashed border-line-strong bg-bg px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"
-            >
-              + Thêm môn
-            </a>
-          </li>
-        </NxList>
+          {!anyBusy && (
+            <li className="min-w-0">
+              <a
+                href="/subjects/new"
+                className="flex h-full min-h-40 items-center justify-center rounded-tile border border-dashed border-line-strong px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"
+              >
+                + Thêm môn
+              </a>
+            </li>
+          )}
+        </ul>
       )}
     </SubjectsFrame>
   );

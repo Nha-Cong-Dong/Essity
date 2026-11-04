@@ -99,11 +99,10 @@ const account = (page: Page) => page.getByRole("button", { name: "Tài khoản" 
 // V22: the subjects tile also holds the "+ Thêm môn" row, so a subject row is the li with a name link.
 const rows = (page: Page) => page.locator("main li").filter({ has: page.locator('a[id$="-name"]') });
 
-/** The parts of one subject row: cover, name, the date line (two halves) and "Sửa". */
+/** The parts of one subject tile: name, the date line (two halves) and "Sửa". */
 function parts(row: Locator) {
   const exam = row.getByText(/^thi \d{2}\/\d{2}\/\d{4}$/);
   return {
-    cover: row.locator('span[aria-hidden="true"]').first(),
     name: row.locator('a[id$="-name"]'),
     date: exam.locator("xpath=.."),
     halves: exam.locator("xpath=../span"),
@@ -145,14 +144,14 @@ test("smoke: the fixture renders, hydrates and breaks no CSP rule", async ({ pag
 
 // Text at 200%: the type scale is px and @theme inline writes it into each utility, so the classes
 // themselves are overridden (T2.3c plan G10.1), and the precondition proves it took.
-const DOUBLE = [".text-meta{font-size:28px!important}", ".text-small{font-size:28px!important}", ".text-body{font-size:32px!important}", ".text-section{font-size:44px!important}", ".text-logo{font-size:48px!important}", ".text-title{font-size:72px!important}"].join("");
+const DOUBLE = [".text-meta{font-size:28px!important}", ".text-small{font-size:28px!important}", ".text-body{font-size:32px!important}", ".text-lead{font-size:32px!important}", ".text-section{font-size:44px!important}", ".text-logo{font-size:48px!important}", ".text-title{font-size:72px!important}"].join("");
 // --- Preconditions: never marked as failing. A rule above that fails must fail on its measure,
 // not because a part was not found, the text was not doubled or the fonts were not blocked
 // (review 790bc58 #1).
 test("preconditions: every row has its parts", async ({ page }) => {
   await open(page, 390);
-  await eachRow(page, async ({ cover, name, date, halves, edit }) => {
-    for (const part of [cover, name, date, edit]) expect(await part.boundingBox()).not.toBeNull();
+  await eachRow(page, async ({ name, date, halves, edit }) => {
+    for (const part of [name, date, edit]) expect(await part.boundingBox()).not.toBeNull();
     await expect(halves).toHaveCount(2);
   });
 });
@@ -306,22 +305,15 @@ rule("R44-c each half of the date line is one line, under the name (V22 nx row: 
     expect(d.y).toBeGreaterThanOrEqual(bottom(n) - 0.5);
   });
 });
-rule("R44-d the cover is centred on the name and date block of its row", NARROW, async (page) => {
-  await eachRow(page, async ({ cover, name, date }) => {
-    const [c, n, d] = [await box(cover), await box(name), await box(date)];
-    const mid = (n.y + bottom(d)) / 2;
-    expect(Math.abs(c.y + c.height / 2 - mid)).toBeLessThanOrEqual(3);
-  });
-});
 rule("R44-e below sm the date line starts where the name starts", [...NARROW, 639], async (page) => {
   await eachRow(page, async ({ name, date }) => {
     expect(Math.abs((await box(date)).x - (await box(name)).x)).toBeLessThanOrEqual(1);
   });
 });
-rule("R44-h below sm Sửa stays in the row, right of the name", [...NARROW, 639], async (page) => {
-  await eachRow(page, async ({ name, edit }) => {
-    const [n, e] = [await box(name), await box(edit)];
-    expect(e.x).toBeGreaterThanOrEqual(right(n) - 0.5);
+rule("R44-h below sm Sửa stays inside its tile, at the right edge", [...NARROW, 639], async (page) => {
+  await eachRow(page, async ({ edit }, li) => {
+    const [e, row] = [await box(edit), await box(li)];
+    expect(inside(e, row)).toBe(true);
   });
 });
 // The words of the title, not the h1 (a block as wide as the column, which "Tạo môn" sits in).

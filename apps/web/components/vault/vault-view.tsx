@@ -71,21 +71,31 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
       </div>
     );
   }
-  const totalCards = view.subjects.reduce((n, s) => n + s.cards, 0);
-  const totalSessions = view.subjects.reduce((n, s) => n + s.sessions, 0);
+  const subjects = view.subjects;
+  const totalCards = subjects.reduce((n, s) => n + s.cards, 0);
+  const totalSessions = subjects.reduce((n, s) => n + s.sessions, 0);
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-8">
       <div>
         <h1 className="m-0 font-display text-title">
           <span className="hl-word">Kho</span> kiến thức
         </h1>
-        {view.subjects.length > 0 && (
-          <p className="m-0 mt-1 text-read text-ink-soft" data-vault-sub>
-            {totalCards} thẻ · {totalSessions} buổi học · {view.subjects.length} môn
-          </p>
+        {subjects.length > 0 && (
+          // UI-A: the one big number of the screen is the whole vault; the tiles below carry smaller ones.
+          <div className="mt-6" data-vault-sub>
+            <p className="m-0 flex items-baseline gap-3">
+              <span className="font-display text-display tabular-nums" data-vault-total>
+                {totalCards}
+              </span>
+              <span className="text-lead font-semibold">thẻ trong kho</span>
+            </p>
+            <p className="m-0 mt-1 text-read text-ink-soft">
+              {totalSessions} buổi học · {subjects.length} môn
+            </p>
+          </div>
         )}
       </div>
-      {view.subjects.length === 0 ? (
+      {subjects.length === 0 ? (
         <EmptyState
           mascot="vui"
           title="Chưa có môn nào."
@@ -97,21 +107,26 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
           }
         />
       ) : (
-        <>
-          <NxList title="Môn học">
-            {view.subjects.map((s) => (
-              <NxRow
-                key={s.id}
-                lead={[...s.name.trim()][0]?.toLocaleUpperCase("vi") ?? ""}
-                state={`${s.cards} thẻ`}
+        // UI-A: one card per subject in a 2-3 column grid; the card count is the number of the card.
+        <ul className="m-0 grid list-none gap-4 p-0 min-[640px]:grid-cols-2 min-[1100px]:grid-cols-3" data-vault-subjects>
+          {subjects.map((s) => (
+            <li key={s.id} className="min-w-0">
+              <a
                 href={`/kho-kien-thuc?subject=${s.id}`}
+                className="flex h-full min-h-44 flex-col justify-between gap-6 rounded-tile bg-hong-tint p-5 text-ink no-underline hover:bg-sunken"
               >
-                <span className="block font-semibold break-words">{s.name}</span>
-                <span className="block text-meta text-ink-soft">{s.sessions} buổi học</span>
-              </NxRow>
-            ))}
-          </NxList>
-        </>
+                <span className="block text-lead font-semibold [overflow-wrap:anywhere]">{s.name}</span>
+                <span className="flex flex-col">
+                  <span className="flex items-baseline gap-2">
+                    <span className="font-display text-title tabular-nums" data-vault-cards>{s.cards}</span>
+                    <span className="text-body">thẻ</span>
+                  </span>
+                  <span className="text-meta text-ink-soft">{s.sessions} buổi học</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

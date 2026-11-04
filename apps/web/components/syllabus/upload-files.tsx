@@ -299,7 +299,7 @@ export function UploadScreen({ state }: { state: UploadState }) {
           >
             {COPY.enter}
           </Button>
-          <a href={`/subjects/${SUBJECT.id}`} className="inline-flex min-h-11 items-center justify-center text-body underline">
+          <a href={`/subjects/${SUBJECT.id}`} className="inline-flex min-h-11 items-center justify-center text-body rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
             {COPY.later}
           </a>
         </div>
@@ -311,7 +311,7 @@ export function UploadScreen({ state }: { state: UploadState }) {
       )}
       {files.length === 0 && (
         <p className="m-0 mt-4">
-          <a href={`/subjects/${SUBJECT.id}`} className="inline-flex min-h-11 items-center text-body underline">
+          <a href={`/subjects/${SUBJECT.id}`} className="inline-flex min-h-11 items-center text-body rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
             {COPY.later}
           </a>
         </p>

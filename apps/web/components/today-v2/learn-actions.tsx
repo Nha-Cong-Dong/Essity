@@ -3,7 +3,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useState } from "react";
 
-import { SubjectMark } from "@/components/subject-mark";
+import { GuideArt } from "@/components/today-v2/guide-art";
 import { Button } from "@/components/ui/button";
 import { studyHref } from "@/lib/session-study/entry";
 import { paceLine, TODAY_V2_COPY as COPY, type LearnItem } from "@/lib/today-v2";
@@ -15,15 +15,17 @@ const POPUP =
   "fixed top-1/2 left-1/2 z-(--z-menu) flex max-h-[85vh] w-[min(92vw,40rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-sheet bg-raised p-6 text-ink shadow-over";
 const BACKDROP = "fixed inset-0 z-(--z-menu) bg-ink/40";
 
-// V10: the four steps of a study session, in the words the product owner gave.
-const STEPS = [
-  { title: "B1", body: "Vào giao diện buổi học." },
-  { title: "B2", body: "Học bài theo nội dung định hướng theo đề cương." },
+// V10 + decision 05/11: the steps of a study session, in the words of the product owner, then where the
+// cards go. Each step has a small animation (guide-art.tsx); it stands still under reduced motion.
+export const STEPS = [
+  { title: "Vào buổi học", body: "Chọn môn bạn muốn học, rồi mở buổi học." },
+  { title: "Học theo đề cương", body: "Học đúng phần mà đề cương gợi ý cho bạn, từng phần một." },
   {
-    title: "B3",
-    body: "Mỗi phiên của buổi học, trước khi tạm nghỉ thì ghi lại những nội dung mình đã học vào phần \"Bạn đã học gì\" rồi bấm Ghi lại để hệ thống ghi lại; có thể gửi kèm vở ghi, slide hay tài liệu.",
+    title: "Ghi lại điều bạn vừa học",
+    body: "Trước khi nghỉ, gõ vào ô \u201cBạn đã học gì?\u201d rồi bấm Ghi lại. Bạn có thể đính kèm vở ghi, slide hay tài liệu.",
   },
-  { title: "B4", body: "Khi nào học xong rồi thì bấm Hoàn thành để kết thúc buổi học." },
+  { title: "Học xong thì bấm Hoàn thành", body: "Bấm Hoàn thành để kết thúc buổi học. Chỉ vậy thôi." },
+  { title: "Thẻ nằm sẵn trong Kho kiến thức", body: "Thẻ do AI tạo vào thẳng Kho kiến thức. Bạn sửa được thẻ, và ôn lại mỗi ngày." },
 ] as const;
 
 type Next = Extract<LearnItem, { state: "next" }>;
@@ -42,7 +44,6 @@ function SubjectRow({ item }: { item: LearnItem }) {
           onClick={() => setOpen(!open)}
           className="flex min-w-0 flex-1 basis-40 items-center gap-3 text-left text-section font-semibold break-words"
         >
-          <SubjectMark name={item.subject.name} />
           <span className="min-w-0">
             {item.subject.name}
             <span className="block text-meta font-normal text-ink-soft">
@@ -115,19 +116,27 @@ function Guide() {
   const last = STEPS.length - 1;
   const current = STEPS[step];
   return (
-    <div className="flex flex-col gap-3" aria-live="polite">
+    <div className="flex flex-col gap-4" aria-live="polite">
       <p className="m-0 text-meta text-ink-soft">
         Bước {step + 1} / {STEPS.length}
       </p>
-      <div className="rounded-tile bg-rose-100 p-6">
-        <h3 className="m-0 text-section font-semibold">{current.title}</h3>
-        <p className="m-0 mt-2 text-read">{current.body}</p>
+      <div key={step} className="guide-step flex flex-col gap-4 rounded-tile bg-hong-tint p-5 min-[560px]:flex-row min-[560px]:items-center">
+        <GuideArt step={step} />
+        <div className="min-w-0">
+          <h3 className="m-0 font-display text-lead">{current.title}</h3>
+          <p className="m-0 mt-2 text-read">{current.body}</p>
+        </div>
       </div>
-      <div className="flex justify-between">
-        <Button variant="quiet" disabled={step === 0} onClick={() => setStep(step - 1)}>
+      <div className="flex items-center justify-between gap-3">
+        <Button variant="secondary" disabled={step === 0} onClick={() => setStep(step - 1)}>
           Trước
         </Button>
-        <Button variant="quiet" disabled={step === last} onClick={() => setStep(step + 1)}>
+        <span aria-hidden="true" className="flex gap-1.5">
+          {STEPS.map((_, i) => (
+            <span key={i} className={`size-2 rounded-full ${i === step ? "bg-hong" : "bg-line-strong"}`} />
+          ))}
+        </span>
+        <Button disabled={step === last} onClick={() => setStep(step + 1)}>
           Tiếp
         </Button>
       </div>
