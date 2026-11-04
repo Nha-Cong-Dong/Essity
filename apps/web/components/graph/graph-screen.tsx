@@ -209,27 +209,26 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
         </Switch>
       </div>
 
-      <details className="mt-3 rounded-control bg-sheet px-3 shadow-sheet" data-kind-filter>
-        <summary className="flex h-11 cursor-pointer items-center text-caption font-semibold">
+      <div role="group" aria-label="Loại liên kết" data-kind-filter className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="text-meta text-ink-soft">
           Loại liên kết{kindsOff ? ` (${kinds.size}/${EDGE_KINDS.length})` : ""}
-        </summary>
-        <div role="group" aria-label="Loại liên kết" className="flex flex-wrap gap-2 pb-3">
-          {EDGE_KINDS.map((kind) => (
-            <FilterChip
-              key={kind}
-              checked={kinds.has(kind)}
-              onCheckedChange={(on) => {
-                const next = new Set(kinds);
-                if (on) next.add(kind);
-                else next.delete(kind);
-                setKinds(next);
-              }}
-            >
-              {EDGE_STYLE[kind].label}
-            </FilterChip>
-          ))}
-        </div>
-      </details>
+        </span>
+        {EDGE_KINDS.map((kind) => (
+          <FilterChip
+            key={kind}
+            className="rounded-full"
+            checked={kinds.has(kind)}
+            onCheckedChange={(on) => {
+              const next = new Set(kinds);
+              if (on) next.add(kind);
+              else next.delete(kind);
+              setKinds(next);
+            }}
+          >
+            {EDGE_STYLE[kind].label}
+          </FilterChip>
+        ))}
+      </div>
 
       <div className="mt-4 grid items-start gap-4 min-[1024px]:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-3" ref={frame}>
