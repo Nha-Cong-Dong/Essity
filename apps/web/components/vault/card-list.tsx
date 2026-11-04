@@ -129,7 +129,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
   }
 
   return (
-    <li className="flex min-w-0 flex-col gap-3 rounded-sheet bg-sheet p-5 shadow-sheet [&:nth-child(even)]:rotate-0 min-[901px]:[&:nth-child(3n+1)]:-rotate-[0.6deg] min-[901px]:[&:nth-child(3n+2)]:rotate-[0.5deg]" data-slot="vault-card">
+    <li className="flex min-w-0 flex-col gap-3 rounded-tile border border-line bg-sheet p-5" data-slot="vault-card">
       {draft ? (
         <>
           <input

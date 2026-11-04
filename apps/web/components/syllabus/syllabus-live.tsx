@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { Marker, PencilNote } from "@/components/notebook";
+import { PencilNote } from "@/components/notebook";
 import { Button } from "@/components/ui/button";
 import {
   diffChanges,
@@ -115,8 +115,8 @@ export function SyllabusLive({
         ‹ {subjectName}
       </a>
       <div className="flex items-center justify-between gap-3">
-        <h1 className="m-0 font-display text-display">
-          <Marker>{COPY.heading}</Marker>
+        <h1 className="m-0 font-display text-title">
+          {COPY.heading}
         </h1>
         <Button className="max-sm:px-4" variant="secondary" render={<a href={subjectHref} />} nativeButton={false}>
           Quay lại

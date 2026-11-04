@@ -1,6 +1,5 @@
 "use client";
 
-import { MarginRule } from "@/components/motifs";
 import { Sheet } from "@/components/ui/sheet";
 import { useEffect, useRef, useState } from "react";
 
@@ -191,7 +190,7 @@ export function PracticeLive({
 
   const dueButton = dueNow.length > 0; // then that button is the screen's primary
   const rows = (items: QuestionRow[], primaryId: string | null) => (
-    <ul className="m-0 mt-3 flex list-none flex-col p-0">
+    <ul className="m-0 mt-3 flex list-none flex-col rounded-tile border border-line bg-sheet px-5 py-1">
       {items.map((q) => (
         <Row
           key={q.id}
@@ -208,14 +207,26 @@ export function PracticeLive({
   );
 
   return (
-    <div ref={root} className="w-full max-w-180">
+    <div ref={root} className="w-full max-w-240">
       <a href={`/subjects/${subjectId}`} className="text-meta text-ink-soft underline wrap-anywhere">
         ← {subjectName}
       </a>
-      <h1 className="m-0 mt-3 font-display text-title">
-        <span className="px-1" style={{ backgroundImage: "linear-gradient(to top, var(--hl-band) 35%, transparent 35%)" }}>Luyện tập</span>
-      </h1>
-      <p className="m-0 mt-1 text-read text-ink-soft wrap-anywhere">{subjectName}</p>
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-3" data-practice-head>
+        <div className="min-w-0 basis-80 flex-1">
+          <h1 className="m-0 font-display text-title">Luyện tập</h1>
+          <p className="m-0 mt-1 text-read text-ink-soft wrap-anywhere" data-practice-sub>
+            {list.total === 0
+              ? subjectName
+              : `${readyCount} câu sẵn sàng${types.length > 0 ? ` · ${types.length} dạng` : ""} · `}
+            {list.total === 0 ? null : <span data-user>{subjectName}</span>}
+          </p>
+        </div>
+        {dueNow.length > 0 && (
+          <Button className={FULL} onClick={() => setDoing(dueNow[0].id)}>
+            Vào luyện tập ngay
+          </Button>
+        )}
+      </div>
       <p role="status" className="sr-only">
         {removed.size > 0 ? "Đã gỡ khỏi luyện tập." : ""}
       </p>
@@ -235,8 +246,7 @@ export function PracticeLive({
         </div>
       ) : (
         <div className="mt-6">
-          <Sheet variant="tile" className="relative flex flex-col gap-4 overflow-hidden pl-12" data-practice-today>
-          <MarginRule />
+          <Sheet variant="tile" className="flex flex-col gap-4 p-5 shadow-none" data-practice-today>
           <div data-progress>
             <p data-summary className="m-0 text-read">
               Đã mở khóa {readyCount}/{live.length} câu
@@ -250,11 +260,6 @@ export function PracticeLive({
               <p className="m-0 text-read">
                 {dueNow.length > 0 ? `Hôm nay cần luyện ${dueNow.length} câu.` : "Hôm nay không có câu nào cần luyện."}
               </p>
-              {dueNow.length > 0 && (
-                <Button className={FULL} onClick={() => setDoing(dueNow[0].id)}>
-                  Vào luyện tập ngay
-                </Button>
-              )}
             </div>
           )}
           </Sheet>

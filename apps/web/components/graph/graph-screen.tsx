@@ -234,7 +234,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
         <div className="flex min-w-0 flex-col gap-3" ref={frame}>
           {view.hidden > 0 && <Notice>{COPY.truncated}</Notice>}
           {noLinks ? (
-            <div className="rounded-sheet bg-sheet p-6 shadow-sheet" data-empty>
+            <div className="rounded-tile border border-line bg-sheet p-6" data-empty>
               <p className="m-0 text-read">{COPY.empty}</p>
               {view.cards.length === 0 && live && (
                 <a

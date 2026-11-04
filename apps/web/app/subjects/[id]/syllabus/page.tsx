@@ -28,7 +28,7 @@ async function Syllabus({ params }: { params: Promise<{ id: string }> }) {
   }
   if (outline === null) {
     return (
-      <PageColumn width="session">
+      <PageColumn width="full">
         <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
           <p className="m-0 font-semibold">Không tải được đề cương.</p>
           <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
@@ -40,7 +40,7 @@ async function Syllabus({ params }: { params: Promise<{ id: string }> }) {
     );
   }
   return (
-    <PageColumn width="session">
+    <PageColumn width="full">
       <SyllabusLive subjectId={subject.id} subjectName={subject.name} initial={outline} />
     </PageColumn>
   );
@@ -49,17 +49,21 @@ async function Syllabus({ params }: { params: Promise<{ id: string }> }) {
 export default function SyllabusPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<PageColumn width="session" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
-        <Syllabus params={params} />
-      </Suspense>
-      <section
-        aria-label="Chỉnh đề cương bằng lời"
-        className="mt-10 flex max-w-3xl flex-col gap-2 border-t border-line pt-6 has-[[data-command-slot-bottom]:empty]:hidden"
-      >
-        <h2 className="m-0 font-display text-lead">Chưa hài lòng với cách chia đề cương?</h2>
-        <p className="m-0 text-body text-ink-soft">Gõ điều bạn muốn sửa bằng lời của bạn, ví dụ “bỏ chương 5” hoặc “gộp phần 2.1 và 2.2”. Khung này chỉ dùng để chỉnh đề cương.</p>
-        <div data-command-slot-bottom className="empty:hidden" />
-      </section>
+      <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start">
+        <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
+          <Syllabus params={params} />
+        </Suspense>
+        <aside
+          aria-label="Chỉnh đề cương bằng lời"
+          className="flex min-w-0 flex-col gap-2 rounded-sheet border border-line bg-sheet p-5 has-[[data-command-slot-bottom]:empty]:hidden lg:sticky lg:top-6"
+        >
+          <h2 className="m-0 text-body font-semibold">Chưa hài lòng với cách chia đề cương?</h2>
+          <p className="m-0 text-meta text-ink-soft">
+            Gõ điều bạn muốn sửa bằng lời của bạn, ví dụ “bỏ chương 5” hoặc “gộp phần 2.1 và 2.2”. Khung này chỉ dùng để chỉnh đề cương.
+          </p>
+          <div data-command-slot-bottom className="empty:hidden" />
+        </aside>
+      </div>
     </AppShell>
   );
 }

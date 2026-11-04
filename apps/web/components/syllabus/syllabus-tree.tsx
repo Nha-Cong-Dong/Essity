@@ -334,6 +334,20 @@ function Panel({
   );
 }
 
+const allBranchIds = (list: SyllabusNode[]): string[] =>
+  list.flatMap((n) => (n.children.length > 0 ? [n.id, ...allBranchIds(n.children)] : []));
+
+const norm = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/g, "d").toLowerCase();
+
+/** Only the rows whose title has `query`, and the branches above them (a match keeps its children). */
+function filterNodes(list: SyllabusNode[], query: string): SyllabusNode[] {
+  return list.flatMap((n) => {
+    if (norm(n.title).includes(query)) return [n];
+    const inside = filterNodes(n.children, query);
+    return inside.length > 0 ? [{ ...n, children: inside }] : [];
+  });
+}
+
 export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditing, initialPanel = null }: Props) {
   const [open, setOpen] = useState<Set<string>>(() => {
     const set = defaultOpen(nodes);
@@ -347,7 +361,11 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
     }
     return set;
   });
-  const rows = visibleRows(nodes, open);
+  const [query, setQuery] = useState("");
+  const needle = norm(query.trim());
+  const shown = needle === "" ? nodes : filterNodes(nodes, needle);
+  const openNow = needle === "" ? open : new Set(allBranchIds(shown));
+  const rows = visibleRows(shown, openNow);
   const [active, setActive] = useState(initialPanel?.id ?? rows[0]?.node.id ?? "");
   const [panel, setPanelState] = useState<PanelState | null>(initialPanel);
   const items = useRef(new Map<string, HTMLLIElement>());
@@ -443,7 +461,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
     return list.map((node, i) => {
       const row: Row = { node, level, setSize: list.length, posInSet: i + 1, parentId };
       const branch = node.children.length > 0;
-      const isOpen = open.has(node.id);
+      const isOpen = openNow.has(node.id);
       const status = nodeStatus(node);
       const leaf = !branch;
       const range = rangeText(node.from, node.to, unit);
@@ -583,8 +601,33 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
       <span id={leafHintId} className="sr-only">
         Nhấn Enter để sửa
       </span>
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2" data-tree-tools>
+        <Input
+          type="search"
+          aria-label="Tìm trong đề cương"
+          placeholder="Tìm phần, ví dụ: hoán vị"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="min-w-0 flex-1 basis-56"
+        />
+        {needle === "" && (
+          <span className="flex gap-3 text-meta">
+            <button type="button" className="min-h-11 underline" onClick={() => setOpen(new Set(allBranchIds(nodes)))}>
+              Mở hết
+            </button>
+            <button type="button" className="min-h-11 underline" onClick={() => setOpen(new Set())}>
+              Thu hết
+            </button>
+          </span>
+        )}
+      </div>
+      {needle !== "" && shown.length === 0 && (
+        <p role="status" className="m-0 text-body text-ink-soft" data-no-match>
+          Không có phần nào khớp “{query.trim()}”.
+        </p>
+      )}
       <ul role="tree" aria-label={label} className="m-0 list-none p-0">
-        {renderList(nodes, 1, null)}
+        {renderList(shown, 1, null)}
       </ul>
     </>
   );
