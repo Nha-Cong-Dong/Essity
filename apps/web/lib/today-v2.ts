@@ -45,12 +45,11 @@ export type TodayV2 = {
   practice: null | { state: "none_ready" } | { state: "ready"; rows: PracticeRow[] };
 };
 
-/** "còn 12 mục (86 trang), 20 ngày": numbers only (US-15 AC5). */
+/** "còn 12 chương, 20 ngày": numbers only (US-15 AC5); "còn n" counts chapters (E2). */
 export function paceLine(pace: Pace): string {
   if (pace.text) return pace.text;
-  const pages = pace.pages_left === null ? "" : ` (${pace.pages_left} trang)`;
   const days = pace.days_left === null ? "" : pace.days_left === 0 ? ", thi hôm nay" : `, ${pace.days_left} ngày`;
-  return `còn ${pace.sections_left} mục${pages}${days}`;
+  return `còn ${pace.sections_left} chương${days}`;
 }
 
 export function nextDueLabel(iso: string): string {

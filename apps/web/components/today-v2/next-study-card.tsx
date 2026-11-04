@@ -20,7 +20,7 @@ export function NextStudyCard({ item }: { item: LearnItem; primary?: boolean }) 
     <article aria-labelledby={nameId} className="flex flex-col gap-2">
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4">
         <span aria-hidden="true" className="h-10 w-8 rounded-slip bg-(color:--rose-200) shadow-sheet" />
-        <h3 id={nameId} className="m-0 min-w-0 text-section font-semibold wrap-anywhere">
+        <h3 id={nameId} className="m-0 min-w-0 text-section font-semibold break-words hyphens-auto">
           {item.subject.name}
         </h3>
       </div>

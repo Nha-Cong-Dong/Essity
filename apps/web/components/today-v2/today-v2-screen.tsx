@@ -106,7 +106,7 @@ export function ReviewTile({
       <Sheet
         variant="tile"
         tone="rose"
-        className="flex min-h-48 min-w-0 flex-col justify-end gap-2 min-[901px]:col-span-8"
+        className="flex min-w-0 flex-col gap-2 self-start min-[901px]:col-span-7"
         aria-labelledby="today-review"
       >
         <h2 id="today-review" className="sr-only">
@@ -129,8 +129,8 @@ export function ReviewTile({
       <h2 id="today-review" className="m-0 text-read font-normal">
         {COPY.review}
       </h2>
-      <p className="m-0 mt-auto flex items-baseline gap-3">
-        <span className="font-display text-mega">{review.count}</span>
+      <p className="m-0 flex items-baseline gap-3">
+        <span className="font-display text-display tabular-nums">{review.count}</span>
         <span className="text-lead">{COPY.questions}</span>
       </p>
       {/* A subject name may be one long word: it wraps, never widens the page. */}
@@ -161,7 +161,7 @@ export function ReviewTile({
       <Sheet
         variant="tile"
         tone="hong"
-        className="relative flex min-h-80 min-w-0 flex-col gap-3 min-[901px]:col-span-8"
+        className="relative flex min-w-0 flex-col gap-3 self-start min-[901px]:col-span-7"
         aria-labelledby="today-review"
       >
         <Sticker icon="moon" className="top-7 right-8" />
@@ -173,7 +173,7 @@ export function ReviewTile({
     <Sheet
       variant="tile"
       tone="rose"
-      className="flex min-h-64 min-w-0 flex-col gap-3 min-[901px]:col-span-8"
+      className="flex min-w-0 flex-col gap-3 self-start min-[901px]:col-span-7"
       aria-labelledby="today-review"
     >
       {body}
@@ -185,7 +185,7 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
   const { items, empty_reason } = today.learn;
   const first = items.findIndex((item) => item.state === "next");
   return (
-    <Sheet variant="tile" className={`${EDGE} min-[901px]:col-span-4`} aria-labelledby="today-learn">
+    <Sheet variant="tile" className={`${EDGE} min-[901px]:col-span-5`} aria-labelledby="today-learn">
       <h2 id="today-learn" className="m-0 font-display text-lead">
         {COPY.learn}
       </h2>
@@ -287,8 +287,8 @@ export function TodayV2Loading() {
   return (
     <div aria-busy="true" className="grid gap-6 min-[901px]:grid-cols-12">
       <div className="h-24 rounded-sheet bg-sunken min-[901px]:col-span-12" />
-      <div className="h-64 rounded-tile bg-sunken min-[901px]:col-span-8" />
-      <div className="h-64 rounded-tile bg-sunken min-[901px]:col-span-4" />
+      <div className="h-64 rounded-tile bg-sunken min-[901px]:col-span-7" />
+      <div className="h-64 rounded-tile bg-sunken min-[901px]:col-span-5" />
       <div className="h-32 rounded-tile bg-sunken min-[901px]:col-span-12" />
       <p className="sr-only" role="status">
         {COPY.loading}

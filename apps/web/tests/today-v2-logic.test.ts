@@ -5,12 +5,12 @@ import { BANNED_WORDS, hasBannedWord, nextDueLabel, paceLine, primaryAction, typ
 
 describe("paceLine", () => {
   it("US-15 AC5: full line", () => {
-    expect(paceLine({ sections_left: 12, pages_left: 86, days_left: 20 })).toBe("còn 12 mục (86 trang), 20 ngày");
+    expect(paceLine({ sections_left: 12, pages_left: 86, days_left: 20 })).toBe("còn 12 chương, 20 ngày");
   });
   it("US-15 AC5: one day, exam today, no date, no pages", () => {
-    expect(paceLine({ sections_left: 3, pages_left: 20, days_left: 1 })).toBe("còn 3 mục (20 trang), 1 ngày");
-    expect(paceLine({ sections_left: 3, pages_left: 20, days_left: 0 })).toBe("còn 3 mục (20 trang), thi hôm nay");
-    expect(paceLine({ sections_left: 3, pages_left: 20, days_left: null })).toBe("còn 3 mục (20 trang)");
+    expect(paceLine({ sections_left: 3, pages_left: 20, days_left: 1 })).toBe("còn 3 chương, 1 ngày");
+    expect(paceLine({ sections_left: 3, pages_left: 20, days_left: 0 })).toBe("còn 3 chương, thi hôm nay");
+    expect(paceLine({ sections_left: 3, pages_left: 20, days_left: null })).toBe("còn 3 chương");
     expect(paceLine({ sections_left: 3, pages_left: null, days_left: 5 })).toBe("còn 3 mục, 5 ngày");
   });
   // US-15 AC5. Red when: a pace line uses a banned word.
