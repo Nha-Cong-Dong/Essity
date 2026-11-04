@@ -71,21 +71,22 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
       </div>
     );
   }
-  const totalCards = view.subjects.reduce((n, s) => n + s.cards, 0);
-  const totalSessions = view.subjects.reduce((n, s) => n + s.sessions, 0);
+  const subjects = withoutEmptyTwins(view.subjects);
+  const totalCards = subjects.reduce((n, s) => n + s.cards, 0);
+  const totalSessions = subjects.reduce((n, s) => n + s.sessions, 0);
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-8">
       <div>
         <h1 className="m-0 font-display text-title">
           <span className="hl-word">Kho</span> kiến thức
         </h1>
-        {view.subjects.length > 0 && (
-          <p className="m-0 mt-1 text-read text-ink-soft" data-vault-sub>
-            {totalCards} thẻ · {totalSessions} buổi học · {view.subjects.length} môn
+        {subjects.length > 0 && (
+          <p className="m-0 mt-2 text-read text-ink-soft" data-vault-sub>
+            {totalCards} thẻ · {totalSessions} buổi học · {subjects.length} môn
           </p>
         )}
       </div>
-      {view.subjects.length === 0 ? (
+      {subjects.length === 0 ? (
         <EmptyState
           mascot="vui"
           title="Chưa có môn nào."
@@ -97,22 +98,40 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
           }
         />
       ) : (
-        <>
-          <NxList title="Môn học">
-            {view.subjects.map((s) => (
-              <NxRow
-                key={s.id}
-                lead={[...s.name.trim()][0]?.toLocaleUpperCase("vi") ?? ""}
-                state={`${s.cards} thẻ`}
+        // UI-A: one card per subject in a 2-3 column grid; the card count is the number of the card.
+        <ul className="m-0 grid list-none gap-4 p-0 min-[640px]:grid-cols-2 min-[1100px]:grid-cols-3" data-vault-subjects>
+          {subjects.map((s) => (
+            <li key={s.id} className="min-w-0">
+              <a
                 href={`/kho-kien-thuc?subject=${s.id}`}
+                className="flex h-full min-h-44 flex-col justify-between gap-6 rounded-tile bg-hong-tint p-5 text-ink no-underline hover:bg-sunken"
               >
-                <span className="block font-semibold break-words">{s.name}</span>
-                <span className="block text-meta text-ink-soft">{s.sessions} buổi học</span>
-              </NxRow>
-            ))}
-          </NxList>
-        </>
+                <span className="block text-lead font-semibold [overflow-wrap:anywhere]">{s.name}</span>
+                <span className="flex flex-col">
+                  <span className="flex items-baseline gap-2">
+                    <span className="font-display text-display tabular-nums">{s.cards}</span>
+                    <span className="text-body">thẻ</span>
+                  </span>
+                  <span className="text-meta text-ink-soft">{s.sessions} buổi học</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
+}
+
+/** A subject with nothing in it is hidden when another subject of the same name has something. */
+export function withoutEmptyTwins(subjects: VaultSubject[]): VaultSubject[] {
+  const filled = new Set(subjects.filter((s) => s.cards > 0 || s.sessions > 0).map((s) => s.name.trim()));
+  const seen = new Set<string>();
+  return subjects.filter((s) => {
+    const key = s.name.trim();
+    const empty = s.cards === 0 && s.sessions === 0;
+    if (empty && (filled.has(key) || seen.has(key))) return false;
+    if (empty) seen.add(key);
+    return true;
+  });
 }
