@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { DocRole } from "@/components/syllabus/doc-role";
+import { patchDocument } from "@/lib/syllabus/api";
 import type { Role } from "@/lib/syllabus/roles";
 
 import { checkFile, uploadPdf, type UploadState } from "@/lib/upload-client";
@@ -24,7 +25,7 @@ const MAX_POLLS = 100; // 5 minutes of 3 s
 
 // The file is stored; ai-service reads it in the background. Ask until the document reaches a
 // terminal status, so the row does not stay on "Đang đọc tài liệu…" until a reload (REALFIX).
-function ReadStatus({ documentId }: { documentId: string }) {
+function ReadStatus({ documentId, role }: { documentId: string; role?: Role }) {
   const [phase, setPhase] = useState<"reading" | "ready" | "failed">("reading");
   useEffect(() => {
     let alive = true;
@@ -39,7 +40,14 @@ function ReadStatus({ documentId }: { documentId: string }) {
         // offline: try again
       }
       if (!alive) return;
-      if (status === "indexed") return setPhase("ready");
+      if (status === "indexed") {
+        // The tab fixes the role (H2) but a new document is auxiliary: say so once it is read. Without
+        // this the Đề cương page finds no textbook while stats already count the sections.
+        const apiRole = role === "main" ? "textbook" : role === "bank" ? "question_bank" : null;
+        if (apiRole) await patchDocument(documentId, { role: apiRole }).catch(() => undefined);
+        if (!alive) return;
+        return setPhase("ready");
+      }
       if (status === "failed" || status === "rejected") return setPhase("failed");
       if (++tries < MAX_POLLS) timer = setTimeout(() => void look(), POLL_MS);
     };
@@ -48,7 +56,7 @@ function ReadStatus({ documentId }: { documentId: string }) {
       alive = false;
       clearTimeout(timer);
     };
-  }, [documentId]);
+  }, [documentId, role]);
   if (phase === "failed") {
     return (
       <p role="alert" className="m-0 text-small text-pencil">
@@ -63,7 +71,7 @@ function ReadStatus({ documentId }: { documentId: string }) {
   );
 }
 
-function Status({ state }: { state: UploadState }) {
+function Status({ state, role }: { state: UploadState; role?: Role }) {
   if (state.kind === "hashing") return <span className={STATUS} role="status">Đang chuẩn bị…</span>;
   if (state.kind === "uploading") {
     return (
@@ -72,7 +80,7 @@ function Status({ state }: { state: UploadState }) {
       </span>
     );
   }
-  if (state.kind === "done" && state.documentId) return <ReadStatus documentId={state.documentId} />;
+  if (state.kind === "done" && state.documentId) return <ReadStatus documentId={state.documentId} role={role} />;
   if (state.kind === "checking" || state.kind === "done") {
     return (
       <span className={STATUS} role="status">
@@ -184,7 +192,7 @@ export function Uploader({
           {rows.map((row) => (
             <li key={row.key} className="flex min-w-0 flex-col gap-2 border-b border-line pb-4">
               <b className="min-w-0 break-words">{row.name}</b>
-              <Status state={row.state} />
+              <Status state={row.state} role={fixedRole} />
               {row.state.kind === "uploading" ? (
                 <progress
                   value={row.state.percent}

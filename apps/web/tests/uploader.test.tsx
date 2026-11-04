@@ -97,4 +97,48 @@ describe("Uploader (US-01 AC7)", () => {
       vi.unstubAllGlobals();
     }
   });
+
+  // Red when: a file put in the "Giáo trình chính" tab stays an auxiliary document, so the Đề cương
+  // page says "Chưa có đề cương" while stats already count its sections.
+  it.each([
+    ["main", "textbook"],
+    ["bank", "question_bank"],
+  ] as const)("a file of the %s tab gets the %s role once it is indexed", async (tab, role) => {
+    vi.useFakeTimers();
+    try {
+      const patches: unknown[] = [];
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === "PATCH") {
+          patches.push([url, JSON.parse(String(init.body))]);
+          return new Response("{}", { status: 200 });
+        }
+        return new Response(JSON.stringify({ status: "indexed" }), { status: 200 });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      upload.mockImplementation(async (_s, _f, cb) => cb({ kind: "done", documentId: "d1" }));
+      render(<Uploader subjectId={SUBJECT} fixedRole={tab} />);
+      await act(async () => choose(new File(["%PDF"], "a.pdf", { type: "application/pdf" })));
+      await act(async () => void (await vi.advanceTimersByTimeAsync(3100)));
+      expect(patches).toEqual([["/api/documents/d1", { role }]]);
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("a file of the supplementary tab is not patched", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ status: "indexed" }), { status: 200 }));
+      vi.stubGlobal("fetch", fetchMock);
+      upload.mockImplementation(async (_s, _f, cb) => cb({ kind: "done", documentId: "d1" }));
+      render(<Uploader subjectId={SUBJECT} fixedRole="supplementary" />);
+      await act(async () => choose(new File(["%PDF"], "a.pdf", { type: "application/pdf" })));
+      await act(async () => void (await vi.advanceTimersByTimeAsync(3100)));
+      expect(fetchMock.mock.calls.every(([, init]) => init?.method !== "PATCH")).toBe(true);
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
 });
