@@ -189,7 +189,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
           </span>
         </div>
         {!editing && (
-          <Button variant="quiet" onClick={open} aria-label={`Sửa ${subject.name}`}>
+          <Button variant="quiet" onClick={open} aria-label={`Sửa ${subject.name}`} className="px-2">
             Sửa
           </Button>
         )}

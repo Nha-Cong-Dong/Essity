@@ -94,7 +94,7 @@ export function ResumeStrip({ items }: { items: Unfinished[] }) {
 
 // V22: the left tile is the accent of the screen (landing "nx" tile, span 7): the one big number,
 // Bé Trang, one white row that names the review, and the solid pink button inside the tile.
-const SHEET = "relative flex min-w-0 flex-col gap-4 self-stretch rounded-tile bg-hong-tint p-4 min-[901px]:col-span-7 min-[901px]:p-6";
+const SHEET = "relative flex min-w-0 flex-col gap-4 self-start rounded-tile bg-hong-tint p-4 min-[901px]:col-span-7 min-[901px]:p-6";
 const WHITE_ROW = "m-0 flex min-h-12 flex-wrap items-center gap-x-2 rounded-row bg-bg px-3.5 py-2 text-body";
 
 export function ReviewTile({
