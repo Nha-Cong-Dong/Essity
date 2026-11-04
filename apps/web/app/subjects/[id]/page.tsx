@@ -13,7 +13,6 @@ import { dayLabel } from "@/lib/today-copy";
 import { requireVerifiedSession } from "@/lib/session";
 import { errorName, logError } from "@/lib/log";
 import { CoreStatusError } from "@/lib/subjects";
-import { loadGraph } from "@/lib/graph-load";
 import { loadOutline } from "@/lib/outline";
 import { loadQuestionList } from "@/lib/question-list";
 import { ReviewStack, type StackCard } from "@/components/subjects/review-stack";
@@ -56,10 +55,9 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
     )
     .catch(() => [] as StackCard[]);
   const nothingDue = dueCards.length === 0;
-  const [outline, questions, graph] = await Promise.all([
+  const [outline, questions] = await Promise.all([
     loadOutline(subject.id).catch(() => null),
     loadQuestionList(subject.id).catch(() => null),
-    loadGraph(subject.id, null).catch(() => null),
   ]);
   const stats = await getStats()
     .then((r) => r.view.subjects.find((x) => x.id === subject.id) ?? null)
@@ -69,9 +67,9 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
   const entries = entryRow(subject.id, {
     outline,
     questions: questions && { ready: questions.ready, total: questions.total },
-    graphCards: graph && graph.cards.length,
+    graphCards: null,
   });
-  const rowEntries = entries.filter((e) => e.key !== "syllabus" && e.key !== "stats" && e.key !== "practice");
+  const rowEntries = entries.filter((e) => e.key !== "syllabus" && e.key !== "stats" && e.key !== "practice" && e.key !== "graph");
   return (
     <PageColumn width="full" data-reveal className="flex flex-col gap-8">
       <a href="/subjects" className="text-small">

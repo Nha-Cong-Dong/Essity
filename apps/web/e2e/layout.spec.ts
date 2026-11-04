@@ -136,7 +136,7 @@ test("smoke: the fixture renders, hydrates and breaks no CSP rule", async ({ pag
   });
   await open(page, 390);
   await expect(rows(page)).toHaveCount(ROWS);
-  await expect(nav(page).getByRole("link")).toHaveText(["Hôm nay", "Môn học", "Kho kiến thức", "Thống kê"]);
+  await expect(nav(page).getByRole("link")).toHaveText(["Hôm nay", "Môn học", "Kho kiến thức", "Đồ thị", "Thống kê"]);
   // Hydrated: "Sửa" opens the edit form only once React runs.
   await page.getByRole("button", { name: "Sửa Mạng máy tính" }).click();
   await expect(page.getByLabel("Môn")).toBeVisible();
@@ -252,7 +252,7 @@ for (const scheme of ["light", "dark"] as const) {
   for (const label of ["Hôm nay", "Môn học"]) {
     rule(`R46-h a focused pill (${label}, ${scheme}) keeps a 3:1 ring inside the nav`, [320], async (page) => {
       await page.emulateMedia({ colorScheme: scheme });
-      const pill = nav(page).getByRole("link", { name: label });
+      const pill = nav(page).getByRole("link", { name: label.split(" ")[0] });
       await pill.focus();
       await page.keyboard.press("Shift+Tab");
       await page.keyboard.press("Tab");
