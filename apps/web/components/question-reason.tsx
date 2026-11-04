@@ -12,7 +12,7 @@ export function QuestionReason({ reason }: { reason: Reason }) {
   const days = reason.days_since_last ?? 0;
   return (
     <details className="mt-2.5 min-w-0">
-      <summary className="cursor-pointer text-meta text-ink-soft underline">Vì sao câu này?</summary>
+      <summary className="cursor-pointer text-meta inline-flex items-center justify-center min-h-11 rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">Vì sao câu này?</summary>
       <div className="mt-2 rounded-lg bg-subtle p-3 text-meta wrap-anywhere">
         {reason.kind === "new" ? (
           <p data-copy="tam" className="m-0">

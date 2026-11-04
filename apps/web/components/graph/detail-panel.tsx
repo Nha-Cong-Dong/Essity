@@ -27,7 +27,7 @@ type Props = {
 };
 
 const QUIET =
-  "min-h-11 min-w-0 rounded-control px-2 py-2 text-left underline decoration-line-strong decoration-[1.5px] underline-offset-[5px] wrap-anywhere outline-none hover:decoration-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+  "min-h-11 min-w-0 py-2 text-left wrap-anywhere outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus inline-flex items-center justify-center rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line";
 
 function Quote({ children }: { children: string }) {
   return (

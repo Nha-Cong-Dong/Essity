@@ -38,7 +38,7 @@ async function Documents({ params }: { params: Promise<{ id: string }> }) {
         <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
           <p className="m-0 font-semibold">Không tải được môn này.</p>
           <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
-          <a href={`/subjects/${subject.id}/documents`} className="mt-3 font-semibold underline">
+          <a href={`/subjects/${subject.id}/documents`} className="mt-3 font-semibold inline-flex items-center justify-center min-h-11 rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
             Thử lại
           </a>
         </div>

@@ -235,7 +235,7 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
       <div className="flex flex-col items-start gap-3 rounded-tile bg-hong-tint p-6" data-empty>
         <p className="m-0 text-read">Chưa có thẻ kiến thức nào. Ghi một buổi học, các thẻ sẽ hiện thành đồ thị ở đây.</p>
         {graphs[0] && (
-          <a href={`/subjects/${graphs[0].id}/sessions/new`} className="inline-flex min-h-11 items-center font-semibold underline">
+          <a href={`/subjects/${graphs[0].id}/sessions/new`} className="inline-flex min-h-11 items-center font-semibold rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
             Ghi buổi học
           </a>
         )}

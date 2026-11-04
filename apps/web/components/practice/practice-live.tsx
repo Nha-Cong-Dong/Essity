@@ -116,7 +116,7 @@ function Row({
         <span className="text-meta text-ink-soft">{q.origin === "bank" ? "Câu gốc" : "Câu sinh thêm"}</span>
         {q.number !== null && <span className="text-meta text-ink-soft">Câu {q.number}</span>}
         {q.status === "waiting" ? (
-          <a href={`/subjects/${subjectId}/syllabus`} className="text-meta text-ink-soft underline">
+          <a href={`/subjects/${subjectId}/syllabus`} className="text-meta inline-flex items-center justify-center min-h-11 rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
             {q.line}
           </a>
         ) : q.status === "unlinked" ? (
@@ -237,7 +237,7 @@ export function PracticeLive({
 
   return (
     <div ref={root} className="w-full max-w-240">
-      <a href={`/subjects/${subjectId}`} className="text-meta text-ink-soft underline wrap-anywhere">
+      <a href={`/subjects/${subjectId}`} className="text-meta wrap-anywhere inline-flex items-center justify-center min-h-11 rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
         ← {subjectName}
       </a>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-3" data-practice-head>
@@ -316,7 +316,7 @@ export function PracticeLive({
             )}
             {groups.some((g) => g.type !== null) && (
               <details className="mt-4" data-types>
-                <summary className="flex min-h-11 cursor-pointer items-center text-meta underline">Theo dạng câu</summary>
+                <summary className="flex min-h-11 cursor-pointer items-center text-meta rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">Theo dạng câu</summary>
                 {groups
                   .filter((g) => g.type !== null)
                   .map((g) => (

@@ -82,6 +82,18 @@ describe("design rules", () => {
     expect(offenders(pages, /mx-auto[^"'`]*max-w-|max-w-[^"'`]*mx-auto/)).toEqual([]);
   });
 
+  // UI-A (user 05/11): an action is a pill, never underlined text. Links stay underlined only inside a sentence.
+  it("UI-A: no underline on a button, summary or link that is an action", () => {
+    const SENTENCE = new Set([
+      path.join("components", "auth", "fields.tsx"),
+      path.join("components", "documents", "document-list.tsx"),
+      path.join("components", "practice", "practice-extras.tsx"),
+      path.join("components", "practice", "practice-screen.tsx"),
+    ]);
+    const files = UI.filter((f) => !SENTENCE.has(f) && !f.startsWith(path.join("app", "design-preview")));
+    expect(offenders(files, /<(a|button|summary|Link)[^>]*(?<![-\w])underline(?![-\w])/)).toEqual([]);
+  });
+
   it("V10: no bg-cover, which Tailwind also reads as background-size: cover", () => {
     expect(offenders(UI, /\bbg-cover\b(?!-)/)).toEqual([]);
   });

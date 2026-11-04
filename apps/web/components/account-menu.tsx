@@ -54,7 +54,7 @@ export function AccountMenu({ email }: { email: string }) {
         {initials(email)}
       </Menu.Trigger>
       <Menu.Portal>
-        <Menu.Positioner align="end" sideOffset={8}>
+        <Menu.Positioner align="end" sideOffset={8} collisionPadding={8} className="z-(--z-menu)">
           <Menu.Popup className="z-(--z-menu) flex w-[300px] flex-col rounded-sheet bg-raised p-2 text-ink shadow-over">
             <p className="m-0 truncate px-3.5 py-2.5 text-meta text-ink-soft">{email}</p>
             <Menu.Separator className="my-2 h-px bg-line" />

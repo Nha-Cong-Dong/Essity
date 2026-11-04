@@ -301,7 +301,7 @@ export function ReviewScreen({
   }, [grading, api]);
 
   const quietLink =
-    "h-11 cursor-pointer border-0 bg-transparent px-2 text-meta text-ink-soft underline decoration-line-strong underline-offset-4 hover:text-ink";
+    "h-11 cursor-pointer text-meta hover:text-ink inline-flex items-center justify-center min-h-11 rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line";
   const skippable = phase.kind === "question" && !sent ? phase.step.question.unit_ids : [];
   const exit = (
     <button type="button" disabled={busy} onClick={() => void finish()} className={quietLink}>

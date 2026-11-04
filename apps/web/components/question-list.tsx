@@ -14,7 +14,7 @@ function Row({ q, subjectId }: { q: QuestionRow; subjectId: string }) {
         <Badge variant="level">{q.origin === "bank" ? "Câu gốc" : "Câu sinh thêm"}</Badge>
         {q.status === "ready" && <span className="text-meta">{q.line}</span>}
         {q.status === "waiting" && (
-          <a href={`/subjects/${subjectId}/syllabus`} className="text-meta underline">
+          <a href={`/subjects/${subjectId}/syllabus`} className="text-meta inline-flex items-center justify-center min-h-11 rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
             {q.line}
           </a>
         )}

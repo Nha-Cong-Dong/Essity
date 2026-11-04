@@ -680,10 +680,10 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
         />
         {needle === "" && (
           <span className="flex gap-3 text-meta">
-            <button type="button" className="min-h-11 underline" onClick={() => setOpen(new Set(allBranchIds(nodes)))}>
+            <button type="button" className="min-h-11 inline-flex items-center justify-center rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line" onClick={() => setOpen(new Set(allBranchIds(nodes)))}>
               Mở hết
             </button>
-            <button type="button" className="min-h-11 underline" onClick={() => {
+            <button type="button" className="min-h-11 inline-flex items-center justify-center rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line" onClick={() => {
                 setOpen(new Set());
                 setPanel(null);
               }}>

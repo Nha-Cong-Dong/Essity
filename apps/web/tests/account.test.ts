@@ -158,3 +158,11 @@ describe("signOut (review cdbaa25 #1)", () => {
     expect(assign).toHaveBeenCalledWith("/register");
   });
 });
+
+describe("account menu stacking (UI-A)", () => {
+  it("puts the positioner above the rail with a z-index token", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("components/account-menu.tsx", "utf8");
+    expect(src).toMatch(/<Menu\.Positioner[^>]*z-\(--z-menu\)/);
+  });
+});

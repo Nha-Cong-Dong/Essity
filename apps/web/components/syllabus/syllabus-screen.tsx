@@ -95,7 +95,7 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
 
   const header = (
     <>
-      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta text-ink-soft underline wrap-anywhere">
+      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta wrap-anywhere rounded-full bg-sunken px-4 font-medium text-ink no-underline hover:bg-line">
         ‹ {SUBJECT.name}
       </a>
       <div className="flex items-center justify-between gap-3">
