@@ -1,7 +1,7 @@
 // T7.13 (US-03, US-15): GET /v1/today v2 and the suggestion endpoints, as the screens draw them.
 import { describe, expect, it } from "vitest";
 
-import { subjectState, suggestionState, toTodayV2, type TodayApi } from "@/lib/today-adapt";
+import { splitTitle, subjectState, suggestionState, toTodayV2, type TodayApi } from "@/lib/today-adapt";
 import { hasBannedWord } from "@/lib/today-v2";
 
 const A = "0b8f1d2e-0000-4000-8000-000000000001";
@@ -185,6 +185,18 @@ describe("suggestionState (subject screen)", () => {
   // Red when: a subject whose exam passed gets a suggestion.
   it("US-15 AC7: exam passed", () => {
     expect(suggestionState(list({ suggestions: [next()] }), A, -1)).toEqual({ kind: "exam_over" });
+  });
+});
+
+// HACK-L4b: a fallback outline made by an older build is titled "Pages 1-10"; the screen says "Trang 1–10".
+describe("splitTitle", () => {
+  it("shows an English page-range title in Vietnamese", () => {
+    expect(splitTitle("Pages 1-10")).toEqual({ label: "", title: "Trang 1–10" });
+    expect(splitTitle("Pages 11–20")).toEqual({ label: "", title: "Trang 11–20" });
+  });
+  it("leaves other titles alone", () => {
+    expect(splitTitle("3.2 TCP flow control")).toEqual({ label: "3.2", title: "TCP flow control" });
+    expect(splitTitle("Trang 1–10")).toEqual({ label: "", title: "Trang 1–10" });
   });
 });
 
