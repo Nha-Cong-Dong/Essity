@@ -128,7 +128,7 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
     // rest follow. Reduced motion: no drift; nodes can still be dragged.
     let frame = 0;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    layout.one("layoutstop", () => {
+    const startSim = () => {
       if (reduced) return;
       const list = cy.nodes().toArray();
       const index = new Map(list.map((n, i) => [n.id(), i] as const));
@@ -168,7 +168,8 @@ export function KnowledgeGraph({ graphs, height = "60vh" }: { graphs: SubjectGra
         frame = requestAnimationFrame(tick);
       };
       frame = requestAnimationFrame(tick);
-    });
+    };
+    startSim(); // the layout is synchronous (animate: false), so the nodes are already placed
     const resize = new ResizeObserver(() => cy.resize());
     resize.observe(host.current);
     return () => {

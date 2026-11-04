@@ -167,10 +167,10 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
   }
 
   return (
-    <li className={`min-w-0 rounded-tile bg-hong-tint ${editing ? "col-span-full" : ""}`}>
+    <li className={`flex min-w-0 flex-col rounded-tile bg-hong-tint ${editing ? "col-span-full" : ""}`}>
       {/* V22 (landing "nx"): a row of the subjects tile, letter | name + date line | "Sửa". The name
           wraps between words, never inside one. */}
-      <div className="flex min-h-36 flex-col justify-between gap-4 p-5">
+      <div className="flex min-h-40 flex-1 flex-col justify-between gap-4 p-5">
         <div className="flex min-w-0 flex-col">
           <a
             id={ids.name}
@@ -358,7 +358,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
           <li className="min-w-0">
             <a
               href="/subjects/new"
-              className="flex min-h-36 h-full items-center justify-center rounded-tile border border-dashed border-line-strong px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"
+              className="flex h-full min-h-40 items-center justify-center rounded-tile border border-dashed border-line-strong px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"
             >
               + Thêm môn
             </a>
