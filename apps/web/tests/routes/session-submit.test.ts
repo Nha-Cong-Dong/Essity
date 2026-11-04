@@ -106,3 +106,20 @@ describe("session routes (T7.12, CARDS-V3)", () => {
     expect(signedOut.status).toBe(401);
   });
 });
+
+describe("dropping a piece (Q4b)", () => {
+  // Red when: the piece id is passed on unchecked, or a 204 becomes "unavailable".
+  it("passes the delete on and answers 204", async () => {
+    const { DELETE } = await import("@/app/api/sessions/[id]/pieces/[pieceId]/route");
+    vi.stubEnv("WEB_TO_CORE_TOKEN", SERVICE_TOKEN);
+    const calls = fakeCoreApi(() => new Response(null, { status: 204 }));
+    const request = browserPost("/x", undefined, { ...SIGNED_IN, method: "DELETE" });
+    const response = await DELETE(request, { params: Promise.resolve({ id: ID, pieceId: OTHER }) });
+    expect(response.status).toBe(204);
+    expect(calls[0].path).toBe(`/v1/study-sessions/${ID}/pieces/${OTHER}`);
+    expect(calls[0].method).toBe("DELETE");
+    const bad = await DELETE(request, { params: Promise.resolve({ id: ID, pieceId: "../x" }) });
+    expect(bad.status).toBe(404);
+    expect(calls).toHaveLength(1);
+  });
+});

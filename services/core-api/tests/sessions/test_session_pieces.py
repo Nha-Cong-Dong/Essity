@@ -66,3 +66,30 @@ def test_complete_marks_the_given_section_studied(client: TestClient, world: Wor
     row = world.db.scalars(select(DocSection).where(DocSection.id == world.chapter.id)).one()
     assert row.weight > 0
     assert row.studied_weight >= row.weight
+
+
+def test_a_piece_can_be_dropped_before_the_session_is_handed_in(
+    client: TestClient, world: World
+) -> None:
+    # Red when: a piece that cannot be completed (a bad @) leaves the session stuck for good.
+    first = piece(client, world, text="Mảnh một").json()
+    piece(client, world, text="Mảnh hai")
+    url = f"/v1/study-sessions/{world.draft.id}/pieces/{first['id']}"
+    assert client.delete(url, headers=world.headers).status_code == 204
+    listed = client.get(f"/v1/study-sessions/{world.draft.id}/pieces", headers=world.headers)
+    assert [p["text"] for p in listed.json()["pieces"]] == ["Mảnh hai"]
+    assert client.delete(url, headers=world.headers).status_code == 404
+
+
+def test_a_piece_cannot_be_dropped_once_handed_in_or_by_a_stranger(
+    client: TestClient, world: World
+) -> None:
+    from accounts import signed_in  # noqa: PLC0415
+
+    made = piece(client, world, text="Mảnh một").json()
+    url = f"/v1/study-sessions/{world.draft.id}/pieces/{made['id']}"
+    stranger = signed_in(world.db)[1]
+    assert client.delete(url, headers=stranger).status_code == 404
+    client.post(f"/v1/study-sessions/{world.draft.id}/complete", headers=world.headers)
+    assert client.delete(url, headers=world.headers).status_code == 409
+    assert world.db.scalar(select(func.count()).select_from(SessionPiece)) == 1

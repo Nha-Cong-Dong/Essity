@@ -62,7 +62,21 @@ export const SUBMIT_COPY = {
   tooLong: "Câu mô tả dài quá. Rút gọn bớt rồi gửi lại.",
   nothing: "Chưa có gì để gửi. Viết vài dòng hoặc thêm file rồi gửi.",
   mention: "Chưa hiểu một chỗ @ trong câu. Xem chỗ được đánh dấu rồi gửi lại.",
+  mentionPiece: "Có một chỗ @ không khớp tài liệu nào. Bỏ phần có chỗ @ đó (hoặc ghi lại phần mới) rồi bấm Hoàn thành.",
+  closed: "Buổi này đã được gửi đi rồi.",
+  other: "Chưa hoàn thành được. Thử lại sau ít phút.",
 } as const;
+
+/** What to tell the learner when handing a session in (or dropping a piece) fails: by the code,
+ * not "network" for everything (only a dropped connection, status 0, is the network). */
+export function completeProblem(status: number, error: string): string {
+  if (status === 0) return SUBMIT_COPY.network;
+  if (error.startsWith("mention_") || error.startsWith("scope_") || error === "document_not_found") return SUBMIT_COPY.mentionPiece;
+  if (error === "nothing_submitted") return SUBMIT_COPY.nothing;
+  if (error === "text_too_long") return SUBMIT_COPY.tooLong;
+  if (error === "session_confirmed") return SUBMIT_COPY.closed;
+  return SUBMIT_COPY.other;
+}
 
 const kindOf = (name: string): FileRow["kind"] =>
   /\.(jpe?g|png|heic|webp)$/i.test(name) ? "image" : /\.pdf$/i.test(name) ? "pdf" : /\.docx$/i.test(name) ? "docx" : /\.pptx$/i.test(name) ? "pptx" : "text";
@@ -166,13 +180,25 @@ export function SessionScreen(props: SessionScreenProps) {
     say("Đã ghi lại một phần.");
   }
 
+  async function dropPiece(id: string) {
+    if (!api || completing) return;
+    const result = await api.removePiece(id);
+    if (result.ok) {
+      setPieces((rows) => rows.filter((p) => p.id !== id));
+      setProblem(null);
+      say("Đã bỏ một phần.");
+    } else {
+      setProblem(completeProblem(result.status, result.error));
+    }
+  }
+
   async function complete() {
     if (!api || completing || pieces.length === 0) return;
     setCompleting(true);
     const result = await api.complete();
     if (!result.ok) {
       setCompleting(false);
-      setProblem(SUBMIT_COPY.network);
+      setProblem(completeProblem(result.status, result.error));
       return;
     }
     if (!subjectId || props.stayOnComplete) {
@@ -399,7 +425,17 @@ export function SessionScreen(props: SessionScreenProps) {
                   <ol className="m-0 flex list-none flex-col gap-2 p-0">
                     {pieces.map((p, index) => (
                       <li key={p.id} className="rounded-control bg-sunken p-3 text-body wrap-anywhere">
-                        <span className="text-meta text-ink-soft">Phần {index + 1}</span>
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="text-meta text-ink-soft">Phần {index + 1}</span>
+                          <button
+                            type="button"
+                            aria-label={`Bỏ phần ${index + 1}`}
+                            onClick={() => void dropPiece(p.id)}
+                            className="min-h-11 rounded-full px-3 text-meta text-ink-soft underline underline-offset-4"
+                          >
+                            Bỏ phần này
+                          </button>
+                        </span>
                         <p className="m-0 whitespace-pre-line">
                           {p.text || `${p.fileCount} file`}
                           {p.text && p.fileCount > 0 ? ` (+${p.fileCount} file)` : ""}

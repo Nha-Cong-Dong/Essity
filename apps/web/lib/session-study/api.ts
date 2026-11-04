@@ -35,6 +35,8 @@ export type SessionApi = {
   /** F2: the pieces kept so far. */
   pieces(): Promise<ApiResult<{ pieces: Piece[]; submitted: boolean }>>;
   /** F2: "Ghi lại": keep one piece now. */
+  /** Drop a piece kept by mistake, before the session is handed in. */
+  removePiece(pieceId: string): Promise<ApiResult<null>>;
   addPiece(text: string, mentions: readonly Mention[], files?: readonly FileRef[]): Promise<ApiResult<Piece>>;
   /** F3: "Hoàn thành": every piece goes in as one submission, the worker makes the cards. */
   complete(): Promise<ApiResult<{ status: Phase }>>;
@@ -84,6 +86,7 @@ export function createSessionApi(sessionId: string, _docs: readonly DocRef[], fe
         { text, mentions: mentions.map((m) => ({ document_id: m.docId, start: m.start, end: m.end })), files },
         (json) => piece(json as unknown as CorePiece),
       ),
+    removePiece: (pieceId) => run(`/api/sessions/${sessionId}/pieces/${pieceId}`, "DELETE", undefined, () => null),
     complete: () => run(`/api/sessions/${sessionId}/complete`, "POST", sectionId ? { section_id: sectionId } : undefined, (json) => ({ status: readStatus(String(json.status)) })),
     async submit(text, mentions, files = []) {
       const body = { session_id: sessionId, description: text, mentions: mentions.map((m) => ({ document_id: m.docId, start: m.start, end: m.end })), ...(files.length > 0 ? { files } : {}) };
