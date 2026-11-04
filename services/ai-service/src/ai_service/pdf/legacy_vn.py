@@ -52,8 +52,9 @@ _CAPITAL_U_HORN = {0x19: "Ư"}
 _CONTROL = {**_CAPITAL_U_HORN, 0x1C: "é", 0x1D: "ụ"}
 _MIN_LONE_CR = 5
 # The capital Y-acute is printed with the lowercase glyph (0xFD, "ý"): a title that starts with
-# one right after its section number ("3.4. ý nghĩa") is capital.
-_TITLE_Y = re.compile(r"(?m)^(\s*\d+(?:\.\d+)*\.?[ \t]+)ý")
+# one right after a dotted section number ("3.4. ý nghĩa", "3. ý nghĩa") is capital; a line
+# of the body ("2 ý kiến") is not.
+_TITLE_Y = re.compile(r"(?m)^([ \t]*(?:\d+\.\d+(?:\.\d+)*\.?|\d+\.)[ \t]+)ý")
 
 
 def _capital_y(text: str) -> str:

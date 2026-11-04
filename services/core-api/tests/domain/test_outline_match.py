@@ -1,6 +1,12 @@
 """Matching an outline read again to the one the learner has worked on (OUTLINE-FIX3)."""
 
-from core_api.domain.outline import match_titles, title_key
+from core_api.domain.outline import match_titles as _match
+from core_api.domain.outline import title_key
+
+
+def match_titles(old: list[str], new: list[str]) -> dict[int, int]:
+    """All sections at the root: the matching of one level."""
+    return _match(old, new, [None] * len(old), [None] * len(new))
 
 
 def test_title_key_splits_number_and_folds_words() -> None:
@@ -37,3 +43,20 @@ def test_a_number_held_twice_does_not_match_by_number_alone() -> None:
 def test_duplicate_titles_pair_in_order() -> None:
     old = ["Bài tập", "Bài tập"]
     assert match_titles(old, ["Bài tập", "Bài tập"]) == {0: 0, 1: 1}
+
+
+def test_a_number_reused_in_another_chapter_stays_in_its_chapter() -> None:
+    old = ["Chương 1. A", "Chương 2. B", "1. Bài tập"]
+    new = ["Chương 1. A", "1. Bài tập", "Chương 2. B", "1. Bài tập"]
+    # old: the exercise is under chapter 2; new: one under each chapter.
+    assert _match(old, new, [None, None, 1], [None, 0, None, 2]) == {0: 0, 2: 1, 3: 2}
+
+
+def test_a_unique_number_never_crosses_parents() -> None:
+    old = ["Chương 1. A", "Chương 2. B", "1. Giới thiệu"]
+    new = ["Chương 1. A", "Chương 2. B", "1. Định nghĩa"]
+    assert _match(old, new, [None, None, 0], [None, None, 1]) == {0: 0, 1: 1}
+
+
+def test_a_new_section_under_an_unmatched_parent_matches_nothing() -> None:
+    assert _match(["1. A", "1.1. B"], ["2. Z", "1.1. B"], [None, 0], [None, 0]) == {}

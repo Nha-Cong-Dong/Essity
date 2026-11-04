@@ -192,9 +192,9 @@ def title_key(title: str) -> tuple[str, str]:
     return number, _plain(title[found.end() :])
 
 
-def match_titles(old: Sequence[str], new: Sequence[str]) -> dict[int, int]:
-    """Which old section each new one is, by position: {new index: old index}. Each old section
-    is used once. Pass 1 takes number and words equal; pass 2, a number that is unique on both
+def _match_siblings(old: Sequence[str], new: Sequence[str]) -> dict[int, int]:
+    """Which old sibling each new sibling is: {new position: old position}. Each old one is used
+    once. Pass 1 takes number and words equal; pass 2, a number that is unique on both
     sides (a title the reader fixed: ")" became "N(a,σ2)"); pass 3, equal words without a
     number. A number held twice on a side is ambiguous: only pass 1 can match it."""
     old_keys = [title_key(t) for t in old]
@@ -252,4 +252,37 @@ def match_titles(old: Sequence[str], new: Sequence[str]) -> dict[int, int]:
     take(
         [(n, by_words[w]) for n, (number, w) in enumerate(new_keys) if not number and w in by_words]
     )
+    return matched
+
+
+def match_titles(
+    old: Sequence[str],
+    new: Sequence[str],
+    old_parent: Sequence[int | None],
+    new_parent: Sequence[int | None],
+) -> dict[int, int]:
+    """Which old section each new one is, top down: {new index: old index}. `*_parent` is the
+    index of each section's parent in its own list (None for a root; parents come first in
+    `new`). A section only matches an old one under the old section its parent matched (roots
+    only among roots), so a number reused in another chapter never moves a section there; a new
+    section with no matched parent matches nothing. Within one parent, `_match_siblings`."""
+    matched: dict[int, int] = {}
+    groups: dict[int | None, list[int]] = {}
+    for n, parent in enumerate(new_parent):
+        groups.setdefault(parent, []).append(n)
+    old_groups: dict[int | None, list[int]] = {}
+    for o, parent in enumerate(old_parent):
+        old_groups.setdefault(parent, []).append(o)
+    for parent in [None, *range(len(new))]:  # a parent is settled before its children
+        news = groups.get(parent, [])
+        if not news:
+            continue
+        if parent is None:
+            olds = old_groups.get(None, [])
+        elif parent in matched:
+            olds = old_groups.get(matched[parent], [])
+        else:
+            continue
+        found = _match_siblings([old[o] for o in olds], [new[n] for n in news])
+        matched.update({news[n]: olds[o] for n, o in found.items()})
     return matched

@@ -3,6 +3,8 @@ learner has worked on: what they covered, excluded or edited stays; the new read
 """
 
 import json
+import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -12,8 +14,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from accounts import signed_in
-from core_api.db.models import DocSection, Document, Outbox, UnitSection
+from core_api.db.models import DocSection, Document, Outbox, UnitSection, User
 from core_api.handlers.document_indexed import OnDocumentIndexed, on_document_failed
+from core_api.repositories.auth_session import AuthSessionRepository
 from core_api.repositories.doc_section import DocSectionRepository, NewSection
 from core_api.services.outline import OutlineService
 from documents.test_document_indexed import failed_event, indexed_event
@@ -251,3 +254,55 @@ def test_a_good_answer_clears_the_mark_and_a_failed_one_can_be_asked_again(
 
     current = db_session.get(Document, document.id)
     assert current is not None and current.reread is None and current.status == "indexed"
+
+
+def test_an_unverified_email_is_refused(
+    client: TestClient, db_session: Session, unverified_user: User
+) -> None:
+
+    token, _ = AuthSessionRepository(db_session).create(unverified_user.id, datetime.now(UTC))
+    db_session.flush()
+
+    response = client.post(
+        f"/v1/documents/{uuid.uuid4()}/reextract-outline",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403 and response.json() == {"detail": "email_not_verified"}
+    assert client.post(f"/v1/documents/{uuid.uuid4()}/reextract-outline").status_code == 401
+
+
+def test_a_card_stays_under_its_chapter_when_a_section_is_added_above_it(
+    db_session: Session, fake_storage: FakeStorage
+) -> None:
+    user, _ = signed_in(db_session)
+    document = document_in(db_session, user, subject_of(db_session, user), pages=50)
+    old = [
+        NewSection("Chương 1. A", None, 1, 20, 20, "page", "heading"),
+        NewSection("Chương 2. B", None, 21, 40, 20, "page", "heading"),
+        NewSection("1. Bài tập", 1, 21, 40, 20, "page", "heading"),
+    ]
+    by_title = with_outline(db_session, user, document, old)
+    exercise = by_title["1. Bài tập"]
+    unit = make_unit(db_session, user, subject_of_id(exercise), status="canonical")  # pyright: ignore[reportArgumentType]
+    link = UnitSection(subject_id=exercise.subject_id, unit_id=unit.id, section_id=exercise.id)
+    link.user_id = user.id
+    db_session.add(link)
+    db_session.flush()
+    new = {
+        "unit": "page",
+        "nodes": [
+            node("Chương 1. A", None, 1, 20),
+            node("1. Bài tập", 0, 1, 20),
+            node("Chương 2. B", None, 21, 40),
+            node("1. Bài tập", 2, 21, 40),
+        ],
+    }
+    OutlineService(db_session, user.id).request_reextract(document.id)
+    OnDocumentIndexed(fake_storage)(db_session, answer(fake_storage, document, new))
+    db_session.flush()
+
+    kept = db_session.get(DocSection, exercise.id)
+    chapter2 = rows(db_session, user, document)["Chương 2. B"]
+    assert kept is not None and kept.parent_id == chapter2.id
+    assert db_session.scalar(select(func.count()).select_from(UnitSection)) == 1

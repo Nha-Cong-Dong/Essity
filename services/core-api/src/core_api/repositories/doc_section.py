@@ -210,7 +210,13 @@ class DocSectionRepository(UserScopedRepository[DocSection]):
         match is added. An old one the reading no longer has is deleted only when nothing hangs
         on it (no coverage, no edit, no link); else it is kept and excluded."""
         old = self.of_document(document_id)
-        matched = rules.match_titles([o.title for o in old], [n.title for n in nodes])
+        position = {o.id: i for i, o in enumerate(old)}
+        matched = rules.match_titles(
+            [o.title for o in old],
+            [n.title for n in nodes],
+            [None if o.parent_id is None else position.get(o.parent_id) for o in old],
+            [n.parent for n in nodes],
+        )
         referenced = self.referenced_ids(document_id)
         made: list[DocSection] = []
         siblings: dict[int | None, int] = {}

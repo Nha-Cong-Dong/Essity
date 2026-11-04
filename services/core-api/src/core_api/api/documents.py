@@ -324,7 +324,8 @@ def reextract_outline(
     their progress, exclusions and edited ranges. The document shows as being read meanwhile.
 
     Errors: 404 `document_not_found` (another user's too); 409 `not_indexed` (not read yet,
-    failed, or already being read again); 429 once per document per 5 minutes.
+    or failed); 429 once per document per 5 minutes (so a reading still `pending` can be asked
+    for again after that, and a lost answer never locks the document).
     """
     service = OutlineService(session, user.id)
     if DocumentRepository(session, user.id).get(document_id) is None:
