@@ -209,7 +209,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
         </Switch>
       </div>
 
-      <div role="group" aria-label="Loại liên kết" data-kind-filter className="mt-4 flex flex-wrap items-center gap-2">
+      <div role="group" aria-label="Loại liên kết" data-kind-filter className="mt-2 flex flex-wrap items-center gap-2">
         <span className="text-meta text-ink-soft">
           Loại liên kết{kindsOff ? ` (${kinds.size}/${EDGE_KINDS.length})` : ""}
         </span>
@@ -230,7 +230,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
         ))}
       </div>
 
-      <div className="mt-4 grid items-start gap-4 min-[1024px]:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-3 grid items-start gap-4 min-[1024px]:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-3" ref={frame}>
           {view.hidden > 0 && <Notice>{COPY.truncated}</Notice>}
           {noLinks ? (
