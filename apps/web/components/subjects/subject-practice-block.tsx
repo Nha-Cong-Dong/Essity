@@ -31,7 +31,7 @@ export function SubjectPracticeBlock({
         </>
       )}
       <div>
-        <Button render={<a href={empty ? `/subjects/${subjectId}/upload` : `/subjects/${subjectId}/practice`} />} nativeButton={false}>
+        <Button variant="secondary" render={<a href={empty ? `/subjects/${subjectId}/upload` : `/subjects/${subjectId}/practice`} />} nativeButton={false}>
           {empty ? "Tải bộ câu hỏi" : "Luyện tập"}
         </Button>
       </div>

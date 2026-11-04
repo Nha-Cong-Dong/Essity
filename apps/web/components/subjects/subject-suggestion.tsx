@@ -121,7 +121,7 @@ export function SubjectSuggestion({
             {COPY.learn}
           </h2>
           <div>
-            <Button variant="secondary" onClick={ask} pending={busy} className={FULL}>
+            <Button onClick={ask} pending={busy} className={FULL}>
               {busy ? "Đang tính…" : "Gợi ý cho hôm nay"}
             </Button>
           </div>
