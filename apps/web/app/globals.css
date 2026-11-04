@@ -41,6 +41,9 @@
   --color-sheet: var(--sheet);
   --color-raised: var(--raised);
   --color-sunken: var(--sunken);
+  --color-ground: var(--ground);
+  --color-rail: var(--rail);
+  --color-on-rail: var(--on-rail);
   --color-book-cover: var(--cover); /* not --color-cover: `bg-cover` is also background-size */
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
@@ -209,6 +212,10 @@
   --sheet: #ffffff;
   --raised: #ffffff;
   --sunken: #f7f0f3;
+  --ground: #f9e6ee; /* the page ground of AppShell: between rose-100 and rose-200 (V21) */
+  --ground-dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='3' cy='3' r='1.2' fill='%23a8255f' fill-opacity='.10'/%3E%3C/svg%3E"); /* flat SVG dot grid, V21 M-dot */
+  --rail: #8e1e50; /* the left rail (desktop) / bottom tab bar background */
+  --on-rail: #ffe3ef;
   --cover: var(--rose-100);
   --ink: #221b1b;
   --ink-soft: #6b4a59;
@@ -246,7 +253,7 @@
   --pencil: #625c5a;
   --focus: var(--hong);
   --grain-opacity: 0.1;
-  --elev-sheet: 0 0 0 1px var(--line), 0 1px 2px rgb(110 23 62 / 0.06), 0 16px 40px -20px rgb(110 23 62 / 0.28);
+  --elev-sheet: 0 10px 24px -14px rgb(142 30 80 / 0.35); /* V21: shadow only, no hairline (UI-1b) */
   --elev-over: 0 0 0 1px rgb(110 23 62 / 0.06), 0 28px 64px -24px rgb(110 23 62 / 0.4);
   --elev-cover: 0 1px 2px rgb(110 23 62 / 0.08), 0 24px 48px -20px rgb(110 23 62 / 0.4);
   --elev-hong: 0 10px 24px -10px rgb(168 37 95 / 0.6);
@@ -266,6 +273,10 @@
     --sheet: #221d1e;
     --raised: #2d2728;
     --sunken: #1f181c;
+    --ground: #1b1417;
+    --ground-dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='3' cy='3' r='1.2' fill='%23f28dba' fill-opacity='.08'/%3E%3C/svg%3E");
+    --rail: #2a1a23;
+    --on-rail: #f4eeec;
     --cover: #4a2e3d;
     --ink: #f4eeec;
     --ink-soft: #c9aab8;
@@ -325,6 +336,10 @@
   --sheet: #221d1e;
   --raised: #2d2728;
   --sunken: #1f181c;
+  --ground: #1b1417;
+  --ground-dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='3' cy='3' r='1.2' fill='%23f28dba' fill-opacity='.08'/%3E%3C/svg%3E");
+  --rail: #2a1a23;
+  --on-rail: #f4eeec;
   --cover: #4a2e3d;
   --ink: #f4eeec;
   --ink-soft: #c9aab8;
@@ -431,6 +446,10 @@
 
 /* Written values (label values, pencil notes, dates): the body face in italic, not a
    handwriting font, which made the app look childish (type and colour review, 19/10). */
+@utility ground-dots {
+  background-image: var(--ground-dots);
+  background-size: 22px 22px;
+}
 @utility font-hand {
   font-family: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
   font-style: italic;
