@@ -275,7 +275,7 @@ export function PracticeLive({
         </div>
       ) : (
         <div className="mt-6">
-          <Sheet variant="tile" className="flex flex-col gap-4 p-5 shadow-none" data-practice-today>
+          <Sheet variant="tile" tone="hong" className="flex flex-col gap-4 p-5 shadow-none" data-practice-today>
           <div data-progress>
             <p data-summary className="m-0 text-read">
               Đã mở khóa {readyCount}/{live.length} câu
