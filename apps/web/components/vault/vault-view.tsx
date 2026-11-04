@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/empty-state";
 import { KnowledgeGraph } from "@/components/graph/knowledge-graph";
+import { NxList, NxRow } from "@/components/ui/nx-list";
 import { CardList } from "@/components/vault/card-list";
 import type { SubjectGraph } from "@/lib/graph-multi";
 import type { VaultCard, VaultSession, VaultSubject } from "@/lib/vault-api";
@@ -10,9 +11,6 @@ export type VaultViewData =
   | { level: "cards"; title: string; cards: VaultCard[] }
   | { level: "sessions"; sessions: VaultSession[]; graphs: SubjectGraph[] }
   | { level: "subjects"; subjects: VaultSubject[] };
-
-const LINK =
-  "relative block rounded-tile border border-line bg-sheet p-5 text-ink no-underline hover:bg-sunken";
 
 export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?: string }) {
   if (view.level === "cards") {
@@ -41,7 +39,9 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
           <a href="/kho-kien-thuc" className="text-body text-ink-soft">
             ← Các môn
           </a>
-          <h1 className="m-0 font-display text-title">Các buổi học</h1>
+          <h1 className="m-0 font-display text-title">
+            <span className="hl-word">Các buổi học</span>
+          </h1>
           {view.sessions.length === 0 ? (
             <EmptyState
               mascot="cho"
@@ -49,22 +49,19 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
               hint="Ghi một buổi học, thẻ sẽ xuất hiện ở đây."
             />
           ) : (
-            <ul className="m-0 flex list-none flex-col rounded-tile border border-line bg-sheet px-5 py-1" data-sessions>
-              {view.sessions.map((s) => (
-                <li key={s.id} className="border-t border-line first:border-t-0">
-                  <a
-                    className="flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 hover:bg-sunken"
-                    href={`/kho-kien-thuc?subject=${subjectId}&session=${s.id}`}
-                  >
-                    <span className="min-w-0 flex-1 basis-48">
-                      <span className="block font-semibold wrap-anywhere">{s.title || "Buổi học"}</span>
-                      {s.studied_on && <span className="block text-meta text-ink-soft">{s.studied_on}</span>}
-                    </span>
-                    <span className="rounded-full bg-sunken px-3 py-0.5 text-meta">{s.cards} thẻ</span>
-                  </a>
-                </li>
+            <NxList title="Buổi học" hint="Mới nhất trước">
+              {view.sessions.map((s, i) => (
+                <NxRow
+                  key={s.id}
+                  lead={i + 1}
+                  state={`${s.cards} thẻ`}
+                  href={`/kho-kien-thuc?subject=${subjectId}&session=${s.id}`}
+                >
+                  <span className="block font-semibold wrap-anywhere">{s.title || "Buổi học"}</span>
+                  {s.studied_on && <span className="block text-meta text-ink-soft">{s.studied_on}</span>}
+                </NxRow>
               ))}
-            </ul>
+            </NxList>
           )}
         </div>
         <div className="flex min-w-0 flex-col gap-4">
@@ -80,7 +77,7 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
     <div className="flex min-w-0 flex-col gap-6">
       <div>
         <h1 className="m-0 font-display text-title">
-          <span className="px-1" style={{ backgroundImage: "linear-gradient(to top, var(--hl-band) 35%, transparent 35%)" }}>Kho</span> kiến thức
+          <span className="hl-word">Kho</span> kiến thức
         </h1>
         {view.subjects.length > 0 && (
           <p className="m-0 mt-1 text-read text-ink-soft" data-vault-sub>
@@ -101,17 +98,19 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
         />
       ) : (
         <>
-          <ul className="m-0 grid list-none gap-4 p-0 [grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))]">
+          <NxList title="Môn học">
             {view.subjects.map((s) => (
-              <li key={s.id}>
-                <a className={`${LINK} flex h-full flex-col gap-1`} href={`/kho-kien-thuc?subject=${s.id}`}>
-                  <span className="block font-semibold break-words">{s.name}</span>
-                  <span className="block text-meta text-ink-soft">{s.sessions} buổi học</span>
-                  <span className="mt-2 block text-meta">{s.cards} thẻ</span>
-                </a>
-              </li>
+              <NxRow
+                key={s.id}
+                lead={[...s.name.trim()][0]?.toLocaleUpperCase("vi") ?? ""}
+                state={`${s.cards} thẻ`}
+                href={`/kho-kien-thuc?subject=${s.id}`}
+              >
+                <span className="block font-semibold break-words">{s.name}</span>
+                <span className="block text-meta text-ink-soft">{s.sessions} buổi học</span>
+              </NxRow>
             ))}
-          </ul>
+          </NxList>
         </>
       )}
     </div>

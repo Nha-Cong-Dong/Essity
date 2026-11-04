@@ -128,3 +128,10 @@ export function NxKind({
     </li>
   );
 }
+
+/** The cam classes for rows that are not an NxRow (a tree row, a practice question): one source of --cam. */
+export const NX_CAM = {
+  row: NEXT,
+  pick: "bg-cam/12 inset-ring-[1.5px] inset-ring-cam",
+  text: "font-semibold text-cam",
+} as const;

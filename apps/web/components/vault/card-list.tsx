@@ -129,7 +129,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
   }
 
   return (
-    <li className="flex min-w-0 flex-col gap-3 rounded-tile border border-line bg-sheet p-5" data-slot="vault-card">
+    <li className="flex min-w-0 flex-col gap-3 rounded-row bg-bg p-4" data-slot="vault-card">
       {draft ? (
         <>
           <input
@@ -193,7 +193,10 @@ export function CardList({ cards }: { cards: VaultCard[] }) {
   const shown = cards.filter((c) => !gone.includes(c.id));
   if (shown.length === 0) return <p className="m-0 text-lead">Buổi này chưa có thẻ nào.</p>;
   return (
-    <ul className="m-0 grid list-none gap-4 p-0 [grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))]">
+    <ul
+      data-nx
+      className="m-0 grid list-none gap-1.5 rounded-tile bg-hong-tint p-4 min-[901px]:p-6 [grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))]"
+    >
       {shown.map((c) => (
         <Card key={c.id} card={c} onGone={(id) => setGone((g) => [...g, id])} />
       ))}

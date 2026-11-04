@@ -183,7 +183,7 @@ export function DetailPanel({ view, selection, headingRef, unlink, onSelectCard,
     <section
       aria-labelledby="tray-title"
       data-tray
-      className="flex min-w-0 flex-col gap-4 rounded-tile border border-line bg-sheet p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
+      className="flex min-w-0 flex-col gap-4 rounded-tile bg-hong-tint p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
     >
       {heading === null ? (
         <>

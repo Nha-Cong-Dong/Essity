@@ -13,7 +13,7 @@ import {
 } from "@/lib/syllabus/api";
 import { anyEdited, sourceLabel, type SyllabusNode } from "@/lib/syllabus/tree";
 
-import { COPY, NOTICE, Skeleton, Totals } from "./syllabus-screen";
+import { COPY, NOTICE, Skeleton, SyllabusTile, Totals } from "./syllabus-screen";
 import { ExcludeEditor } from "./exclude-editor";
 import { SYLLABUS_CHANGED } from "./syllabus-chat";
 import { SyllabusTree } from "./syllabus-tree";
@@ -116,7 +116,7 @@ export function SyllabusLive({
       </a>
       <div className="flex items-center justify-between gap-3">
         <h1 className="m-0 font-display text-title">
-          {COPY.heading}
+          <span className="hl-word">{COPY.heading}</span>
         </h1>
         <Button className="max-sm:px-4" variant="secondary" render={<a href={subjectHref} />} nativeButton={false}>
           Quay lại
@@ -189,6 +189,7 @@ export function SyllabusLive({
         {removing ? (
           <ExcludeEditor nodes={nodes} onExclude={exclude} onCancel={() => setRemoving(false)} />
         ) : (
+          <SyllabusTile name={subjectName}>
           <SyllabusTree
             label={`Đề cương ${view.name}`}
             nodes={nodes}
@@ -198,6 +199,7 @@ export function SyllabusLive({
             say={setLive}
             onEditing={setEditing}
           />
+          </SyllabusTile>
         )}
       </div>
       <p role="status" className="sr-only" data-live>

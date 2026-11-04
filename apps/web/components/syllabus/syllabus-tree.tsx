@@ -5,6 +5,7 @@ import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState 
 import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NX_CAM } from "@/components/ui/nx-list";
 import {
   applyMark,
   applyRange,
@@ -15,6 +16,7 @@ import {
   findNode,
   markCounts,
   nodeStatus,
+  progress,
   rangeContext,
   rangeText,
   type Row,
@@ -55,8 +57,15 @@ type Props = {
 
 // Indent: 28 px a level from 640 px, 16 px below; the real indent stops at level 4 / 3 so a deep
 // outline keeps room for its titles at 320 px. aria-level stays true.
-const INDENT =
-  "pl-[calc(min(var(--lvl),var(--cap))*var(--step))] [--lvl:0] [--cap:3] [--step:16px] sm:[--cap:4] sm:[--step:28px]";
+// A row of the tile is a white row apart from its siblings (the landing's "nx" list): the indent is a
+// margin, so the white follows the level. The one "next" row is cam, with an arrow and words.
+const INDENT_M =
+  "ml-[calc(min(var(--lvl),var(--cap))*var(--step))] [--lvl:0] [--cap:3] [--step:16px] sm:[--step:24px]";
+/** "3.1 Giao thuc" -> ["3.1", "Giao thuc"]; a title with no number keeps the whole title. */
+const splitTitle = (title: string): [string | null, string] => {
+  const m = /^(\d+(?:\.\d+)*\.?)\s+(.+)$/s.exec(title);
+  return m ? [m[1], m[2]] : [null, title];
+};
 // The visible mark is 28 px; its touch area is 44 px (after:) without widening the indent step.
 // Panel buttons wrap their label (a long one such as "Đánh dấu 12 phần chưa học là đã học" must fit 320 px).
 const WRAP = "h-auto min-h-11 max-w-full shrink whitespace-normal py-2 text-left";
@@ -207,9 +216,9 @@ function Panel({
       onKeyDown={onKey}
       data-panel={node.id}
       style={{ ["--lvl" as string]: level - 1 }}
-      className={`${INDENT} pb-3`}
+      className={`${INDENT_M} mb-1.5 rounded-row bg-bg px-3 pb-3`}
     >
-      <div className="ml-[calc(28px+8px+20px+8px)] flex flex-col gap-1 max-sm:ml-7">
+      <div className="ml-[calc(28px+8px)] flex flex-col gap-1 max-sm:ml-7">
         {state.mode === "actions" ? (
           <div className="flex flex-wrap items-center gap-x-1">
             <Button ref={editRef} variant="quiet" className={WRAP} onClick={edit}>
@@ -348,6 +357,20 @@ function filterNodes(list: SyllabusNode[], query: string): SyllabusNode[] {
   });
 }
 
+/** The part to study next: the first leaf, in order, that counts and is not yet studied. */
+function firstUnstudied(list: SyllabusNode[], parentExcluded = false): string | null {
+  for (const n of list) {
+    if (n.excluded || parentExcluded) continue;
+    if (n.children.length === 0) {
+      if (nodeStatus(n) !== "done") return n.id;
+    } else {
+      const inside = firstUnstudied(n.children);
+      if (inside) return inside;
+    }
+  }
+  return null;
+}
+
 export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditing, initialPanel = null }: Props) {
   const [open, setOpen] = useState<Set<string>>(() => {
     const set = defaultOpen(nodes);
@@ -366,6 +389,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
   const shown = needle === "" ? nodes : filterNodes(nodes, needle);
   const openNow = needle === "" ? open : new Set(allBranchIds(shown));
   const rows = visibleRows(shown, openNow);
+  const nextId = firstUnstudied(nodes);
   const [active, setActive] = useState(initialPanel?.id ?? rows[0]?.node.id ?? "");
   const [panel, setPanelState] = useState<PanelState | null>(initialPanel);
   const items = useRef(new Map<string, HTMLLIElement>());
@@ -476,6 +500,20 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
               ? note
               : null;
       const panelHere = panel?.id === node.id;
+      const [num, name] = splitTitle(node.title);
+      const isNext = node.id === nextId;
+      const why = "Gợi ý: phần chưa học đầu tiên trong đề cương";
+      const sub = branch ? progress([node]) : null;
+      const stateText = node.excluded
+        ? "Không thi"
+        : sub
+          ? `${sub.done}/${sub.total}`
+          : status === "done"
+            ? "Đã học"
+            : status === "partial"
+              ? "Học một phần"
+              : "";
+      const showState = stateText !== "";
       return (
         <li
           key={node.id}
@@ -513,7 +551,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
             data-row
             style={{ ["--lvl" as string]: level - 1 }}
             onClick={() => (branch ? fold(node.id, !isOpen) : openPanel(node.id))}
-            className={`${INDENT} flex min-h-11 cursor-pointer items-start gap-2 max-sm:gap-1 rounded-control py-2 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus`}
+            className={`${INDENT_M} mb-1.5 flex min-h-12 cursor-pointer items-center gap-2 rounded-row bg-bg px-3 py-1.5 sm:min-h-11.5 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus ${isNext ? `${NX_CAM.row} font-semibold` : ""}`}
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center">
               {branch && (
@@ -532,23 +570,37 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
                 </button>
               )}
             </span>
-            <span className="flex h-7 w-5 shrink-0 items-center justify-center max-sm:w-4" aria-hidden="true">
-              {status === "done" && !node.excluded ? <Tick /> : status === "partial" && leaf && !node.excluded ? <Half /> : null}
+            {num && (
+              <span aria-hidden="true" className="w-9 shrink-0 text-body tabular-nums text-ink-soft max-sm:w-8">
+                {num}
+              </span>
+            )}
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span id={`ti-${node.id}-t`} data-user className={`wrap-anywhere text-body ${node.excluded ? "text-ink-soft" : ""} ${branch ? "font-semibold" : ""}`}>
+                {num && <span className="sr-only">{num} </span>}
+                {name}
+              </span>
+              <span className="text-meta font-normal text-ink-soft">
+                <span id={`ti-${node.id}-m`}>{range}</span>
+                {visible && (!showState || status === "partial") ? ` · ${visible}` : ""}
+              </span>
+              {isNext && why && <span className={`mt-0.5 text-meta ${NX_CAM.text}`}>{why}</span>}
             </span>
-            <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
-              <span className="flex min-w-0 flex-col">
-                <span id={`ti-${node.id}-t`} data-user className={`wrap-anywhere text-body ${node.excluded ? "text-ink-soft" : ""} ${branch ? "font-semibold" : ""}`}>
-                  {node.title}
-                </span>
-                {visible && (
-                  <span className="text-small text-ink-soft">
-                    {visible}
-                  </span>
-                )}
-              </span>
-              <span id={`ti-${node.id}-m`} className="shrink-0 text-small text-ink-soft">
-                {range}
-              </span>
+            <span
+              className={`flex shrink-0 items-center gap-1 whitespace-nowrap text-meta ${isNext ? NX_CAM.text : "text-ink-soft"}`}
+              data-state-cell
+            >
+              {isNext ? (
+                <>
+                  <span aria-hidden="true">→</span> Tiếp theo
+                </>
+              ) : showState ? (
+                <>
+                  {status === "done" && !node.excluded && <Tick />}
+                  {status === "partial" && leaf && !node.excluded && <Half />}
+                  {stateText}
+                </>
+              ) : null}
             </span>
             <button
               type="button"
