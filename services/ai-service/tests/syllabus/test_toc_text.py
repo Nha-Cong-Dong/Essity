@@ -76,3 +76,28 @@ def test_a_line_broken_at_every_lost_glyph_is_joined() -> None:
 def test_a_book_without_contents_still_falls_through() -> None:
     nodes = build_syllabus(11, [], _pages(*["Nội dung"] * 11), lambda p: '{"entries": []}')
     assert nodes[0].source == "chunk10"
+
+
+def test_sections_sharing_a_page_all_stay_in_the_outline() -> None:
+    """Short sections share a page: 1.1.2 and 1.1.3 start on page 4. None may vanish, or the
+    learner's next step jumps from 1.1.1 to 1.1.3."""
+    toc = "\n".join(
+        [
+            "Mục lục",
+            "Chương 1. Giải tích tổ hợp . . . . . . . . . . . . 3",
+            "1.1.1. Quy tắc cộng . . . . . . . . . . . . . . . 3",
+            "1.1.2. Quy tắc nhân . . . . . . . . . . . . . . . 4",
+            "1.1.3. Hoán vị . . . . . . . . . . . . . . . . . . 4",
+            "1.1.4. Chỉnh hợp . . . . . . . . . . . . . . . . . 6",
+            "1.1.5. Tổ hợp . . . . . . . . . . . . . . . . . . . 6",
+            "1.1.6. Nhị thức . . . . . . . . . . . . . . . . . . 6",
+            "1.1.7. Bài tập . . . . . . . . . . . . . . . . . . 8",
+        ]
+    )
+    nodes = build_syllabus(10, [], _pages("Bìa", toc, *["x"] * 8), _no_ask)
+    assert {n.source for n in nodes} == {"toc_text"}
+    text = " | ".join(n.title for n in nodes)
+    for number in ("1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7"):
+        assert number in text, number
+    leaves = [n for n in nodes if not any(m.ord == n.ord + 1 and m.level > n.level for m in nodes)]
+    assert sum(n.weight for n in leaves) == 10  # still tiles every page once
