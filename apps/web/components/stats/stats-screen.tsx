@@ -174,22 +174,38 @@ export function StatsScreen({
         </Button>
       </div>
 
-      <div
-        className="mt-8 grid gap-(--bento-gap) [grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))]"
-        data-totals
-      >
-        <Kpi
-          lead
-          label="Nội dung đã học"
-          value={`${t.unitsLearned}`}
-          note={`/ ${t.unitsTotal} phần · ${t.sessions} buổi học`}
-        />
-        <Kpi label="Thẻ đã ôn" value={`${t.cardsReviewed}`} note={`${t.cardsSaved} thẻ đã lưu`} />
-        <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
+      <div className="mt-8 grid gap-(--bento-gap) min-[901px]:grid-cols-12" data-totals>
+        <div className="min-[901px]:col-span-7 [&>*]:h-full">
+          <Kpi
+            lead
+            label="Nội dung đã học"
+            value={`${t.unitsLearned}`}
+            note={`/ ${t.unitsTotal} phần · ${t.sessions} buổi học`}
+          />
+        </div>
+        <div className="grid gap-(--bento-gap) min-[901px]:col-span-5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))] min-[901px]:grid-cols-1">
+          <Kpi label="Thẻ đã ôn" value={`${t.cardsReviewed}`} note={`${t.cardsSaved} thẻ đã lưu`} />
+          <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
+        </div>
       </div>
 
-      <div className="mt-(--bento-gap)">
-        <Trend cells={cells} />
+      <div className="mt-(--bento-gap) grid gap-(--bento-gap) min-[901px]:grid-cols-12">
+        <div className="min-w-0 min-[901px]:col-span-5 [&>*]:h-full">
+          <Trend cells={cells} />
+        </div>
+        <Sheet variant="tile" tone="rose" className="min-w-0 min-[901px]:col-span-7" aria-labelledby="subjects-h" role="region">
+          <h2 id="subjects-h" className="m-0 mb-3 text-read font-semibold">
+            Môn đang học
+          </h2>
+          <ul className="m-0 grid list-none gap-2 p-0 [grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr))]">
+            {subjects.map((s) => (
+              <li key={s.id} className="flex min-w-0 flex-col rounded-control bg-sheet px-3 py-2">
+                <span className="font-semibold wrap-anywhere">{s.name}</span>
+                <span className="text-meta text-ink-soft">{s.examOn ? `Thi ${s.examOn}` : "Chưa có ngày thi"}</span>
+              </li>
+            ))}
+          </ul>
+        </Sheet>
       </div>
 
       <Sheet id="activity" className="mt-(--bento-gap) min-w-0" aria-labelledby="activity-h" role="region">

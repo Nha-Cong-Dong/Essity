@@ -142,10 +142,11 @@ test("US-10: /stats without a session goes to the login page", async ({ page }) 
   await expect(page).toHaveURL(/\/login/);
 });
 
-// Red when: the three total tiles stay stacked on a wide screen.
-test("I1: on a wide screen the three total tiles sit in a row", async ({ page }) => {
+// Red when: on a wide screen the lead tile does not sit beside the two others (V21 bento 7 + 5).
+test("I1: on a wide screen the lead tile sits beside the two others, which are stacked", async ({ page }) => {
   await open(page, 1440, "/design-preview/stats?state=full-year");
-  const tiles = await page.locator("[data-kpi]").all();
-  const ys = await Promise.all(tiles.map(async (t) => (await box(t)).y));
-  expect(new Set(ys.map(Math.round)).size).toBe(1);
+  const [lead, a, b] = await Promise.all((await page.locator("[data-kpi]").all()).map((t) => box(t)));
+  expect(Math.abs(lead.y - a.y)).toBeLessThan(2);
+  expect(a.x).toBeGreaterThan(lead.x + lead.width - 1);
+  expect(b.y).toBeGreaterThan(a.y + a.height - 1);
 });

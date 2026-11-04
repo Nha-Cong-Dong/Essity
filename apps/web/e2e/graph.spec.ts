@@ -56,7 +56,6 @@ for (const width of WIDTHS) {
     // Red when: a button in the tray, the filters or the frame is under 44 px tall.
     test("US-19 AC3: the controls are 44 px tall", async ({ page }) => {
       await open(page, width, "/design-preview/graph?state=selected");
-      await page.locator("[data-kind-filter] summary").click();
       const controls = page.locator("[data-graph-screen] button:visible, [data-graph-screen] summary:visible");
       for (const control of await controls.all()) {
         expect((await box(control)).height).toBeGreaterThanOrEqual(43.5);
