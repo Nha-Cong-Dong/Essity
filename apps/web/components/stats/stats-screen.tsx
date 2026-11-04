@@ -5,8 +5,9 @@ import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Mascot } from "@/components/mascot";
-import { NxList, NxRow } from "@/components/ui/nx-list";
+import { NxList } from "@/components/ui/nx-list";
 import { Sheet } from "@/components/ui/sheet";
+import { formatExamDate } from "@/lib/exam-date";
 import type { GridCell } from "@/lib/stats";
 import { NO_TOTALS, type StatsView } from "@/lib/stats-view";
 
@@ -40,9 +41,9 @@ function Kpi({ label, value, note, lead = false }: { label: string; value: strin
     );
   }
   return (
-    <div data-kpi className="min-w-0 border-line max-[900px]:border-t max-[900px]:pt-4 min-[901px]:border-l min-[901px]:pl-6">
+    <div data-kpi className="min-w-0">
       <p className="m-0 text-meta text-ink-soft">{label}</p>
-      <p className="m-0 mt-1 font-display text-lead tabular-nums">{value}</p>
+      <p className="m-0 mt-1 font-display text-title tabular-nums">{value}</p>
       {note && <p className="m-0 mt-1 text-meta text-ink-soft">{note}</p>}
     </div>
   );
@@ -72,7 +73,7 @@ function Trend({ cells }: { cells: GridCell[] }) {
         {weeks.map((n, i) => (
           <div key={i} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${n}`}>
             <div
-              className="w-full rounded-control bg-spine"
+              className="w-full rounded-control bg-hong"
               style={{ height: `${n === 0 ? 2 : Math.max((n / top) * 100, 6)}%`, opacity: n === 0 ? 0.3 : 1 }}
             />
           </div>
@@ -174,19 +175,15 @@ export function StatsScreen({
         </div>
       </div>
 
-      <div className="mt-12 grid gap-x-6 gap-y-6 min-[901px]:grid-cols-12 min-[901px]:items-start" data-totals>
-        <div className="min-[901px]:col-span-7">
-          <Kpi
-            lead
-            label="Nội dung đã học"
-            value={`${t.unitsLearned}`}
-            note={`/ ${t.unitsTotal} phần · ${t.sessions} buổi học`}
-          />
-        </div>
-        <div className="grid gap-6 min-[901px]:col-span-5">
-          <Kpi label="Thẻ đã ôn" value={`${t.cardsReviewed}`} note={`${t.cardsSaved} thẻ đã lưu`} />
-          <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
-        </div>
+      <div className="mt-12 grid gap-x-8 gap-y-8 min-[901px]:grid-cols-[1.4fr_1fr_1fr] min-[901px]:items-start" data-totals>
+        <Kpi
+          lead
+          label="Nội dung đã học"
+          value={`${t.unitsLearned}`}
+          note={`/ ${t.unitsTotal} phần · ${t.sessions} buổi học`}
+        />
+        <Kpi label="Thẻ đã ôn" value={`${t.cardsReviewed}`} note={`${t.cardsSaved} thẻ đã lưu`} />
+        <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
       </div>
 
       <div className="mt-14 grid gap-x-6 gap-y-8 min-[901px]:grid-cols-12">
@@ -195,9 +192,12 @@ export function StatsScreen({
         </div>
         <NxList title="Môn đang học" className="min-[901px]:col-span-5">
           {subjects.map((s) => (
-            <NxRow key={s.id} lead={s.name.trim().charAt(0).toUpperCase()} state={s.examOn ? `Thi ${s.examOn}` : "Chưa có ngày thi"}>
-              <span className="font-semibold wrap-anywhere">{s.name}</span>
-            </NxRow>
+            <li key={s.id} className="min-h-12 rounded-row bg-bg px-3.5 py-2.5">
+              <span className="block font-semibold [overflow-wrap:anywhere]">{s.name}</span>
+              <span className="block text-meta text-ink-soft">
+                {s.examOn ? `Thi ${formatExamDate(s.examOn)}` : "Chưa có ngày thi"}
+              </span>
+            </li>
           ))}
         </NxList>
       </div>

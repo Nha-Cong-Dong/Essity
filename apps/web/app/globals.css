@@ -232,8 +232,8 @@
   --rose-200: #f4ccdc;
   --rose-300: #eaafc7;
   --rose-700: #8e1e50;
-  --grid-1: color-mix(in srgb, var(--hong) 60%, transparent); /* activity grid levels 1-4 (T9.5a): level 1 reaches 3:1 on --sheet */
-  --grid-2: color-mix(in srgb, var(--hong) 75%, transparent);
+  --grid-1: color-mix(in srgb, var(--hong) 62%, transparent); /* activity grid levels 1-4 (T9.5a): level 1 reaches 3:1 on --sheet */
+  --grid-2: color-mix(in srgb, var(--hong) 76%, transparent);
   --grid-3: color-mix(in srgb, var(--hong) 88%, transparent);
   --grid-4: color-mix(in srgb, var(--hong) 100%, transparent);
   --on-surface-hong: var(--ink); /* text on the tile ("pink" surface = --hong-tint) */
