@@ -99,45 +99,54 @@ describe("Uploader (US-01 AC7)", () => {
   });
 
   // Red when: a file put in the "Giáo trình chính" tab stays an auxiliary document, so the Đề cương
-  // page says "Chưa có đề cương" while stats already count its sections.
+  // page says "Chưa có đề cương" while stats already count its sections. The role is sent right after
+  // the confirm, before any polling, so leaving the screen early loses nothing.
   it.each([
     ["main", "textbook"],
     ["bank", "question_bank"],
-  ] as const)("a file of the %s tab gets the %s role once it is indexed", async (tab, role) => {
-    vi.useFakeTimers();
+  ] as const)("a file of the %s tab gets the %s role as soon as it is stored", async (tab, role) => {
+    const patches: unknown[] = [];
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") patches.push([url, JSON.parse(String(init.body))]);
+      return new Response("{}", { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
     try {
-      const patches: unknown[] = [];
-      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-        if (init?.method === "PATCH") {
-          patches.push([url, JSON.parse(String(init.body))]);
-          return new Response("{}", { status: 200 });
-        }
-        return new Response(JSON.stringify({ status: "indexed" }), { status: 200 });
-      });
-      vi.stubGlobal("fetch", fetchMock);
       upload.mockImplementation(async (_s, _f, cb) => cb({ kind: "done", documentId: "d1" }));
-      render(<Uploader subjectId={SUBJECT} fixedRole={tab} />);
+      const view = render(<Uploader subjectId={SUBJECT} fixedRole={tab} />);
       await act(async () => choose(new File(["%PDF"], "a.pdf", { type: "application/pdf" })));
-      await act(async () => void (await vi.advanceTimersByTimeAsync(3100)));
+      view.unmount(); // the learner leaves before any poll
       expect(patches).toEqual([["/api/documents/d1", { role }]]);
     } finally {
-      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("says so when the subject already has a main textbook (409 textbook_exists)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ error: "textbook_exists" }), { status: 409 })),
+    );
+    try {
+      upload.mockImplementation(async (_s, _f, cb) => cb({ kind: "done", documentId: "d1" }));
+      render(<Uploader subjectId={SUBJECT} fixedRole="main" />);
+      await act(async () => choose(new File(["%PDF"], "a.pdf", { type: "application/pdf" })));
+      expect(screen.getByRole("alert").textContent).toContain("đã có giáo trình chính");
+      expect(screen.queryByText("#giáo trình chính")).toBeNull();
+    } finally {
       vi.unstubAllGlobals();
     }
   });
 
   it("a file of the supplementary tab is not patched", async () => {
-    vi.useFakeTimers();
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
     try {
-      const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ status: "indexed" }), { status: 200 }));
-      vi.stubGlobal("fetch", fetchMock);
       upload.mockImplementation(async (_s, _f, cb) => cb({ kind: "done", documentId: "d1" }));
       render(<Uploader subjectId={SUBJECT} fixedRole="supplementary" />);
       await act(async () => choose(new File(["%PDF"], "a.pdf", { type: "application/pdf" })));
-      await act(async () => void (await vi.advanceTimersByTimeAsync(3100)));
       expect(fetchMock.mock.calls.every(([, init]) => init?.method !== "PATCH")).toBe(true);
     } finally {
-      vi.useRealTimers();
       vi.unstubAllGlobals();
     }
   });

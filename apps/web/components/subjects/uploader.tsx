@@ -16,7 +16,7 @@ import { uploadMessage } from "@/lib/upload-copy";
 // (stored, waiting for ai-service: T4.7), or the reason it was refused. Files go one after the
 // other, so a long list does not eat the 30-asks-an-hour limit all at once.
 
-type Row = { key: number; name: string; state: UploadState; role?: Role };
+type Row = { key: number; name: string; state: UploadState; role?: Role; roleConflict?: boolean };
 
 const STATUS = "text-small font-semibold text-ink-soft";
 
@@ -25,7 +25,7 @@ const MAX_POLLS = 100; // 5 minutes of 3 s
 
 // The file is stored; ai-service reads it in the background. Ask until the document reaches a
 // terminal status, so the row does not stay on "Đang đọc tài liệu…" until a reload (REALFIX).
-function ReadStatus({ documentId, role }: { documentId: string; role?: Role }) {
+function ReadStatus({ documentId }: { documentId: string }) {
   const [phase, setPhase] = useState<"reading" | "ready" | "failed">("reading");
   useEffect(() => {
     let alive = true;
@@ -40,14 +40,7 @@ function ReadStatus({ documentId, role }: { documentId: string; role?: Role }) {
         // offline: try again
       }
       if (!alive) return;
-      if (status === "indexed") {
-        // The tab fixes the role (H2) but a new document is auxiliary: say so once it is read. Without
-        // this the Đề cương page finds no textbook while stats already count the sections.
-        const apiRole = role === "main" ? "textbook" : role === "bank" ? "question_bank" : null;
-        if (apiRole) await patchDocument(documentId, { role: apiRole }).catch(() => undefined);
-        if (!alive) return;
-        return setPhase("ready");
-      }
+      if (status === "indexed") return setPhase("ready");
       if (status === "failed" || status === "rejected") return setPhase("failed");
       if (++tries < MAX_POLLS) timer = setTimeout(() => void look(), POLL_MS);
     };
@@ -56,7 +49,7 @@ function ReadStatus({ documentId, role }: { documentId: string; role?: Role }) {
       alive = false;
       clearTimeout(timer);
     };
-  }, [documentId, role]);
+  }, [documentId]);
   if (phase === "failed") {
     return (
       <p role="alert" className="m-0 text-small text-pencil">
@@ -71,7 +64,7 @@ function ReadStatus({ documentId, role }: { documentId: string; role?: Role }) {
   );
 }
 
-function Status({ state, role }: { state: UploadState; role?: Role }) {
+function Status({ state }: { state: UploadState }) {
   if (state.kind === "hashing") return <span className={STATUS} role="status">Đang chuẩn bị…</span>;
   if (state.kind === "uploading") {
     return (
@@ -80,7 +73,7 @@ function Status({ state, role }: { state: UploadState; role?: Role }) {
       </span>
     );
   }
-  if (state.kind === "done" && state.documentId) return <ReadStatus documentId={state.documentId} role={role} />;
+  if (state.kind === "done" && state.documentId) return <ReadStatus documentId={state.documentId} />;
   if (state.kind === "checking" || state.kind === "done") {
     return (
       <span className={STATUS} role="status">
@@ -118,6 +111,7 @@ export function Uploader({
   const next = useRef(0);
   const busy = useRef(Promise.resolve());
   const claimed = useRef(hasMain);
+  const sentRole = useRef(new Set<string>());
 
   const doneCount = rows.filter((row) => row.state.kind === "done").length;
   const runningCount = rows.filter((row) => row.state.kind === "hashing" || row.state.kind === "uploading").length;
@@ -125,7 +119,24 @@ export function Uploader({
     onCount?.(doneCount, runningCount);
   }, [doneCount, runningCount, onCount]);
 
+  // The tab fixes the role (H2), but a new document is auxiliary until told otherwise: send the role
+  // as soon as the file is confirmed (core accepts it before the file is read), so the Đề cương page
+  // finds the textbook even if the learner leaves before the read ends.
+  function sendRole(key: number, documentId: string) {
+    const apiRole = fixedRole === "main" ? "textbook" : fixedRole === "bank" ? "question_bank" : null;
+    if (!apiRole) return;
+    void patchDocument(documentId, { role: apiRole }).then((sent) => {
+      if (!sent.ok && sent.code === "textbook_exists") {
+        setRows((all) => all.map((row) => (row.key === key ? { ...row, roleConflict: true } : row)));
+      }
+    });
+  }
+
   function update(key: number, state: UploadState) {
+    if (state.kind === "done" && state.documentId && !sentRole.current.has(state.documentId)) {
+      sentRole.current.add(state.documentId);
+      sendRole(key, state.documentId);
+    }
     setRows((all) =>
       all.map((row) => {
         if (row.key !== key) return row;
@@ -192,7 +203,7 @@ export function Uploader({
           {rows.map((row) => (
             <li key={row.key} className="flex min-w-0 flex-col gap-2 border-b border-line pb-4">
               <b className="min-w-0 break-words">{row.name}</b>
-              <Status state={row.state} role={fixedRole} />
+              <Status state={row.state} />
               {row.state.kind === "uploading" ? (
                 <progress
                   value={row.state.percent}
@@ -201,7 +212,11 @@ export function Uploader({
                   className="h-2 w-full accent-hong"
                 />
               ) : null}
-              {row.state.kind === "done" && fixedRole ? (
+              {row.state.kind === "done" && fixedRole && row.roleConflict ? (
+                <p role="alert" className="m-0 text-small text-pencil">
+                  Môn này đã có giáo trình chính, nên file này đang là tài liệu phụ. Đổi giáo trình chính ở trang Đề cương.
+                </p>
+              ) : row.state.kind === "done" && fixedRole ? (
                 <span className="w-fit rounded-control bg-rose-100 px-2 py-1 text-small font-semibold">{ROLE_TAG[fixedRole]}</span>
               ) : null}
               {row.state.kind === "done" && !fixedRole && row.state.documentId && row.role ? (
