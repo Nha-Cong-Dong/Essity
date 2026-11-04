@@ -44,7 +44,8 @@ describe("subject block (T7.13)", () => {
   it("US-15 AC6: the answer shows the section and no reason is asked", async () => {
     show({ resolve: async () => ({ kind: "suggested", next: NEXT }) });
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Gợi ý cho hôm nay" })));
-    expect(screen.getByText("Nội dung hôm nay: phần 3.2")).toBeTruthy();
+    expect(screen.getByText("Nội dung hôm nay")).toBeTruthy();
+    expect(screen.getByText(/3\.2/)).toBeTruthy(); // the section number, once
     expect(screen.queryByText(/không phải ngày/i)).toBeNull();
   });
 

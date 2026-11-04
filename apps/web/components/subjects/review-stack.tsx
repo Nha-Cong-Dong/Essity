@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 
-import { NoteSticker } from "@/components/motifs";
 import { StartButton } from "@/components/today/start-button";
-import { Sheet } from "@/components/ui/sheet";
 
 // D6, V18: this subject's cards due today, stacked. Each card shows the question and its answer.
 // Click the top card: it moves to the bottom and the next shows. Viewing only: no remember/forgot
@@ -16,8 +14,8 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
   const [order, setOrder] = useState(cards);
   if (order.length === 0) {
     return (
-      <Sheet variant="tile" className="flex min-w-0 flex-col items-start gap-3" aria-labelledby={`rv-${subjectId}`} data-review-empty>
-        <h2 id={`rv-${subjectId}`} className="m-0 font-display text-lead">
+      <section className="flex min-w-0 flex-col items-start gap-3" aria-labelledby={`rv-${subjectId}`} data-review-empty>
+        <h2 id={`rv-${subjectId}`} className="m-0 text-body font-semibold">
           Ôn tập hôm nay
         </h2>
         {/* mascot placeholder */}
@@ -25,14 +23,13 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
           ☺
         </div>
         <p className="m-0 text-read">Tuyệt vời, không có kiến thức nào cần ôn hôm nay</p>
-      </Sheet>
+      </section>
     );
   }
   const shown = order.slice(0, 3);
   return (
-    <Sheet variant="tile" className="relative flex min-w-0 flex-col gap-3" aria-labelledby={`rv-${subjectId}`}>
-      <NoteSticker>{order.length} thẻ</NoteSticker>
-      <h2 id={`rv-${subjectId}`} className="m-0 font-display text-lead">
+    <section className="flex min-w-0 flex-col gap-3" aria-labelledby={`rv-${subjectId}`}>
+      <h2 id={`rv-${subjectId}`} className="m-0 text-body font-semibold">
         Ôn tập hôm nay
         <span className="sr-only"> ({order.length} thẻ)</span>
       </h2>
@@ -48,17 +45,16 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
               onClick={() => setOrder((o) => [...o.slice(1), o[0]!])}
               aria-label={i === 0 ? "Thẻ trên cùng: bấm để xem thẻ tiếp theo" : undefined}
               style={{ transform: `translate(${i * 10}px, ${i * 10}px)`, zIndex: 10 - i }}
-              className="absolute inset-0 mr-3 mb-3 flex flex-col gap-3 overflow-hidden rounded-tile bg-paper p-4 text-left shadow-sheet transition-transform duration-300 disabled:cursor-default"
+              className="absolute inset-0 mr-3 mb-3 flex flex-col gap-3 overflow-hidden rounded-sheet border border-line bg-sheet p-4 text-left transition-transform duration-300 disabled:cursor-default"
             >
               <span className="inline-flex items-center gap-2 text-meta text-ink-soft">
-                <span aria-hidden="true" className="inline-block h-4 w-1 rounded-full bg-spine" />
                 {card.kind === "practice" ? "Câu luyện tập" : "Thẻ ôn"}
               </span>
-              <span className="line-clamp-3 font-display text-lead wrap-anywhere">{card.front ?? card.why}</span>
+              <span className="line-clamp-3 font-display text-lead break-words">{card.front ?? card.why}</span>
               {card.back && (
                 <span className="mt-auto flex flex-col gap-1 rounded-control bg-rose-50 p-3">
                   <span className="text-meta text-ink-soft">Đáp án</span>
-                  <span className="line-clamp-4 text-body wrap-anywhere">{card.back}</span>
+                  <span className="line-clamp-4 text-body break-words">{card.back}</span>
                 </span>
               )}
             </button>
@@ -69,6 +65,6 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
           Ôn riêng môn này
         </StartButton>
       </div>
-    </Sheet>
+    </section>
   );
 }

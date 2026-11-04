@@ -40,7 +40,7 @@ function SubjectRow({ item }: { item: LearnItem }) {
           aria-expanded={open}
           aria-controls={id}
           onClick={() => setOpen(!open)}
-          className="flex min-w-0 flex-1 basis-40 items-center gap-3 text-left text-section font-semibold wrap-anywhere"
+          className="flex min-w-0 flex-1 basis-40 items-center gap-3 text-left text-section font-semibold break-words"
         >
           <SubjectMark name={item.subject.name} />
           <span className="min-w-0">
@@ -62,7 +62,7 @@ function SubjectRow({ item }: { item: LearnItem }) {
         )}
       </div>
       {open && (
-        <div id={id} className="mt-3 text-read wrap-anywhere">
+        <div id={id} className="mt-3 text-read break-words">
           {next ? (
             <>
               <p className="m-0">
@@ -95,7 +95,7 @@ function Shell({
 }) {
   return (
     <Dialog.Root>
-      <Dialog.Trigger render={<Button variant={primary ? "primary" : "secondary"} />}>{trigger}</Dialog.Trigger>
+      <Dialog.Trigger render={<Button variant={primary ? "primary" : "quiet"} />}>{trigger}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Backdrop className={BACKDROP} />
         <Dialog.Popup className={POPUP}>
@@ -137,7 +137,7 @@ function Guide() {
 
 export function LearnActions({ items, primary = false }: { items: LearnItem[]; primary?: boolean }) {
   return (
-    <div className="mt-6 flex flex-wrap gap-3">
+    <div className="mt-4 flex flex-wrap gap-x-2 gap-y-1">
       {items.length > 0 && (
         <Shell trigger={COPY.seeAll} title={COPY.learn} primary={primary}>
           <ul className="m-0 flex list-none flex-col gap-3 p-0">

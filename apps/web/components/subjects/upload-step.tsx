@@ -1,12 +1,10 @@
 "use client";
 
-import { NoteSticker } from "@/components/motifs";
 import { useCallback, useState } from "react";
 
 import { AUTH_LINK } from "@/components/auth/fields";
 import { Mascot } from "@/components/mascot";
 import { OutlineCard } from "@/components/subjects/outline-card";
-import { StepIndicator } from "@/components/subjects/step-indicator";
 import { Uploader } from "@/components/subjects/uploader";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
@@ -49,31 +47,28 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
     </Button>
   );
   return (
-    <section aria-labelledby="upload-title" className="flex w-full max-w-220 flex-col gap-6">
+    <section aria-labelledby="upload-title" className="flex w-full max-w-160 flex-col gap-6">
       <a href="/subjects" className={AUTH_LINK}>
         Môn học
       </a>
-      <StepIndicator current={2} />
-      <Sheet className="relative p-5 sm:p-8">
-        <NoteSticker>PDF</NoteSticker>
+      <Sheet className="relative border border-line p-5 shadow-none sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-2">
-            <h1 id="upload-title" className="m-0 font-display text-title wrap-anywhere">
+            <h1 id="upload-title" className="m-0 font-display text-title break-words text-balance">
               Tải tài liệu cho {name}
             </h1>
             <p className="m-0 max-w-[56ch] text-read text-ink-soft">
-              Câu hỏi và thẻ sẽ dựa trên đúng những trang này. Chọn loại tài liệu ở các tab bên dưới.
+              Bước 2/2 · Tải tài liệu. Câu hỏi và thẻ sẽ dựa trên đúng những trang này.
             </p>
           </div>
           <div className="hidden shrink-0 min-[641px]:block">
             <Mascot pose="chuanbi" size="sm" />
           </div>
         </div>
-        <h2 className="m-0 mt-6 font-display text-lead">2. Tài liệu</h2>
         <div
           role="tablist"
           aria-label="Loại tài liệu"
-          className="mt-4 flex flex-wrap gap-1 border-b-2 border-rose-200"
+          className="mt-6 flex gap-1 overflow-x-auto rounded-full bg-sunken p-1"
         >
           {TABS.map((t) => (
             <button
@@ -84,9 +79,8 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
               aria-selected={tab === t.role}
               aria-controls={`panel-${t.role}`}
               onClick={() => setTab(t.role)}
-              style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}
-              className={`-mb-0.5 min-h-11 shrink-0 rounded-tile border-b-4 px-4 text-read whitespace-nowrap ${
-                tab === t.role ? "border-hong bg-sheet font-semibold text-ink" : "border-transparent bg-rose-100 font-medium text-ink-soft"
+              className={`min-h-11 shrink-0 rounded-full px-4 text-body whitespace-nowrap ${
+                tab === t.role ? "bg-sheet font-semibold text-ink inset-ring-1 inset-ring-line" : "font-medium text-ink-soft"
               }`}
             >
               {t.label}

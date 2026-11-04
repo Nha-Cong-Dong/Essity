@@ -1,8 +1,31 @@
-import { Sheet } from "@/components/ui/sheet";
 import { CoverageBar } from "@/components/stats/stat-tile";
+import { NxList } from "@/components/ui/nx-list";
 import type { ViewSubject } from "@/lib/stats-view";
 
-// Hackathon D7: this subject's own numbers (moved here from the stats screen).
+// Hackathon D7, V22: this subject's own numbers as a tile of the landing's "nx" list: label | value.
+// Only the NUMBER is display-sized; the unit is a 14px word beside it; with no data the value is "—"
+// and one meta line says what to do.
+function StatRow({ label, value, unit, hint }: { label: string; value: string | null; unit?: string; hint: string }) {
+  return (
+    <li className="min-h-12 rounded-row bg-bg px-3.5 py-2">
+      <dl className="m-0 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3">
+        <dt className="min-w-0 text-body break-words">{label}</dt>
+        <dd className="m-0 flex items-baseline gap-1.5 justify-end">
+          {value === null ? (
+            <span className="text-body text-ink-soft">—</span>
+          ) : (
+            <>
+              <span className="font-display text-lead tabular-nums">{value}</span>
+              {unit ? <span className="text-meta text-ink-soft">{unit}</span> : null}
+            </>
+          )}
+        </dd>
+        {value === null && hint ? <dd className="m-0 col-span-2 text-meta text-ink-soft">{hint}</dd> : null}
+      </dl>
+    </li>
+  );
+}
+
 export function SubjectStatsBlock({ stats }: { stats: ViewSubject }) {
   const { syllabus, bank, retention } = stats;
   const percent = syllabus.leaves > 0 ? Math.round((syllabus.studied / syllabus.leaves) * 100) : 0;
@@ -10,29 +33,27 @@ export function SubjectStatsBlock({ stats }: { stats: ViewSubject }) {
   const practiced = bank?.reduce((n, t) => n + t.practiced, 0) ?? 0;
   const mastered = bank?.reduce((n, t) => n + t.mastered, 0) ?? 0;
   return (
-    <Sheet variant="tile" aria-label="Thống kê môn" data-subject-stats className="flex flex-col gap-4">
-      <h2 className="m-0 font-display text-lead">Thống kê môn này</h2>
-      <dl className="m-0 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div>
-          <dt className="text-meta text-ink-soft">Đã học</dt>
-          <dd className="m-0 font-display text-display">
-            {syllabus.studied}/{syllabus.leaves} phần
-          </dd>
-        </div>
-        <div>
-          <dt className="text-meta text-ink-soft">Câu sẵn sàng</dt>
-          <dd className="m-0 font-display text-display">{bank === null ? "chưa có" : ready}</dd>
-        </div>
-        <div>
-          <dt className="text-meta text-ink-soft">Đã luyện / thành thạo</dt>
-          <dd className="m-0 font-display text-display">{bank === null ? "–" : `${practiced} / ${mastered}`}</dd>
-        </div>
-        <div>
-          <dt className="text-meta text-ink-soft">Nhớ tốt hôm nay</dt>
-          <dd className="m-0 font-display text-display">{retention === null ? "chưa có thẻ" : `${Math.round(retention * 100)}%`}</dd>
-        </div>
-      </dl>
+    <div data-subject-stats aria-label="Thống kê môn" role="group" className="flex min-w-0 flex-col gap-3">
+      <NxList title="Thống kê môn này">
+        <StatRow label="Đã học" value={`${syllabus.studied}/${syllabus.leaves}`} unit="phần" hint="" />
+        <StatRow
+          label="Câu sẵn sàng"
+          value={bank === null ? null : String(ready)}
+          unit="câu"
+          hint="Tải bộ câu hỏi để có câu luyện"
+        />
+        <StatRow
+          label="Đã luyện / thành thạo"
+          value={bank === null ? null : `${practiced}/${mastered}`}
+          hint="Luyện một câu để bắt đầu"
+        />
+        <StatRow
+          label="Nhớ tốt hôm nay"
+          value={retention === null ? null : `${Math.round(retention * 100)}%`}
+          hint="Học một buổi để có thẻ"
+        />
+      </NxList>
       <CoverageBar percent={percent} />
-    </Sheet>
+    </div>
   );
 }

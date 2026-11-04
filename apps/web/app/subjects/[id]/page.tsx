@@ -4,24 +4,15 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
-import { Watermark } from "@/components/motifs";
-import { ScreenHero } from "@/components/screen-kit";
-import { Sheet } from "@/components/ui/sheet";
+import { SubjectView } from "@/components/subjects/subject-view";
+import { type StackCard } from "@/components/subjects/review-stack";
 import { AppShell, PageColumn } from "@/components/shells";
-import { SubjectEntryRow } from "@/components/subjects/subject-entry-row";
-import { SubjectScreenBlock } from "@/components/subjects/subject-screen";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
-import { dayLabel } from "@/lib/today-copy";
 import { requireVerifiedSession } from "@/lib/session";
 import { errorName, logError } from "@/lib/log";
 import { CoreStatusError } from "@/lib/subjects";
 import { loadOutline } from "@/lib/outline";
 import { loadQuestionList } from "@/lib/question-list";
-import { ReviewStack, type StackCard } from "@/components/subjects/review-stack";
-import { SubjectOutlineAside } from "@/components/subjects/subject-chapters-aside";
-import { SubjectPracticeBlock } from "@/components/subjects/subject-practice-block";
-import { SubjectStatsBlock } from "@/components/subjects/subject-stats-block";
-import { CoverageBar } from "@/components/stats/stat-tile";
 import { getStats } from "@/lib/stats-api";
 import { outlineView } from "@/lib/syllabus/api";
 import { progress } from "@/lib/syllabus/tree";
@@ -73,48 +64,17 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
   });
   const rowEntries = entries.filter((e) => e.key !== "syllabus" && e.key !== "stats" && e.key !== "practice" && e.key !== "graph");
   return (
-    <PageColumn width="full" data-reveal className="relative flex flex-col gap-8">
-      <Watermark />
-      <a href="/subjects" className="text-small">
-        Môn học
-      </a>
-      <ScreenHero
-        title={<span className="px-1" style={{ backgroundImage: "linear-gradient(to top, var(--hl-band) 35%, transparent 35%)" }}>{subject.name}</span>}
-        lede={
-          <>
-            Thi vào {dayLabel(subject.exam_date)}
-            {subject.days_until_exam >= 0 ? ` (còn ${subject.days_until_exam} ngày)` : " (đã qua)"}
-          </>
-        }
-      />
-      {prog !== null && prog.total > 0 && (
-        <Sheet variant="tile" className="relative z-1 flex flex-col gap-2 py-5" data-subject-progress>
-          <p className="m-0 text-meta text-ink-soft">
-            Tiến độ: đã học {prog.done}/{prog.total} phần
-          </p>
-          <CoverageBar percent={(prog.done / prog.total) * 100} />
-        </Sheet>
-      )}
-      <div className="relative z-1 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <div className="grid min-w-0 gap-6 md:grid-cols-2">
-            <SubjectScreenBlock subjectId={subject.id} subjectName={subject.name} state={state} nothingDue={nothingDue} />
-            <ReviewStack subjectId={subject.id} cards={dueCards} />
-          </div>
-          {questions !== null && (
-            <SubjectPracticeBlock
-              subjectId={subject.id}
-              total={questions.total}
-              ready={questions.ready}
-              dueToday={questions.due_today ?? null}
-            />
-          )}
-          {stats !== null && <SubjectStatsBlock stats={stats} />}
-          <SubjectEntryRow entries={rowEntries} />
-        </div>
-        {view?.kind === "ready" && <SubjectOutlineAside nodes={view.nodes} subjectId={subject.id} />}
-      </div>
-    </PageColumn>
+    <SubjectView
+      subject={subject}
+      prog={prog}
+      state={state}
+      nothingDue={nothingDue}
+      dueCards={dueCards}
+      questions={questions}
+      stats={stats}
+      rowEntries={rowEntries}
+      nodes={view?.kind === "ready" ? view.nodes : null}
+    />
   );
 }
 

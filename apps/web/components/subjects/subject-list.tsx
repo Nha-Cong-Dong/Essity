@@ -8,6 +8,7 @@ import { checkSubject, refusalErrors, type SubjectErrors, SubjectFields } from "
 import { SubjectMark } from "@/components/subject-mark";
 import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 import { Button } from "@/components/ui/button";
+import { NxList } from "@/components/ui/nx-list";
 import { daysLeftText, formatExamDate } from "@/lib/exam-date";
 import { go } from "@/lib/navigate";
 import { SUBJECT_MESSAGES } from "@/lib/subject-copy";
@@ -168,37 +169,33 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
   }
 
   return (
-    <li className="flex min-w-0 flex-col gap-4 rounded-tile bg-sheet p-5 shadow-sheet">
-      {/* Below sm a grid (T2.3c, R44, plan G3): the cover spans both lines, the name wraps
-          anywhere beside it with "Sửa" on its first line, the date line starts under the name.
-          From sm, DESIGN.md §6.8's single line. */}
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6">
-        <SubjectMark name={subject.name} className="row-span-2 self-start sm:self-auto" />
-        <a
-          id={ids.name}
-          href={`/subjects/${subject.id}`}
-          className="min-w-0 text-section font-semibold wrap-anywhere text-inherit no-underline hover:underline sm:flex-1"
-        >
-          {subject.name}
-        </a>
-        {/* The space between the halves keeps them two words for a screen reader (plan G9). */}
-        <span className="col-span-2 col-start-2 row-start-2 flex flex-wrap gap-x-2 text-small sm:flex-col sm:items-end">
-          <span className="whitespace-nowrap">thi {formatExamDate(subject.exam_date)}</span>{" "}
-          <span className="whitespace-nowrap text-ink-soft">{daysLeftText(subject.days_until_exam)}</span>
-        </span>
-        {!editing && (
-          <Button
-            variant="quiet"
-            onClick={open}
-            aria-label={`Sửa ${subject.name}`}
-            className="col-start-3 row-start-1 self-start sm:self-auto"
+    <li className="min-w-0 rounded-row bg-bg">
+      {/* V22 (landing "nx"): a row of the subjects tile, letter | name + date line | "Sửa". The name
+          wraps between words, never inside one. */}
+      <div className="grid min-h-12 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-2">
+        <SubjectMark name={subject.name} />
+        <div className="flex min-w-0 flex-col">
+          <a
+            id={ids.name}
+            href={`/subjects/${subject.id}`}
+            className="min-w-0 text-body font-semibold break-words text-inherit no-underline hover:underline"
           >
+            {subject.name}
+          </a>
+          {/* The space between the halves keeps them two words for a screen reader (plan G9). */}
+          <span className="flex flex-wrap gap-x-2 text-meta">
+            <span className="whitespace-nowrap">thi {formatExamDate(subject.exam_date)}</span>{" "}
+            <span className="whitespace-nowrap text-ink-soft">{daysLeftText(subject.days_until_exam)}</span>
+          </span>
+        </div>
+        {!editing && (
+          <Button variant="quiet" onClick={open} aria-label={`Sửa ${subject.name}`} className="px-2">
             Sửa
           </Button>
         )}
       </div>
       {/* Always on the page, so a screen reader reads "Đã lưu." when it appears (plan F7). */}
-      <p role="status" className={saved ? "m-0 text-small text-ink-soft" : "sr-only"}>
+      <p role="status" className={saved ? "m-0 px-3.5 pb-3 text-small text-ink-soft" : "sr-only"}>
         {saved ? SUBJECT_MESSAGES.saved : ""}
       </p>
       {editing && confirming && (
@@ -206,7 +203,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
           role="group"
           aria-labelledby={`${ids.name} ${ids.confirm}`}
           onKeyDown={onConfirmKey}
-          className="flex max-w-120 flex-col gap-5"
+          className="flex max-w-120 flex-col gap-5 px-3.5 pb-4"
         >
           <p id={ids.confirm} className="m-0 text-body">
             Xóa môn này khỏi danh sách và phiên ôn?
@@ -231,7 +228,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
         </div>
       )}
       {editing && !confirming && (
-        <form method="post" onSubmit={save} className="flex max-w-120 flex-col gap-5" noValidate>
+        <form method="post" onSubmit={save} className="flex max-w-120 flex-col gap-5 px-3.5 pb-4" noValidate>
           <SubjectFields
             idPrefix={`edit-${subject.id}-`}
             name={name}
@@ -253,7 +250,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
         </form>
       )}
       {editing && !confirming && (
-        <div className="max-w-120 border-t border-line pt-5">
+        <div className="mx-3.5 max-w-120 border-t border-line py-4">
           {hasHistory ? (
             <p ref={historyRef} tabIndex={-1} className="m-0 text-small text-ink-soft">
               Môn này đã có bài ôn nên chưa xóa được ở đây.
@@ -280,7 +277,7 @@ function DeletedRow() {
   const ref = useRef<HTMLParagraphElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
-    <li className="rounded-tile bg-rose-100 p-5">
+    <li className="rounded-row bg-bg px-3.5 py-3">
       <p ref={ref} tabIndex={-1} className="m-0 text-small text-ink-soft">
         Đã xóa môn.
       </p>
@@ -347,7 +344,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
           />
         </>
       ) : (
-        <ul className="m-0 grid list-none items-start gap-6 p-0 min-[700px]:grid-cols-2 min-[1100px]:grid-cols-3">
+        <NxList>
           {rows.map((subject) =>
             subject.id === deletedId ? (
               <DeletedRow key={subject.id} />
@@ -361,15 +358,15 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
               />
             ),
           )}
-        </ul>
-      )}
-      {remaining.length > 0 && (
-        <a
-          href="/subjects/new"
-          className="mt-6 flex min-h-20 items-center justify-center rounded-tile border-2 border-dashed border-rose-300 bg-rose-50 p-5 text-read font-semibold text-ink no-underline hover:bg-rose-100"
-        >
-          + Thêm môn
-        </a>
+          <li>
+            <a
+              href="/subjects/new"
+              className="flex min-h-12 items-center justify-center rounded-row border border-dashed border-line-strong bg-bg px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"
+            >
+              + Thêm môn
+            </a>
+          </li>
+        </NxList>
       )}
     </SubjectsFrame>
   );

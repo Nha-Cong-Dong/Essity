@@ -98,7 +98,7 @@ test("the loop: suggestion, sentence, photo, cards, Lưu", async ({ page }) => {
   expect((await page.goto("/design-preview/subject-live?state=not-suggested"))?.status()).toBe(200);
   await settled(page);
   await page.getByRole("button", { name: "Gợi ý cho hôm nay" }).click();
-  await expect(page.getByText("Nội dung hôm nay: phần 3.2")).toBeVisible();
+  await expect(page.getByText("Nội dung hôm nay", { exact: true })).toBeVisible();
 
   // 2. The session: a sentence, then a note photo; the cards come back (US-02 AC1).
   expect((await page.goto("/design-preview/session-live"))?.status()).toBe(200);

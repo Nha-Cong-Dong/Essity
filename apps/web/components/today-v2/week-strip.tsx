@@ -33,15 +33,13 @@ export function weekFromCells(
 }
 
 export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; today: string; className?: string }) {
+  const top = Math.max(1, ...cells.map((cell) => cell.count));
   return (
-    <section
-      aria-labelledby="today-week"
-      className={cn("min-w-0 rounded-tile bg-sheet p-6 shadow-sheet min-[901px]:p-8", className)}
-    >
-      <h2 id="today-week" className="m-0 font-display text-lead">
+    <section aria-labelledby="today-week" className={cn("min-w-0", className)}>
+      <h2 id="today-week" className="m-0 text-body font-semibold">
         Tuần này bạn đã học
       </h2>
-      <ol className="m-0 mt-4 grid list-none grid-cols-7 gap-2 p-0">
+      <ol className="m-0 mt-4 grid h-28 list-none grid-cols-7 items-end gap-3 p-0">
         {cells.map((cell, index) => {
           const on = cell.count > 0;
           const isToday = cell.day === today;
@@ -49,20 +47,21 @@ export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; toda
             <li
               key={cell.day}
               aria-current={isToday ? "date" : undefined}
-              className={cn(
-                "flex min-w-0 flex-col items-center gap-1 rounded-slip px-1 py-3 text-meta",
-                on ? "bg-hl text-ink" : "bg-rose-100 text-ink-soft",
-                isToday && "outline-2 outline-offset-2 outline-hong",
-              )}
+              className="flex h-full min-w-0 flex-col items-center justify-end gap-1 text-meta text-ink-soft"
             >
-              <span>{NAMES[index]}</span>
-              <b className="font-display text-lead tabular-nums">{cell.count}</b>
+              <b className="font-display text-ink tabular-nums">{cell.count}</b>
+              <span
+                aria-hidden="true"
+                className={cn("w-full max-w-9 rounded-slip", on ? "bg-hong" : "bg-line-strong", isToday && "outline-2 outline-offset-2 outline-ink")}
+                style={{ height: on ? `${Math.max(12, (cell.count / top) * 56)}px` : "2px" }}
+              />
+              <span className={cn(isToday && "font-semibold text-ink")}>{NAMES[index]}</span>
               <span className="sr-only">{on ? "phần đã học" : "nghỉ"}</span>
             </li>
           );
         })}
       </ol>
-      <p className="m-0 mt-3 text-small text-ink-soft">Mỗi ô là số phần đã học trong ngày. Nghỉ một hôm cũng không sao.</p>
+      <p className="m-0 mt-3 text-meta text-ink-soft">Mỗi cột là số phần đã học trong ngày. Nghỉ một hôm cũng không sao.</p>
     </section>
   );
 }

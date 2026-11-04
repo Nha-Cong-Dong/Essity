@@ -176,7 +176,7 @@ export function Uploader({
           setOver(false);
           add(event.dataTransfer.files);
         }}
-        className={`mt-6 flex cursor-pointer flex-col items-center gap-2 rounded-sheet border-2 border-dashed border-rose-300 px-6 py-10 text-center focus-within:outline-2 focus-within:outline-offset-3 focus-within:outline-focus ${
+        className={`mt-6 flex cursor-pointer flex-col items-center gap-2 rounded-sheet border border-dashed border-line-strong px-6 py-8 text-center focus-within:outline-2 focus-within:outline-offset-3 focus-within:outline-focus ${
           over ? "bg-rose-100" : "bg-rose-50"
         }`}
       >

@@ -1,26 +1,21 @@
-import { Sheet } from "@/components/ui/sheet";
-
-// V21: the last numbered card of adding a subject: what happens once the textbook is in.
+// V22: what happens after the textbook is in, as three plain lines under the form (no card, no chips).
 const STEPS = [
-  { text: "Đọc mục lục giáo trình", tag: "tự động" },
-  { text: "Dựng đề cương theo chương", tag: "tự động" },
-  { text: "Bạn xem lại và tùy chỉnh", tag: "bạn làm" },
+  "Essity đọc mục lục giáo trình (tự động).",
+  "Essity dựng đề cương theo chương (tự động).",
+  "Bạn xem lại và tùy chỉnh đề cương.",
 ] as const;
 
 export function OutlineCard({ className }: { className?: string }) {
   return (
-    <Sheet variant="tile" tone="rose" className={className} aria-labelledby="docs-outline">
-      <h2 id="docs-outline" className="m-0 font-display text-lead">
-        3. Đề cương sẽ ra sao?
+    <section aria-labelledby="docs-outline" className={className}>
+      <h2 id="docs-outline" className="m-0 text-body font-semibold">
+        Đề cương sẽ ra sao?
       </h2>
-      <ul className="m-0 mt-4 flex list-none flex-col gap-3 p-0">
+      <ol className="m-0 mt-2 flex list-none flex-col gap-1 p-0 text-body text-ink-soft">
         {STEPS.map((step) => (
-          <li key={step.text} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-read">
-            <span>{step.text}</span>
-            <span className="rounded-slip bg-sheet px-2 py-0.5 text-meta font-semibold text-ink-soft">{step.tag}</span>
-          </li>
+          <li key={step}>{step}</li>
         ))}
-      </ul>
-    </Sheet>
+      </ol>
+    </section>
   );
 }
