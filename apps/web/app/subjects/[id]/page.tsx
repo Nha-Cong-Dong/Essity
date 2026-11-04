@@ -4,7 +4,9 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
+import { Watermark } from "@/components/motifs";
 import { ScreenHero } from "@/components/screen-kit";
+import { Sheet } from "@/components/ui/sheet";
 import { AppShell, PageColumn } from "@/components/shells";
 import { SubjectEntryRow } from "@/components/subjects/subject-entry-row";
 import { SubjectScreenBlock } from "@/components/subjects/subject-screen";
@@ -71,13 +73,13 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
   });
   const rowEntries = entries.filter((e) => e.key !== "syllabus" && e.key !== "stats" && e.key !== "practice" && e.key !== "graph");
   return (
-    <PageColumn width="full" data-reveal className="flex flex-col gap-8">
+    <PageColumn width="full" data-reveal className="relative flex flex-col gap-8">
+      <Watermark />
       <a href="/subjects" className="text-small">
         Môn học
       </a>
       <ScreenHero
-        tone="rose"
-        title={subject.name}
+        title={<span className="px-1" style={{ backgroundImage: "linear-gradient(to top, var(--hl-band) 35%, transparent 35%)" }}>{subject.name}</span>}
         lede={
           <>
             Thi vào {dayLabel(subject.exam_date)}
@@ -86,14 +88,14 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
         }
       />
       {prog !== null && prog.total > 0 && (
-        <div className="flex flex-col gap-1" data-subject-progress>
+        <Sheet variant="tile" className="relative z-1 flex flex-col gap-2 py-5" data-subject-progress>
           <p className="m-0 text-meta text-ink-soft">
             Tiến độ: đã học {prog.done}/{prog.total} phần
           </p>
           <CoverageBar percent={(prog.done / prog.total) * 100} />
-        </div>
+        </Sheet>
       )}
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="relative z-1 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-6">
           <div className="grid min-w-0 gap-6 md:grid-cols-2">
             <SubjectScreenBlock subjectId={subject.id} subjectName={subject.name} state={state} nothingDue={nothingDue} />

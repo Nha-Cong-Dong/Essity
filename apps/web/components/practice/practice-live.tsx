@@ -1,5 +1,7 @@
 "use client";
 
+import { MarginRule } from "@/components/motifs";
+import { Sheet } from "@/components/ui/sheet";
 import { useEffect, useRef, useState } from "react";
 
 import { Pen } from "@/components/practice/practice-extras";
@@ -210,7 +212,9 @@ export function PracticeLive({
       <a href={`/subjects/${subjectId}`} className="text-meta text-ink-soft underline wrap-anywhere">
         ← {subjectName}
       </a>
-      <h1 className="m-0 mt-3 font-display text-title">Luyện tập</h1>
+      <h1 className="m-0 mt-3 font-display text-title">
+        <span className="px-1" style={{ backgroundImage: "linear-gradient(to top, var(--hl-band) 35%, transparent 35%)" }}>Luyện tập</span>
+      </h1>
       <p className="m-0 mt-1 text-read text-ink-soft wrap-anywhere">{subjectName}</p>
       <p role="status" className="sr-only">
         {removed.size > 0 ? "Đã gỡ khỏi luyện tập." : ""}
@@ -231,6 +235,8 @@ export function PracticeLive({
         </div>
       ) : (
         <div className="mt-6">
+          <Sheet variant="tile" className="relative flex flex-col gap-4 overflow-hidden pl-12" data-practice-today>
+          <MarginRule />
           <div data-progress>
             <p data-summary className="m-0 text-read">
               Đã mở khóa {readyCount}/{live.length} câu
@@ -240,7 +246,7 @@ export function PracticeLive({
             </div>
           </div>
           {list.due_today !== undefined && (
-            <div data-due className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div data-due className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <p className="m-0 text-read">
                 {dueNow.length > 0 ? `Hôm nay cần luyện ${dueNow.length} câu.` : "Hôm nay không có câu nào cần luyện."}
               </p>
@@ -251,6 +257,7 @@ export function PracticeLive({
               )}
             </div>
           )}
+          </Sheet>
           {firstReady === null && (
             <>
               <p className="m-0 mt-3">Chưa có câu hỏi nào sẵn sàng, hãy kết nối thêm kiến thức để mở khóa câu hỏi nhé!</p>

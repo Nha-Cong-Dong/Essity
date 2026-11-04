@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { NoteSticker } from "@/components/motifs";
 import { StartButton } from "@/components/today/start-button";
 import { Sheet } from "@/components/ui/sheet";
 
@@ -29,10 +30,11 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
   }
   const shown = order.slice(0, 3);
   return (
-    <Sheet variant="tile" className="flex min-w-0 flex-col gap-3" aria-labelledby={`rv-${subjectId}`}>
+    <Sheet variant="tile" className="relative flex min-w-0 flex-col gap-3" aria-labelledby={`rv-${subjectId}`}>
+      <NoteSticker>{order.length} thẻ</NoteSticker>
       <h2 id={`rv-${subjectId}`} className="m-0 font-display text-lead">
         Ôn tập hôm nay
-        <span className="ml-2 text-meta font-normal text-ink-soft">{order.length} thẻ</span>
+        <span className="sr-only"> ({order.length} thẻ)</span>
       </h2>
       <div className="relative h-60 sm:h-56" data-review-stack>
         {shown
