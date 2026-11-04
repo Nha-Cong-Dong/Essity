@@ -129,21 +129,19 @@ describe("account fields: edges", () => {
 describe("account screen layout: edges (T1.24)", () => {
   const markup = () => html(h(AuthLayout, { title: "Đăng nhập", children: "form" }));
 
-  // Red when: the poster's grid, the notebook picture or a decoration loses aria-hidden.
-  it("the poster grid and the notebook picture are hidden from assistive tech", () => {
-    expect(markup()).toMatch(/<div aria-hidden="true" class="auth-poster-grid/);
-    expect(markup()).toMatch(/<div aria-hidden="true" class="hidden min-\[1024px\]:mt-auto/);
+  // Red when: a picture or decoration comes back to the account screens (V22: one plain card).
+  it("has no poster, picture or aria-hidden decoration", () => {
+    expect(markup()).not.toMatch(/poster|aria-hidden="true"/);
   });
 
-  // Red when: the heading moves into the poster: the form's own title must be the one h1.
-  it("one h1, in the sheet, not in the poster", () => {
+  // Red when: the form's own title is not the one h1.
+  it("one h1, in the card", () => {
     expect(markup().match(/<h1/g)).toHaveLength(1);
-    expect(markup()).not.toMatch(/<aside[^>]*>(?:(?!<\/aside>).)*<h1/);
   });
 
-  // Red when: the form column grows past 400px (the mockup's panel).
-  it("the form panel is at most 400px wide", () => {
-    expect(markup()).toMatch(/w-full max-w-\[400px\]/);
+  // Red when: the card grows past 420px.
+  it("the card is at most 420px wide", () => {
+    expect(markup()).toMatch(/w-full max-w-\[420px\]/);
   });
 });
 
