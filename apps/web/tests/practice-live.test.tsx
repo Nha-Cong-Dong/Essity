@@ -29,11 +29,12 @@ const FORBIDDEN = /(?<!\p{L})(streak|chuỗi|xếp hạng|ranking|kém|lười|b
 const list: QuestionListOut = {
   total: 3,
   ready: 2,
+  due_today: 0,
   types: [],
   questions: [
-    { id: Q1, number: 1, prompt: "So sánh TCP và UDP.", origin: "bank", status: "ready", answer_source: "bank", type_name: "So sánh", line: "Sẵn sàng", waiting_sections: [] },
-    { id: Q2, number: 2, prompt: "Định nghĩa MSS.", origin: "generated", status: "ready", answer_source: "ai", type_name: "Định nghĩa", line: "Sẵn sàng", waiting_sections: [] },
-    { id: "0b8f1d2e-0000-4000-8000-0000000000a3", number: 3, prompt: "Tính thông lượng.", origin: "bank", status: "waiting", answer_source: "bank", type_name: "So sánh", line: "Chờ học: phần 3.4", waiting_sections: [] },
+    { id: Q1, number: 1, prompt: "So sánh TCP và UDP.", origin: "bank", status: "ready", answer_source: "bank", type_name: "So sánh", line: "Sẵn sàng", waiting_sections: [], due: false },
+    { id: Q2, number: 2, prompt: "Định nghĩa MSS.", origin: "generated", status: "ready", answer_source: "ai", type_name: "Định nghĩa", line: "Sẵn sàng", waiting_sections: [], due: false },
+    { id: "0b8f1d2e-0000-4000-8000-0000000000a3", number: 3, prompt: "Tính thông lượng.", origin: "bank", status: "waiting", answer_source: "bank", type_name: "So sánh", line: "Chờ học: phần 3.4", waiting_sections: [], due: false },
   ],
 };
 const types = [
@@ -162,7 +163,7 @@ describe("PracticeLive (US-16 AC1, AC3, AC8)", () => {
 
   it("an empty bank offers the upload and no list", () => {
     const { container } = render(
-      <PracticeLive subjectId={SUBJECT} subjectName="Mạng" list={{ total: 0, ready: 0, types: [], questions: [] }} types={[]} api={fakeApi()} />,
+      <PracticeLive subjectId={SUBJECT} subjectName="Mạng" list={{ total: 0, ready: 0, due_today: 0, types: [], questions: [] }} types={[]} api={fakeApi()} />,
     );
     expect(container.querySelector("[data-empty]")).not.toBeNull();
     expect(container.querySelectorAll("[data-variant='primary']").length).toBe(1);

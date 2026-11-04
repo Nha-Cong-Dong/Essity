@@ -16,11 +16,13 @@ const row = (over: Partial<QuestionRow>): QuestionRow => ({
   status: "ready",
   line: "Sẵn sàng",
   waiting_sections: [],
+  due: false,
   ...over,
 });
 const list = (questions: QuestionRow[]): QuestionListOut => ({
   total: questions.length,
   ready: questions.filter((q) => q.status === "ready").length,
+  due_today: 0,
   types: [],
   questions,
 });
