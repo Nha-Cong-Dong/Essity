@@ -49,14 +49,14 @@ export function SubjectView({
           <a href="/subjects" className="text-meta text-ink-soft">
             Môn học ›
           </a>
-          <h1 className="m-0 max-w-full font-serif text-title break-words text-balance">
+          <h1 className="m-0 max-w-full font-display text-title break-words text-balance">
             <Marker>{subject.name}</Marker>
           </h1>
           <p className="m-0 text-body text-ink-soft">{examLine}</p>
         </div>
         {subject.days_until_exam > 0 && (
           <p className="m-0 flex items-baseline gap-2 min-[901px]:col-span-4 min-[901px]:justify-end" data-days-left>
-            <span className="font-serif text-display font-medium tabular-nums">{subject.days_until_exam}</span>
+            <span className="font-display text-display font-medium tabular-nums">{subject.days_until_exam}</span>
             <span className="text-body text-ink-soft">ngày nữa thi</span>
           </p>
         )}

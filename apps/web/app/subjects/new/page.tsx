@@ -31,7 +31,7 @@ export default function NewSubjectPage() {
         </a>
         <header className="flex items-end justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
-            <h1 className="m-0 font-serif text-title">Môn mới</h1>
+            <h1 className="m-0 font-display text-title">Môn mới</h1>
             <p className="m-0 text-body text-ink-soft">
               Bước 1/2 · Tạo môn. Đặt tên môn và ngày thi để app chia lịch học cho vừa sức.
             </p>

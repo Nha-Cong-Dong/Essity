@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { StartButton } from "@/components/today/start-button";
 import { Button } from "@/components/ui/button";
+import { NxRow } from "@/components/ui/nx-list";
 import { studyHref } from "@/lib/session-study/entry";
 import { type Pace, TODAY_V2_COPY as COPY } from "@/lib/today-v2";
 
@@ -23,17 +24,21 @@ export type SuggestionState =
 
 const FULL = "max-sm:w-full";
 
+// V22: "Nội dung hôm nay" is a tile of the landing's "nx" list: the section is the one cam row.
 function Suggested({ id, subjectId, subjectName, next }: { id: string; subjectId: string; subjectName: string; next: NextSuggestion }) {
   return (
     <>
-      <h2 id={id} className="m-0 font-serif text-lead font-medium break-words">
-        {next.label ? `Nội dung hôm nay: phần ${next.label}` : "Nội dung hôm nay"}
+      <h2 id={id} className="m-0 font-display text-lead break-words">
+        Nội dung hôm nay
       </h2>
-      <p className="m-0 text-body break-words">
-        {next.title}
-        {next.pages ? ` · ${next.pages}` : ""}
-      </p>
-      <div className="mt-2">
+      <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+        <NxRow lead={next.label} next state="Tiếp theo" why={next.reason || undefined}>
+          {next.label ? <span className="sr-only">Phần {next.label} </span> : null}
+          {next.title}
+          {next.pages ? ` · ${next.pages}` : ""}
+        </NxRow>
+      </ul>
+      <div className="mt-1">
         <Button
           render={<a href={studyHref(subjectId, next.sectionId)} />}
           nativeButton={false}
@@ -100,7 +105,7 @@ export function SubjectSuggestion({
   const showExtras = shown.kind !== "reading";
   const learnedOut = shown.kind === "finished" || shown.kind === "exam_over";
   return (
-    <section className="flex min-w-0 flex-col gap-3 rounded-sheet bg-rose-50 p-5 min-[901px]:p-8" aria-labelledby={headingId} aria-busy={busy}>
+    <section className="flex min-w-0 flex-col gap-3 rounded-tile bg-hong-tint p-4 min-[901px]:p-6" aria-labelledby={headingId} aria-busy={busy}>
       {computed && (
         <div ref={result} tabIndex={-1} aria-live="polite" className="flex flex-col gap-3 outline-none">
           <Suggested
@@ -130,7 +135,7 @@ export function SubjectSuggestion({
       )}
       {shown.kind === "finished" && (
         <>
-          <h2 id={headingId} className="m-0 text-read font-normal">
+          <h2 id={headingId} className="m-0 text-body">
             {COPY.finished}
           </h2>
         </>
@@ -142,7 +147,7 @@ export function SubjectSuggestion({
       )}
       {noTextbook && (
         <>
-          <h2 id={headingId} className="m-0 text-read font-normal">
+          <h2 id={headingId} className="m-0 text-body">
             Môn này {COPY.noTextbook}
           </h2>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -156,7 +161,7 @@ export function SubjectSuggestion({
         </>
       )}
       {shown.kind === "reading" && (
-        <h2 id={headingId} role="status" className="m-0 text-read font-normal text-ink-soft">
+        <h2 id={headingId} role="status" className="m-0 text-body text-ink-soft">
           Đang đọc mục lục giáo trình…
         </h2>
       )}

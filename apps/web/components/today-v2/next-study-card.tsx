@@ -1,64 +1,46 @@
 import { SubjectMark } from "@/components/subject-mark";
-import { Button } from "@/components/ui/button";
+import { NxRow } from "@/components/ui/nx-list";
+import { studyHref } from "@/lib/session-study/entry";
 import { paceLine, TODAY_V2_COPY as COPY, type LearnItem } from "@/lib/today-v2";
 
-// T7.13a (US-15 AC1, AC7; DESIGN §6.2 "Học gì tiếp"): one subject's block. The cover, name and
-// V22: words are never cut mid-word; a name that does not fit goes to the next line.
+// T7.13a (US-15 AC1, AC7; DESIGN §6.2 "Học gì tiếp"), V22: one subject as a row of the landing's
+// "nx" tile: letter | name + the section | state. The one `next` row of the tile is the cam row.
+// Words are never cut mid-word; a name that does not fit goes to the next line.
 
 export function PaceLine({ pace }: { pace: Extract<LearnItem, { state: "next" }>["pace"] }) {
-  return (
-    <p className="m-0 text-meta text-ink-soft break-words">
-      {paceLine(pace)}
-    </p>
-  );
+  return <span className="block text-meta font-normal text-ink-soft break-words">{paceLine(pace)}</span>;
 }
 
-export function NextStudyCard({ item }: { item: LearnItem; primary?: boolean }) {
-  const nameId = `learn-${item.subject.id}`;
+export function NextStudyRow({ item, next = false }: { item: LearnItem; next?: boolean }) {
   const base = `/subjects/${item.subject.id}`;
-  const label = (text: string) => `${text} · ${item.subject.name}`;
+  const name = <span className="block font-semibold break-words">{item.subject.name}</span>;
+  const lead = <SubjectMark name={item.subject.name} />;
+  if (item.state === "next") {
+    return (
+      <NxRow lead={lead} state={next ? COPY.nextState : undefined} next={next} href={studyHref(item.subject.id, item.section.id)}>
+        {name}
+        <span className="block font-normal break-words">
+          Phần {item.section.label} {item.section.title}
+          {item.section.pages ? ` · ${item.section.pages}` : ""}
+        </span>
+        <PaceLine pace={item.pace} />
+      </NxRow>
+    );
+  }
+  if (item.state === "no_textbook") {
+    return (
+      <NxRow lead={lead} state={COPY.uploadTextbook} href={`${base}/documents`}>
+        {name}
+        <span className="block text-meta font-normal text-ink-soft break-words">
+          Môn {item.subject.name} {COPY.noTextbook}
+        </span>
+      </NxRow>
+    );
+  }
   return (
-    <article aria-labelledby={nameId} className="flex flex-col gap-2">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4">
-        <SubjectMark name={item.subject.name} />
-        <h3 id={nameId} className="m-0 min-w-0 text-body font-semibold break-words">
-          {item.subject.name}
-        </h3>
-      </div>
-      {item.state === "next" && (
-        <>
-          {item.section.chapter ? (
-            <p className="m-0 text-meta font-semibold text-ink-soft break-words">{item.section.chapter}</p>
-          ) : null}
-          <p className="m-0 text-body break-words">
-            Phần {item.section.label} {item.section.title}
-            {item.section.pages ? ` · ${item.section.pages}` : ""}
-          </p>
-          <PaceLine pace={item.pace} />
-        </>
-      )}
-      {item.state === "no_textbook" && (
-        <>
-          <p className="m-0 text-body break-words">
-            Môn {item.subject.name} {COPY.noTextbook}
-          </p>
-          <div className="-ml-3">
-            <Button
-              render={<a href={`${base}/documents`} />}
-              nativeButton={false}
-              variant="quiet"
-              aria-label={label(COPY.uploadTextbook)}
-            >
-              {COPY.uploadTextbook}
-            </Button>
-          </div>
-        </>
-      )}
-      {item.state === "finished" && (
-        <p className="m-0 text-body">
-          {COPY.finished}
-        </p>
-      )}
-    </article>
+    <NxRow lead={lead}>
+      {name}
+      <span className="block text-meta font-normal text-ink-soft">{COPY.finished}</span>
+    </NxRow>
   );
 }

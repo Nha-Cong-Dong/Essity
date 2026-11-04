@@ -41,9 +41,9 @@ function isTicked(n: SyllabusNode): boolean {
 
 export function SubjectOutlineAside({ nodes, subjectId }: { nodes: SyllabusNode[]; subjectId: string }) {
   return (
-    <aside aria-label="Đề cương" className="flex min-w-0 flex-col gap-3 border-t border-line pt-6 lg:max-h-[70vh] lg:overflow-y-auto">
-      <h2 className="m-0 text-body font-semibold">Đề cương</h2>
-      <ul className="m-0 flex list-none flex-col p-0">
+    <aside aria-label="Đề cương" className="flex min-w-0 flex-col gap-3 rounded-tile bg-hong-tint p-4 min-[901px]:p-6">
+      <h2 className="m-0 font-display text-lead">Đề cương</h2>
+      <ul className="m-0 flex max-h-[60vh] list-none flex-col overflow-y-auto rounded-row bg-bg px-3.5 py-2">
         {nodes.map((n) => (
           <Row key={n.id} node={n} depth={0} />
         ))}

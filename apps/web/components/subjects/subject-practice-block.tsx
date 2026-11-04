@@ -16,13 +16,13 @@ export function SubjectPracticeBlock({
 }) {
   const empty = total === 0;
   return (
-    <section aria-label="Luyện tập" data-subject-practice className="flex flex-col gap-3 border-t border-line pt-6">
-      <h2 className="m-0 text-body font-semibold">Luyện tập</h2>
+    <section aria-label="Luyện tập" data-subject-practice className="flex min-w-0 flex-col gap-3">
+      <h2 className="m-0 font-display text-lead">Luyện tập</h2>
       {empty ? (
         <p className="m-0 text-body text-ink-soft">Chưa có bộ câu hỏi. Tải bộ câu hỏi để luyện đúng dạng đề thi.</p>
       ) : (
         <>
-          <p className="m-0 font-serif text-lead font-medium" data-due-today>
+          <p className="m-0 text-body font-semibold" data-due-today>
             {dueToday === null ? `${ready} câu sẵn sàng` : `${dueToday} câu cần luyện hôm nay`}
           </p>
           <p className="m-0 text-meta text-ink-soft">

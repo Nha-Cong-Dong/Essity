@@ -2,9 +2,10 @@ import { Marker } from "@/components/notebook";
 import { WeekStrip, type WeekCell } from "@/components/today-v2/week-strip";
 import { LearnActions } from "@/components/today-v2/learn-actions";
 import { Mascot } from "@/components/mascot";
-import { NextStudyCard } from "@/components/today-v2/next-study-card";
+import { NextStudyRow } from "@/components/today-v2/next-study-card";
 import { StartButton } from "@/components/today/start-button";
 import { Button } from "@/components/ui/button";
+import { NxList } from "@/components/ui/nx-list";
 import { dayLabel } from "@/lib/today-copy";
 import {
   draftLine,
@@ -27,7 +28,7 @@ const EDGE = "min-w-0";
 function Heading({ day }: { day: string }) {
   return (
     <div className="mb-8 grid items-end gap-x-6 gap-y-2 min-[901px]:grid-cols-12">
-      <h1 className="m-0 font-serif text-title min-[901px]:col-span-8">
+      <h1 className="m-0 font-display text-title min-[901px]:col-span-8">
         <Marker>{COPY.heading}</Marker>
       </h1>
       <p className="m-0 text-body text-ink-soft min-[901px]:col-span-4 min-[901px]:justify-self-end">{dayLabel(day)}</p>
@@ -91,7 +92,10 @@ export function ResumeStrip({ items }: { items: Unfinished[] }) {
   );
 }
 
-const SHEET = "relative flex min-w-0 flex-col gap-3 self-start rounded-sheet bg-rose-50 p-5 min-[901px]:col-span-8 min-[901px]:p-10";
+// V22: the left tile is the accent of the screen (landing "nx" tile, span 7): the one big number,
+// Bé Trang, one white row that names the review, and the solid pink button inside the tile.
+const SHEET = "relative flex min-w-0 flex-col gap-4 self-stretch rounded-tile bg-hong-tint p-4 min-[901px]:col-span-7 min-[901px]:p-6";
+const WHITE_ROW = "m-0 flex min-h-12 flex-wrap items-center gap-x-2 rounded-row bg-bg px-3.5 py-2 text-body";
 
 export function ReviewTile({
   review,
@@ -109,33 +113,35 @@ export function ReviewTile({
           {COPY.review}
         </h2>
         <Mascot pose="vui" size="md" />
-        <p className="m-0 font-serif text-lead font-medium">{COPY.nothingDue}</p>
+        <p className="m-0 font-display text-lead">{COPY.nothingDue}</p>
         {review.next_due && <p className="m-0 text-body text-ink-soft">{nextDueLabel(review.next_due)}</p>}
       </section>
     );
   }
   return (
     <section className={SHEET} aria-labelledby="today-review">
-      <h2 id="today-review" className="m-0 text-meta font-semibold text-ink-soft">
-        {COPY.review}
-      </h2>
-      <p className="m-0 flex items-baseline gap-3">
-        <span className="font-serif text-display font-medium tabular-nums">{review.count}</span>
-        <span className="text-body">{COPY.questions}</span>
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <p className="m-0 flex items-baseline gap-3">
+          <span className="font-display text-display tabular-nums">{review.count}</span>
+          <span className="text-body">{COPY.questions}</span>
+        </p>
+        <Mascot pose="vui" className="size-20 shrink-0 min-[901px]:size-28" />
+      </div>
       {/* V5: the total only, no subject names. */}
-      <p className="m-0 text-body">khoảng {review.minutes} phút</p>
+      <h2 id="today-review" className={WHITE_ROW}>
+        <span className="font-semibold">{COPY.review}</span>
+        <span className="text-ink-soft">· khoảng {review.minutes} phút</span>
+      </h2>
       {review.note && <p className="m-0 text-meta break-words">{review.note}</p>}
       {review.in_progress ? (
         <p className="m-0 text-meta">{COPY.inProgressHint}</p>
       ) : (
-        <div className="mt-3 max-sm:w-full">
+        <div className="max-sm:w-full">
           <StartButton variant={primary ? "primary" : "secondary"} preview={preview}>
             {COPY.start}
           </StartButton>
         </div>
       )}
-      <Mascot pose="vui" className="absolute top-5 right-5 max-sm:size-20 min-[901px]:top-auto min-[901px]:right-10 min-[901px]:bottom-10 min-[901px]:size-40" />
     </section>
   );
 }
@@ -144,20 +150,18 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
   const { items, empty_reason } = today.learn;
   const first = items.findIndex((item) => item.state === "next");
   return (
-    <section className={`${EDGE} min-[901px]:col-span-4`} aria-labelledby="today-learn">
-      <h2 id="today-learn" className="m-0 text-body font-semibold">
-        {COPY.learn}
-      </h2>
+    <section className={`${EDGE} flex flex-col gap-3 min-[901px]:col-span-5`} aria-labelledby="today-learn">
       {items.length > 0 ? (
-        <ul className="m-0 mt-4 flex list-none flex-col p-0">
+        <NxList title={<span id="today-learn">{COPY.learn}</span>} hint="Gợi ý, bạn chọn">
           {items.map((item, index) => (
-            <li key={item.subject.id} className="border-b border-line py-4 first:pt-0 last:border-b-0">
-              <NextStudyCard item={item} primary={primary && index === first} />
-            </li>
+            <NextStudyRow key={item.subject.id} item={item} next={index === first} />
           ))}
-        </ul>
+        </NxList>
       ) : (
-        <div className="mt-3 flex flex-col items-start gap-1">
+        <div className="flex flex-col items-start gap-1">
+          <h2 id="today-learn" className="m-0 text-body font-semibold">
+            {COPY.learn}
+          </h2>
           <p className="m-0 text-read">
             {empty_reason ? COPY.emptyReason[empty_reason] : COPY.emptyReason.no_textbook}
           </p>
@@ -175,7 +179,7 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
 
 function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2["practice"]>; primary: boolean }) {
   return (
-    <section className={`${EDGE} min-[901px]:col-span-4`} aria-labelledby="today-practice">
+    <section className={`${EDGE} min-[901px]:col-span-5`} aria-labelledby="today-practice">
       <h2 id="today-practice" className="m-0 text-body font-semibold">
         {COPY.practice}
       </h2>
@@ -242,7 +246,13 @@ export function TodayV2Screen({
         <ReviewTile review={today.review} primary={primary === "review"} preview={preview} />
         <LearnSection today={today} primary={primary === "learn"} />
         {today.practice && <PracticeSection practice={today.practice} primary={primary === "practice"} />}
-        {week && <WeekStrip cells={week} today={today.learning_day} className="min-[901px]:col-span-8" />}
+        {week && (
+          <WeekStrip
+            cells={week}
+            today={today.learning_day}
+            className={today.practice ? "min-[901px]:col-span-7" : "min-[901px]:col-span-12"}
+          />
+        )}
       </div>
     </>
   );
@@ -252,9 +262,9 @@ export function TodayV2Screen({
 export function TodayV2Loading() {
   return (
     <div aria-busy="true" className="grid gap-6 min-[901px]:grid-cols-12">
-      <div className="h-72 rounded-sheet bg-sunken min-[901px]:col-span-8" />
-      <div className="h-40 rounded-sheet bg-sunken min-[901px]:col-span-4" />
-      <div className="h-32 rounded-sheet bg-sunken min-[901px]:col-span-12" />
+      <div className="h-72 rounded-tile bg-hong-tint min-[901px]:col-span-7" />
+      <div className="h-40 rounded-tile bg-hong-tint min-[901px]:col-span-5" />
+      <div className="h-32 rounded-tile bg-hong-tint min-[901px]:col-span-12" />
       <p className="sr-only" role="status">
         {COPY.loading}
       </p>
@@ -264,7 +274,7 @@ export function TodayV2Loading() {
 
 export function TodayV2Failed() {
   return (
-    <div role="alert" className="flex max-w-160 flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
+    <div role="alert" className="flex max-w-160 flex-col items-start gap-2 rounded-tile bg-sunken p-6">
       <p className="m-0">
         <b>{COPY.failed}</b> {COPY.failedHint}
       </p>

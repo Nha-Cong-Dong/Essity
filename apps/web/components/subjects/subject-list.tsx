@@ -8,6 +8,7 @@ import { checkSubject, refusalErrors, type SubjectErrors, SubjectFields } from "
 import { SubjectMark } from "@/components/subject-mark";
 import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 import { Button } from "@/components/ui/button";
+import { NxList } from "@/components/ui/nx-list";
 import { daysLeftText, formatExamDate } from "@/lib/exam-date";
 import { go } from "@/lib/navigate";
 import { SUBJECT_MESSAGES } from "@/lib/subject-copy";
@@ -57,13 +58,12 @@ async function deleteSubject(id: string): Promise<"deleted" | "history" | "signe
 
 type RowProps = {
   initial: ListedSubject;
-  featured: boolean;
   example: string;
   onOpen: () => void;
   onDeleted: () => void;
 };
 
-function SubjectRow({ initial, featured, example, onOpen, onDeleted }: RowProps) {
+function SubjectRow({ initial, example, onOpen, onDeleted }: RowProps) {
   const [subject, setSubject] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(initial.name);
@@ -169,41 +169,33 @@ function SubjectRow({ initial, featured, example, onOpen, onDeleted }: RowProps)
   }
 
   return (
-    <li
-      className={`flex min-w-0 flex-col gap-4 rounded-sheet border border-line bg-sheet p-5 ${featured ? "min-[640px]:col-span-2" : ""}`}
-    >
-      {/* V22 SubjectCard: vertical, never three things in a row. Row 1: letter + name (the name
-          wraps between words, never inside one); row 2: the date line; row 3: "Sửa". */}
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1">
-        <SubjectMark name={subject.name} className="row-span-2" />
-        <a
-          id={ids.name}
-          href={`/subjects/${subject.id}`}
-          className="min-w-0 text-body font-semibold break-words text-inherit no-underline hover:underline"
-        >
-          {subject.name}
-        </a>
-        {/* The space between the halves keeps them two words for a screen reader (plan G9). */}
-        <span className="flex flex-wrap gap-x-2 text-meta">
-          <span className="whitespace-nowrap">thi {formatExamDate(subject.exam_date)}</span>{" "}
-          <span className="whitespace-nowrap text-ink-soft">{daysLeftText(subject.days_until_exam)}</span>
-        </span>
-      </div>
-      {featured && subject.days_until_exam > 0 && (
-        <p className="m-0 flex items-baseline gap-2" data-featured-days>
-          <span className="font-serif text-display font-medium tabular-nums">{subject.days_until_exam}</span>
-          <span className="text-body text-ink-soft">ngày nữa thi</span>
-        </p>
-      )}
-      {!editing && (
-        <div className="-ml-3 flex">
+    <li className="min-w-0 rounded-row bg-bg">
+      {/* V22 (landing "nx"): a row of the subjects tile, letter | name + date line | "Sửa". The name
+          wraps between words, never inside one. */}
+      <div className="grid min-h-12 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-2">
+        <SubjectMark name={subject.name} />
+        <div className="flex min-w-0 flex-col">
+          <a
+            id={ids.name}
+            href={`/subjects/${subject.id}`}
+            className="min-w-0 text-body font-semibold break-words text-inherit no-underline hover:underline"
+          >
+            {subject.name}
+          </a>
+          {/* The space between the halves keeps them two words for a screen reader (plan G9). */}
+          <span className="flex flex-wrap gap-x-2 text-meta">
+            <span className="whitespace-nowrap">thi {formatExamDate(subject.exam_date)}</span>{" "}
+            <span className="whitespace-nowrap text-ink-soft">{daysLeftText(subject.days_until_exam)}</span>
+          </span>
+        </div>
+        {!editing && (
           <Button variant="quiet" onClick={open} aria-label={`Sửa ${subject.name}`}>
             Sửa
           </Button>
-        </div>
-      )}
+        )}
+      </div>
       {/* Always on the page, so a screen reader reads "Đã lưu." when it appears (plan F7). */}
-      <p role="status" className={saved ? "m-0 text-small text-ink-soft" : "sr-only"}>
+      <p role="status" className={saved ? "m-0 px-3.5 pb-3 text-small text-ink-soft" : "sr-only"}>
         {saved ? SUBJECT_MESSAGES.saved : ""}
       </p>
       {editing && confirming && (
@@ -211,7 +203,7 @@ function SubjectRow({ initial, featured, example, onOpen, onDeleted }: RowProps)
           role="group"
           aria-labelledby={`${ids.name} ${ids.confirm}`}
           onKeyDown={onConfirmKey}
-          className="flex max-w-120 flex-col gap-5"
+          className="flex max-w-120 flex-col gap-5 px-3.5 pb-4"
         >
           <p id={ids.confirm} className="m-0 text-body">
             Xóa môn này khỏi danh sách và phiên ôn?
@@ -236,7 +228,7 @@ function SubjectRow({ initial, featured, example, onOpen, onDeleted }: RowProps)
         </div>
       )}
       {editing && !confirming && (
-        <form method="post" onSubmit={save} className="flex max-w-120 flex-col gap-5" noValidate>
+        <form method="post" onSubmit={save} className="flex max-w-120 flex-col gap-5 px-3.5 pb-4" noValidate>
           <SubjectFields
             idPrefix={`edit-${subject.id}-`}
             name={name}
@@ -258,7 +250,7 @@ function SubjectRow({ initial, featured, example, onOpen, onDeleted }: RowProps)
         </form>
       )}
       {editing && !confirming && (
-        <div className="max-w-120 border-t border-line pt-5">
+        <div className="mx-3.5 max-w-120 border-t border-line py-4">
           {hasHistory ? (
             <p ref={historyRef} tabIndex={-1} className="m-0 text-small text-ink-soft">
               Môn này đã có bài ôn nên chưa xóa được ở đây.
@@ -285,7 +277,7 @@ function DeletedRow() {
   const ref = useRef<HTMLParagraphElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
-    <li className="rounded-sheet bg-rose-50 p-5">
+    <li className="rounded-row bg-bg px-3.5 py-3">
       <p ref={ref} tabIndex={-1} className="m-0 text-small text-ink-soft">
         Đã xóa môn.
       </p>
@@ -302,10 +294,6 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
     deletedId: null,
   });
   const remaining = rows.filter((subject) => subject.id !== deletedId);
-  // V22: the nearest exam leads, on a double-width card with its days as the one big number.
-  const featuredId = remaining.length > 1
-    ? remaining.filter((subject) => subject.days_until_exam > 0).sort((x, y) => x.days_until_exam - y.days_until_exam)[0]?.id
-    : undefined;
 
   function dropPlaceholder() {
     setList((list) =>
@@ -356,7 +344,7 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
           />
         </>
       ) : (
-        <ul className="m-0 grid list-none items-start gap-4 p-0 min-[600px]:grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))]">
+        <NxList>
           {rows.map((subject) =>
             subject.id === deletedId ? (
               <DeletedRow key={subject.id} />
@@ -364,22 +352,21 @@ export function SubjectList({ subjects, example }: { subjects: ListedSubject[]; 
               <SubjectRow
                 key={subject.id}
                 initial={subject}
-                featured={subject.id === featuredId}
                 example={example}
                 onOpen={dropPlaceholder}
                 onDeleted={() => deleted(subject.id)}
               />
             ),
           )}
-        </ul>
-      )}
-      {remaining.length > 0 && (
-        <a
-          href="/subjects/new"
-          className="mt-4 flex min-h-16 items-center justify-center rounded-sheet border border-dashed border-line-strong p-5 text-body font-semibold text-ink no-underline hover:bg-sunken"
-        >
-          + Thêm môn
-        </a>
+          <li className="contents">
+            <a
+              href="/subjects/new"
+              className="flex min-h-12 items-center justify-center rounded-row border border-dashed border-line-strong bg-bg px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"
+            >
+              + Thêm môn
+            </a>
+          </li>
+        </NxList>
       )}
     </SubjectsFrame>
   );

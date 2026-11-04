@@ -49,7 +49,7 @@ export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; toda
               aria-current={isToday ? "date" : undefined}
               className="flex h-full min-w-0 flex-col items-center justify-end gap-1 text-meta text-ink-soft"
             >
-              <b className="font-serif font-medium text-ink tabular-nums">{cell.count}</b>
+              <b className="font-display text-ink tabular-nums">{cell.count}</b>
               <span
                 aria-hidden="true"
                 className={cn("w-full max-w-9 rounded-slip", on ? "bg-hong" : "bg-line-strong", isToday && "outline-2 outline-offset-2 outline-ink")}

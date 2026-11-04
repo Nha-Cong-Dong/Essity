@@ -54,7 +54,7 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
       <Sheet className="relative border border-line p-5 shadow-none sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-2">
-            <h1 id="upload-title" className="m-0 font-serif text-title break-words text-balance">
+            <h1 id="upload-title" className="m-0 font-display text-title break-words text-balance">
               Tải tài liệu cho {name}
             </h1>
             <p className="m-0 max-w-[56ch] text-read text-ink-soft">

@@ -14,7 +14,7 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
   const [order, setOrder] = useState(cards);
   if (order.length === 0) {
     return (
-      <section className="flex min-w-0 flex-col items-start gap-3 border-t border-line pt-6" aria-labelledby={`rv-${subjectId}`} data-review-empty>
+      <section className="flex min-w-0 flex-col items-start gap-3" aria-labelledby={`rv-${subjectId}`} data-review-empty>
         <h2 id={`rv-${subjectId}`} className="m-0 text-body font-semibold">
           Ôn tập hôm nay
         </h2>
@@ -28,7 +28,7 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
   }
   const shown = order.slice(0, 3);
   return (
-    <section className="flex min-w-0 flex-col gap-3 border-t border-line pt-6" aria-labelledby={`rv-${subjectId}`}>
+    <section className="flex min-w-0 flex-col gap-3" aria-labelledby={`rv-${subjectId}`}>
       <h2 id={`rv-${subjectId}`} className="m-0 text-body font-semibold">
         Ôn tập hôm nay
         <span className="sr-only"> ({order.length} thẻ)</span>
@@ -50,7 +50,7 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
               <span className="inline-flex items-center gap-2 text-meta text-ink-soft">
                 {card.kind === "practice" ? "Câu luyện tập" : "Thẻ ôn"}
               </span>
-              <span className="line-clamp-3 font-serif text-lead font-medium break-words">{card.front ?? card.why}</span>
+              <span className="line-clamp-3 font-display text-lead break-words">{card.front ?? card.why}</span>
               {card.back && (
                 <span className="mt-auto flex flex-col gap-1 rounded-control bg-rose-50 p-3">
                   <span className="text-meta text-ink-soft">Đáp án</span>

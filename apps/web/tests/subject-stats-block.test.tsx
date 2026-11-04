@@ -21,6 +21,6 @@ describe("subject stats block", () => {
     expect(html).toContain("—");
     expect(html).toContain("Học một buổi để có thẻ");
     expect(html).not.toContain("chưa có");
-    expect(html.match(/text-verdict/g)?.length).toBe(1); // only the "1/70" number is large
+    expect(html.match(/tabular-nums/g)?.length).toBe(1); // only the "1/70" number is large
   });
 });
