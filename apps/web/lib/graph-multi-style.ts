@@ -14,7 +14,7 @@ export function multiStylesheet(ink: string, line: string, surface = "#ffffff"):
         // Labels show when zoomed in (class .labelled), or on the node under the pointer (.hot).
         "text-opacity": 0,
         color: ink,
-        "font-size": 11,
+        "font-size": 12,
         "text-valign": "bottom",
         "text-margin-y": 3,
         "text-wrap": "ellipsis",

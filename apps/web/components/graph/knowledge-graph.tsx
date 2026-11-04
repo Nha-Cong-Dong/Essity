@@ -15,7 +15,7 @@ import { mergeGraphs, type MultiCard, type SubjectGraph } from "@/lib/graph-mult
 // screen. A legend names each colour.
 
 let registered = false;
-const MAX_FIT_ZOOM = 1.1;
+const MAX_FIT_ZOOM = 1.5;
 const ZOOM =
   "inline-flex h-11 items-center justify-center rounded-full bg-sheet px-3 text-caption text-ink inset-ring-[1.5px] inset-ring-line-strong hover:bg-sunken";
 
@@ -94,7 +94,7 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
             label: shortLabel(c.title),
             color: bySubject.get(c.subjectId)?.color ?? ink,
             subject: c.subjectId,
-            size: 12 + 3 * Math.min(degree.get(c.id) ?? 0, 5),
+            size: 18 + 4 * Math.min(degree.get(c.id) ?? 0, 5),
           },
         })),
         ...merged.edges.map((e) => ({ data: { id: e.id, source: e.from, target: e.to } })),
