@@ -393,8 +393,8 @@ export function ReviewScreen({
           Chưa gửi được. Bạn bấm lại nhé.
         </p>
       )}
-    <div className="grid items-start gap-7 min-[901px]:grid-cols-2 min-[901px]:gap-16">
-      <section className="min-w-0 min-[901px]:sticky min-[901px]:top-8" aria-labelledby="question">
+    <div className="mx-auto flex w-full max-w-170 flex-col gap-10">
+      <section className="min-w-0" aria-labelledby="question">
         <p className="m-0 text-meta text-ink-soft wrap-anywhere">{step.question.subject.name}</p>
         <h1 id="question" className="m-0 mt-3.5 font-display text-question wrap-anywhere">
           {step.question.prompt}
@@ -429,7 +429,7 @@ export function ReviewScreen({
           </>
         )}
       </section>
-      <section className="min-w-0 min-[901px]:border-l min-[901px]:border-line min-[901px]:pl-8" aria-live="polite">
+      <section className="min-w-0 border-t border-line pt-8" aria-live="polite">
         <Rail
           sent={sent}
           busy={busy}

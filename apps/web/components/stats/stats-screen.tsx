@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Mascot } from "@/components/mascot";
+import { NxList, NxRow } from "@/components/ui/nx-list";
 import { Sheet } from "@/components/ui/sheet";
 import type { GridCell } from "@/lib/stats";
 import { NO_TOTALS, type StatsView } from "@/lib/stats-view";
@@ -192,19 +193,13 @@ export function StatsScreen({
         <div className="min-w-0 min-[901px]:col-span-7 [&>*]:h-full">
           <Trend cells={cells} />
         </div>
-        <section className="min-w-0 min-[901px]:col-span-5" aria-labelledby="subjects-h">
-          <h2 id="subjects-h" className="m-0 text-read font-semibold">
-            Môn đang học
-          </h2>
-          <ul className="m-0 mt-3 flex list-none flex-col p-0">
-            {subjects.map((s) => (
-              <li key={s.id} className="flex min-w-0 flex-col border-t border-line py-3">
-                <span className="font-semibold break-words">{s.name}</span>
-                <span className="text-meta text-ink-soft">{s.examOn ? `Thi ${s.examOn}` : "Chưa có ngày thi"}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <NxList title="Môn đang học" className="min-[901px]:col-span-5">
+          {subjects.map((s) => (
+            <NxRow key={s.id} lead={s.name.trim().charAt(0).toUpperCase()} state={s.examOn ? `Thi ${s.examOn}` : "Chưa có ngày thi"}>
+              <span className="font-semibold">{s.name}</span>
+            </NxRow>
+          ))}
+        </NxList>
       </div>
 
       <Sheet id="activity" className="mt-14 min-w-0" aria-labelledby="activity-h" role="region">
