@@ -1,0 +1,6 @@
+task: DESIGN-W0V4
+lane: L2
+branch: design-w0v4
+risk: yellow
+worktree: D:/Essity/.claude/worktrees/L2
+spec: người dùng duyệt 13 màn v4 (05/11); .work/DESIGN-V4/design-system.md mục A, D
