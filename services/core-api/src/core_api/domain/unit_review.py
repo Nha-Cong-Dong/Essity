@@ -509,6 +509,34 @@ class UnitReviewService:
                 count=count,
             )
         self._add_ranges(study.id, ranges)
+        self._credit_ranges(ranges)
+
+    def _credit_ranges(self, ranges: list[NewRange]) -> None:
+        """The declared scope makes sections "studied" (US-13 AC6, not the card's section): a leaf
+        covered by the pages gets that share of its weight, never less than it had."""
+        for item in ranges:
+            parents = select(DocSection.parent_id).where(
+                DocSection.document_id == item.document_id,
+                DocSection.user_id == self.user_id,
+                DocSection.parent_id.is_not(None),
+            )
+            leaves = self.session.scalars(
+                select(DocSection).where(
+                    DocSection.document_id == item.document_id,
+                    DocSection.user_id == self.user_id,
+                    DocSection.first_page.is_not(None),
+                    DocSection.id.not_in(parents),
+                )
+            )
+            for leaf in leaves:
+                assert leaf.first_page is not None and leaf.last_page is not None
+                lo, hi = max(leaf.first_page, item.start_page), min(leaf.last_page, item.end_page)
+                if hi < lo:
+                    continue
+                size = leaf.last_page - leaf.first_page + 1
+                share = leaf.weight * (hi - lo + 1) / size
+                leaf.studied_weight = min(leaf.weight, max(leaf.studied_weight, share))
+        self.session.flush()
 
     def _add_ranges(self, session_id: uuid.UUID, ranges: list[NewRange]) -> None:
         have = StudySessionRepository(self.session, self.user_id).ranges_of(session_id)
