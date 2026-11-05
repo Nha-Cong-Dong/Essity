@@ -32,6 +32,15 @@ function mount(withSlot = true) {
 }
 
 describe("CommandLive", () => {
+  // QA 05/11. Red when: the host reads the slot once at hydration; with streamed pages the slot
+  // arrives later and the bar / outline chat never shows after a full page load.
+  it("a slot that arrives after the host mounted still gets the bar", async () => {
+    mount(false);
+    expect(document.querySelector("[data-command-slot] form")).toBeNull();
+    document.body.insertAdjacentHTML("beforeend", "<div data-command-slot></div>");
+    expect(await screen.findByLabelText("Gõ một lệnh để sửa")).toBeTruthy();
+  });
+
   it("US-18 AC1: a screen with a slot gets the bar", async () => {
     mount();
     expect(await screen.findByLabelText("Gõ một lệnh để sửa")).toBeTruthy();

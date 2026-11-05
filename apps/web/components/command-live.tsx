@@ -39,8 +39,14 @@ export function CommandLive({ subjectId }: { subjectId: string }) {
   // Each screen draws its own shell: the slot is read again after every commit (React compares the
   // snapshot after a navigation), and the server and the first client render show no bar.
   void pathname;
+  // A streamed page brings its slot after this host hydrated (a full page load), so the slot is
+  // watched for, not read once: without it the outline chat was missing after a reload.
   const slot = useSyncExternalStore(
-    () => () => undefined,
+    (notify) => {
+      const watch = new MutationObserver(notify);
+      watch.observe(document.body, { childList: true, subtree: true });
+      return () => watch.disconnect();
+    },
     () => document.querySelector(BOTTOM) ?? document.querySelector(SLOT),
     () => null,
   );
