@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Sheet } from "@/components/ui/sheet";
 import { designPreviewAllowed } from "@/lib/design-preview";
 
+import { TiersPreview } from "./tiers";
+
 export const metadata: Metadata = { title: "Design preview · Essity" };
 
 // Every token, base control, notebook object and motif of design system v3.1
@@ -29,6 +31,10 @@ const SURFACES = [
   ["sunken", "bg-sunken text-ink"],
   ["cover", "bg-book-cover text-ink"],
   ["hong", "bg-hong text-on-hong"],
+  ["hong-press", "bg-hong-press text-on-hong"],
+  ["plum", "bg-plum text-on-plum"],
+  ["cam-fill", "bg-cam-fill text-ink"],
+  ["cam-tint", "bg-cam-tint text-ink"],
 ] as const;
 
 const ROSE = [
@@ -83,9 +89,11 @@ export default function DesignPreviewPage() {
           </Suspense>
         </header>
 
+        <TiersPreview />
+
         <section className="flex flex-col gap-4">
           <h2 className="text-lead">Bề mặt và mực</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {SURFACES.map(([name, classes]) => (
               <div key={name} className={`${classes} rounded-control p-4 text-meta`}>
                 <div className="font-semibold">{name}</div>
