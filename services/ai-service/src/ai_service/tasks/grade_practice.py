@@ -12,9 +12,11 @@ passed through to the result for the "differs from card X" line and never reache
 or a log. A quota or availability error becomes the `pending_ai` outcome (AC14).
 """
 
+import copy
 import hashlib
 import logging
 import re
+import unicodedata
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -47,6 +49,7 @@ MAX_OUTPUT_CHARS = 10_000
 
 FAIL_MALFORMED = "grade_malformed"
 FAIL_ANCHOR = "anchor_not_in_answer"
+_LABEL = re.compile(r"R\d+")
 
 _VERDICTS: dict[str, Verdict] = {"yes": "correct", "partial": "partial", "no": "incorrect"}
 
@@ -154,6 +157,15 @@ def _nonce_for(texts: list[str]) -> str:
     return nonce
 
 
+def _schema_for(request: PracticeGradeRequest) -> dict[str, Any]:
+    """The output schema with `idea` limited to this request's labels: left free, the model
+    answered with the idea's own words and every grade was refused as malformed (QA 05/11)."""
+    schema = copy.deepcopy(OUTPUT_SCHEMA)
+    labels = [f"R{n}" for n in range(1, len(request.rubric) + 1)]
+    schema["$defs"]["LlmIdea"]["properties"]["idea"] = {"type": "string", "enum": labels}
+    return schema
+
+
 def build_prompt(request: PracticeGradeRequest) -> PracticePrompt:
     nonce = _nonce_for(
         [request.question, *request.rubric, request.reference_answer, request.answer]
@@ -166,7 +178,7 @@ def build_prompt(request: PracticeGradeRequest) -> PracticePrompt:
     blocks.append(wrap_untrusted("reference", request.reference_answer, nonce))
     blocks.append(wrap_untrusted("answer", request.answer, nonce))
     system = load_prompt().text.replace(_NONCE_PLACEHOLDER, nonce)
-    return PracticePrompt(TASK, system, "\n\n".join(blocks), OUTPUT_SCHEMA, nonce)
+    return PracticePrompt(TASK, system, "\n\n".join(blocks), _schema_for(request), nonce)
 
 
 # --- Checks ---------------------------------------------------------------------------------
@@ -182,6 +194,26 @@ def _norm(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().casefold()
 
 
+def _plain(text: str) -> str:
+    """Words only: lower case, no punctuation, one space between words (Vietnamese marks kept)."""
+    return " ".join(
+        re.sub(r"[^\w\s]|_", " ", unicodedata.normalize("NFC", text)).casefold().split()
+    )
+
+
+def _label_of(idea: str, rubric: list[str]) -> str:
+    """The rubric label a model idea stands for. It is the label itself ("R1") or, as the model
+    often answers, the idea's own words; a word match must equal a rubric idea once normalised.
+    Anything else is returned as it is and fails the label check."""
+    if _LABEL.fullmatch(idea):
+        return idea
+    plain = _plain(idea)
+    for number, wanted in enumerate(rubric, start=1):
+        if plain == _plain(wanted):
+            return f"R{number}"
+    return idea
+
+
 def check_output(text: str, request: PracticeGradeRequest) -> list[IdeaResult]:
     """Every rubric idea exactly once; an anchor is a quote of the learner's answer."""
     if len(text) > MAX_OUTPUT_CHARS:
@@ -191,8 +223,9 @@ def check_output(text: str, request: PracticeGradeRequest) -> list[IdeaResult]:
     except ValidationError:
         raise _Malformed(FAIL_MALFORMED) from None  # never carries the text
     labels = [f"R{n}" for n in range(1, len(request.rubric) + 1)]
-    by_label = {i.idea: i for i in parsed.ideas}
-    if len(by_label) != len(parsed.ideas) or set(by_label) != set(labels):
+    ideas = [i.model_copy(update={"idea": _label_of(i.idea, request.rubric)}) for i in parsed.ideas]
+    by_label = {i.idea: i for i in ideas}
+    if len(by_label) != len(ideas) or set(by_label) != set(labels):
         raise _Malformed(FAIL_MALFORMED)
     answer = _norm(request.answer)
     results: list[IdeaResult] = []

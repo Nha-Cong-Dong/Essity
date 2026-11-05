@@ -137,3 +137,47 @@ def test_request_bounds() -> None:
         request(rubric=["x"] * (gp.MAX_IDEAS + 1))
     with pytest.raises(ValueError):
         request(answer="  ")
+
+
+def test_ideas_named_by_their_words_match_the_rubric_by_text() -> None:
+    # QA 05/11, real model. Red when: a reply that names each idea by its words (not "R1") is
+    # refused as malformed, so no practice answer is ever graded.
+    text = reply(
+        idea("Three steps", "yes", "Client gui SYN"), idea("Names SYN, SYN-ACK, ACK", "no")
+    )
+    result = gp.grade_practice(request(), FakeAsk(text))
+    assert result.status == "ok"
+    assert [i.verdict for i in result.ideas] == ["correct", "incorrect"]
+
+
+def test_words_match_whatever_the_order_and_ignore_case_and_punctuation() -> None:
+    # Red when: ideas are paired by position, so a swapped order swaps the verdicts.
+    text = reply(
+        idea("names syn, syn-ack, ack.", "no"), idea("  THREE   steps ", "yes", "Client gui SYN")
+    )
+    result = gp.grade_practice(request(), FakeAsk(text))
+    assert result.status == "ok"
+    assert [i.verdict for i in result.ideas] == ["correct", "incorrect"]  # R1 yes, R2 no
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        reply(idea("foo", "yes", "Client gui SYN"), idea("bar", "no")),  # words not in the rubric
+        reply(idea("Three steps", "yes", "Client gui SYN"), idea("Three steps", "no")),  # twice
+        reply(idea("Three steps", "yes", "Client gui SYN")),  # one idea missing
+        reply(idea("Three steps", "yes", "Client gui SYN"), idea("bar", "no")),  # one stranger
+    ],
+)
+def test_words_that_do_not_match_the_rubric_once_each_are_malformed(text: str) -> None:
+    result = gp.grade_practice(request(), FakeAsk(text))
+    assert result.status == "failed" and result.failure == gp.FAIL_MALFORMED
+
+
+def test_schema_limits_idea_to_this_requests_labels() -> None:
+    prompt = gp.build_prompt(request())
+    assert prompt.output_schema["$defs"]["LlmIdea"]["properties"]["idea"]["enum"] == ["R1", "R2"]
+    assert gp.OUTPUT_SCHEMA["$defs"]["LlmIdea"]["properties"]["idea"] == {
+        "title": "Idea",
+        "type": "string",
+    }
