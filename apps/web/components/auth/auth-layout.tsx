@@ -8,7 +8,7 @@ export function AuthLayout({ title, children }: { title: ReactNode; children: Re
   return (
     <div className="flex min-h-dvh flex-col bg-bg text-ink">
       <header data-auth="top" className="flex h-16 items-center px-4 min-[1024px]:px-10">
-        <a href="/" aria-label="Essity" className="inline-flex min-h-11 items-center font-display text-logo text-hong no-underline">
+        <a href="/" aria-label="Essity" className="inline-flex min-h-11 items-center font-display text-logo text-hong-text no-underline">
           Essity
         </a>
       </header>

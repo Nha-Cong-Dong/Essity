@@ -283,6 +283,8 @@
   --on-cam-fill: var(--on-accent);
   --cam-tint: var(--accent-tint);
   --now: #891b4c;
+  --mascot-line: #661738; /* the mascot outline and its teal detail; solid pink / field surfaces override them (Mascot tone="solid") */
+  --mascot-teal: #08686c;
   --now-on-field: #fc7bad;
   --glow-c: #ffb627; /* landing hero only */
   --grid-1: #ec5493; /* activity grid levels 1-4: v4 spec starts at rose-200 (1.4:1 on the sheet); US-10 AC4 needs 3:1 */
@@ -372,6 +374,8 @@
     --cam-tint: var(--accent-tint);
     --now: #fc7bad;
     --now-on-field: #fc7bad;
+    --mascot-line: #441125;
+    --mascot-teal: #70c8cd;
     --glow-c: #4a3a14;
     --grid-1: #d1347a;
     --grid-2: #ec5493;
@@ -462,6 +466,8 @@
   --cam-tint: var(--accent-tint);
   --now: #fc7bad;
   --now-on-field: #fc7bad;
+  --mascot-line: #441125;
+  --mascot-teal: #70c8cd;
   --glow-c: #4a3a14;
   --grid-1: #d1347a;
   --grid-2: #ec5493;

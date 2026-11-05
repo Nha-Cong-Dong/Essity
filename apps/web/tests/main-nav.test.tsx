@@ -57,7 +57,7 @@ describe("MainNav (T2.3c, R46)", () => {
     render(<MainNav current="/subjects" />);
     const current = screen.getByRole("link", { name: "Môn học" });
     expect(current.className).toMatch(/aria-\[current=page\]:font-semibold/);
-    expect(current.className).toMatch(/aria-\[current=page\]:text-hong/);
+    expect(current.className).toMatch(/aria-\[current=page\]:text-hong-text/);
     expect(current.className).toMatch(/min-\[1024px\]:aria-\[current=page\]:bg-sunken/);
     expect(current.querySelector('span[aria-hidden="true"]')).not.toBeNull();
   });

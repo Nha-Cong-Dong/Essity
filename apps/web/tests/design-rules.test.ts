@@ -141,7 +141,7 @@ describe("design rules", () => {
   });
 
   it("§3.1: italic belongs to the pencil; what the user wrote is upright pink", () => {
-    expect(offenders(UI, /font-hand[^"]*text-hong|text-hong[^"]*font-hand/)).toEqual([]);
+    expect(offenders(UI, /font-hand[^"]*text-hong-text|text-hong-text[^"]*font-hand/)).toEqual([]);
   });
 
   it("buttons: height from the size scale, a busy submit is pending (read as JSX, review of 4b86dc4)", () => {

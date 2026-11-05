@@ -13,7 +13,7 @@ export type { NavItem } from "@/components/main-nav";
 
 function Logo({ className }: { className?: string }) {
   return (
-    <span className={cn("font-display text-logo text-hong", className)}>
+    <span className={cn("font-display text-logo text-hong-text", className)}>
       Essity
     </span>
   );
@@ -76,7 +76,7 @@ export function AppShell({
       >
         <div className="flex items-center gap-2 min-[1024px]:px-3">
           <Logo />
-          <Mascot pose="vui" size="sm" className="hidden size-6 min-[1024px]:block" />
+          <Mascot pose="glyph" size="sm" className="hidden size-6 min-[1024px]:block" />
         </div>
         <MainNav current={current} />
         <div className="ml-auto flex min-w-10 justify-end min-[1024px]:mt-auto min-[1024px]:ml-0 min-[1024px]:justify-start">

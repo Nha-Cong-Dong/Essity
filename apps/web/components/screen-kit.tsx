@@ -55,7 +55,7 @@ export function BackLink({ href, children, className }: { href: string; children
     <a
       href={href}
       className={cn(
-        "inline-flex min-h-11 min-w-11 items-center gap-2 self-start rounded-full text-body font-medium text-ink no-underline hover:text-hong",
+        "inline-flex min-h-11 min-w-11 items-center gap-2 self-start rounded-full text-body font-medium text-ink no-underline hover:text-hong-text",
         className,
       )}
     >

@@ -453,7 +453,7 @@ function Written({ sent }: { sent: Sent }) {
       {sent.dontRemember ? (
         <p className="m-0 mt-5 font-hand text-read text-ink-soft">Bạn chọn Không nhớ.</p>
       ) : (
-        <p className="m-0 mt-5 text-read whitespace-pre-wrap text-hong wrap-anywhere">{sent.text}</p>
+        <p className="m-0 mt-5 text-read whitespace-pre-wrap text-hong-text wrap-anywhere">{sent.text}</p>
       )}
       {at !== null && (
         <p className="m-0 mt-3 border-t border-line pt-3 text-meta text-ink-soft">
