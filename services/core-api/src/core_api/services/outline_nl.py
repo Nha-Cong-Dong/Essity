@@ -20,6 +20,7 @@ _MARK = re.compile(
     r"^đánh dấu\s+(?P<what>.+?)\s+(?:là |đã )(?:đã )?(?P<state>học xong|đã học|học rồi|xong)$"
 )
 _LEAD = re.compile(r"^(?:muc|chuong|phan|bai|chapter|section)\s+")  # on folded text
+_CH = r"(?:chuong|phan|muc|bai|chapter|section)"  # "Chương 2. ..." is chapter 2 too
 _NUMBER = re.compile(r"^\d+(?:\.\d+)*$")
 _LOOSE_NUMBER = re.compile(r"^(?:muc|phan)\s+(?P<n>\d+)$")  # "mục 2": chapter 2, x.2 or the 2nd?
 _SPLIT = re.compile(r"\s*(?:,|;|\bvà\b|\bvới\b)\s*")
@@ -51,7 +52,7 @@ def _resolve(sections: Sequence[DocSection], target: str) -> DocSection | None:
     loose = _LOOSE_NUMBER.match(want)
     if loose is not None:
         n = re.escape(loose.group("n"))
-        chapter = any(re.match(rf"^{n}(?!\d|\.\d)", t) for _, t in titles)
+        chapter = any(re.match(rf"^(?:{_CH}\s*)?{n}(?!\d|\.\d)", t) for _, t in titles)
         child = any(re.match(rf"^(?:\d+\.)+{n}(?!\d|\.\d)", t) for _, t in titles)
         if chapter and child:
             return None  # fits a chapter and a sub-section: ask, never guess
