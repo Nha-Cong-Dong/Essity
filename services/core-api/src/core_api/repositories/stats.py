@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, or_, select
 
 from core_api.db.models import (
     Attempt,
@@ -21,6 +21,7 @@ from core_api.db.models import (
     ReviewSession,
     StudySession,
     Subject,
+    Submission,
     UnitRevision,
     UnitSection,
 )
@@ -127,7 +128,13 @@ class StatsRepository(UserScopedRepository[MemoryState]):
         scheduler = scheduler_for_id(self.session, self.user_id)
         out: dict[uuid.UUID, list[float]] = {}
         for subject_id, memory in rows:
-            out.setdefault(subject_id, []).append(scheduler.retrievability(_state(memory), now))
+            # Answered wrong, so still relearning: recall is 1.0 only because no time has passed.
+            recall = (
+                0.0
+                if memory.phase == Phase.RELEARNING
+                else scheduler.retrievability(_state(memory), now)
+            )
+            out.setdefault(subject_id, []).append(recall)
         return out
 
     def bank(self, now: datetime) -> dict[uuid.UUID, list[BankQuestion]]:
@@ -205,7 +212,19 @@ class StatsRepository(UserScopedRepository[MemoryState]):
         sessions = self.session.scalar(
             select(func.count())
             .select_from(StudySession)
-            .where(StudySession.user_id == self.user_id, StudySession.status == "confirmed")
+            .where(
+                StudySession.user_id == self.user_id,
+                # Same as the vault: a v1 session confirmed, or a v2 one (a draft row for good)
+                # whose submission is done.
+                or_(
+                    StudySession.status == "confirmed",
+                    exists().where(
+                        Submission.session_id == StudySession.id,
+                        Submission.user_id == self.user_id,
+                        Submission.status == "done",
+                    ),
+                ),
+            )
         )
         cards_saved = self.session.scalar(
             select(func.count())

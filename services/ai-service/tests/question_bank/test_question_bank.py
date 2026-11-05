@@ -575,3 +575,49 @@ def test_ac1_counting_up_steps_then_a_far_question_is_cut_and_flagged() -> None:
     text = "Câu 1. A?\n1. x\n2. y\nCâu 2. B?\nLời giải:\n1. bước\n2. bước\n3. bước\nCâu 9. C?"
     result = split_bank(_pages(text), FakeAsk())
     assert "appendix_cut" in _codes(result)
+
+
+# ---- split_bank: answer key at the end (QA-FIX2 Q7) ------------------------------------------
+
+_KEY_BANK = (
+    "Câu 1. Giao thức nào ở tầng giao vận?\nA. TCP\nB. IP\nC. ARP\nD. DNS\n"
+    "Câu 2. Cổng mặc định của HTTP?\nA. 21\nB. 80\nC. 443\nD. 25\n"
+    "Câu 3. Địa chỉ IPv4 dài bao nhiêu bit?\nA. 16\nB. 64\nC. 32\nD. 128\n"
+)
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "Đáp án\n1-A, 2-B, 3-C",
+        "Đáp án 1-A, 2-B, 3-C",
+        "Bảng đáp án:\n1. A\n2. B\n3. C",
+        "ĐÁP ÁN\nCâu 1: A\nCâu 2: B\nCâu 3: C",
+        "Đáp án\n| Câu | Đáp án |\n| 1 | A |\n| 2 | B |\n| 3 | C |",
+        "Answer key\n1 A  2 B  3 C",
+    ],
+)
+def test_qa_fix2_q7_answer_table_at_the_end_gives_each_question_its_answer(key: str) -> None:
+    """Q7: the key is not part of the last question; every question gets its letter."""
+    result = split_bank(_pages(_KEY_BANK + key), FakeAsk())
+    assert [q.answer_text for q in result.questions] == ["A", "B", "C"]
+    assert result.questions[-1].prompt.endswith("128")
+    assert "Đáp án" not in result.questions[-1].prompt
+
+
+def test_qa_fix2_q7_answer_table_on_its_own_page() -> None:
+    result = split_bank(_pages(_KEY_BANK, "Đáp án\n1-A, 2-B, 3-C"), FakeAsk())
+    assert [q.answer_text for q in result.questions] == ["A", "B", "C"]
+    assert result.questions[-1].prompt.endswith("128")
+
+
+def test_qa_fix2_q7_a_questions_own_answer_wins_over_the_key() -> None:
+    text = "Câu 1. Hỏi một?\nĐáp án: tự luận một\nCâu 2. Hỏi hai?\nA. x\nB. y\n"
+    result = split_bank(_pages(text + "Đáp án\n1-A, 2-B"), FakeAsk())
+    assert [q.answer_text for q in result.questions] == ["tự luận một", "B"]
+
+
+def test_qa_fix2_q7_prose_after_an_answer_heading_is_not_a_key() -> None:
+    text = "Câu 1. Hỏi một?\nĐáp án: A vì thế này\nCâu 2. Hỏi hai?\nĐáp án: B vì thế kia\n"
+    result = split_bank(_pages(text), FakeAsk())
+    assert [q.answer_text for q in result.questions] == ["A vì thế này", "B vì thế kia"]

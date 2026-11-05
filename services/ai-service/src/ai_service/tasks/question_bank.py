@@ -84,6 +84,20 @@ _SECTION_BREAK = re.compile(
 )
 
 
+# A line that opens an answer key at the end of a bank: "Đáp án", "Bảng đáp án:", "Answer key",
+# optionally followed on the same line by the first pairs ("Đáp án 1-A, 2-B"). Group 1: the rest.
+_KEY_HEAD = re.compile(
+    r"^\s*(?:bảng\s*)?(?:đáp\s*án|answer\s*key|answers?)(?:\s*(?:chung|cuối|các\s*câu))?\s*[:.\-]?\s*(.*)$",
+    re.I,
+)
+# One pair of an answer key: "1-A", "1. A", "Câu 1: A", "1 | A", "1A".
+_KEY_PAIR = re.compile(r"(?<![\w])(?:c[âa]u\s*)?(\d{1,4})\s*[\s.:)\-–|]\s*([A-Fa-f])(?![\w])")
+_KEY_NOISE = re.compile(r"(?:stt|số|câu|đáp\s*án|answer|[\s,;|:.\-–)(+])+", re.I)
+_KEY_MIN_PAIRS = 2
+# What may stay in the tail besides the pairs before it stops looking like a key.
+_KEY_MAX_LEFTOVER = 0.2
+
+
 @dataclass(frozen=True)
 class Reason:
     code: str
@@ -338,12 +352,39 @@ def _appendix_cut(lines: Sequence[_Line], n: int) -> int | None:
     return len(beyond)
 
 
+def _answer_key(lines: Sequence[_Line]) -> tuple[int, dict[int, str]] | None:
+    """Where an answer key at the end of the bank starts (line index) and its letters by question
+    number; None when there is none. The heading must have a bank before it and a tail made of
+    pairs only (a few stray words allowed): ordinary text after "Đáp án:" is a question's own
+    answer, not a key."""
+    for n, (_, line) in enumerate(lines):
+        head = _KEY_HEAD.match(line)
+        if not head or n == 0:
+            continue
+        tail = "\n".join([head.group(1), *(text for _, text in lines[n + 1 :])])
+        pairs = list(_KEY_PAIR.finditer(tail))
+        if len(pairs) < _KEY_MIN_PAIRS:
+            continue
+        leftover = _KEY_NOISE.sub("", _KEY_PAIR.sub("", tail))
+        if len(leftover) > _KEY_MAX_LEFTOVER * max(1, len(tail.replace(" ", ""))):
+            continue
+        key: dict[int, str] = {}
+        for pair in pairs:
+            key.setdefault(int(pair.group(1)), pair.group(2).upper())
+        return n, key
+    return None
+
+
 def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason], int]:
     """Questions from the numbering, and the 0-based index of the first page those cover (pages
     before it were not split). `len(pages)` when no style gives two markers."""
     lines: list[_Line] = [
         (p, line) for p, page in enumerate(pages) for line in page.text.splitlines()
     ]
+    key: dict[int, str] = {}
+    found = _answer_key(lines)
+    if found is not None:
+        lines, key = lines[: found[0]], found[1]
     full = [_markers(lines, style) for style in _STYLES]
     best = max(full, key=len)
     cut_reasons: list[Reason] = []
@@ -381,6 +422,8 @@ def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason
                 answer_lines.append(line)
         prompt = "\n".join(s for line in prompt_lines if (s := line.strip()))
         answer = "\n".join(s for line in answer_lines or [] if (s := line.strip())) or None
+        if answer is None:
+            answer = key.get(number)
         page = lines[start][0]
         if last and (len(prompt) > MAX_TEXT_CHARS or len(answer or "") > MAX_TEXT_CHARS):
             prompt, answer = prompt[:MAX_TEXT_CHARS], (answer or "")[:MAX_TEXT_CHARS] or None
