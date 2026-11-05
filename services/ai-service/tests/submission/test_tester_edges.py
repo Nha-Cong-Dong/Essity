@@ -97,10 +97,14 @@ def test_us02_ac11_a_halved_batch_sends_the_learners_notes_once(
 
 
 def test_t77_d7_same_quote_in_two_batches_is_one_draft_with_both_anchors(
-    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+    redis_client: Redis,
+    stream: str,
+    sessions: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Red when: drafts of two batches sharing a draft_key are not merged (two drafts with one
     # key break unique(session_id, draft_key) in core), or the merge keeps one batch's anchors.
+    monkeypatch.setattr(process_submission, "BATCH_PAGES", 20)  # FIX-CHUNK made it 8
     storage = FakeStorage()
     same = "Ty the la noi dien ra ho hap te bao o sinh vat nhan thuc."
     pages = {n: f"Trang {n} giai thich mot y khac han so {n}." for n in range(1, 22)}

@@ -7,6 +7,7 @@
   constrained by structured outputs (`output_config.format`), then checked again by the task.
 - Thinking is off and output capped at `MAX_TOKENS` (G6): thinking tokens would count against
   the cap and the latency budget. Revisit with the eval when the model is approved (T2.12 #7).
+  A task whose answer is a list (draft_units) sets its own `request.max_output_tokens`.
 - Errors become `ProviderError` with a stable code. Exception messages, which can quote the
   request, are never passed on.
 """
@@ -94,7 +95,7 @@ class AnthropicAdapter:
         try:
             message = self._client.messages.create(
                 model=model,
-                max_tokens=MAX_TOKENS,
+                max_tokens=request.max_output_tokens or MAX_TOKENS,
                 system=request.system,
                 messages=[{"role": "user", "content": _content(request)}],
                 output_config={

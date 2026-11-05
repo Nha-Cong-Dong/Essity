@@ -61,6 +61,11 @@ PROMPT_VERSION = "v2"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
 _NONCE_PLACEHOLDER = "{{NONCE}}"
 MAX_DESCRIPTION_CHARS = 500
+# Output tokens a draft call may use (FIX-CHUNK). The adapter's default of 800 cut every v2
+# answer of QA-FINAL (about 1,500 characters of Vietnamese JSON, two drafts); 8192 holds about
+# fifteen drafts with their quotes and costs at most 0.004 USD on Haiku 5.5. A batch whose
+# answer is still cut is halved (`OutputCut`).
+MAX_OUTPUT_TOKENS = 8192
 
 
 def _no_nul(text: str) -> str:

@@ -97,6 +97,7 @@ from ai_service.tasks.chunk_units import (
     ChunkInputError,
     ChunkInvalidError,
     ChunkPrompt,
+    OutputCut,
     Prompt,
 )
 from ai_service.tasks.draft_units import (
@@ -121,7 +122,9 @@ MAX_CONTEXT_BYTES = 1_000_000
 MAX_FILE_BYTES = 30_000_000
 MAX_RESULT_BYTES = 8_000_000
 MAX_CACHED_BYTES = 2_000_000
-BATCH_PAGES = 20
+# Pages per draft call (FIX-CHUNK: 20 pages give more drafts than one answer holds; a batch
+# whose answer is still cut is halved).
+BATCH_PAGES = 8
 BATCH_CHARS = 100_000
 # Pages of documents read for one submission (decision D4/O2): the rest is `truncated`.
 MAX_SCOPE_PAGES = MAX_PAGES
@@ -229,10 +232,12 @@ class _Asker:
         event: SubmissionCreatedEvent,
         pipeline_run_id: uuid.UUID,
         payload: dict[str, Any],
+        max_output_tokens: int | None = None,
     ) -> None:
         self.llm, self.version = llm, version
         self.task: Task = task
         self.event, self.run_id, self.payload = event, pipeline_run_id, payload
+        self.max_output_tokens = max_output_tokens
         self.calls = 0
 
     def _call(self, prompt: "ChunkPrompt | ReadPrompt | _Pick") -> str:
@@ -251,8 +256,13 @@ class _Asker:
             output_schema=prompt.output_schema,
             payload=self.payload,
             images=images,
+            max_output_tokens=self.max_output_tokens,
         )
-        return self.llm.call(request, deadline=time.monotonic() + CALL_SECONDS).text
+        result = self.llm.call(request, deadline=time.monotonic() + CALL_SECONDS)
+        if self.max_output_tokens is not None and result.stop_reason == "max_tokens":
+            _log.warning("model output cut", extra={"outcome": "output_cut"})
+            raise OutputCut  # the same prompt would be cut again: the batch is halved
+        return result.text
 
     def __call__(self, prompt: Any) -> str:
         return self._call(prompt)
@@ -610,19 +620,41 @@ class ProcessSubmission:
         batch: _Batch,
         work: _Work,
     ) -> list[list[Draft]]:
-        """The drafts of a batch; one the model cannot take is halved by pages until it fits."""
+        """The drafts of a batch; one the model cannot take (input too large, or an answer cut
+        at the output cap) is halved by pages until it fits. A single page whose answer is
+        still cut is skipped and counted like a malformed batch: the other pages keep their
+        drafts, and a session with none at all fails (FIX-CHUNK)."""
         try:
             return [self._draft_batch(event, llm, run_id, context, batch, work)]
+        except OutputCut:
+            if len(batch.pages) < 2:
+                work.dropped_drafts += 1
+                work.malformed_batches += 1
+                for page in batch.pages:  # shown to the learner like any other skipped page
+                    work.skip("page", page.number, "truncated")
+                return []
+            return self._halves(event, llm, run_id, context, batch, work)
         except ChunkInputError:
             if len(batch.pages) < 2:
                 raise
-            mid = len(batch.pages) // 2
-            first = _Batch(batch.pages[:mid], batch.notes, batch.notes_offset)
-            second = _Batch(batch.pages[mid:], None, 0)
-            return [
-                *self._split_to_fit(event, llm, run_id, context, first, work),
-                *self._split_to_fit(event, llm, run_id, context, second, work),
-            ]
+            return self._halves(event, llm, run_id, context, batch, work)
+
+    def _halves(
+        self,
+        event: SubmissionCreatedEvent,
+        llm: LlmClient,
+        run_id: uuid.UUID,
+        context: SubmissionContext,
+        batch: _Batch,
+        work: _Work,
+    ) -> list[list[Draft]]:
+        mid = len(batch.pages) // 2
+        first = _Batch(batch.pages[:mid], batch.notes, batch.notes_offset)
+        second = _Batch(batch.pages[mid:], None, 0)
+        return [
+            *self._split_to_fit(event, llm, run_id, context, first, work),
+            *self._split_to_fit(event, llm, run_id, context, second, work),
+        ]
 
     def _draft_batch(
         self,
@@ -646,6 +678,7 @@ class ProcessSubmission:
                 event=event,
                 pipeline_run_id=run_id,
                 payload={"sources": _sources(request)},
+                max_output_tokens=draft_task.MAX_OUTPUT_TOKENS,
             )
             outcome: DraftOutcome = draft_units(request, asker)
             if outcome.status == "pending_ai":
