@@ -297,15 +297,33 @@ def _match_orphans(
     matched: dict[int, int],
 ) -> None:
     """A section whose old parent was garbage (a stray ")" the new reading no longer has) matches
-    by its exact title when it is the only such title left on both sides and its new parent is
-    matched: the section moved to the right parent, it is not a new one. Without this the old
-    row stayed (a question hangs on it), excluded, under the garbage parent, which stayed too."""
+    by its exact title when it is the only such title left on both sides, its new parent is
+    matched, and it stays in the same place: the nearest matched ancestor of the old one is the
+    old section its new parent matched, or one above it. So a title held twice (two "Bài tập") or
+    one that moved to another chapter is never paired. Without this the old row stayed (a question
+    hangs on it), excluded, under the garbage parent, which stayed too."""
     taken = set(matched.values())
-    lost = {
+
+    def anchor(o: int) -> int | None:
+        up = old_parent[o]
+        while up is not None and up not in taken:
+            up = old_parent[up]
+        return up
+
+    def above(a: int, b: int) -> bool:
+        """`a` is `b` or one of its ancestors in the old tree."""
+        node: int | None = b
+        while node is not None:
+            if node == a:
+                return True
+            node = old_parent[node]
+        return False
+
+    lost = [
         o
         for o, parent in enumerate(old_parent)
         if o not in taken and parent is not None and parent not in taken
-    }
+    ]
     free_old: dict[str, list[int]] = {}
     for o in lost:
         free_old.setdefault(old[o].strip().casefold(), []).append(o)
@@ -315,5 +333,9 @@ def _match_orphans(
             free_new.setdefault(new[n].strip().casefold(), []).append(n)
     for title, news in free_new.items():
         olds = free_old.get(title, [])
-        if len(news) == 1 and len(olds) == 1:
+        if len(news) != 1 or len(olds) != 1:
+            continue
+        a = anchor(olds[0])
+        parent = new_parent[news[0]]
+        if a is not None and parent is not None and above(a, matched[parent]):
             matched[news[0]] = olds[0]
