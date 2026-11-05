@@ -51,17 +51,14 @@ def test_tester_rating_uses_the_timing_written_at_submit(
     # Easy when the previous attempt was correct and active <= 0.7 x 120 = 84 s and timing_ok.
     # Red when: a correct verdict is not passed as "correct", active time reaches record_grade in
     # ms instead of s, or timing_ok is not the attempt's (a hidden tab still earns Easy).
+    # One attempt per learning day: a same-day redo replaces the earlier try (QA2-FSRS), so it
+    # cannot be the "previous correct" that Easy needs.
     question = learner.question()
-    set_now(FROZEN_NOW)
-    first = learner.open(question)["attempt_id"]
-    set_now(FROZEN_NOW + timedelta(seconds=10))
-    learner.submit(first)
-    second = learner.open(question)["attempt_id"]
-    set_now(FROZEN_NOW + timedelta(seconds=20))
-    learner.submit(second)
-    third = learner.open(question)["attempt_id"]
-    set_now(FROZEN_NOW + timedelta(seconds=30))
-    learner.submit(third, hidden_ms=1_000)
+    for n, hidden_ms in enumerate((0, 0, 1_000)):
+        set_now(FROZEN_NOW + timedelta(days=3 * n))
+        attempt = learner.open(question)["attempt_id"]
+        set_now(FROZEN_NOW + timedelta(days=3 * n, seconds=10))
+        learner.submit(attempt, hidden_ms=hidden_ms)
     assert ratings(db_session) == [3, 4, 3]  # Good, Easy (fast, clean), Good (tab hidden)
 
 
