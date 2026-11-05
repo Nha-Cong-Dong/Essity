@@ -5,7 +5,9 @@ import { useCallback, useState } from "react";
 import { PdfPage } from "@/components/vault/pdf-page";
 
 import { Markdown } from "@/components/markdown/markdown";
+import { Block } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
+import { Carousel } from "@/components/ui/carousel";
 import type { VaultCard } from "@/lib/vault-api";
 
 // G1/G3/G4: the cards of one study session. "Sửa thẻ" edits title and content in place, "Lưu"
@@ -29,7 +31,7 @@ function Marked({ text, range }: { text: string; range: [number, number] }) {
   return (
     <>
       {text.slice(0, range[0])}
-      <mark className="rounded-sm bg-hong/25 px-0.5 text-ink">{text.slice(range[0], range[1])}</mark>
+      <mark className="rounded-sm bg-hl px-0.5 text-ink">{text.slice(range[0], range[1])}</mark>
       {text.slice(range[1])}
     </>
   );
@@ -48,7 +50,7 @@ function SourceItem({ s }: { s: Source }) {
     s.page_text && s.highlight ? (
       <Marked text={s.page_text} range={s.highlight} />
     ) : (
-      <mark className="rounded-sm bg-hong/25 px-0.5 text-ink">{s.quote}</mark>
+      <mark className="rounded-sm bg-hl px-0.5 text-ink">{s.quote}</mark>
     );
   return (
     <li className="rounded-control bg-sunken p-3">
@@ -66,7 +68,7 @@ function SourceItem({ s }: { s: Source }) {
             ))}
           </div>
           <p className="m-0 whitespace-pre-wrap text-body text-ink-soft">
-            <mark className="rounded-sm bg-hong/25 px-0.5 text-ink">{s.quote}</mark>
+            <mark className="rounded-sm bg-hl px-0.5 text-ink">{s.quote}</mark>
           </p>
         </div>
       ) : null}
@@ -132,7 +134,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
   }
 
   return (
-    <li className="flex min-w-0 flex-col gap-3 rounded-row bg-bg p-4" data-slot="vault-card">
+    <article className="flex min-w-0 flex-col gap-3 rounded-tile bg-sheet p-6 text-ink" data-slot="vault-card">
       {draft ? (
         <>
           <input
@@ -210,22 +212,32 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
         </p>
       ) : null}
       {showSource && !draft ? <SourcePanel cardId={card.id} /> : null}
-    </li>
+    </article>
   );
 }
+
+// V4-SCREENS-B: a white sheet per card on one plum stage, side by side in a horizontal band (ui/carousel).
+// The two round buttons are re-coloured for the plum ground (--on-plum-action, never --hong on plum).
+const STAGE_BUTTONS =
+  "[&_[data-slot=carousel-track]>div]:w-[min(380px,calc(100vw-96px))] [&_[data-slot=carousel-meta]]:text-on-plum [&_button[aria-label^=Th]]:bg-on-plum-action [&_button[aria-label^=Th]]:text-on-plum-action-fg [&_button[aria-label^=Th]]:inset-ring-0 [&_button[aria-label^=Th]:hover]:bg-on-plum-action [&_button[aria-label^=Th]:disabled]:bg-on-plum/15 [&_button[aria-label^=Th]:disabled]:text-on-plum-soft";
 
 export function CardList({ cards }: { cards: VaultCard[] }) {
   const [gone, setGone] = useState<string[]>([]);
   const shown = cards.filter((c) => !gone.includes(c.id));
-  if (shown.length === 0) return <p className="m-0 text-lead">Buổi này chưa có thẻ nào.</p>;
+  if (shown.length === 0) {
+    return (
+      <Block as="section" tier="sheet" aria-label="Chưa có thẻ">
+        <p className="m-0 text-lead">Buổi này chưa có thẻ nào.</p>
+      </Block>
+    );
+  }
   return (
-    <ul
-      data-nx
-      className="m-0 grid list-none gap-1.5 rounded-tile bg-hong-tint p-4 min-[901px]:p-6 [grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))]"
-    >
-      {shown.map((c) => (
-        <Card key={c.id} card={c} onGone={(id) => setGone((g) => [...g, id])} />
-      ))}
-    </ul>
+    <Block tier="field" className="p-4 min-[901px]:p-6" data-vault-stage>
+      <Carousel label="Thẻ của buổi học" className={STAGE_BUTTONS}>
+        {shown.map((c) => (
+          <Card key={c.id} card={c} onGone={(id) => setGone((g) => [...g, id])} />
+        ))}
+      </Carousel>
+    </Block>
   );
 }
