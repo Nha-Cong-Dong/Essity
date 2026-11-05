@@ -42,3 +42,30 @@ it("says so when the call fails", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
   await waitFor(() => expect(screen.getByText(/Chưa gửi được/)).toBeTruthy());
 });
+
+// Red when: the reply promises "Hoàn tác" but the chat has no such button (QA 05/11).
+it("offers Hoàn tác for a change that can be undone, and calls the undo route", async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ status: "applied", reply: "Đã bỏ 1 mục. Bấm Hoàn tác nếu bạn đổi ý.", command_id: "c1" }) })
+    .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ status: "undone" }) });
+  vi.stubGlobal("fetch", fetcher);
+  const changed = vi.fn();
+  render(<OutlineChat subjectId="9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b" onChanged={changed} />);
+  fireEvent.change(screen.getByLabelText(/Nói điều bạn muốn sửa/), { target: { value: "bỏ chương 5" } });
+  fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Hoàn tác" }));
+  await waitFor(() => expect(screen.getByText("Đã hoàn tác.")).toBeTruthy());
+  expect(fetcher.mock.calls[1][0]).toBe("/api/commands/c1/undo");
+  expect(changed).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole("button", { name: "Hoàn tác" })).toBeNull();
+});
+
+it("shows no Hoàn tác when the change has no command to undo", async () => {
+  reply({ status: "applied", reply: "Đã gộp 2 mục.", command_id: null });
+  render(<OutlineChat subjectId="9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b" onChanged={() => undefined} />);
+  fireEvent.change(screen.getByLabelText(/Nói điều bạn muốn sửa/), { target: { value: "gộp" } });
+  fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
+  await waitFor(() => expect(screen.getByText(/Đã gộp 2 mục/)).toBeTruthy());
+  expect(screen.queryByRole("button", { name: "Hoàn tác" })).toBeNull();
+});

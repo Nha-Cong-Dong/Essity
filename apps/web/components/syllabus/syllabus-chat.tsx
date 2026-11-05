@@ -14,7 +14,7 @@ export const SYLLABUS_CHANGED = "essity:syllabus-changed";
 const EXAMPLES = ["gộp phần 1.2 với 1.3", "bỏ phần phụ lục", "tách chương 3"];
 const OFFLINE = "Chưa gửi được. Bạn kiểm tra kết nối rồi thử lại nhé.";
 
-type Answer = { tone: "ok" | "info"; text: string };
+type Answer = { tone: "ok" | "info"; text: string; undoId?: string };
 
 export function OutlineChat({ subjectId, onChanged }: { subjectId: string; onChanged: () => void }) {
   const [text, setText] = useState("");
@@ -38,14 +38,18 @@ export function OutlineChat({ subjectId, onChanged }: { subjectId: string; onCha
         window.location.assign("/login");
         return;
       }
-      const data = (await response.json().catch(() => null)) as { status?: string; reply?: string } | null;
+      const data = (await response.json().catch(() => null)) as {
+        status?: string;
+        reply?: string;
+        command_id?: string | null;
+      } | null;
       if (!response.ok || !data?.reply) {
         setAnswer({ tone: "info", text: OFFLINE });
         return;
       }
       if (data.status === "applied") {
         setText("");
-        setAnswer({ tone: "ok", text: data.reply });
+        setAnswer({ tone: "ok", text: data.reply, undoId: data.command_id ?? undefined });
         window.dispatchEvent(new Event(SYLLABUS_CHANGED));
         onChanged();
       } else {
@@ -56,6 +60,31 @@ export function OutlineChat({ subjectId, onChanged }: { subjectId: string; onCha
     } finally {
       setBusy(false);
       input.current?.focus();
+    }
+  }
+
+  // The reply says "Bấm Hoàn tác nếu bạn đổi ý": the button it names is here (QA 05/11).
+  async function undo() {
+    const id = answer?.undoId;
+    if (!id || busy) return;
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/commands/${id}/undo`, { method: "POST" });
+      if (response.status === 401) {
+        window.location.assign("/login");
+        return;
+      }
+      if (response.ok) {
+        setAnswer({ tone: "ok", text: "Đã hoàn tác." });
+        window.dispatchEvent(new Event(SYLLABUS_CHANGED));
+        onChanged();
+      } else {
+        setAnswer({ tone: "info", text: "Không hoàn tác được. Bạn thử lại hoặc sửa tay trong đề cương." });
+      }
+    } catch {
+      setAnswer({ tone: "info", text: OFFLINE });
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -81,6 +110,11 @@ export function OutlineChat({ subjectId, onChanged }: { subjectId: string; onCha
       </form>
       <div role="status" aria-live="polite" data-chat-reply>
         {answer && <p className="m-0 text-body wrap-anywhere">{answer.text}</p>}
+        {answer?.undoId && (
+          <Button type="button" variant="quiet" onClick={() => void undo()} className="self-start">
+            Hoàn tác
+          </Button>
+        )}
       </div>
       <p className="m-0 flex flex-wrap items-center gap-2 text-meta text-ink-soft">
         <span>Thử nói:</span>
