@@ -75,8 +75,9 @@ def promote_drafts(session: Session, *, now: datetime, dry_run: bool = False) ->
         cards += len(drafts)
         if dry_run:
             continue
-        # Each card is saved at the moment it was made (never later than `now`), so the old
-        # cards enter review on the days they would have, not all on one.
+        # Each card is saved at the moment it was made (never later than `now`): its learning
+        # day is the day it was made, so an old card is eligible for review at once. This does
+        # not spread them over days; Hôm nay's own cap (20 items) keeps the first day small.
         ranges = _ranges(session, user_id, [u.id for u in drafts])
         for unit in drafts:
             review.promote(

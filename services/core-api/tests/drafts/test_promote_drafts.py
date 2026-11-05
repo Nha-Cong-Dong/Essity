@@ -94,8 +94,8 @@ def test_the_cli_command_runs_and_prints_the_counts(
     assert "promoted 1 cards" in capsys.readouterr().out
 
 
-def test_old_cards_are_saved_when_they_were_made_not_all_today(world: World) -> None:
-    # Red when: every old draft is saved "now", so Hôm nay gets all of them on one day.
+def test_old_cards_keep_the_day_they_were_made(world: World) -> None:
+    # Red when: an old draft is saved "now" instead of when it was made (its learning day is wrong).
     from datetime import timedelta
 
     old, new = draft(world, 1), draft(world, 2)
