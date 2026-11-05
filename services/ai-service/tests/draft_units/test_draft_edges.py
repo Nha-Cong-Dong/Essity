@@ -302,7 +302,7 @@ def test_a_page_in_two_sections_gives_both_to_the_draft() -> None:
 
 # Red when: the prompt goes back to splitting a definition into small pieces (V4).
 def test_prompt_asks_for_whole_definitions_and_properties() -> None:
-    assert PROMPT_VERSION == "v2"
+    assert PROMPT_VERSION == "v3"
     for phrase in (
         "ONE DEFINITION or ONE PROPERTY",
         "never cut it into small pieces",
@@ -310,3 +310,20 @@ def test_prompt_asks_for_whole_definitions_and_properties() -> None:
     ):
         assert phrase in _DRAFT_PROMPT
     assert "Wrong:" in _DRAFT_PROMPT
+
+
+# Red when: the prompt stops telling the model to write cards as Markdown with LaTeX maths in $...$
+# (CARD-MD), or lets it convert the anchor quote (which must stay the page's own words).
+def test_prompt_v3_asks_for_markdown_and_latex_in_dollars() -> None:
+    assert PROMPT_VERSION == "v3"
+    for phrase in (
+        "Markdown",
+        "$...$",
+        r"\mid",
+        r"\cdots",
+        r"\frac{a}{b}",
+        "`$$` on a line by itself",
+    ):
+        assert phrase in _DRAFT_PROMPT
+    assert "never converted to LaTeX or Markdown" in _DRAFT_PROMPT
+    assert "n1n2...nk" in _DRAFT_PROMPT  # named as the wrong way

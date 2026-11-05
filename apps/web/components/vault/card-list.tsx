@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 
 import { PdfPage } from "@/components/vault/pdf-page";
 
+import { Markdown } from "@/components/markdown/markdown";
 import { Button } from "@/components/ui/button";
 import type { VaultCard } from "@/lib/vault-api";
 
@@ -143,11 +144,21 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
           />
           <textarea
             aria-label="Nội dung thẻ"
+            aria-describedby={`md-hint-${card.id}`}
             className="min-h-32 rounded-control bg-bg p-3 text-body inset-ring-[1.5px] inset-ring-line-strong"
             value={draft.content}
             maxLength={4000}
             onChange={(e) => setDraft({ ...draft, content: e.target.value })}
           />
+          <p id={`md-hint-${card.id}`} className="m-0 text-meta text-ink-soft">
+            Viết được Markdown. Công thức đặt trong $...$ (cùng dòng) hoặc $$...$$ (khối), ví dụ $n_1 n_2$.
+          </p>
+          {draft.content.trim() ? (
+            <section aria-label="Xem trước nội dung" className="flex flex-col gap-1 rounded-control bg-sunken p-3">
+              <span className="text-meta text-ink-soft">Xem trước</span>
+              <Markdown className="text-body" text={draft.content} />
+            </section>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <Button
               variant="primary"
@@ -182,7 +193,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
       ) : (
         <>
           <h3 className="m-0 text-lead font-semibold">{saved.title}</h3>
-          <p className="m-0 whitespace-pre-wrap text-body">{saved.content}</p>
+          <Markdown className="text-body" text={saved.content} />
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" size="md" onClick={() => setDraft(saved)}>
               Sửa thẻ

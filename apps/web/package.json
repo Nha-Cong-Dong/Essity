@@ -24,11 +24,15 @@
     "cn": "^0.4.0",
     "cytoscape": "^3.34.4",
     "cytoscape-fcose": "^2.2.0",
+    "katex": "~0.16.47",
     "lucide-react": "^1.57.0",
     "next": "16.4.2",
     "pdfjs-dist": "4.10.38",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
     "server-only": "^0.0.1"
   },
   "devDependencies": {
