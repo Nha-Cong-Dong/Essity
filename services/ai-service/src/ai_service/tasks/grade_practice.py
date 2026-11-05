@@ -16,6 +16,7 @@ import copy
 import hashlib
 import logging
 import re
+import unicodedata
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -193,6 +194,26 @@ def _norm(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().casefold()
 
 
+def _plain(text: str) -> str:
+    """Words only: lower case, no punctuation, one space between words (Vietnamese marks kept)."""
+    return " ".join(
+        re.sub(r"[^\w\s]|_", " ", unicodedata.normalize("NFC", text)).casefold().split()
+    )
+
+
+def _label_of(idea: str, rubric: list[str]) -> str:
+    """The rubric label a model idea stands for. It is the label itself ("R1") or, as the model
+    often answers, the idea's own words; a word match must equal a rubric idea once normalised.
+    Anything else is returned as it is and fails the label check."""
+    if _LABEL.fullmatch(idea):
+        return idea
+    plain = _plain(idea)
+    for number, wanted in enumerate(rubric, start=1):
+        if plain == _plain(wanted):
+            return f"R{number}"
+    return idea
+
+
 def check_output(text: str, request: PracticeGradeRequest) -> list[IdeaResult]:
     """Every rubric idea exactly once; an anchor is a quote of the learner's answer."""
     if len(text) > MAX_OUTPUT_CHARS:
@@ -202,12 +223,7 @@ def check_output(text: str, request: PracticeGradeRequest) -> list[IdeaResult]:
     except ValidationError:
         raise _Malformed(FAIL_MALFORMED) from None  # never carries the text
     labels = [f"R{n}" for n in range(1, len(request.rubric) + 1)]
-    ideas = parsed.ideas
-    if len(ideas) == len(labels) and not any(_LABEL.fullmatch(i.idea) for i in ideas):
-        # The model named each idea by its words, not its label: take them in the rubric's order.
-        ideas = [
-            i.model_copy(update={"idea": label}) for i, label in zip(ideas, labels, strict=True)
-        ]
+    ideas = [i.model_copy(update={"idea": _label_of(i.idea, request.rubric)}) for i in parsed.ideas]
     by_label = {i.idea: i for i in ideas}
     if len(by_label) != len(ideas) or set(by_label) != set(labels):
         raise _Malformed(FAIL_MALFORMED)
