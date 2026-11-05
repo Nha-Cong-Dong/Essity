@@ -306,3 +306,43 @@ def test_a_card_stays_under_its_chapter_when_a_section_is_added_above_it(
     chapter2 = rows(db_session, user, document)["Chương 2. B"]
     assert kept is not None and kept.parent_id == chapter2.id
     assert db_session.scalar(select(func.count()).select_from(UnitSection)) == 1
+
+
+def test_a_section_under_a_vanished_garbage_parent_moves_to_its_new_parent(
+    db_session: Session, fake_storage: FakeStorage
+) -> None:
+    # QA 05/11. Red when: an old "2.4.7" hung on by a card sits (excluded) under a stray ")" that
+    # stays too, beside the new "2.4.7": the count grows and the learner sees ")" "Không thi".
+    user, _ = signed_in(db_session)
+    document = document_in(db_session, user, subject_of(db_session, user), pages=50)
+    old = [
+        NewSection("2. Quy luật", None, 1, 30, 30, "page", "heading"),
+        NewSection("2.4. Thông dụng", 0, 1, 20, 20, "page", "heading"),
+        NewSection(")", 0, 21, 30, 10, "page", "heading"),
+        NewSection("2.4.7. Các định lí giới hạn", 2, 21, 30, 10, "page", "heading"),
+    ]
+    by_title = with_outline(db_session, user, document, old)
+    limit = by_title["2.4.7. Các định lí giới hạn"]
+    unit = make_unit(db_session, user, subject_of_id(limit), status="canonical")  # pyright: ignore[reportArgumentType]
+    link = UnitSection(subject_id=limit.subject_id, unit_id=unit.id, section_id=limit.id)
+    link.user_id = user.id
+    db_session.add(link)
+    db_session.flush()
+    body = {
+        "unit": "page",
+        "nodes": [
+            node("2. Quy luật", None, 1, 30),
+            node("2.4. Thông dụng", 0, 1, 30),
+            node("2.4.7. Các định lí giới hạn", 1, 21, 30),
+        ],
+    }
+
+    OutlineService(db_session, user.id).request_reextract(document.id)
+    OnDocumentIndexed(fake_storage)(db_session, answer(fake_storage, document, body))
+    db_session.flush()
+
+    after = rows(db_session, user, document)
+    assert ")" not in after and len(after) == 3
+    kept = after["2.4.7. Các định lí giới hạn"]
+    assert kept.id == limit.id and not kept.excluded  # the card stays on the same row
+    assert kept.parent_id == after["2.4. Thông dụng"].id
