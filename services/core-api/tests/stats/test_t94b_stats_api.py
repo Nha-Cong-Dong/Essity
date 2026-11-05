@@ -356,6 +356,26 @@ def test_sessions_total_matches_vault_finished_sessions(
     assert vault[0]["sessions"] == 1
 
 
+def test_sessions_total_skips_deleted_subject(
+    client: TestClient, db_session: Session, two_users: tuple[User, User]
+) -> None:
+    # Red when: sessions of a deleted subject stay in the total while the vault hides them.
+    alice, _ = two_users
+    headers = headers_of(db_session, alice)
+    live = make_subject(db_session, alice)
+    gone = make_subject(db_session, alice, "Cũ")
+    for subject in (live, gone):
+        study = make_study_session(db_session, alice, subject)
+        db_session.add(
+            Submission(
+                user_id=alice.id, session_id=study.id, status="done", file_keys=[], finished_at=NOW
+            )
+        )
+    gone.deleted_at = NOW
+    db_session.flush()
+    assert stats(client, headers)["totals"]["sessions"] == 1
+
+
 # QA-FIX2 Q9: a card just answered wrong is in relearning, not "remembered well" at 100%.
 def test_retention_counts_relearning_card_as_not_solid(
     client: TestClient, db_session: Session, two_users: tuple[User, User]

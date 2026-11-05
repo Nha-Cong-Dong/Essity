@@ -12,7 +12,7 @@ from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import AfterValidator, BaseModel, Field, StrictStr
-from sqlalchemy import ColumnElement, exists, func, or_, select
+from sqlalchemy import ColumnElement, func, select
 
 from core_api.api.deps import Now, Storage, VerifiedUser, verified_user
 from core_api.api.text import storable_text
@@ -24,10 +24,10 @@ from core_api.db.models import (
     NoteFile,
     StudySession,
     Subject,
-    Submission,
     UnitRevision,
 )
 from core_api.db.session import DbSession
+from core_api.repositories.stats import finished_session
 
 router = APIRouter(prefix="/v1/vault", dependencies=[Depends(verified_user)])
 
@@ -116,19 +116,6 @@ def _card_clause(user_id: uuid.UUID) -> tuple[ColumnElement[bool], ...]:
     )
 
 
-def _finished_session(user_id: uuid.UUID) -> ColumnElement[bool]:
-    """A v1 session confirmed, or a v2 one handed in and processed: a v2 session stays a `draft`
-    row for good (`session_result_v2`), its done submission is what finishes it."""
-    return or_(
-        StudySession.status == "confirmed",
-        exists().where(
-            Submission.session_id == StudySession.id,
-            Submission.user_id == user_id,
-            Submission.status == "done",
-        ),
-    )
-
-
 @router.get("/subjects")
 def vault_subjects(user: VerifiedUser, session: DbSession) -> list[VaultSubjectOut]:
     subjects = session.scalars(
@@ -139,7 +126,7 @@ def vault_subjects(user: VerifiedUser, session: DbSession) -> list[VaultSubjectO
     sessions = dict(
         session.execute(
             select(StudySession.subject_id, func.count())
-            .where(StudySession.user_id == user.id, _finished_session(user.id))
+            .where(StudySession.user_id == user.id, finished_session(user.id))
             .group_by(StudySession.subject_id)
         )
         .tuples()
@@ -187,7 +174,7 @@ def vault_sessions(
         .where(
             StudySession.user_id == user.id,
             StudySession.subject_id == subject_id,
-            _finished_session(user.id),
+            finished_session(user.id),
         )
         .order_by(StudySession.studied_on.desc().nulls_last(), StudySession.created_at.desc())
     ).all()

@@ -357,22 +357,31 @@ def _answer_key(lines: Sequence[_Line]) -> tuple[int, dict[int, str]] | None:
     number; None when there is none. The heading must have a bank before it and a tail made of
     pairs only (a few stray words allowed): ordinary text after "Đáp án:" is a question's own
     answer, not a key."""
-    for n, (_, line) in enumerate(lines):
-        head = _KEY_HEAD.match(line)
-        if not head or n == 0:
+    # Walk back from the end and stop at the first heading whose tail is not a key: the key is
+    # at the end, so what lies before a failing heading is question text, and one pass per
+    # heading over the whole tail would be quadratic on a bank of "Đáp án: ..." lines.
+    found: tuple[int, dict[int, str]] | None = None
+    for n in range(len(lines) - 1, 0, -1):
+        head = _KEY_HEAD.match(lines[n][1])
+        if not head:
             continue
-        tail = "\n".join([head.group(1), *(text for _, text in lines[n + 1 :])])
+        rest = head.group(1)
+        # "Đáp án: B. ..." is one question's own answer, not a key: only a heading alone on its
+        # line or one followed by two pairs or more opens a key.
+        if rest.strip() and len(_KEY_PAIR.findall(rest)) < _KEY_MIN_PAIRS:
+            continue
+        tail = "\n".join([rest, *(text for _, text in lines[n + 1 :])])
         pairs = list(_KEY_PAIR.finditer(tail))
-        if len(pairs) < _KEY_MIN_PAIRS:
-            continue
         leftover = _KEY_NOISE.sub("", _KEY_PAIR.sub("", tail))
-        if len(leftover) > _KEY_MAX_LEFTOVER * max(1, len(tail.replace(" ", ""))):
-            continue
+        if len(pairs) < _KEY_MIN_PAIRS or len(leftover) > _KEY_MAX_LEFTOVER * max(
+            1, len(tail.replace(" ", ""))
+        ):
+            break
         key: dict[int, str] = {}
         for pair in pairs:
             key.setdefault(int(pair.group(1)), pair.group(2).upper())
-        return n, key
-    return None
+        found = n, key
+    return found
 
 
 def _regex_split(pages: Sequence[PageText]) -> tuple[list[Question], list[Reason], int]:

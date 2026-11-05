@@ -621,3 +621,25 @@ def test_qa_fix2_q7_prose_after_an_answer_heading_is_not_a_key() -> None:
     text = "Câu 1. Hỏi một?\nĐáp án: A vì thế này\nCâu 2. Hỏi hai?\nĐáp án: B vì thế kia\n"
     result = split_bank(_pages(text), FakeAsk())
     assert [q.answer_text for q in result.questions] == ["A vì thế này", "B vì thế kia"]
+
+
+def test_qa_fix2_review_many_own_answers_split_in_linear_time() -> None:
+    """Review of #242: 2000 questions each with "Đáp án: B. ..." must not cost a pass over the
+    whole tail per answer line."""
+    import time
+
+    text = "\n".join(f"Câu {k}. Hỏi số {k}?\nĐáp án: B. vì lý do {k}" for k in range(1, 2001))
+    started = time.perf_counter()
+    result = split_bank(_pages(text), FakeAsk())
+    assert time.perf_counter() - started < 2
+    # The bank is capped (too_many); what matters is the time and that the own answers stay.
+    assert result.questions[0].answer_text == "B. vì lý do 1"
+
+
+def test_qa_fix2_review_short_last_answer_before_the_table_stays_its_own() -> None:
+    """A last "Đáp án: B" line right before the table is the question's answer, and the table
+    is read from its own heading."""
+    text = _KEY_BANK + "Đáp án: B\nĐáp án\n1-A, 2-B, 3-C"
+    result = split_bank(_pages(text), FakeAsk())
+    assert [q.answer_text for q in result.questions] == ["A", "B", "B"]
+    assert result.questions[-1].prompt.endswith("128")
