@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // SESSION-END: "Kết thúc buổi học" hands the session in and opens a pop-up (praise, cards being made,
 // "Về trang chủ", "Học tiếp môn này"); the screen has no "Học tự do" button any more.
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -117,7 +117,8 @@ describe("session end", () => {
     show(api());
     await end();
     const dialog = await screen.findByRole("dialog");
-    expect(dialog.contains(document.activeElement)).toBe(true);
+    // The dialog moves focus after it mounts (a frame later under load), so wait for it.
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
   });
 
   // Red when: a section session loses its suggestion line (free study still shows the next section).
@@ -188,7 +189,7 @@ describe("session end, typed text and empty session", () => {
     show(api());
     await end();
     const dialog = await screen.findByRole("dialog");
-    expect(document.activeElement?.textContent).toBe(END_COPY.home);
+    await waitFor(() => expect(document.activeElement?.textContent).toBe(END_COPY.home));
     fireEvent.pointerDown(document.body);
     fireEvent.click(document.body);
     expect(screen.getByRole("dialog")).toBe(dialog);
