@@ -26,7 +26,6 @@ export type LearnItem =
 
 export type Unfinished =
   | { kind: "review"; session_id: string; position: number; total: number }
-  | { kind: "draft"; subject: NamedSubject; drafts: number }
   | { kind: "session"; subject: NamedSubject; session_id: string; line: string }
   | { kind: "note"; text: string };
 
@@ -110,7 +109,5 @@ export const TODAY_V2_COPY = {
   retry: "Thử lại",
 } as const;
 
-/** "Mạng máy tính: còn 4 thẻ nháp chưa duyệt". */
-export const draftLine = (name: string, drafts: number) => `${name}: còn ${drafts} thẻ nháp chưa duyệt`;
 export const practiceLine = (row: PracticeRow) => `${row.name}: ${row.ready} câu sẵn sàng · ${row.kinds} dạng`;
 export const reviewProgress = (position: number, total: number) => `Phiên ôn đang dở · câu ${position}/${total}`;

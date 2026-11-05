@@ -21,13 +21,14 @@ def _submission(db: Session, user_id: object, session_id: object, status: str) -
     db.flush()
 
 
-def test_us03_ac1_unfinished_lists_draft_cards_and_pending_ai_submissions(
+def test_us03_ac1_unfinished_lists_only_pending_ai_submissions(
     db_session: Session,
 ) -> None:
+    # Red when: a left-over draft card (none are made any more, CARDS-V3) puts a "thẻ nháp" line
+    # on Today, or a session waiting for the AI is missing.
     alice, _ = signed_in(db_session)
     subject = make_subject(db_session, alice)
     drafts = make_study_session(db_session, alice, subject)
-    make_unit(db_session, alice, subject, status="draft", session_id=drafts.id)
     make_unit(db_session, alice, subject, status="draft", session_id=drafts.id)
     waiting = make_study_session(db_session, alice, subject)
     _submission(db_session, alice.id, waiting.id, "pending_ai")
@@ -37,8 +38,7 @@ def test_us03_ac1_unfinished_lists_draft_cards_and_pending_ai_submissions(
     make_study_session(db_session, alice, subject)  # nothing left in it
 
     rows = {r.session_id: r for r in TodayRepository(db_session, alice.id).unfinished_sessions()}
-    assert set(rows) == {drafts.id, waiting.id}
-    assert (rows[drafts.id].draft_cards, rows[drafts.id].pending_ai) == (2, False)
+    assert set(rows) == {waiting.id}
     assert (rows[waiting.id].draft_cards, rows[waiting.id].pending_ai) == (0, True)
 
 

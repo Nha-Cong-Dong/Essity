@@ -30,11 +30,29 @@ class ExistingUnit(_Closed):
     summary: Annotated[str, Field(max_length=2000)]
 
 
+class OutlineSection(_Closed):
+    section_id: uuid.UUID
+    title: Annotated[str, Field(max_length=120)]
+    first_page: Annotated[int, Field(ge=1)] | None
+    last_page: Annotated[int, Field(ge=1)] | None
+    depth: Annotated[int, Field(ge=0, le=10)]
+
+
+class OutlineDocument(_Closed):
+    document_id: uuid.UUID
+    name: Annotated[str, Field(max_length=200)]
+    sections: Annotated[list[OutlineSection], Field(max_length=300)]
+
+
 class SubmissionContext(_Closed):
     version: Annotated[int, Field(ge=1, le=1)]
     description: Annotated[str, Field(max_length=2000)] | None
     mentions: Annotated[list[Mention], Field(max_length=20)]
     existing_units: Annotated[list[ExistingUnit], Field(max_length=200)]
+    # Optional and additive: titles and pages of each mentioned document (absent in old contexts).
+    documents: Annotated[list[OutlineDocument], Field(max_length=20)] = Field(
+        default_factory=lambda: list[OutlineDocument]()
+    )
 
 
 def parse_context(raw: str | bytes) -> SubmissionContext:

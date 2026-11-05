@@ -469,10 +469,27 @@ class UnitReviewService:
             to_save.append(unit)
         if not to_save:
             return SaveResult(saved=[])
+        self.promote(study, to_save, now=now, tz=tz, day_start_hour=day_start_hour, ranges=ranges)
+        return SaveResult(saved=[u.id for u in to_save])
+
+    def promote(
+        self,
+        study: StudySession,
+        units: list[KnowledgeUnit],
+        *,
+        now: datetime,
+        tz: ZoneInfo,
+        day_start_hour: int,
+        ranges: list[NewRange],
+    ) -> None:
+        """Draft cards (locked by the caller) become canonical, in the caller's one transaction:
+        revision (the learner's, after the AI's rev 0), ledger, ranges, one `unit.saved.v1` each
+        with its review question and edge jobs. The one door a card enters the vault by: the
+        learner's Save, a card they add, an AI result and the move of old drafts all use it."""
         day = saved_learning_day(now, tz, day_start_hour)
-        existing = self.repo.revisions_of([u.id for u in to_save])
+        existing = self.repo.revisions_of([u.id for u in units])
         per_section: dict[uuid.UUID | None, int] = {}
-        for unit in to_save:
+        for unit in units:
             rev = max((r.rev for r in existing.get(unit.id, [])), default=-1) + 1
             unit.status, unit.saved_at, unit.saved_learning_day = "canonical", now, day
             unit.retired_at = None
@@ -492,7 +509,6 @@ class UnitReviewService:
                 count=count,
             )
         self._add_ranges(study.id, ranges)
-        return SaveResult(saved=[u.id for u in to_save])
 
     def _add_ranges(self, session_id: uuid.UUID, ranges: list[NewRange]) -> None:
         have = StudySessionRepository(self.session, self.user_id).ranges_of(session_id)

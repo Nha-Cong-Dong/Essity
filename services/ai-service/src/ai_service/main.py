@@ -31,9 +31,11 @@ from ai_service.tasks import question_bank as question_bank_task
 from ai_service.tasks.bank_run import fake_parse_question_bank
 from ai_service.tasks.grade import fake_grade, load_prompt
 from ai_service.tasks.like_run import fake_generate_like, fake_judge_questions
+from ai_service.tasks.merge_drafts import fake_merge_drafts
 from ai_service.tasks.practice_run import fake_draft_answer, fake_grade_practice
 from ai_service.tasks.process_session import fake_questions
 from ai_service.tasks.propose_edges import fake_propose_edges
+from ai_service.tasks.scope_resolve import fake_pick_sections
 from ai_service.telemetry import configure_tracing
 
 # What AI_LLM_PROVIDER=fake answers with, by task (local and test only). The review question
@@ -47,6 +49,8 @@ FAKE_RESPONDERS: dict[str, Responder] = {
     "generate_like": fake_generate_like,
     "judge_questions": fake_judge_questions,
     "propose_edges": fake_propose_edges,
+    "pick_sections": fake_pick_sections,
+    "merge_drafts": fake_merge_drafts,
     "generate_questions": fake_questions,
     "parse_question_bank": fake_parse_question_bank,
 }

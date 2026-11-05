@@ -40,6 +40,7 @@ from core_api.domain.mention import (
     resolve_mentions,
 )
 from core_api.domain.study_session import NOTE_MAGIC_MAX, looks_like_note, note_key
+from core_api.domain.submission_outline import outline_for_context
 from core_api.messaging.envelope import SubmissionCreated, SubmissionFile
 from core_api.messaging.outbox import enqueue_event
 from core_api.repositories.document import DocumentRepository
@@ -381,6 +382,11 @@ def submit(  # noqa: PLR0913, PLR0915
                 }
                 for m in resolved
             ],
+            "documents": outline_for_context(
+                [m.document_id for m in resolved],
+                {d.id: d.short_name for d in documents},
+                sections,
+            ),
             "existing_units": _units_for_context(
                 submissions,
                 KnowledgeUnitRepository(session, user.id),

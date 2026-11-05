@@ -11,6 +11,7 @@ from sqlalchemy import ColumnElement, exists, func, or_, select
 from core_api.db.models import (
     Attempt,
     DocSection,
+    Document,
     Exam,
     KnowledgeUnit,
     MemoryState,
@@ -107,7 +108,18 @@ class StatsRepository(UserScopedRepository[MemoryState]):
 
     def leaves(self) -> dict[uuid.UUID, list[Leaf]]:
         """Leaf sections of each subject's outline: a leaf has no child."""
-        sections = self._sections()
+        # Progress is the main textbook's outline, the same rule as the study ledger: a bank,
+        # an auxiliary or a failed file adds no leaf (`_sections` stays whole for the titles).
+        textbooks = set(
+            self.session.scalars(
+                select(Document.id).where(
+                    Document.user_id == self.user_id,
+                    Document.role == "textbook",
+                    Document.status.not_in(("rejected", "failed")),
+                )
+            )
+        )
+        sections = [s for s in self._sections() if s.document_id in textbooks]
         parents = {s.parent_id for s in sections if s.parent_id is not None}
         by_id = {s.id: s for s in sections}
         out: dict[uuid.UUID, list[Leaf]] = {}

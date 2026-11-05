@@ -38,7 +38,7 @@ CONTEXT = sorted(EXAMPLES.glob("submission-context.v1*.json"))
 
 
 def test_examples_are_found() -> None:
-    assert len(V2) == 7 and len(CONTEXT) == 3
+    assert len(V2) == 9 and len(CONTEXT) == 4
 
 
 @pytest.mark.parametrize("path", V2, ids=lambda p: p.name)
@@ -107,5 +107,40 @@ def test_section_ids_are_optional_and_section_id_is_the_first() -> None:
     with pytest.raises(ValidationError):
         parse_result(json.dumps(body))
     draft["section_id"] = None
+    with pytest.raises(ValidationError):
+        parse_result(json.dumps(body))
+
+
+def test_result_with_title_and_set_key_parses() -> None:
+    # Red when: core refuses a result with `title` or a draft key over several quote hashes.
+    body = example("session-result.v2.merged-title")
+    assert body["title"]
+    result = parse_result(json.dumps(body))
+    assert result.title == body["title"] and result.notice is None
+
+
+def test_result_with_old_key_still_parses() -> None:
+    # Red when: results already in flight with the one-quote formula are refused (deploy order).
+    parse_result(json.dumps(example("session-result.v2")))
+
+
+def test_set_key_must_cover_every_anchor() -> None:
+    body = example("session-result.v2.merged-title")
+    body["drafts"][0]["draft_key"] = "0" * 64
+    with pytest.raises(ValidationError):
+        parse_result(json.dumps(body))
+
+
+def test_empty_result_carries_a_closed_notice() -> None:
+    body = example("session-result.v2.no-content")
+    assert parse_result(json.dumps(body)).notice == "no_content_found"
+    body["notice"] = "anything the model wrote"
+    with pytest.raises(ValidationError):
+        parse_result(json.dumps(body))
+
+
+def test_title_is_bounded() -> None:
+    body = example("session-result.v2.merged-title")
+    body["title"] = "x" * 201
     with pytest.raises(ValidationError):
         parse_result(json.dumps(body))

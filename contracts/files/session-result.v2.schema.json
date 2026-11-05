@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://essity.invalid/contracts/files/session-result.v2.schema.json",
   "title": "session result v2",
-  "description": "ai-service writes it at `result_key` (submission.processed.v1); core-api reads it to show the review screen. `drafts` are knowledge-unit drafts for the learner to confirm: nothing here is written to the core database until then. `quote_hash` is the hex SHA-256 of the first anchor's `quote_text` (NFC, whitespace folded, trimmed); `draft_key` is the hex SHA-256 of \"<study_session_id>:<quote_hash>\" and is unique in `drafts` (JSON Schema cannot say it: both services check it). `skipped` and `dropped` carry rule names and counts only, never text.",
+  "description": "ai-service writes it at `result_key` (submission.processed.v1); core-api reads it to show the review screen. `drafts` are knowledge-unit drafts for the learner to confirm: nothing here is written to the core database until then. `quote_hash` is the hex SHA-256 of the first anchor's `quote_text` (NFC, whitespace folded, trimmed); `draft_key` is the hex SHA-256 of \"<study_session_id>:<quote_hash>\" or, for a draft merged from several sources, of \"<study_session_id>:<the distinct quote_hashes of all its anchors, sorted, joined by :>\" (the same as the first form for one quote), and is unique in `drafts` (JSON Schema cannot say it: both services check it). `skipped` and `dropped` carry rule names and counts only, never text.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -205,6 +205,18 @@
           }
         }
       }
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Optional and additive: the session's name by topic, chosen by ai-service."
+    },
+    "notice": {
+      "enum": [
+        "no_content_found"
+      ],
+      "description": "Optional and additive: why `drafts` is empty (a closed list, never free text)."
     }
   }
 }
