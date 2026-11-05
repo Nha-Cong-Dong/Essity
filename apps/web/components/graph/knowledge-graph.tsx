@@ -117,6 +117,10 @@ export function KnowledgeGraph({
       boxSelectionEnabled: false,
     });
     cyRef.current = cy;
+    // The design-preview route (it always has ?state=) lets e2e read node positions to drag them.
+    if (new URLSearchParams(window.location.search).has("state")) {
+      (host.current as HTMLDivElement & { __cy?: cytoscape.Core }).__cy = cy;
+    }
     // Labels appear once the reader is zoomed in far enough to read them; a hovered node always shows its own.
     const labelByZoom = () => cy.nodes().toggleClass("labelled", cy.zoom() >= 0.9);
     cy.on("zoom", labelByZoom);
@@ -318,6 +322,7 @@ export function KnowledgeGraph({
           role="img"
           aria-label={`Đồ thị tri thức, ${merged.cards.length} thẻ. Duyệt bằng bàn phím ở danh sách thẻ bên dưới.`}
           style={{ height }}
+          data-graph-canvas
           className="min-h-70 w-full cursor-grab touch-none overflow-hidden rounded-tile bg-sheet inset-ring-1 inset-ring-line active:cursor-grabbing"
         />
         {tip && (

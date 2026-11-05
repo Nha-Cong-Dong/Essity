@@ -19,3 +19,13 @@ describe("VaultView subjects", () => {
     expect(html).not.toMatch(/tabular-nums text-ink-soft">M</);
   });
 });
+
+describe("VaultView headings", () => {
+  it("each level has exactly one h1 (the graph's title is an h2)", () => {
+    const graphs = [{ id: "a", name: "Xác suất thống kê", data: { sections: [], cards: [], edges: [] } }];
+    const sessions = renderToStaticMarkup(<VaultView view={{ level: "sessions", sessions: [], graphs }} subjectId="a" />);
+    expect(sessions.match(/<h1/g)).toHaveLength(1);
+    const cards = renderToStaticMarkup(<VaultView view={{ level: "cards", title: "Buổi", cards: [] }} subjectId="a" />);
+    expect(cards.match(/<h1/g)).toHaveLength(1);
+  });
+});
