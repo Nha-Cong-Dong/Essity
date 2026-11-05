@@ -44,6 +44,7 @@
   --color-hong-tint: var(--hong-tint);
   --color-hong-press: var(--hong-press);
   --color-cam-fill: var(--cam-fill);
+  --color-on-cam-fill: var(--on-cam-fill);
   --color-cam-tint: var(--cam-tint);
   --color-plum: var(--plum);
   --color-on-plum: var(--on-plum);
@@ -237,6 +238,7 @@
   --hong-tint: #fdeaf1; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
   --hong-press: #a3134c; /* pressed state of --hong: white on it 7.62 */
   --cam-fill: #ff7a5c; /* a coral fill: ink text only (6.82), never white */
+  --on-cam-fill: #26141d; /* = --ink */
   --cam-tint: #ffe6de; /* the quiet coral tile: --cam text 4.88 */
   --plum: #4a1638; /* the field (tier 1) colour: the one block that matters per screen */
   --on-plum: #ffffff;
@@ -304,7 +306,8 @@
     --rose-50: #221820;
     --hong-tint: #2a1820; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
     --hong-press: #ff94c0;
-    --cam-fill: #ff8a73; /* ink-dark text on it (#1a0e14) */
+    --cam-fill: #ff8a73; /* dark text on it (#1a0e14) */
+    --on-cam-fill: #1a0e14;
     --cam-tint: #3f2a1f;
     --plum: #3a1530; /* one step lighter than --sheet; never lay --hong on it */
     --on-plum: #f7edef;
@@ -374,7 +377,8 @@
   --rose-50: #221820;
   --hong-tint: #2a1820; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
   --hong-press: #ff94c0;
-  --cam-fill: #ff8a73; /* ink-dark text on it (#1a0e14) */
+  --cam-fill: #ff8a73; /* dark text on it (#1a0e14) */
+  --on-cam-fill: #1a0e14;
   --cam-tint: #3f2a1f;
   --plum: #3a1530; /* one step lighter than --sheet; never lay --hong on it */
   --on-plum: #f7edef;

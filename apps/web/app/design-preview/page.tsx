@@ -33,7 +33,7 @@ const SURFACES = [
   ["hong", "bg-hong text-on-hong"],
   ["hong-press", "bg-hong-press text-on-hong"],
   ["plum", "bg-plum text-on-plum"],
-  ["cam-fill", "bg-cam-fill text-ink"],
+  ["cam-fill", "bg-cam-fill text-on-cam-fill"],
   ["cam-tint", "bg-cam-tint text-ink"],
 ] as const;
 

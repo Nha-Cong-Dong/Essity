@@ -24,10 +24,10 @@ function Tiers({ tone }: { tone: "light" | "dark" }) {
   const [open, setOpen] = useState(false);
   const [host, setHost] = useState<HTMLElement | null>(null);
   return (
-    <div ref={setHost} data-tone={tone} className="flex flex-col gap-6 rounded-sheet bg-bg p-6 text-ink" data-testid={`tiers-${tone}`}>
+    <div ref={setHost} data-tone={tone} className="flex flex-col gap-6 min-w-0 rounded-sheet bg-bg p-6 text-ink" data-testid={`tiers-${tone}`}>
       <p className="m-0 text-meta text-ink-soft">{tone === "light" ? "Sáng" : "Tối"}</p>
       <BackLink href="/design-preview">Môn học</BackLink>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-[repeat(2,minmax(0,1fr))]">
         <Block tier="field" className="flex flex-col items-start gap-4">
           <span className="text-meta text-on-plum-soft">T1 · trường màu</span>
           <span className="font-display text-display">14</span>
@@ -98,7 +98,7 @@ export function TiersPreview() {
   return (
     <section className="flex flex-col gap-4">
       <h2 className="text-lead">Tầng khối, băng thẻ, popup khen (DESIGN-V3)</h2>
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[repeat(2,minmax(0,1fr))]">
         <Tiers tone="light" />
         <Tiers tone="dark" />
       </div>
