@@ -182,6 +182,13 @@ def outline_chat(
         # sentence no longer reads; answer from the log instead of "no such section"
         stored = CommandLogRepository(session, user.id).by_command_id(body.command_id)
         if stored is not None and [o["kind"] for o in stored.ops_json] == ["section_merge"]:
+            if unicodedata.normalize("NFC", stored.raw_text) != unicodedata.normalize(
+                "NFC", body.text
+            ) or (
+                body.screen_session_id is not None
+                and stored.screen_session_id != body.screen_session_id
+            ):
+                return OutlineChatOut(status="failed", reply=BUSY)  # same id, another request
             again = CommandService(session, user.id)._replay(stored, stored.payload_hash)  # pyright: ignore[reportPrivateUsage]
             return OutlineChatOut(
                 status="applied",

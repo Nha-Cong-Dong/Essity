@@ -301,3 +301,32 @@ def test_q25_merge_retry_with_same_command_id_answers_from_the_log(
     again = client.post(url, json=body, headers=h).json()
     assert first["status"] == "applied" and again["status"] == "applied", again
     assert again["command_id"] == cid and "Đã gộp 2 mục" in again["reply"]
+
+
+def test_q25b_bare_number_after_muc_fits_chapter_and_subsection_so_asks(
+    client: TestClient, ai: FakeAi, world: World
+) -> None:
+    cw, _ = world
+    cw.parent.title, cw.leaf1.title, cw.leaf2.title = "2. Xác suất", "1.2", "Bài tập"
+    cw.db.flush()
+    chat(client, world, "bỏ mục 2")  # chapter 2 or section x.2: the model decides
+    assert len(ai.payloads) == 1
+    for s in (cw.parent, cw.leaf1, cw.leaf2):
+        cw.db.refresh(s)
+        assert s.excluded is False
+    chat(client, world, "bỏ chương 2")  # an explicit chapter still reads
+    assert len(ai.payloads) == 1
+    cw.db.refresh(cw.parent)
+    assert cw.parent.excluded is True
+
+
+def test_q25b_merge_retry_with_same_command_id_and_another_sentence_is_refused(
+    client: TestClient, ai: FakeAi, world: World
+) -> None:
+    cw, h = world
+    cid = str(__import__("uuid").uuid4())
+    url = f"/v1/subjects/{cw.subject.id}/outline/chat"
+    first = client.post(url, json={"text": "gộp 1.1 với 1.2", "command_id": cid}, headers=h).json()
+    other = client.post(url, json={"text": "gộp 1.1 với 1.3", "command_id": cid}, headers=h).json()
+    assert first["status"] == "applied" and other["status"] == "failed", other
+    assert "command_id" not in other or other["command_id"] is None
