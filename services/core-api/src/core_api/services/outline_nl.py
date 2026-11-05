@@ -21,6 +21,7 @@ _MARK = re.compile(
 )
 _LEAD = re.compile(r"^(?:muc|chuong|phan|bai|chapter|section)\s+")  # on folded text
 _NUMBER = re.compile(r"^\d+(?:\.\d+)*$")
+_LOOSE_NUMBER = re.compile(r"^(?:muc|phan)\s+(?P<n>\d+)$")  # "mục 2": chapter 2, x.2 or the 2nd?
 _SPLIT = re.compile(r"\s*(?:,|;|\bvà\b|\bvới\b)\s*")
 
 
@@ -47,6 +48,13 @@ def _resolve(sections: Sequence[DocSection], target: str) -> DocSection | None:
     exact = [s for s, t in titles if t == want]
     if exact:
         return exact[0] if len(exact) == 1 else None
+    loose = _LOOSE_NUMBER.match(want)
+    if loose is not None:
+        n = re.escape(loose.group("n"))
+        chapter = any(re.match(rf"^{n}(?!\d|\.\d)", t) for _, t in titles)
+        child = any(re.match(rf"^(?:\d+\.)+{n}(?!\d|\.\d)", t) for _, t in titles)
+        if chapter and child:
+            return None  # fits a chapter and a sub-section: ask, never guess
     # every way of reading the target counts: "chương 3" may be a section number ("3. ...")
     # or the tail of another title ("Bài tập chương 3"); only one section in all may fit
     found: dict[int, DocSection] = {}
