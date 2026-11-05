@@ -6,7 +6,7 @@ import { Mascot, type MascotPose } from "@/components/mascot";
 
 const POSES: MascotPose[] = ["chao", "khen", "nghi", "cho", "rong", "glyph", "vui", "chucmung", "chuanbi"];
 
-describe("Mascot (DESIGN-V4)", () => {
+describe("Mascot (MASCOT-V2, the magician cloud)", () => {
   // Red when: a pose is missing, or the mascot is announced to a screen reader.
   it.each(POSES)("%s is decoration: aria-hidden and a data-mascot mark", (pose) => {
     const markup = renderToStaticMarkup(<Mascot pose={pose} />);
@@ -34,6 +34,14 @@ describe("Mascot (DESIGN-V4)", () => {
     const solid = renderToStaticMarkup(<Mascot pose="rong" tone="solid" />);
     expect(solid).toContain("--mascot-line:#441125");
     expect(solid).toContain("--mascot-teal:#70c8cd");
+  });
+
+  // Red when: a pose loses its die-cut white edge (it would not read on the field or solid pink), or the
+  // glyph grows a teal detail it does not have.
+  it("every pose keeps the white die-cut edge, the glyph has no teal", () => {
+    for (const pose of POSES) expect(renderToStaticMarkup(<Mascot pose={pose} />)).toContain('stroke="#ffffff"');
+    expect(renderToStaticMarkup(<Mascot pose="glyph" />)).not.toContain("--mascot-teal");
+    expect(renderToStaticMarkup(<Mascot pose="chao" />)).toContain("--mascot-teal");
   });
 
   // Red when: the art carries its own title or label (the mascot would be read out).

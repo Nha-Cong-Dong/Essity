@@ -1,0 +1,11 @@
+task: MASCOT-V2
+lane: L2
+status: done
+step: magician-cloud art swapped into mascot-art.tsx (JSX), API and old-name map unchanged
+tests: {cmd: "vitest full; tsc; eslint 0 errors; e2e layout 78 + today 20", failed: 0}
+blockers: []
+decisions:
+  - "One art for page, solid pink and field (die-cut white edge); the -dark files differ only in #661738->#441125 and #08686c->#70c8cd, which the existing --mascot-line/--mascot-teal variables already switch, so no per-theme art copies"
+  - "Glyph (header) swapped; no layout change anywhere"
+  - "Evidence: .work/MASCOT-V2/evidence/{mascot,today-empty}-{light,dark}.jpg (all poses on page and on field; Hôm nay empty with the header glyph). The end-of-session popup is not shown (opens only after a real session)"
+next: "orchestrator opens PR"

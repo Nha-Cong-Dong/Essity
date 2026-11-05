@@ -1,0 +1,6 @@
+task: MASCOT-V2
+lane: L2
+branch: mascot-v2
+risk: yellow
+worktree: D:/Essity/.claude/worktrees/L2
+spec: người dùng duyệt mascot đám mây ảo thuật gia (DESIGN-V5/mascot)

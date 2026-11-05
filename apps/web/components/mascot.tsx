@@ -1,8 +1,9 @@
 import { MASCOT_ART, type MascotArt } from "@/components/mascot-art";
 import { cn } from "@/lib/utils";
 
-// DESIGN-V4 (design-system.md §C): the mascot is a plump 12-petal badge grown from the 14-point
-// sticker, one face, no legs. Five poses and a glyph, art from .work/DESIGN-V4/mockups/mascot/.
+// MASCOT-V2: the mascot is a magician cloud (top hat, glasses, a wizard's beard) with a die-cut white
+// edge, so one art reads on the page, on solid pink and on the field. Five poses and a glyph, art from
+// .work/DESIGN-V5/mascot/.
 // At most one per screen, only in empty, preparing, locked and celebrating states; never on the
 // answer, grading or source screens. Decoration: aria-hidden, the words always carry the meaning.
 // The outline and the one teal detail follow the surface: `tone="solid"` is for solid pink, the
