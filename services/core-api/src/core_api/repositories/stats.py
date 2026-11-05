@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, exists, func, or_, select
 
 from core_api.db.models import (
     Attempt,
@@ -22,6 +22,7 @@ from core_api.db.models import (
     ReviewSession,
     StudySession,
     Subject,
+    Submission,
     UnitRevision,
     UnitSection,
 )
@@ -38,6 +39,22 @@ from core_api.repositories.progress import ProgressRepository
 from core_api.repositories.user_scheduler import scheduler_for_id
 
 _LIVE_CARD = ("canonical",)
+
+
+def finished_session(user_id: uuid.UUID) -> ColumnElement[bool]:
+    """A v1 session confirmed, or a v2 one handed in and processed: a v2 session stays a `draft`
+    row for good (`session_result_v2`), its done submission is what finishes it. Shared by the
+    vault and the statistics totals."""
+    return or_(
+        StudySession.status == "confirmed",
+        exists().where(
+            Submission.session_id == StudySession.id,
+            Submission.user_id == user_id,
+            Submission.status == "done",
+        ),
+    )
+
+
 # A question that is not a pipeline review question: the learner's practice bank.
 _BANK_SOURCES = ("bank", "generated")
 
@@ -139,7 +156,13 @@ class StatsRepository(UserScopedRepository[MemoryState]):
         scheduler = scheduler_for_id(self.session, self.user_id)
         out: dict[uuid.UUID, list[float]] = {}
         for subject_id, memory in rows:
-            out.setdefault(subject_id, []).append(scheduler.retrievability(_state(memory), now))
+            # Answered wrong, so still relearning: recall is 1.0 only because no time has passed.
+            recall = (
+                0.0
+                if memory.phase == Phase.RELEARNING
+                else scheduler.retrievability(_state(memory), now)
+            )
+            out.setdefault(subject_id, []).append(recall)
         return out
 
     def bank(self, now: datetime) -> dict[uuid.UUID, list[BankQuestion]]:
@@ -217,7 +240,12 @@ class StatsRepository(UserScopedRepository[MemoryState]):
         sessions = self.session.scalar(
             select(func.count())
             .select_from(StudySession)
-            .where(StudySession.user_id == self.user_id, StudySession.status == "confirmed")
+            .join(Subject, Subject.id == StudySession.subject_id)
+            .where(
+                StudySession.user_id == self.user_id,
+                Subject.deleted_at.is_(None),
+                finished_session(self.user_id),
+            )
         )
         cards_saved = self.session.scalar(
             select(func.count())

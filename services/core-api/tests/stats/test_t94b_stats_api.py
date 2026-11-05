@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from core_api.db.models import (
     QuestionSection,
     Subject,
+    Submission,
     UnitRevision,
     UnitSection,
     User,
@@ -27,7 +28,15 @@ from core_api.repositories.review import (
 )
 from practice_rows import Practice
 from stats.conftest import NOW
-from v2_rows import make_document, make_question, make_section, make_subject, make_type, make_unit
+from v2_rows import (
+    make_document,
+    make_question,
+    make_section,
+    make_study_session,
+    make_subject,
+    make_type,
+    make_unit,
+)
 
 
 def headers_of(session: Session, user: User) -> dict[str, str]:
@@ -340,3 +349,75 @@ def test_csv_escapes_formula_subject_names(
     rows = list(csv.reader(io.StringIO(client.get("/v1/export.csv", headers=headers).text)))
     names = {r[1] for r in rows if r[0] == "subject"}
     assert names == {"'=cmd", "'+x", "'@y"}
+
+
+# QA-FIX2 Q9: the sessions total counts what the vault counts, a confirmed v1 session or a v2
+# draft row whose submission is done, never a draft still being written or processed.
+def test_sessions_total_matches_vault_finished_sessions(
+    client: TestClient, db_session: Session, two_users: tuple[User, User]
+) -> None:
+    # Red when: a v2 session handed in and processed (draft row, done submission) is not counted.
+    alice, _ = two_users
+    headers = headers_of(db_session, alice)
+    subject = make_subject(db_session, alice)
+    v2_done = make_study_session(db_session, alice, subject)
+    v2_busy = make_study_session(db_session, alice, subject)
+    make_study_session(db_session, alice, subject)  # no submission yet
+    for study, state in ((v2_done, "done"), (v2_busy, "processing")):
+        db_session.add(
+            Submission(
+                user_id=alice.id,
+                session_id=study.id,
+                status=state,
+                file_keys=[],
+                finished_at=NOW if state == "done" else None,
+            )
+        )
+    db_session.flush()
+    assert stats(client, headers)["totals"]["sessions"] == 1
+    vault = client.get("/v1/vault/subjects", headers=headers).json()
+    assert vault[0]["sessions"] == 1
+
+
+def test_sessions_total_skips_deleted_subject(
+    client: TestClient, db_session: Session, two_users: tuple[User, User]
+) -> None:
+    # Red when: sessions of a deleted subject stay in the total while the vault hides them.
+    alice, _ = two_users
+    headers = headers_of(db_session, alice)
+    live = make_subject(db_session, alice)
+    gone = make_subject(db_session, alice, "Cũ")
+    for subject in (live, gone):
+        study = make_study_session(db_session, alice, subject)
+        db_session.add(
+            Submission(
+                user_id=alice.id, session_id=study.id, status="done", file_keys=[], finished_at=NOW
+            )
+        )
+    gone.deleted_at = NOW
+    db_session.flush()
+    assert stats(client, headers)["totals"]["sessions"] == 1
+
+
+# QA-FIX2 Q9: a card just answered wrong is in relearning, not "remembered well" at 100%.
+def test_retention_counts_relearning_card_as_not_solid(
+    client: TestClient, db_session: Session, two_users: tuple[User, User]
+) -> None:
+    # Red when: recall right after a wrong answer (elapsed zero, so 1.0) counts as solid.
+    alice, _ = two_users
+    headers = headers_of(db_session, alice)
+    subject = make_subject(db_session, alice)
+    unit = make_unit(db_session, alice, subject, status="canonical")
+    MemoryStateRepository(db_session, alice.id).upsert(
+        unit.id,
+        "core",
+        MemoryState(
+            phase=Phase.RELEARNING,
+            step=0,
+            stability=1000,
+            difficulty=5.0,
+            due=NOW + timedelta(minutes=10),
+            last_review=NOW,
+        ),
+    )
+    assert one(stats(client, headers), subject)["retention"] == 0.0
