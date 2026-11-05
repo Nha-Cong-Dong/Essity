@@ -19,7 +19,7 @@ _LEAVE_OUT = re.compile(
 _MARK = re.compile(
     r"^đánh dấu\s+(?P<what>.+?)\s+(?:là |đã )(?:đã )?(?P<state>học xong|đã học|học rồi|xong)$"
 )
-_LEAD = re.compile(r"^(?:mục|chương|phần|bài|chapter|section)\s+")
+_LEAD = re.compile(r"^(?:muc|chuong|phan|bai|chapter|section)\s+")  # on folded text
 _NUMBER = re.compile(r"^\d+(?:\.\d+)*$")
 _SPLIT = re.compile(r"\s*(?:,|;|\bvà\b|\bvới\b)\s*")
 
@@ -44,25 +44,27 @@ def _resolve(sections: Sequence[DocSection], target: str) -> DocSection | None:
     if not want:
         return None
     titles = [(s, fold(s.title)) for s in sections]
+    exact = [s for s, t in titles if t == want]
+    if exact:
+        return exact[0] if len(exact) == 1 else None
+    # every way of reading the target counts: "chương 3" may be a section number ("3. ...")
+    # or the tail of another title ("Bài tập chương 3"); only one section in all may fit
+    found: dict[int, DocSection] = {}
     for candidate in dict.fromkeys([want, _LEAD.sub("", want)]):
         if not candidate:
             continue
-        exact = [s for s, t in titles if t == candidate]
-        if len(exact) == 1:
-            return exact[0]
-        if len(exact) > 1:
-            return None
+        for s, t in titles:
+            if t == candidate:
+                found[id(s)] = s
         # a bare number is the start of a title ("1.2", "chuong 3: ..."), not a part of one
         bare = _NUMBER.match(candidate) is not None
         head = rf"^(?:(?:chuong|phan|muc|bai|chapter|section)\s*)?{re.escape(candidate)}(?!\d|\.\d)"
         inside = rf"(?<![\w.]){re.escape(candidate)}(?!\d|\.\d)(?!\w)"
         for pattern in [head] if bare else [head, inside]:
-            found = [s for s, t in titles if re.search(pattern, t)]
-            if len(found) == 1:
-                return found[0]
-            if len(found) > 1:
-                return None
-    return None
+            for s, t in titles:
+                if re.search(pattern, t):
+                    found[id(s)] = s
+    return next(iter(found.values())) if len(found) == 1 else None
 
 
 def read_outline_sentence(sections: Sequence[DocSection], text: str) -> OutlineIntent | None:

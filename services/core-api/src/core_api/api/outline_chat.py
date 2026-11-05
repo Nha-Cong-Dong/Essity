@@ -21,6 +21,7 @@ from core_api.api.text import storable_text
 from core_api.clients.ai_client import NotGraded
 from core_api.db.session import DbSession
 from core_api.domain.commands.registry import CommandRejected
+from core_api.repositories.command_log import CommandLogRepository
 from core_api.repositories.doc_section import DocSectionRepository
 from core_api.repositories.document import DocumentRepository
 from core_api.repositories.subject import SubjectRepository
@@ -176,6 +177,18 @@ def outline_chat(
     split = _split(session, user.id, subject_id, body.text)
     if split is not None:
         return split
+    if body.command_id is not None and _MERGE.match(_line(body.text)):
+        # a retry of a merge that went through: the merged-away section is gone, so the
+        # sentence no longer reads; answer from the log instead of "no such section"
+        stored = CommandLogRepository(session, user.id).by_command_id(body.command_id)
+        if stored is not None and [o["kind"] for o in stored.ops_json] == ["section_merge"]:
+            again = CommandService(session, user.id)._replay(stored, stored.payload_hash)  # pyright: ignore[reportPrivateUsage]
+            return OutlineChatOut(
+                status="applied",
+                reply=reply_for(again),
+                command_id=again.command_id,
+                affected=again.affected,
+            )
     read = _by_pattern(session, user.id, subject_id, body.text)
     if isinstance(read, OutlineChatOut):
         return read
