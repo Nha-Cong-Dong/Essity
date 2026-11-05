@@ -12,7 +12,7 @@ const ID = "9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b";
 it("shows the due count and a Luyện tập button to the practice screen", () => {
   const { container } = render(<SubjectPracticeBlock subjectId={ID} total={10} ready={6} dueToday={4} />);
   const due = container.querySelector("[data-due-today]");
-  expect(due?.textContent).toBe("4câu cần luyện hôm nay"); // the number is the big figure, the words follow
+  expect(due?.textContent).toBe("4 câu cần luyện hôm nay"); // the number is the big figure, the words follow
   expect(container.querySelector("a")?.getAttribute("href")).toBe(`/subjects/${ID}/practice`);
 });
 
