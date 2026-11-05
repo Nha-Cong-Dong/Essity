@@ -37,10 +37,10 @@ describe("landing v2 (T0.16)", () => {
     expect(html.indexOf("<footer")).toBeGreaterThan(at[4]!);
   });
 
-  it("the FAQ has exactly five items", () => {
+  it("the FAQ has exactly six items", () => {
     const faq = html.slice(html.indexOf('id="hoi-dap"'), html.indexOf("<footer"));
-    expect(faq.match(/<dt\b/g)).toHaveLength(5);
-    expect(faq.match(/<dd\b/g)).toHaveLength(5);
+    expect(faq.match(/<dt\b/g)).toHaveLength(6);
+    expect(faq.match(/<dd\b/g)).toHaveLength(6);
     expect(faq).toContain("Sửa nhanh thế nào?");
   });
 
@@ -51,10 +51,10 @@ describe("landing v2 (T0.16)", () => {
     expect(html).toContain("câu tính toán đứng đầu, được gợi ý luyện trước vì liên quan tới mục Định tuyến");
   });
 
-  it("prose stays within 315 words", () => {
+  it("prose stays within 360 words", () => {
     const words = prose().join(" ").split(" ").filter(Boolean).length;
     expect(words).toBeGreaterThan(100);
-    expect(words).toBeLessThanOrEqual(315);
+    expect(words).toBeLessThanOrEqual(360);
   });
 
   it("no forbidden word in the prose (the round-10 FAQ title is the one exception)", () => {

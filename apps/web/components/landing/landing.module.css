@@ -1909,3 +1909,114 @@
     rotate: var(--fr, 4deg);
   }
 }
+
+/* ============================== Kho thẻ, có nguồn (LANDING-V2) ============================== */
+.khoStrip {
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 8px 4px 16px;
+}
+.khoTrack {
+  display: flex;
+  gap: 16px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.khoCard {
+  position: relative;
+  flex: 0 0 240px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 20px 60px;
+  border-radius: 20px;
+  background: var(--sheet, var(--bg));
+  outline: 1px solid var(--line);
+  outline-offset: -1px;
+  transition:
+    flex-basis 320ms var(--ease-out),
+    transform 260ms var(--ease-out);
+}
+.khoCard[data-open="true"] {
+  flex-basis: 320px;
+}
+.khoFront {
+  font: 650 19px / 1.3 var(--display);
+  letter-spacing: -0.01em;
+}
+.khoPage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.khoPage small {
+  font-size: 13px;
+}
+.khoPage mark {
+  color: var(--ink);
+  background: var(--hl-band, var(--hl));
+  padding: 0 2px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.khoBtn {
+  position: absolute;
+  left: 20px;
+  bottom: 16px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 600 var(--fs-small) / 1 var(--text);
+  cursor: pointer;
+}
+.khoBtn[aria-pressed="true"] {
+  background: var(--hong);
+  border-color: var(--hong);
+  color: var(--on-hong);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :global(.js) .kho .khoTrack {
+    transform: translateX(72px);
+    opacity: 0;
+    transition:
+      transform 1100ms var(--ease-expo) 200ms,
+      opacity 500ms ease 200ms;
+  }
+  :global(.js) .kho.isSeen .khoTrack {
+    transform: none;
+    opacity: 1;
+  }
+  .khoCard:hover {
+    transform: translateY(-4px);
+  }
+  /* the step bar fills as the page scrolls, where the browser can */
+  @supports (animation-timeline: view()) {
+    :global(.js) .step.isIn .seg::before,
+    :global(.js) .seg::before {
+      transition: none;
+      animation: segfill linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 45%;
+    }
+  }
+}
+@keyframes segfill {
+  from {
+    transform: scaleX(0.16);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.hbRow + .hbRow {
+  margin-top: 14px;
+}

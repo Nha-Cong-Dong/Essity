@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { NxKind, NxList, NxRow } from "@/components/ui/nx-list";
 
+import { KhoBand } from "./kho-band";
 import { HeroBook } from "./hero-book";
 import { LandingRoot } from "./landing-root";
 import styles from "./landing.module.css";
@@ -59,7 +60,16 @@ const Dots = ({ className, id }: { className: string; id: string }) => (
   </Motif>
 );
 
-const QA: ReadonlyArray<{ q: string; mark: ReactNode; a: ReactNode }> = [
+const QA: ReadonlyArray<{ q: string; mark?: ReactNode; a: ReactNode }> = [
+  {
+    q: "Thẻ kiến thức từ đâu?",
+    a: (
+      <>
+        AI soạn từ buổi học bạn ghi, mỗi thẻ <span className={styles.key}>kèm trang nguồn</span> và nằm thẳng trong Kho.
+        Bạn sửa hoặc xóa bất kỳ lúc nào.
+      </>
+    ),
+  },
   {
     q: "Cần chuẩn bị gì?",
     mark: <path pathLength={1} d="M20 3 L23 16 L36 20 L23 24 L20 37 L17 24 L4 20 L17 16 Z" />,
@@ -150,26 +160,26 @@ const KINDS: ReadonlyArray<readonly [string, string, string?]> = [
 const STEPS: ReadonlyArray<{ grow: string; delay?: string; seg: string; segSub: string; h: string; p: string }> = [
   {
     grow: "1.3",
-    seg: "Bài học",
-    segSub: "ảnh vở hoặc vài dòng",
-    h: "Nộp bài học",
-    p: "Gửi ảnh vở hoặc vài dòng. Thẻ kiến thức vào thẳng Kho của bạn, sửa được ngay, không qua bước duyệt.",
+    seg: "Tạo môn",
+    segSub: "tải giáo trình",
+    h: "Tạo môn, tải giáo trình",
+    p: "App tự lập đề cương từ giáo trình chính, bạn chỉnh bằng chat.",
   },
   {
     grow: "2",
     delay: "90ms",
-    seg: "App làm",
-    segSub: "trong lúc bạn nghỉ",
-    h: "App soạn câu hỏi",
-    p: "Câu hỏi bám vào các thẻ trong Kho, gắn với đúng trang giáo trình.",
+    seg: "Mỗi buổi học",
+    segSub: "ghi lại vài dòng",
+    h: "Mỗi buổi học, ghi lại",
+    p: "Thẻ kiến thức vào thẳng Kho, kèm trang nguồn, sửa được ngay.",
   },
   {
     grow: "3.2",
     delay: "180ms",
     seg: "Mỗi tối",
     segSub: "khoảng 25 phút",
-    h: "Mỗi tối mở ra là ôn",
-    p: "Phiên hôm nay đã soạn sẵn, thẻ và câu luyện sắp quên được hỏi trước.",
+    h: "Mỗi tối: ôn thẻ, luyện câu",
+    p: "Ôn thẻ đến hạn, luyện câu sẵn sàng; câu sắp quên được hỏi trước.",
   },
 ];
 
@@ -321,6 +331,22 @@ export function Landing() {
                   ))}
                 </NxList>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className={`${styles.nx} ${styles.kho} ${styles.wrap}`} id="kho-the" aria-labelledby="h-kho" data-once>
+          <div className={styles.grid}>
+            <div className={styles.nxText}>
+              <h2 id="h-kho" data-reveal>
+                Kho thẻ, có nguồn
+              </h2>
+              <p data-reveal style={vars({ "--d": "90ms" })}>
+                Mỗi thẻ trỏ về đúng trang giáo trình. Bấm Nguồn để xem câu được tô sáng.
+              </p>
+            </div>
+            <div className={styles.nxPic} data-reveal style={vars({ "--d": "140ms" })}>
+              <KhoBand />
             </div>
           </div>
         </section>
