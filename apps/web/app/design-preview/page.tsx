@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Sheet } from "@/components/ui/sheet";
 import { designPreviewAllowed } from "@/lib/design-preview";
 
+import { TiersPreview } from "./tiers";
+
 export const metadata: Metadata = { title: "Design preview · Essity" };
 
 // Every token, base control, notebook object and motif of design system v3.1
@@ -29,6 +31,10 @@ const SURFACES = [
   ["sunken", "bg-sunken text-ink"],
   ["cover", "bg-book-cover text-ink"],
   ["hong", "bg-hong text-on-hong"],
+  ["hong-press", "bg-hong-press text-on-hong"],
+  ["plum", "bg-plum text-on-plum"],
+  ["cam-fill", "bg-cam-fill text-on-cam-fill"],
+  ["cam-tint", "bg-cam-tint text-ink"],
 ] as const;
 
 const ROSE = [
@@ -43,7 +49,7 @@ const ROSE = [
 const INKS = [
   ["ink", "text-ink"],
   ["ink-soft", "text-ink-soft"],
-  ["hong", "text-hong"],
+  ["hong", "text-hong-text"],
   ["correct", "text-correct"],
   ["partial", "text-partial"],
   ["pencil", "text-pencil"],
@@ -55,7 +61,7 @@ const TYPE = [
   ["verdict · 28–36/650", "font-display text-verdict", "Đúng một phần"],
   ["question · 22–28/500", "font-display text-question", "Vì sao có ngày và đêm?"],
   ["lead · 22/600", "font-display text-lead", "Đáp án tham chiếu"],
-  ["answer · 18/32px, hồng đứng", "text-answer text-hong", "Vì Trái Đất tự quay quanh trục."],
+  ["answer · 18/32px, hồng đứng", "text-answer text-hong-text", "Vì Trái Đất tự quay quanh trục."],
   ["read · 18/1.7", "text-read", "Mặt Trời chỉ chiếu sáng được một nửa Trái Đất tại mỗi thời điểm."],
   ["pencil · 18 nghiêng, chì", "font-hand text-read text-pencil", "còn thiếu · hiểu được vì sao"],
   ["body · 16/1.6", "text-body", "Vở ghi khác giáo trình ở điểm này."],
@@ -83,9 +89,11 @@ export default function DesignPreviewPage() {
           </Suspense>
         </header>
 
+        <TiersPreview />
+
         <section className="flex flex-col gap-4">
           <h2 className="text-lead">Bề mặt và mực</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {SURFACES.map(([name, classes]) => (
               <div key={name} className={`${classes} rounded-control p-4 text-meta`}>
                 <div className="font-semibold">{name}</div>

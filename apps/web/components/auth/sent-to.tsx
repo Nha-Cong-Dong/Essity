@@ -19,7 +19,7 @@ export async function SentTo() {
   return (
     <>
       <p className="m-0 text-body">
-        Đã gửi link tới <span className="font-medium text-hong">{maskEmail(email)}</span>
+        Đã gửi link tới <span className="font-medium text-hong-text">{maskEmail(email)}</span>
       </p>
       <p className="m-0 text-ink-soft">
         Mở email và bấm vào link để tiếp tục. Nếu không thấy, xem cả mục thư rác.

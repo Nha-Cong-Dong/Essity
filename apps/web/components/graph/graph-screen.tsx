@@ -145,7 +145,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
     return (
       <>
         <h1 className="m-0 text-title">
-          <span className="hl-word">Đồ thị</span>
+          Đồ thị
         </h1>
         <Skeleton />
       </>
@@ -155,7 +155,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
     return (
       <>
         <h1 className="m-0 text-title">
-          <span className="hl-word">Đồ thị</span>
+          Đồ thị
         </h1>
         <div role="alert" className="mt-8 flex flex-col items-start gap-4">
           <p className="m-0 text-read">{COPY.error}</p>
@@ -181,7 +181,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
         Về môn {subjectName}
       </a>
       <h1 className="m-0 text-title">
-        <span className="hl-word">Đồ thị</span>
+        Đồ thị
       </h1>
 
       <div className="mt-4 flex flex-col gap-3 min-[768px]:flex-row min-[768px]:items-end">

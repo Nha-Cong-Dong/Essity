@@ -79,7 +79,7 @@ export function AnswerBox({ id, value, onChange, onSubmit, onForgot, save, pendi
             send();
           }
         }}
-        className="mt-5 block field-sizing-content max-h-112 min-h-40 w-full resize-none rounded-tile bg-sunken p-4 scroll-mb-24 text-answer text-hong outline-none placeholder:text-ink-soft focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus aria-invalid:rounded-control aria-invalid:outline-2 aria-invalid:outline-offset-8 aria-invalid:outline-partial aria-invalid:outline-dashed"
+        className="mt-5 block field-sizing-content max-h-112 min-h-40 w-full resize-none rounded-tile bg-sunken p-4 scroll-mb-24 text-answer text-hong-text outline-none placeholder:text-ink-soft focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus aria-invalid:rounded-control aria-invalid:outline-2 aria-invalid:outline-offset-8 aria-invalid:outline-partial aria-invalid:outline-dashed"
       />
       <p className="m-0 mt-2.5 flex justify-between gap-3 text-meta text-ink-soft" aria-live="polite">
         <SaveLine save={save} />

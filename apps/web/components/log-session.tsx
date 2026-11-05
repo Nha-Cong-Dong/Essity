@@ -49,7 +49,7 @@ const FIELD =
 const LABEL = "text-small font-semibold text-ink";
 
 function Said({ text }: { text: string }) {
-  return <p className="m-0 mt-5 text-answer whitespace-pre-wrap text-hong wrap-anywhere">{text}</p>;
+  return <p className="m-0 mt-5 text-answer whitespace-pre-wrap text-hong-text wrap-anywhere">{text}</p>;
 }
 
 function Problem({ code }: { code: string }) {
@@ -271,7 +271,7 @@ export function LogSession({
                     void send();
                   }
                 }}
-                className="block field-sizing-content max-h-112 min-h-32 w-full resize-none rounded-tile bg-sunken p-4 text-answer text-hong outline-none placeholder:text-ink-soft focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus aria-invalid:rounded-control aria-invalid:outline-2 aria-invalid:outline-offset-8 aria-invalid:outline-partial aria-invalid:outline-dashed"
+                className="block field-sizing-content max-h-112 min-h-32 w-full resize-none rounded-tile bg-sunken p-4 text-answer text-hong-text outline-none placeholder:text-ink-soft focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus aria-invalid:rounded-control aria-invalid:outline-2 aria-invalid:outline-offset-8 aria-invalid:outline-partial aria-invalid:outline-dashed"
               />
               {problem && <Problem code={problem} />}
               <NoteDrop onAdd={notes.add} />

@@ -50,9 +50,12 @@ describe("design rules", () => {
 
   // V22 decisions #9: --cam is the one second colour, for "suggested / next" rows only. It may be
   // named in the NxList components and nowhere else, so it cannot spread to status, charts or buttons.
-  it("V22: cam appears only in ui/nx-list.tsx", () => {
-    const named = UI.filter((f) => /\b(?:text|bg|border|ring|inset-ring|fill|stroke)-cam\b|\(--cam\)/.test(read(f)));
-    expect(named.map((f) => f.replaceAll("\\", "/"))).toEqual(["components/ui/nx-list.tsx"]);
+  // DESIGN-W0: the kit's Block tone="cam" (--cam-tint) is the same role in a tier-2 tile; the preview shows it.
+  it("V22: cam appears only in ui/nx-list.tsx and the screen kit's Block", () => {
+    const named = UI.filter((f) => !f.startsWith(path.join("app", "design-preview"))).filter((f) =>
+      /\b(?:text|bg|border|ring|inset-ring|fill|stroke)-cam\b|\(--cam\)/.test(read(f)),
+    );
+    expect(named.map((f) => f.replaceAll("\\", "/"))).toEqual(["components/screen-kit.tsx", "components/ui/nx-list.tsx"]);
   });
 
   // V22 decisions #9: a tile holds at most one cam row, so a screen file uses `next` or `pick` at most once.
@@ -138,7 +141,7 @@ describe("design rules", () => {
   });
 
   it("§3.1: italic belongs to the pencil; what the user wrote is upright pink", () => {
-    expect(offenders(UI, /font-hand[^"]*text-hong|text-hong[^"]*font-hand/)).toEqual([]);
+    expect(offenders(UI, /font-hand[^"]*text-hong-text|text-hong-text[^"]*font-hand/)).toEqual([]);
   });
 
   it("buttons: height from the size scale, a busy submit is pending (read as JSX, review of 4b86dc4)", () => {
@@ -214,6 +217,15 @@ describe("design rules", () => {
       });
     });
     expect(outside).toEqual([]);
+  });
+
+  it("DESIGN-V3 B1: no <h1> in the app carries the hl-word highlighter", () => {
+    const bad = UI.filter((f) => !f.startsWith(path.join("components", "landing"))).flatMap((file) =>
+      [...read(file).matchAll(/<h1[\s\S]*?<\/h1>/g)]
+        .filter((m) => /hl-word|data-motif="hl-word"/.test(m[0]))
+        .map(() => file),
+    );
+    expect(bad).toEqual([]);
   });
 
   it("UI-1b: a secondary Start button is never larger than the primary (md); lg is for the pink tile", () => {

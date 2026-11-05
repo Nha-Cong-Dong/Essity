@@ -33,7 +33,7 @@ export function ForgotPassword() {
       <AuthLayout title={FORGOT_PASSWORD_SENT.title}>
         <p className="m-0 text-body">
           {FORGOT_PASSWORD_SENT.sentTo}{" "}
-          <span className="font-medium text-hong">{maskEmail(sentTo)}</span>
+          <span className="font-medium text-hong-text">{maskEmail(sentTo)}</span>
         </p>
         <p className="m-0 text-ink-soft">{FORGOT_PASSWORD_SENT.body}</p>
         <a href="/login" className={AUTH_PILL}>

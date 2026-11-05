@@ -100,7 +100,7 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
       </a>
       <div className="flex items-center justify-between gap-3">
         <h1 className="m-0 font-display text-title">
-          <span className="hl-word">{COPY.heading}</span>
+          {COPY.heading}
         </h1>
         {state !== "empty-no-main" && state !== "error" && state !== "loading" && state !== "extracting" && (
           <Button

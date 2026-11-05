@@ -66,7 +66,7 @@ export function AccountMenu({ email }: { email: string }) {
                 {THEMES.map(([value, label]) => (
                   <Menu.RadioItem key={value} value={value} closeOnClick={false} className={ITEM}>
                     {label}
-                    <Menu.RadioItemIndicator className="text-hong" aria-hidden="true">
+                    <Menu.RadioItemIndicator className="text-hong-text" aria-hidden="true">
                       ✓
                     </Menu.RadioItemIndicator>
                   </Menu.RadioItem>

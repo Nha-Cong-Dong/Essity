@@ -93,8 +93,8 @@ export function KnowledgeGraph({
       degree.set(e.to, (degree.get(e.to) ?? 0) + 1);
     }
     const css = getComputedStyle(document.documentElement);
-    const ink = css.getPropertyValue("--ink").trim() || "#221b1b";
-    const line = css.getPropertyValue("--line-strong").trim() || "#8a6b7a";
+    const ink = css.getPropertyValue("--ink").trim() || "#26141d";
+    const line = css.getPropertyValue("--line-strong").trim() || "#8f6676";
     const cy = cytoscape({
       container: host.current,
       elements: [

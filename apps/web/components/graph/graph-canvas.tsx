@@ -22,11 +22,11 @@ function readPalette(): Palette {
   const css = getComputedStyle(document.documentElement);
   const get = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback;
   return {
-    ink: get("--ink", "#221b1b"),
-    line: get("--line-strong", "#8a6b7a"),
+    ink: get("--ink", "#26141d"),
+    line: get("--line-strong", "#8f6676"),
     sheet: get("--sheet", "#ffffff"),
-    focus: get("--focus", "#a8255f"),
-    soft: get("--ink-soft", "#6b4a59"),
+    focus: get("--focus", "#c2185b"),
+    soft: get("--ink-soft", "#6a4f5c"),
   };
 }
 

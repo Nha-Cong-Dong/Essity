@@ -7,53 +7,71 @@ import { contrast, contrastOn, osDarkPalette, palette, stops, type Mode } from "
 
 type Pair = [fg: string, bg: string, base?: string];
 
-// Final §1.3: text pairs allowed to carry words (≥ 4.5:1).
+// DESIGN-V4 (design-system.md A1): text pairs allowed to carry words (>= 4.5:1).
+const BG_LIGHT = ["--bg", "--sheet", "--sunken", "--rose-50", "--rose-100", "--rose-200"];
+const BG_DARK = ["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200", "--cover"];
 const TEXT: Record<Mode, Pair[]> = {
   light: [
-    ...["--bg", "--sheet", "--sunken", "--rose-50", "--rose-100", "--cover", "--rose-200", "--hl-stroke", "--hl"].map(
-      (bg): Pair => ["--ink", bg],
-    ),
-    ...["--bg", "--sunken", "--rose-50", "--rose-100", "--rose-200", "--hl-stroke"].map((bg): Pair => ["--ink-soft", bg]),
-    ...["--bg", "--sunken", "--rose-50", "--rose-100", "--rose-200"].map((bg): Pair => ["--hong", bg]),
-    ...["--bg", "--sunken", "--rose-50", "--rose-100"].map((bg): Pair => ["--pencil", bg]),
-    ...["--bg", "--sunken", "--rose-100"].map((bg): Pair => ["--correct", bg]),
-    ...["--bg", "--sunken", "--rose-50", "--rose-100"].map((bg): Pair => ["--partial", bg]),
+    ...[...BG_LIGHT, "--cover", "--hl-stroke", "--hl", "--block", "--accent-tint"].map((bg): Pair => ["--ink", bg]),
+    ...[...BG_LIGHT, "--hl-stroke", "--block"].map((bg): Pair => ["--ink-soft", bg]),
+    // Pink TEXT is --hong-text, never --hong (3.83 on --bg).
+    ...[...BG_LIGHT, "--hong-tint"].map((bg): Pair => ["--hong-text", bg]),
+    ...["--bg", "--sunken", "--rose-100"].map((bg): Pair => ["--pencil", bg]),
+    ...["--bg", "--sunken", "--correct-bg"].map((bg): Pair => ["--correct", bg]),
+    ["--correct", "--correct-bg"],
+    ...["--bg", "--sunken", "--partial-bg"].map((bg): Pair => ["--partial", bg]),
     ["--on-hong", "--hong"],
-    ["--hong", "--on-hong"],
     ["--bg", "--ink"],
-    // V22: the --hong-tint tile and the cam "suggested" row (cam 15% over --bg is --cam-row).
     ["--ink", "--hong-tint"],
     ["--ink-soft", "--hong-tint"],
-    ["--hong", "--hong-tint"],
+    // Teal is the assistant's voice: text and fills.
+    ["--accent", "--bg"],
+    ["--accent", "--sheet"],
+    ["--accent", "--hong-tint"],
+    ["--accent", "--accent-tint"],
+    ["--on-accent", "--accent"],
+    ["--ink", "--accent-tint"],
     ["--cam", "--bg"],
-    ["--cam", "--hong-tint"],
+    ["--on-cam-fill", "--cam-fill"],
+    ["--now", "--sheet"],
+    // The field (tier 1), its button, and the pressed pink.
+    ["--on-plum", "--plum"],
+    ["--on-plum-soft", "--plum"],
+    ["--on-plum-action-fg", "--on-plum-action-bg"],
+    ["--on-hong", "--hong-press"],
+    ["--now-on-field", "--field"],
+    // The button on a solid pink surface (primary-inverse).
+    ["--inverse-fg", "--inverse-bg"],
   ],
   dark: [
-    ...["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200", "--cover", "--hl-stroke"].map(
-      (bg): Pair => ["--ink", bg],
-    ),
-    ...["--bg", "--sheet", "--raised", "--rose-200", "--cover"].map((base): Pair => ["--ink", "--hl", base]),
-    ...["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200", "--cover", "--hl-stroke"].map(
-      (bg): Pair => ["--ink-soft", bg],
-    ),
-    ...["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200", "--cover", "--hl-stroke"].map(
-      (bg): Pair => ["--hong", bg],
-    ),
+    ...[...BG_DARK, "--hl-stroke", "--hl", "--block", "--accent-tint"].map((bg): Pair => ["--ink", bg]),
+    ...[...BG_DARK, "--hl-stroke", "--block", "--hl"].map((bg): Pair => ["--ink-soft", bg]),
+    ...[...BG_DARK, "--hl-stroke", "--hong-tint"].map((bg): Pair => ["--hong-text", bg]),
+    ...[...BG_DARK, "--hl-stroke"].map((bg): Pair => ["--hong", bg]),
     ...["--bg", "--sheet", "--raised", "--sunken"].map((bg): Pair => ["--pencil", bg]),
-    ...["--sheet", "--raised", "--sunken"].map((bg): Pair => ["--correct", bg]),
-    ...["--bg", "--sheet", "--raised", "--sunken", "--rose-200", "--hl-stroke"].map((bg): Pair => ["--partial", bg]),
+    ...["--sheet", "--raised", "--sunken", "--correct-bg"].map((bg): Pair => ["--correct", bg]),
+    ...["--bg", "--sheet", "--raised", "--sunken", "--partial-bg"].map((bg): Pair => ["--partial", bg]),
     ["--on-hong", "--hong"],
-    ["--hong", "--on-hong"],
     ["--bg", "--ink"],
     ["--ink", "--hong-tint"],
     ["--ink-soft", "--hong-tint"],
-    ["--hong", "--hong-tint"],
+    ["--accent", "--bg"],
+    ["--accent", "--sheet"],
+    ["--accent", "--accent-tint"],
+    ["--on-accent", "--accent"],
     ["--cam", "--bg"],
-    ["--cam", "--hong-tint"],
+    ["--on-cam-fill", "--cam-fill"],
+    ["--now", "--sheet"],
+    ["--on-plum", "--plum"],
+    ["--on-plum-soft", "--plum"],
+    ["--on-plum-action-fg", "--on-plum-action-bg"],
+    ["--on-hong", "--hong-press"],
+    ["--now-on-field", "--field"],
+    ["--inverse-fg", "--inverse-bg"],
   ],
 };
 
-// Final §1.4: borders, icons and focus rings (≥ 3:1).
+// Borders, icons and focus rings (>= 3:1).
 const EDGES: Record<Mode, Pair[]> = {
   light: [
     ...["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200"].map((bg): Pair => ["--line-strong", bg]),
@@ -65,7 +83,9 @@ const EDGES: Record<Mode, Pair[]> = {
     ["--correct", "--sheet"],
     ["--partial", "--sheet"],
     ["--pencil", "--sheet"],
-    ["--hong", "--rose-100"],
+    ["--focus-on-plum", "--plum"],
+    ["--focus-on-hong", "--hong"],
+    ["--hong-press", "--bg"],
   ],
   dark: [
     ...["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200"].map((bg): Pair => ["--line-strong", bg]),
@@ -78,20 +98,19 @@ const EDGES: Record<Mode, Pair[]> = {
     ["--partial", "--sheet"],
     ["--pencil", "--sheet"],
     ["--hong", "--rose-200"],
+    ["--focus-on-plum", "--plum"],
+    ["--focus-on-hong", "--hong"],
+    ["--hong-press", "--bg"],
   ],
 };
 
 // Pairs the rules forbid because they fall short: they must stay short, so the rule stays true.
 const FORBIDDEN: Record<Mode, Pair[]> = {
   light: [
-    ["--ink-soft", "--hl"],
-    ["--hong", "--hl"],
-    ["--pencil", "--hl"],
+    ["--hong", "--bg"], // 3.83: --hong is a fill, pink text is --hong-text
+    ["--hong", "--plum"], // pink never sits on the field; the button there is --on-plum-action
   ],
-  dark: [
-    ["--hong", "--hl", "--bg"],
-    ["--line-strong", "--cover"],
-  ],
+  dark: [],
 };
 
 const label = ([fg, bg, base]: Pair) => `${fg} on ${bg}${base ? ` over ${base}` : ""}`;
@@ -122,27 +141,23 @@ describe.each(["light", "dark"] as const)("%s tile", (mode) => {
   it.each([
     ["--on-surface-hong", 4.5],
     ["--hong-soft-text", 4.5],
-    ["--focus-on-hong", 3],
   ] as const)("%s on --hong-tint", (fg, limit) => {
     expect(contrast(palette(mode), fg, "--hong-tint")).toBeGreaterThanOrEqual(limit);
+  });
+  it("--focus-on-hong reads on a --hong fill (direction §F1)", () => {
+    expect(contrast(palette(mode), "--focus-on-hong", "--hong")).toBeGreaterThanOrEqual(3);
   });
   it("--ink reads on the highlighter band under an h1 phrase (≥ 4.5)", () => {
     expect(contrast(palette(mode), "--ink", "--hl", "--bg")).toBeGreaterThanOrEqual(4.5);
     expect(contrast(palette(mode), "--ink", "--hl-band", "--bg")).toBeGreaterThanOrEqual(4.5);
   });
-  it("the cam row (cam 15% over --bg) keeps its text and its --cam label readable", () => {
+  it("the cam row (--cam-tint) keeps its text and its --cam label readable", () => {
     const t = palette(mode);
-    const row = mixHex(t["--cam"], 0.15, t["--bg"]); // the row is opaque: cam 15% over --bg, as in nx-list.tsx
+    const row = t["--cam-tint"]; // the "suggested" row is the opaque --cam-tint tile, as in nx-list.tsx
     expect(contrastOn(t, "--ink", row)).toBeGreaterThanOrEqual(4.5);
     expect(contrastOn(t, "--cam", row)).toBeGreaterThanOrEqual(4.5);
   });
 });
-
-/** sRGB mix of two #rrggbb tokens: `a` at `share`, `b` for the rest (CSS color-mix in srgb). */
-function mixHex(a: string, share: number, b: string): string {
-  const ch = (hex: string, i: number) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
-  return `#${[0, 1, 2].map((i) => Math.round(ch(a, i) * share + ch(b, i) * (1 - share)).toString(16).padStart(2, "0")).join("")}`;
-}
 
 describe("--elev-sheet keeps a hairline", () => {
   it.each(["light", "dark"] as const)("%s: a card shadow is never none", (mode) => {
@@ -160,16 +175,23 @@ describe.each(["light", "dark"] as const)("%s primary-inverse", (mode) => {
 describe("token tables", () => {
   it("checks the number of pairs it means to (a dropped pair fails here)", () => {
     const count = (table: Record<Mode, Pair[]>) => table.light.length + table.dark.length;
-    expect([count(TEXT), count(EDGES), count(FORBIDDEN)]).toEqual([89, 30, 5]);
+    expect([count(TEXT), count(EDGES), count(FORBIDDEN)]).toEqual([123, 35, 2]);
   });
 
-  it("matches the spec on a few exact values, to catch a mistyped hex", () => {
+  it("matches the v4 spec on a few exact values, to catch a mistyped hex", () => {
     const light = palette("light");
     const dark = palette("dark");
-    expect(contrast(light, "--hong", "--bg")).toBeCloseTo(6.79, 1);
-    expect(contrast(light, "--ink", "--hl")).toBeCloseTo(8.83, 1);
-    expect(contrast(dark, "--hong", "--bg")).toBeCloseTo(8.17, 1);
-    expect(contrast(dark, "--ink", "--hl", "--bg")).toBeCloseTo(8.24, 1);
+    expect(contrast(light, "--hong", "--bg")).toBeCloseTo(3.83, 1); // why pink text is --hong-text
+    expect(contrast(light, "--hong-text", "--bg")).toBeCloseTo(5.33, 1);
+    expect(contrast(light, "--on-hong", "--hong")).toBeCloseTo(4.68, 1);
+    expect(contrast(light, "--on-accent", "--accent")).toBeCloseTo(6.55, 1);
+    expect(contrast(light, "--ink", "--hl")).toBeGreaterThan(10.5);
+    expect(contrast(dark, "--on-hong", "--hong")).toBeCloseTo(7.72, 1);
+    expect(light["--field"]).toBe("#661738");
+    expect(dark["--field"]).toBe("#4e152f");
+    expect(light["--inverse-bg"]).toBe("#ffffff");
+    expect(dark["--inverse-bg"]).toBe("#1a0e14");
+    expect(dark["--inverse-fg"]).toBe("#ff77ad");
   });
 });
 

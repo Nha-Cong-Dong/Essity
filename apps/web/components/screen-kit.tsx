@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { ArrowLeft } from "lucide-react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 import { Mascot, type MascotPose } from "@/components/mascot";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,61 @@ import { cn } from "@/lib/utils";
 // with a thin pink top edge. Tokens only; every part wraps at 320 px.
 
 type Tone = "hong" | "rose" | "plain";
+
+/**
+ * The four tiers of a block (DESIGN-V3 A3). `field` is the plum field: the one thing to do next, at
+ * most one per screen; its text is --on-plum and its button is --on-plum-action (never --hong on
+ * plum). `tint` is the quiet accent tile (--hong-tint, or --cam-tint with tone="cam"), at most two
+ * per screen. `sheet` is a white sheet with a 1px line, no shadow. A bare row on --bg is tier 4:
+ * use no Block at all.
+ */
+export function Block({
+  tier = "sheet",
+  tone = "hong",
+  as: Tag = "div",
+  className,
+  children,
+  ...rest
+}: Omit<ComponentPropsWithoutRef<"div">, "children"> & {
+  tier?: "field" | "tint" | "sheet";
+  /** Only for `tint`: pink (default) or the coral "suggested / next" tile. */
+  tone?: "hong" | "cam";
+  as?: "div" | "section" | "aside" | "article";
+  children?: ReactNode;
+}) {
+  return (
+    <Tag
+      data-tier={tier}
+      className={cn(
+        "min-w-0 rounded-tile p-6 min-[901px]:p-8",
+        tier === "field" &&
+          "bg-plum text-on-plum [--focus:var(--focus-on-plum)] [&_a:not([class*=text-])]:text-on-plum [&_a]:decoration-on-plum-soft",
+        tier === "tint" && (tone === "cam" ? "bg-cam-tint text-ink" : "bg-hong-tint text-ink"),
+        tier === "sheet" && "border border-line bg-sheet text-ink",
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+    </Tag>
+  );
+}
+
+/** "← Môn học": the way back from a deep screen. The tap area is at least 44px high. */
+export function BackLink({ href, children, className }: { href: string; children: ReactNode; className?: string }) {
+  return (
+    <a
+      href={href}
+      className={cn(
+        "inline-flex min-h-11 min-w-11 items-center gap-2 self-start rounded-full text-body font-medium text-ink no-underline hover:text-hong-text",
+        className,
+      )}
+    >
+      <ArrowLeft aria-hidden="true" className="size-5 shrink-0" />
+      <span>{children}</span>
+    </a>
+  );
+}
 
 /** The big number of a block: shown large, once. `size="mega"` is for one number per screen. */
 export function StatBig({
@@ -103,7 +159,7 @@ export function FeatureTile({
   );
 }
 
-/** A section's heading (V22: plain; the highlighter belongs to the h1 of a screen only). */
+/** A section's heading (plain). */
 export function SectionHead({ title, aside }: { title: ReactNode; aside?: ReactNode }) {
   return (
     <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
@@ -123,43 +179,29 @@ export function RevealStack({ children, className }: { children: ReactNode; clas
 }
 
 /**
- * The head of a screen (V22): an optional breadcrumb, the h1 with the one highlighter
- * band under `highlight` (a phrase of the title, once per screen, none on deep screens), a one-line
- * conclusion under it and a primary action on the right. The h1 breaks between words only.
+ * The head of a screen (DESIGN-V3 B1): an optional breadcrumb, the h1 (plain ink, no highlighter
+ * under it), a one-line conclusion under it and a primary action on the right. The h1 breaks
+ * between words only.
  */
 export function ScreenHeader({
   title,
-  highlight,
   crumb,
   lede,
   action,
   className,
 }: {
   title: string;
-  /** A phrase inside `title`; omit it on deep screens (syllabus, practice, graph, forms). */
-  highlight?: string;
   crumb?: ReactNode;
   lede?: ReactNode;
   action?: ReactNode;
   className?: string;
 }) {
-  const at = highlight ? title.indexOf(highlight) : -1;
   return (
     <header className={cn("mb-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-4 min-[1024px]:mb-8", className)}>
       <div className="flex min-w-0 flex-1 basis-80 flex-col gap-2">
         {crumb ? <p className="m-0 text-meta text-ink-soft">{crumb}</p> : null}
-        <h1 className="m-0 text-title tracking-tight text-balance [overflow-wrap:normal] [word-break:normal] hyphens-manual">
-          {at < 0 ? (
-            title
-          ) : (
-            <>
-              {title.slice(0, at)}
-              <span data-motif="hl-word" className="hl-word">
-                {highlight}
-              </span>
-              {title.slice(at + (highlight?.length ?? 0))}
-            </>
-          )}
+        <h1 className="m-0 text-title tracking-tight text-balance text-ink [overflow-wrap:normal] [word-break:normal] hyphens-manual">
+          {title}
         </h1>
         {lede ? <p className="m-0 max-w-prose text-body text-ink-soft">{lede}</p> : null}
       </div>

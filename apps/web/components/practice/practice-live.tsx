@@ -244,7 +244,7 @@ export function PracticeLive({
       <div className="mt-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-3" data-practice-head>
         <div className="min-w-0 basis-80 flex-1">
           <h1 className="m-0 font-display text-title">
-            <span className="hl-word">Luyện tập</span>
+            Luyện tập
           </h1>
           <p className="m-0 mt-1 text-read text-ink-soft wrap-anywhere" data-practice-sub>
             {list.total === 0
