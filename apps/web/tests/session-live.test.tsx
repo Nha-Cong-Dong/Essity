@@ -108,6 +108,13 @@ describe("study session on core-api", () => {
     expect(api.result.mock.calls.length).toBe(calls);
   });
 
+  // UX-FINAL: the free session has an h1, the free-session line is only its description.
+  it("the compose form has one h1 'Buổi học mới' and the free-session line is a paragraph", () => {
+    show(fakeApi());
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Buổi học mới");
+    expect(screen.getByText("Buổi học tự do. Bài nộp không gắn phần đề cương.").tagName).toBe("P");
+  });
+
   // US-02 AC4. Red when: a refused @ does not show on its chip, or the sentence is lost.
   it("a refused mention takes the learner back to the form with the sentence kept", async () => {
     const api = fakeApi({

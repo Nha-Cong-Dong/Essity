@@ -49,7 +49,7 @@ test("v2 sections come in order, the FAQ has five questions and the new figures 
   expect(ids.indexOf("hoi-dap")).toBeGreaterThan(ids.indexOf("luyen-dang-de"));
   await expect(page.locator("#hoi-dap dt")).toHaveCount(5);
   await expect(page.getByText("Sửa nhanh thế nào?")).toBeVisible();
-  await expect(page.locator("#hoc-gi-tiep")).toContainText("✓ Đã học");
+  await expect(page.locator("#hoc-gi-tiep")).toContainText("Đã học");
   await expect(page.locator("#hoc-gi-tiep")).toContainText("→ Tiếp theo");
   await expect(page.locator("#luyen-dang-de")).toContainText("→ Gợi ý: liên quan tới Định tuyến");
 });

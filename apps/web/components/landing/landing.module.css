@@ -132,7 +132,7 @@
   justify-content: center;
   height: 56px;
   padding: 0 32px;
-  border-radius: 8px;
+  border-radius: 999px;
   background: var(--hong);
   color: var(--on-hong);
   font: 600 var(--fs-body) / 1 var(--text);
@@ -158,10 +158,6 @@
   isolation: isolate;
   overflow: hidden;
   background-color: var(--poster);
-  background-image:
-    radial-gradient(55% 65% at 12% 8%, var(--glow-a) 0%, transparent 62%),
-    radial-gradient(60% 70% at 100% 100%, var(--glow-b) 0%, transparent 65%),
-    radial-gradient(38% 46% at 82% 30%, var(--glow-c) 0%, transparent 70%), var(--grain);
   color: var(--on-poster);
 }
 .hero :focus-visible {
@@ -280,17 +276,13 @@
   background: var(--cover);
   border-radius: 16px 0 0 16px;
   padding: 32px 120px 40px 64px;
-  box-shadow: var(--elev-cover);
-  transform: rotate(-3.5deg);
-  transform-origin: 20% 0;
+  outline: 1px solid var(--line);
+  outline-offset: -1px;
   transition:
     background-color 400ms ease,
-    color 400ms ease,
-    transform 1400ms var(--ease-expo);
+    color 400ms ease;
 }
-.settled .hb {
-  transform: rotate(-1.2deg);
-}
+
 .hbSpine {
   position: absolute;
   inset: 0 auto 0 0;
@@ -325,10 +317,6 @@
   font: 650 44px / 1.15 var(--display);
   letter-spacing: -0.03em;
   padding: 0 0.06em;
-  background-image: linear-gradient(100deg, transparent 1%, var(--hl) 3%, var(--hl) 95%, transparent 98%);
-  background-position: 0 86%;
-  background-repeat: no-repeat;
-  background-size: 100% 38%;
 }
 .cvDate {
   font: 500 17px / 1.4 var(--text);
@@ -410,7 +398,6 @@
   font: 400 18px / 32px var(--text);
   color: var(--hong);
   min-height: 64px;
-  background-image: repeating-linear-gradient(to bottom, transparent 0 29px, var(--line) 29px 30.5px, transparent 30.5px 32px);
 }
 .ruled span {
   display: block;
@@ -451,9 +438,9 @@
   align-items: center;
   background: var(--bg);
   border-radius: 6px;
-  box-shadow: var(--elev-sheet);
+  outline: 1px solid var(--line);
+  outline-offset: -1px;
   padding: 10px 14px 10px 10px;
-  transform: rotate(-1.5deg);
 }
 .slip::after {
   content: "";
@@ -492,25 +479,12 @@
   font-size: 15px;
   color: var(--ink-soft);
 }
-.hbShadow {
-  position: absolute;
-  z-index: 0;
-  left: 8%;
-  right: 4%;
-  bottom: -46px;
-  height: 34px;
-  border-radius: 50%;
-  background: light-dark(rgb(40 6 22 / 0.55), rgb(0 0 0 / 0.7));
-  filter: blur(14px);
-  transform-origin: 50% 50%;
-  pointer-events: none;
-}
 
 /* the desk lamp sits on the book's head, off the reading line (kept, lit on a light page) */
 .lamp {
   position: absolute;
   top: 34px;
-  right: 128px;
+  right: 176px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -570,16 +544,6 @@
   position: relative;
   margin-top: 48px;
 }
-/* the grading sits on one big pink highlighter stroke, long and low */
-.tcStage::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: -44px -4% -56px -3%;
-  background: var(--stroke);
-  transform: rotate(var(--tilt));
-  border-radius: 18px 64px 22px 72px / 64px 24px 72px 18px;
-}
 .tcWin {
   --w-bg: var(--sheet);
   --w-ink: var(--ink);
@@ -597,7 +561,8 @@
   background: var(--w-bg);
   color: var(--w-ink);
   border-radius: 24px;
-  box-shadow: var(--elev-over);
+  outline: 1px solid var(--line-strong);
+  outline-offset: -1px;
   transition:
     background-color 400ms ease,
     color 400ms ease;
@@ -801,7 +766,7 @@
 }
 .tcSrc mark {
   color: var(--w-ink);
-  background: linear-gradient(var(--w-band), var(--w-band)) 0 100% / var(--sweep, 100%) 38% no-repeat;
+  background: var(--w-band);
   padding: 0 1px;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
@@ -923,10 +888,6 @@
   display: inline;
   padding: 0 0.08em;
   font-size: var(--fs-h2);
-  background-image: linear-gradient(var(--stroke), var(--stroke));
-  background-repeat: no-repeat;
-  background-size: 100% 40%;
-  background-position: 0 88%;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
@@ -976,10 +937,6 @@
   display: inline;
   padding: 0 0.08em;
   font-size: var(--fs-h2);
-  background-image: linear-gradient(var(--stroke), var(--stroke));
-  background-repeat: no-repeat;
-  background-size: 100% 40%;
-  background-position: 0 88%;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
@@ -1104,7 +1061,7 @@
   vector-effect: non-scaling-stroke;
 }
 .key {
-  background: linear-gradient(var(--hl-stroke-q), var(--hl-stroke-q)) no-repeat 0 88% / 100% 42%;
+  font-weight: 600;
   padding: 0 2px;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
@@ -1516,9 +1473,7 @@
     right: 16px;
   }
   .mEndBurst {
-    width: 76px;
-    right: 16px;
-    bottom: 26vw;
+    display: none; /* it would sit on the legal line */
   }
   .mEndSpark {
     display: none;
@@ -1612,9 +1567,6 @@
   }
   :global(.js) .hbFloat {
     animation: bob 6.4s ease-in-out 1.9s infinite alternate both;
-  }
-  :global(.js) .hbShadow {
-    animation: breathe 6.4s ease-in-out 1.9s infinite alternate both;
   }
 
   /* ---- reveal once, when the element's top reaches ~88% of the viewport ---- */

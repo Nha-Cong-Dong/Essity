@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-// "Hoạt động mỗi ngày": seven cells Mon..Sun, the number of activities (cards saved + questions answered) each day. No streak,
+// "Tuần này": seven cells Mon..Sun, the number of activities (cards saved + questions answered) each day. No streak,
 // no counter of missed days: resting is fine (the pressure metrics are dropped, PRD US-11).
 
 export type WeekCell = { day: string; count: number };
@@ -38,7 +38,7 @@ export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; toda
   return (
     <section aria-labelledby="today-week" className={cn("min-w-0 rounded-tile bg-hong-tint p-4 min-[901px]:p-6", className)}>
       <h2 id="today-week" className="m-0 font-display text-lead">
-        Hoạt động mỗi ngày
+        Tuần này
       </h2>
       {cells.every((cell) => cell.count === 0) ? (
         <p className="m-0 mt-3 text-read text-ink-soft" data-week-empty>

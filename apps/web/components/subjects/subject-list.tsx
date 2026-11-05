@@ -295,6 +295,9 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
         <form
           method="post"
           onSubmit={save}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && !busy) setEditing(false);
+          }}
           className="flex max-w-120 flex-col gap-5 px-3.5 pb-4"
           noValidate
         >

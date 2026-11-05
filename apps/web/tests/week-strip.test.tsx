@@ -15,7 +15,7 @@ describe("week strip (V21)", () => {
   it("marks today and shows no streak wording", () => {
     const week = weekFromCells([], "2026-11-08");
     const html = renderToStaticMarkup(<WeekStrip cells={week} today="2026-11-08" />);
-    expect(html).toContain("Hoạt động mỗi ngày");
+    expect(html).toContain("Tuần này");
     expect(html).not.toContain("Mỗi cột");
     expect(html).toMatch(/aria-current="date"[^>]*>.*?CN/);
     expect(html).not.toMatch(/chuỗi|streak/i);

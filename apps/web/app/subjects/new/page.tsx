@@ -3,7 +3,6 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
-import { AUTH_LINK } from "@/components/auth/fields";
 import { Mascot } from "@/components/mascot";
 import { AppShell, PageColumn } from "@/components/shells";
 import { OutlineCard } from "@/components/subjects/outline-card";
@@ -26,7 +25,7 @@ export default function NewSubjectPage() {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
       <PageColumn width="read" className="flex flex-col gap-6">
-        <a href="/subjects" className={AUTH_LINK}>
+        <a href="/subjects" className="inline-flex min-h-11 items-center justify-center self-start rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
           Môn học
         </a>
         <header className="flex items-end justify-between gap-4">

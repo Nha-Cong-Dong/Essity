@@ -83,6 +83,9 @@ const kindOf = (name: string): FileRow["kind"] =>
 
 function Suggest({ suggestion, id }: { suggestion: Suggestion; id: string }) {
   const [why, setWhy] = useState(false);
+  if (suggestion.kind !== "section") {
+    return <p className="m-0 -mt-6 text-body text-ink-soft">{suggestion.text}</p>;
+  }
   return (
     <Region phase={id} title={suggestion.text}>
       {suggestion.kind === "section" && (
@@ -369,6 +372,7 @@ export function SessionScreen(props: SessionScreenProps) {
 
         {round.phase === "compose" ? (
           <>
+            <h1 className="m-0 font-display text-title">Buổi học mới</h1>
             <Suggest suggestion={isFree ? { kind: "free", text: "Buổi học tự do. Bài nộp không gắn phần đề cương." } : suggestion} id="suggest" />
             <Region phase="compose" title="Bạn đã học gì?">
               <MentionBox
@@ -431,7 +435,7 @@ export function SessionScreen(props: SessionScreenProps) {
                             type="button"
                             aria-label={`Bỏ phần ${index + 1}`}
                             onClick={() => void dropPiece(p.id)}
-                            className="min-h-11 rounded-full px-3 text-meta text-ink-soft underline underline-offset-4"
+                            className="inline-flex min-h-11 items-center justify-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken"
                           >
                             Bỏ phần này
                           </button>
