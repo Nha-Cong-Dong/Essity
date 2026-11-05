@@ -154,6 +154,23 @@ def build_prompt(body: ProposeEdgesBody) -> BuiltPrompt:
     return BuiltPrompt(system, "\n\n".join(blocks), nonce, labels)
 
 
+_SOURCE_LABEL = re.compile(r"^(S|C[1-9][0-9]*)\.A([1-9][0-9]*)$")
+
+
+def _cited(card: str, labels: dict[str, QuestionUnit]) -> tuple[str, list[str]]:
+    """The card a quote names, and the anchors it may come from. The model may name the source
+    block (`C1.A2`, as the prompt labels it) instead of the card (`C1`): then that one anchor."""
+    match = _SOURCE_LABEL.match(card)
+    if match is None:
+        owner = labels.get(card)
+        return card, list(owner.quotes) if owner else []
+    label, n = match.group(1), int(match.group(2))
+    owner = labels.get(label)
+    if owner is None or n > len(owner.quotes):
+        return label, []
+    return label, [owner.quotes[n - 1]]
+
+
 def check_edges(text: str, labels: dict[str, QuestionUnit]) -> tuple[list[ProposedEdge], int]:
     """Parse and verify the model's text: the edges that stand, and how many were dropped.
     A broken schema raises `OutputViolation`; a bad edge is dropped, not fatal."""
@@ -182,11 +199,12 @@ def check_edges(text: str, labels: dict[str, QuestionUnit]) -> tuple[list[Propos
             continue
         evidence: list[EdgeEvidence] = []
         for q in item.evidence:
-            owner = labels.get(q.card)
-            if q.card not in (item.from_, item.to) or owner is None:
+            card, anchors = _cited(q.card, labels)
+            owner = labels.get(card)
+            if card not in (item.from_, item.to) or owner is None:
                 continue
             quote = _fold(q.quote)
-            if quote and any(quote in _fold(a) for a in owner.quotes):
+            if quote and any(quote in _fold(a) for a in anchors):
                 evidence.append(EdgeEvidence(unit_id=owner.unit_id, quote=quote))
         if not evidence or len(evidence) != len(item.evidence):
             dropped += 1  # no evidence, or a quote that is not in the anchors: no edge
