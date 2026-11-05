@@ -52,7 +52,7 @@ export function GuideArt({ step }: { step: number }) {
             <rect x="46" y="92" width="52" height="6" rx="3" fill="var(--on-hong, #fff)" />
           </g>
           <g className="guide-pop">
-            <circle cx="176" cy="64" r="22" fill="var(--hong-tint, #f9e6ee)" />
+            <circle cx="176" cy="64" r="22" fill="var(--hong-tint, #fdeaf1)" />
             <path d="M165 64l8 8 14-16" fill="none" stroke="var(--hong)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
           </g>
         </>
@@ -62,7 +62,7 @@ export function GuideArt({ step }: { step: number }) {
           <rect x="120" y="58" width="88" height="52" rx="10" fill="var(--sunken)" stroke="var(--line-strong)" strokeWidth="2" />
           <rect x="132" y="50" width="64" height="12" rx="4" fill="var(--line)" />
           {[0, 1, 2].map((i) => (
-            <rect key={i} className={`guide-card guide-card-${i}`} x="28" y="22" width="52" height="34" rx="6" fill="var(--hong-tint, #f9e6ee)" stroke="var(--hong)" strokeWidth="2" />
+            <rect key={i} className={`guide-card guide-card-${i}`} x="28" y="22" width="52" height="34" rx="6" fill="var(--hong-tint, #fdeaf1)" stroke="var(--hong)" strokeWidth="2" />
           ))}
         </>
       )}
