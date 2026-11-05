@@ -11,12 +11,12 @@ const PALETTES: [string, () => Tokens][] = [
 ];
 
 describe.each(PALETTES)("suggested row and tile hint, %s", (_name, tokens) => {
-  const t = { ...tokens(), "--cam-row": "color-mix(in srgb, var(--cam) 15%, transparent)" };
+  const t = { ...tokens(), "--cam-row": "var(--cam-tint)" };
   it("cam text on the cam row is at least 4.5:1", () => {
-    expect(contrast(t, "--cam", "--cam-row", "--bg")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(t, "--cam", "--cam-row")).toBeGreaterThanOrEqual(4.5);
   });
   it("ink on the cam row and ink-soft on the pink tile are at least 4.5:1", () => {
-    expect(contrast(t, "--ink", "--cam-row", "--bg")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(t, "--ink", "--cam-row")).toBeGreaterThanOrEqual(4.5);
     expect(contrast(t, "--ink-soft", "--hong-tint")).toBeGreaterThanOrEqual(4.5);
   });
 });
