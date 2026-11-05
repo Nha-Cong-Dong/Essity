@@ -80,7 +80,7 @@ function Tiers({ tone }: { tone: "light" | "dark" }) {
           container={host}
           title="Buổi học hôm nay xong rồi"
           description="Thẻ của buổi này đang được chuẩn bị, xong sẽ báo bạn."
-          media={<Mascot pose="chucmung" size="lg" />}
+          media={<Mascot kind="sun" pose="khen" size="lg" />}
         >
           <div className="grid grid-cols-2 gap-3">
             <Button onClick={() => setOpen(false)}>Về trang chủ</Button>

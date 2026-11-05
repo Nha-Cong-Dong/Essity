@@ -60,7 +60,7 @@ export function SessionEndDialog({
         <Dialog.Backdrop className="fixed inset-0 z-(--z-menu) bg-ink/60" />
         <Dialog.Popup className={POPUP} initialFocus={home}>
           <div data-tier="field" className="relative flex h-44 shrink-0 items-end justify-center overflow-hidden bg-plum">
-            <Mascot pose={empty ? "cho" : "khen"} size="md" tone="solid" className="relative z-10" />
+            <Mascot kind={empty ? undefined : "sun"} pose={empty ? "cho" : "khen"} size="md" tone="solid" className="relative z-10" />
             {empty ? null : (
               <>
                 <span aria-hidden="true" className={`${SPARK} top-6 left-[24%] size-8 [animation-delay:140ms]`} />

@@ -1,0 +1,12 @@
+task: MASCOT-V3
+lane: L2
+status: done
+step: cloud (no beard) + sun in mascot-art.tsx; <Mascot kind pose size tone>, default cloud
+tests: {cmd: "vitest full 1991; tsc; eslint 0 errors; e2e layout 78 + today 20; art regenerated from DESIGN-V5 at commit time, identical", failed: 0}
+blockers: []
+decisions:
+  - "Roles: sun = Hôm nay 'chưa có gì cần ôn', session result with cards, the praise pop-up (new sun mascot above the title; empty session shows the cloud holding an empty card); cloud everywhere else (header glyph, empty states, upload, stats)"
+  - "One mascot per screen: removed the small cloud in Hôm nay's practice 'none ready' block (the review block holds the mascot)"
+  - "-dark files differ only in the two colours already driven by --mascot-line/--mascot-teal, so no per-theme art; auth screens left for later as asked"
+  - "Evidence: .work/MASCOT-V3/evidence/{poses,today-done,today-empty}-{light,dark}.jpg (header glyph is in each)"
+next: "orchestrator opens PR; #261 closes"
