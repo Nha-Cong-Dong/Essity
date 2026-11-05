@@ -247,3 +247,33 @@ def test_the_fake_provider_proposes_one_checked_edge() -> None:
     edges, dropped = check_edges(text, built.labels)
     assert len(edges) == 1 and dropped == 0
     assert FAKE_RESPONDERS["propose_edges"](type("R", (), {"payload": {}})()) == '{"edges": []}'  # type: ignore[arg-type]
+
+
+# QA2-FSRS (Chrome test 05/11): the model names evidence by the source block's label
+# (`S.A2`, `C1.A1`), as the prompt shows them; every edge was dropped and the graph stayed empty.
+def test_evidence_named_by_its_source_label_counts_for_that_card(
+    app: FastAPI, sessions: sessionmaker[Session]
+) -> None:
+    # Red when: a verbatim quote cited as `C1.A1` is dropped because the label is not `C1`.
+    response, _ = post(app, sessions, answer(edge(card="C1.A1")))
+    data = response.json()
+    assert data["dropped"] == 0
+    assert data["edges"][0]["evidence"] == [{"unit_id": OTHER_ID, "quote": OTHER_QUOTE}]
+
+
+@pytest.mark.parametrize(
+    ("card", "quote"),
+    [
+        ("C1.A2", OTHER_QUOTE),  # no second anchor on C1
+        ("S.A1", OTHER_QUOTE),  # S's anchor does not hold C1's quote
+        ("C1.A1", SOURCE_QUOTE),  # C1's anchor does not hold S's quote
+        ("C2.A1", OTHER_QUOTE),  # a card outside the edge
+        ("C1.1", OTHER_QUOTE),  # not a source label
+    ],
+)
+def test_a_source_label_still_checks_that_exact_anchor(
+    app: FastAPI, sessions: sessionmaker[Session], card: str, quote: str
+) -> None:
+    # Red when: the source label lets a quote through from another anchor or card.
+    response, _ = post(app, sessions, answer(edge(card=card, quote=quote)))
+    assert response.json()["edges"] == []
