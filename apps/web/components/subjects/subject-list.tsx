@@ -58,7 +58,7 @@ async function patchSubject(id: string, body: Record<string, string>) {
 /** DELETE through web's route: deleted (204, or 404: already gone), refused, or not answered. */
 async function deleteSubject(
   id: string,
-): Promise<"deleted" | "history" | "signed_out" | "unavailable"> {
+): Promise<"deleted" | "signed_out" | "unavailable"> {
   let response: Response;
   try {
     response = await fetch(`/api/subjects/${id}`, { method: "DELETE" });
@@ -66,7 +66,6 @@ async function deleteSubject(
     return "unavailable";
   }
   if (response.status === 204 || response.status === 404) return "deleted";
-  if (response.status === 409) return "history";
   if (response.status === 401) return "signed_out";
   return "unavailable";
 }
@@ -89,16 +88,14 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy }: RowProps) {
   const [formError, setFormError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [hasHistory, setHasHistory] = useState(initial.has_history);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
   // Where focus goes once the view it names is on screen (plan F7): set with the state change
   // that shows that view, taken after the render.
-  const focusTo = useRef<"keep" | "delete" | "history" | null>(null);
+  const focusTo = useRef<"keep" | "delete" | null>(null);
   const keepRef = useRef<HTMLButtonElement>(null);
   const deleteRef = useRef<HTMLButtonElement>(null);
-  const historyRef = useRef<HTMLParagraphElement>(null);
   const ids = {
     name: `subject-${subject.id}-name`,
     confirm: `subject-${subject.id}-confirm`,
@@ -112,9 +109,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy }: RowProps) {
 
   useEffect(() => {
     if (focusTo.current === null) return;
-    ({ keep: keepRef, delete: deleteRef, history: historyRef })[
-      focusTo.current
-    ].current?.focus();
+    ({ keep: keepRef, delete: deleteRef })[focusTo.current].current?.focus();
     focusTo.current = null;
   });
 
@@ -143,13 +138,6 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy }: RowProps) {
     setDeleting(false);
     if (outcome === "deleted") return onDeleted();
     if (outcome === "signed_out") return go("/login");
-    if (outcome === "history") {
-      // History appeared after the page loaded (another tab began a review): say why, in place.
-      setHasHistory(true);
-      setConfirming(false);
-      focusTo.current = "history";
-      return;
-    }
     setDeleteFailed(true);
   }
 
@@ -239,17 +227,15 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy }: RowProps) {
             >
               Sửa
             </Button>
-            {!hasHistory && (
-              <Button
-                ref={deleteRef}
-                variant="quiet"
-                onClick={askToDelete}
-                aria-label={`Xóa ${subject.name}`}
-                aria-describedby={ids.name}
-              >
-                Xóa
-              </Button>
-            )}
+            <Button
+              ref={deleteRef}
+              variant="quiet"
+              onClick={askToDelete}
+              aria-label={`Xóa ${subject.name}`}
+              aria-describedby={ids.name}
+            >
+              Xóa
+            </Button>
           </div>
         )}
       </div>
@@ -270,7 +256,8 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy }: RowProps) {
           className="flex max-w-120 flex-col gap-5 px-3.5 pb-4"
         >
           <p id={ids.confirm} className="m-0 text-body">
-            Xóa môn này khỏi danh sách và phiên ôn?
+            Xóa môn {subject.name}? Lịch sử ôn và luyện tập của môn cũng sẽ ẩn
+            theo.
           </p>
           <div role="alert">
             {deleteFailed && (
@@ -335,15 +322,6 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy }: RowProps) {
             </Button>
           </div>
         </form>
-      )}
-      {hasHistory && !editing && !confirming && (
-        <p
-          ref={historyRef}
-          tabIndex={-1}
-          className="m-0 px-5 pb-4 text-small text-ink-soft"
-        >
-          Môn này đã có bài ôn nên chưa xóa được ở đây.
-        </p>
       )}
     </li>
   );

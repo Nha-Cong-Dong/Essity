@@ -13,9 +13,8 @@ const { SubjectList } = await import("@/components/subjects/subject-list");
 const MMT = { id: "3f2b8c1e-7a4d-4e5f-9b6a-1c2d3e4f5a6b", name: "Mạng máy tính", exam_date: "2026-12-15", days_until_exam: 54, has_history: false };
 const HDH = { id: "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", name: "Hệ điều hành", exam_date: "2026-12-20", days_until_exam: 59, has_history: false };
 const EXAMPLE = "15/12/2031";
-const CONFIRM = "Xóa môn này khỏi danh sách và phiên ôn?";
+const CONFIRM = "Xóa môn Mạng máy tính? Lịch sử ôn và luyện tập của môn cũng sẽ ẩn theo.";
 const DELETED = "Đã xóa môn.";
-const HAS_HISTORY = "Môn này đã có bài ôn nên chưa xóa được ở đây.";
 
 type Sent = { path: string; method: string };
 
@@ -61,10 +60,12 @@ describe("SubjectList delete (T2.3b, us-01 AC8)", () => {
     expect(within(row(MMT.name)).getByRole("button", { name: "Lưu" })).toBeTruthy();
   });
 
-  it("us-01 AC8: a subject with history has no delete button but a line saying why", () => {
+  // Q13 (05/11): a subject with history can be deleted; the confirmation says its history hides too.
+  it("us-01 AC8: a subject with history has the same delete button and the history warning in the confirmation", () => {
     render(<SubjectList subjects={[{ ...MMT, has_history: true }]} example={EXAMPLE} />);
-    expect(within(row(MMT.name)).queryByRole("button", { name: /^Xóa/ })).toBeNull();
-    expect(within(row(MMT.name)).getByText(HAS_HISTORY)).toBeTruthy();
+    expect(trigger(MMT.name)).toBeTruthy();
+    fireEvent.click(trigger(MMT.name));
+    expect(screen.getByRole("group").textContent).toContain("Lịch sử ôn và luyện tập của môn cũng sẽ ẩn theo.");
   });
 
   it("us-01 AC8: \"Xóa\" turns the tile into a confirmation in place, focus on \"Giữ môn\"", () => {
@@ -168,17 +169,13 @@ describe("SubjectList delete (T2.3b, us-01 AC8)", () => {
     expect(placeholder.compareDocumentPosition(screen.getByText("Chưa có môn nào.")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("us-01 AC8: history found on delete (409) shows the line in place of the button, focused", async () => {
+  it("us-01 AC8: a 409 from an older core is just an error, the confirmation stays", async () => {
     fakeWeb(() => Response.json({ error: "subject_has_history" }, { status: 409 }));
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
     openConfirm(MMT.name);
     fireEvent.click(deleteButton());
-
-    const line = await screen.findByText(HAS_HISTORY);
-    expect(screen.queryByRole("group")).toBeNull();
-    expect(screen.queryByText(DELETED)).toBeNull();
-    expect(within(row(MMT.name)).queryByRole("button", { name: /^Xóa/ })).toBeNull();
-    await waitFor(() => expect(document.activeElement).toBe(line));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.getByRole("group")).toBeTruthy();
   });
 
   it.each([0, 403, 500, 503])(
@@ -230,7 +227,6 @@ describe("SubjectList delete (T2.3b, us-01 AC8)", () => {
   it("R09: the approved sentences carry no data-copy=\"tam\" in the page", async () => {
     fakeWeb(empty204);
     render(<SubjectList subjects={[MMT, { ...HDH, has_history: true }]} example={EXAMPLE} />);
-    expect(screen.getByText(HAS_HISTORY).getAttribute("data-copy")).toBeNull();
     expect(trigger(MMT.name).getAttribute("data-copy")).toBeNull();
     fireEvent.click(trigger(MMT.name));
     expect(screen.getByText(CONFIRM).getAttribute("data-copy")).toBeNull();
