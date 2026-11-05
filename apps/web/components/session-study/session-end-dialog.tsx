@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+
 import { Dialog } from "@base-ui/react/dialog";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +15,8 @@ export const END_COPY = {
   title: "Bạn đã hoàn thành buổi học",
   praise: "Làm tốt lắm! Mỗi buổi ghi lại là một bước chắc hơn tới kỳ thi.",
   cards: "Thẻ kiến thức đang được chuẩn bị. Có thẻ mới, Essity sẽ báo và đưa vào Kho.",
+  emptyTitle: "Buổi này chưa có ghi chép",
+  emptyText: "Bạn chưa ghi lại phần nào nên chưa có thẻ nào được tạo. Lần sau cứ ghi vài dòng là đủ.",
   home: "Về trang chủ",
   more: "Học tiếp môn này",
 } as const;
@@ -20,22 +24,36 @@ export const END_COPY = {
 const POPUP =
   "fixed top-1/2 left-1/2 z-(--z-menu) flex max-h-[85vh] w-[min(92vw,32rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-sheet bg-raised p-6 text-ink shadow-over";
 
-export function SessionEndDialog({ open, onHome, onMore }: { open: boolean; onHome: () => void; onMore: () => void }) {
+export function SessionEndDialog({
+  open,
+  empty = false,
+  onHome,
+  onMore,
+}: {
+  open: boolean;
+  /** No piece was kept: nothing to praise, no cards coming. */
+  empty?: boolean;
+  onHome: () => void;
+  onMore: () => void;
+}) {
+  const home = useRef<HTMLButtonElement>(null);
   return (
     <Dialog.Root
       open={open}
-      onOpenChange={(next) => {
-        if (!next) onHome();
+      // Pointer outside does nothing; Escape is "Về trang chủ".
+      disablePointerDismissal
+      onOpenChange={(next, details) => {
+        if (!next && details.reason === "escape-key") onHome();
       }}
     >
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-(--z-menu) bg-ink/40" />
-        <Dialog.Popup className={POPUP}>
-          <Dialog.Title className="m-0 font-display text-lead">{END_COPY.title}</Dialog.Title>
-          <Dialog.Description className="m-0 text-body">{END_COPY.praise}</Dialog.Description>
-          <p className="m-0 text-body text-ink-soft">{END_COPY.cards}</p>
+        <Dialog.Popup className={POPUP} initialFocus={home}>
+          <Dialog.Title className="m-0 font-display text-lead">{empty ? END_COPY.emptyTitle : END_COPY.title}</Dialog.Title>
+          <Dialog.Description className="m-0 text-body">{empty ? END_COPY.emptyText : END_COPY.praise}</Dialog.Description>
+          {empty ? null : <p className="m-0 text-body text-ink-soft">{END_COPY.cards}</p>}
           <div className="flex flex-col-reverse gap-2 min-[481px]:flex-row min-[481px]:justify-end">
-            <Button type="button" variant="secondary" onClick={onHome}>
+            <Button ref={home} type="button" variant="secondary" onClick={onHome}>
               {END_COPY.home}
             </Button>
             <Button type="button" onClick={onMore}>

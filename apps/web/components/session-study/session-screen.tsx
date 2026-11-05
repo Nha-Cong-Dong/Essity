@@ -130,6 +130,7 @@ export function SessionScreen(props: SessionScreenProps) {
   const [problem, setProblem] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [ended, setEnded] = useState(false);
+  const [emptyEnd, setEmptyEnd] = useState(false);
   const counter = useRef(0);
   // T7.12c: what each uploaded row hands in, and the file itself for "Thử lại".
   const refs = useRef(new Map<string, FileRef>());
@@ -156,6 +157,29 @@ export function SessionScreen(props: SessionScreenProps) {
     });
   }, [api, pieceMode]);
 
+  /** Keep what is typed as one piece. True when a piece was kept; "empty" when there was nothing to keep. */
+  async function keepPiece(): Promise<boolean | "empty"> {
+    if (!api) return false;
+    if (text.trim() === "" && usableFiles === 0) return "empty";
+    const handed = new Map<string, FileRef>();
+    for (const row of files) {
+      const ref = row.state === "done" ? refs.current.get(row.id) : undefined;
+      if (ref) handed.set(ref.sha256, ref);
+    }
+    const result = await api.addPiece(text, mentions, [...handed.values()]);
+    if (!result.ok) {
+      setProblem(result.error === "text_too_long" ? SUBMIT_COPY.tooLong : SUBMIT_COPY.network);
+      return false;
+    }
+    setPieces((rows) => [...rows, result.data]);
+    setText("");
+    setMentions([]);
+    setFiles([]);
+    refs.current.clear();
+    blobs.current.clear();
+    return true;
+  }
+
   async function record() {
     if (!api || recording || uploading > 0) return;
     if (text.trim() === "" && usableFiles === 0) {
@@ -164,24 +188,9 @@ export function SessionScreen(props: SessionScreenProps) {
     }
     setProblem(null);
     setRecording(true);
-    const handed = new Map<string, FileRef>();
-    for (const row of files) {
-      const ref = row.state === "done" ? refs.current.get(row.id) : undefined;
-      if (ref) handed.set(ref.sha256, ref);
-    }
-    const result = await api.addPiece(text, mentions, [...handed.values()]);
+    const kept = await keepPiece();
     setRecording(false);
-    if (!result.ok) {
-      setProblem(result.error === "text_too_long" ? SUBMIT_COPY.tooLong : SUBMIT_COPY.network);
-      return;
-    }
-    setPieces((rows) => [...rows, result.data]);
-    setText("");
-    setMentions([]);
-    setFiles([]);
-    refs.current.clear();
-    blobs.current.clear();
-    say("Đã ghi lại một phần.");
+    if (kept === true) say("Đã ghi lại một phần.");
   }
 
   async function dropPiece(id: string) {
@@ -196,9 +205,23 @@ export function SessionScreen(props: SessionScreenProps) {
     }
   }
 
+  // SESSION-END: "Kết thúc buổi học". What is typed is kept first, as one more "Ghi lại". A session with
+  // no piece at all has nothing to hand in: the pop-up says so (same two ways on).
   async function complete() {
-    if (!api || completing || pieces.length === 0) return;
+    if (!api || completing || recording || uploading > 0) return;
     setCompleting(true);
+    setProblem(null);
+    const kept = await keepPiece();
+    if (kept === false) {
+      setCompleting(false);
+      return;
+    }
+    if (kept === "empty" && pieces.length === 0) {
+      setCompleting(false);
+      setEmptyEnd(true);
+      setEnded(true);
+      return;
+    }
     const result = await api.complete();
     if (!result.ok) {
       setCompleting(false);
@@ -375,7 +398,14 @@ export function SessionScreen(props: SessionScreenProps) {
 
         {round.phase === "compose" ? (
           <>
-            <h1 className="m-0 font-display text-title">Buổi học mới</h1>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h1 className="m-0 font-display text-title">Buổi học mới</h1>
+              {pieceMode && (
+                <Button type="button" variant="quiet" aria-disabled={completing || uploading > 0 || undefined} onClick={() => void complete()}>
+                  {completing ? "Đang kết thúc…" : "Kết thúc buổi học"}
+                </Button>
+              )}
+            </div>
             <Suggest suggestion={isFree ? { kind: "free", text: "Buổi học tự do. Bài nộp không gắn phần đề cương." } : suggestion} id="suggest" />
             <Region phase="compose" title="Bạn đã học gì?">
               <MentionBox
@@ -450,9 +480,6 @@ export function SessionScreen(props: SessionScreenProps) {
                       </li>
                     ))}
                   </ol>
-                  <Button type="button" aria-disabled={completing || undefined} onClick={() => void complete()}>
-                    {completing ? "Đang kết thúc…" : "Kết thúc buổi học"}
-                  </Button>
                 </section>
               )}
             </Region>
@@ -501,6 +528,7 @@ export function SessionScreen(props: SessionScreenProps) {
       {subjectId && (
         <SessionEndDialog
           open={ended}
+          empty={emptyEnd}
           onHome={() => window.location.assign("/today")}
           onMore={() => window.location.assign(`/subjects/${subjectId}/sessions/study`)}
         />
