@@ -565,7 +565,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
                   tabIndex={-1}
                   aria-hidden="true"
                   data-chevron
-                  className="-m-2 flex size-11 shrink-0 items-center justify-center rounded-control text-ink-soft"
+                  className="relative flex size-7 shrink-0 items-center justify-center rounded-control text-ink-soft after:absolute after:left-1/2 after:top-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']"
                   onClick={(e) => {
                     e.stopPropagation();
                     fold(node.id, !isOpen);
@@ -620,7 +620,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
               aria-label={`Hành động cho ${node.title}`}
               aria-expanded={panelHere}
               data-more
-              className="-m-2 flex size-11 shrink-0 items-center justify-center rounded-control text-ink-soft focus-visible:outline-2 focus-visible:outline-focus"
+              className="relative flex size-7 shrink-0 items-center justify-center rounded-control text-ink-soft focus-visible:outline-2 focus-visible:outline-focus after:absolute after:left-1/2 after:top-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']"
               onClick={(e) => {
                 e.stopPropagation();
                 openPanel(node.id);
