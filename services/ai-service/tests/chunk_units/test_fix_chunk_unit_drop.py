@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 
+from ai_service.logging import JsonFormatter
 from ai_service.tasks.chunk_units import ChunkInvalidError, chunk_units
 from tests.chunk_units.helpers import Q2, FakeAsk, output, request, unit_json
 
@@ -61,7 +62,7 @@ def test_fix_chunk_log_names_field_and_type_not_text(caplog: pytest.LogCaptureFi
     with caplog.at_level(logging.DEBUG):
         chunk_units(request(), FakeAsk(output(bad, good())))
     [record] = [r for r in caplog.records if r.getMessage() == "chunk unit dropped"]
-    errors = record.__dict__["errors"]
+    errors = record.__dict__["schema_errors"]
     assert {"loc": ["kind"], "type": "literal_error"} in errors
     assert {"loc": ["?"], "type": "extra_forbidden"} in errors
     assert all(CANARY not in str(vars(r)) for r in caplog.records)
@@ -73,6 +74,21 @@ def test_fix_chunk_envelope_refusal_logs_error_types(caplog: pytest.LogCaptureFi
     with caplog.at_level(logging.DEBUG), pytest.raises(ChunkInvalidError):
         chunk_units(request(), FakeAsk(cut))
     records = [r for r in caplog.records if r.getMessage() == "chunk output refused"]
-    assert [r.__dict__.get("errors") for r in records] == [
+    assert [r.__dict__.get("schema_errors") for r in records] == [
         [{"loc": [], "type": "json_invalid"}]
     ] * 2
+
+
+# Red when: the JSON log line drops `schema_errors` (not in ALLOWED_FIELDS), so the refusal
+# reason never reaches the logs in production (the formatter writes allowlisted fields only).
+def test_fix_chunk_schema_errors_survive_the_json_formatter(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    bad = unit_json(kind=CANARY)
+    with caplog.at_level(logging.DEBUG):
+        chunk_units(request(), FakeAsk(output(bad, good())))
+    [record] = [r for r in caplog.records if r.getMessage() == "chunk unit dropped"]
+    line = json.loads(JsonFormatter("ai-service").format(record))
+    assert line["schema_errors"] == [{"loc": ["kind"], "type": "literal_error"}]
+    assert "dropped_fields" not in line
+    assert CANARY not in json.dumps(line)

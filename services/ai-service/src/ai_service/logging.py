@@ -108,6 +108,9 @@ ALLOWED_FIELDS = frozenset(
         "skipped_count",
         "halted",
         "outbox_unsent_stale",  # job_health (plan Y8)
+        # FIX-CHUNK: where and why pydantic refused a model answer (`chunk_units.error_shape`):
+        # positions, known field names and pydantic error codes only, never the text.
+        "schema_errors",
     }
 )
 # Top-level logger names; see the module docstring.

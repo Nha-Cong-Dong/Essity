@@ -260,7 +260,7 @@ class _Asker:
         )
         result = self.llm.call(request, deadline=time.monotonic() + CALL_SECONDS)
         if self.max_output_tokens is not None and result.stop_reason == "max_tokens":
-            _log.warning("model output cut", extra={"outcome": "output_cut", "task": self.task})
+            _log.warning("model output cut", extra={"outcome": "output_cut"})
             raise OutputCut  # the same prompt would be cut again: the batch is halved
         return result.text
 
@@ -621,19 +621,38 @@ class ProcessSubmission:
         work: _Work,
     ) -> list[list[Draft]]:
         """The drafts of a batch; one the model cannot take (input too large, or an answer cut
-        at the output cap) is halved by pages until it fits."""
+        at the output cap) is halved by pages until it fits. A single page whose answer is
+        still cut is skipped and counted like a malformed batch: the other pages keep their
+        drafts, and a session with none at all fails (FIX-CHUNK)."""
         try:
             return [self._draft_batch(event, llm, run_id, context, batch, work)]
+        except OutputCut:
+            if len(batch.pages) < 2:
+                work.dropped_drafts += 1
+                work.malformed_batches += 1
+                return []
+            return self._halves(event, llm, run_id, context, batch, work)
         except ChunkInputError:
             if len(batch.pages) < 2:
                 raise
-            mid = len(batch.pages) // 2
-            first = _Batch(batch.pages[:mid], batch.notes, batch.notes_offset)
-            second = _Batch(batch.pages[mid:], None, 0)
-            return [
-                *self._split_to_fit(event, llm, run_id, context, first, work),
-                *self._split_to_fit(event, llm, run_id, context, second, work),
-            ]
+            return self._halves(event, llm, run_id, context, batch, work)
+
+    def _halves(
+        self,
+        event: SubmissionCreatedEvent,
+        llm: LlmClient,
+        run_id: uuid.UUID,
+        context: SubmissionContext,
+        batch: _Batch,
+        work: _Work,
+    ) -> list[list[Draft]]:
+        mid = len(batch.pages) // 2
+        first = _Batch(batch.pages[:mid], batch.notes, batch.notes_offset)
+        second = _Batch(batch.pages[mid:], None, 0)
+        return [
+            *self._split_to_fit(event, llm, run_id, context, first, work),
+            *self._split_to_fit(event, llm, run_id, context, second, work),
+        ]
 
     def _draft_batch(
         self,

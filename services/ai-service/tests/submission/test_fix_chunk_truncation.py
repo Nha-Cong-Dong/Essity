@@ -86,8 +86,40 @@ def test_fix_chunk_cut_answer_halves_the_batch(
     assert all(r.attempt == 1 for r in adapter.draft_requests)  # a cut is never asked again
 
 
-# Red when: a single page still cut is not reported as failed (or loops).
-def test_fix_chunk_single_page_still_cut_fails_the_submission(
+class CutPage(CutWhenMany):
+    """The fake model, but any answer about page `page_no` is cut at the cap."""
+
+    def __init__(self, page_no: int) -> None:
+        super().__init__(max_pages=99)
+        self.page_no = page_no
+
+    def complete(self, request: LlmRequest, *, model: str, timeout: float) -> AdapterResult:
+        out = super().complete(request, model=model, timeout=timeout)
+        labels = {s["label"] for s in request.payload.get("sources", [])}
+        if request.task == "draft_units" and f"D1.p{self.page_no}" in labels:
+            return AdapterResult(out.text[:40], 0, 0, stop_reason="max_tokens")
+        return out
+
+
+# Red when: one page whose answer is still cut on its own fails the whole session (or loops),
+# instead of being skipped and counted while the other pages make their cards.
+def test_fix_chunk_single_page_still_cut_is_skipped(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    adapter = CutPage(page_no=2)
+    event = submitted(storage, mentions=[mention(1, 3)], files=[file_of(storage, b"x", TXT)])
+    run(handler(storage, redis_client, stream, sessions, adapter), event)
+    (out,) = sent(redis_client, stream)
+    assert isinstance(out, SubmissionProcessedEvent)
+    pages = {d["anchors"][0]["page_no"] for d in result(storage, event)["drafts"]}
+    assert {1, 3} <= pages and 2 not in pages
+    assert all(r.attempt == 1 for r in adapter.draft_requests)
+
+
+# Red when: every page still cut is reported as done with no cards (silence), or loops.
+def test_fix_chunk_every_page_cut_fails_the_submission(
     redis_client: Redis, stream: str, sessions: sessionmaker[Session]
 ) -> None:
     storage = FakeStorage()
@@ -97,4 +129,4 @@ def test_fix_chunk_single_page_still_cut_fails_the_submission(
     run(handler(storage, redis_client, stream, sessions, adapter), event)
     (out,) = sent(redis_client, stream)
     assert isinstance(out, SubmissionFailedEvent) and out.payload.reason == "internal_error"
-    assert len(adapter.draft_requests) == 2  # 2 pages cut, then page 1 cut: stops there
+    assert len(adapter.draft_requests) == 3  # 2 pages cut, then page 1 and page 2 cut: stops

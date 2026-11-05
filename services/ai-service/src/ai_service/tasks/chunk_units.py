@@ -290,7 +290,8 @@ def _units(text: str, dropped: list[Dropped]) -> list[LlmUnit]:
             unit = LlmUnit.model_validate(raw)
         except ValidationError as error:
             _log.warning(
-                "chunk unit dropped", extra={"outcome": "schema", "errors": error_shape(error)}
+                "chunk unit dropped",
+                extra={"outcome": "schema", "schema_errors": error_shape(error)},
             )
             dropped.append(Dropped(kind="unit", reason="schema"))
             first_rule = first_rule or "schema"
@@ -378,6 +379,10 @@ def chunk_units(request: ChunkRequest, ask: Callable[[ChunkPrompt], str]) -> Chu
         except OutputViolation as violation:
             _log.warning(
                 "chunk output refused",
-                extra={"outcome": violation.rule, "attempt": attempt, "errors": violation.errors},
+                extra={
+                    "outcome": violation.rule,
+                    "attempt": attempt,
+                    "schema_errors": violation.errors,
+                },
             )
     raise ChunkInvalidError
