@@ -95,7 +95,7 @@ export function AuthNote({ children, id }: { children: ReactNode; id?: string })
 
 /** A pill for a standalone action of the account screens (user 05/11: no underlined action text). */
 export const AUTH_PILL =
-  "inline-flex min-h-11 items-center justify-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken";
+  "inline-flex min-h-11 items-center justify-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken";
 
 /** A text link of the account screens (inside a sentence only) ("Quên mật khẩu?", "Đăng ký"). */
 export const AUTH_LINK =

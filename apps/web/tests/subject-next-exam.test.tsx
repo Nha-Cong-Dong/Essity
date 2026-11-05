@@ -19,4 +19,10 @@ describe("SubjectList next exam", () => {
     render(<SubjectList subjects={[s("c", "Hóa", -3)]} example="15/12/2031" />);
     expect(screen.queryByRole("complementary")).toBeNull();
   });
+  it("counts an exam today, and its link is not a second solid button", () => {
+    render(<SubjectList subjects={[s("a", "Toán", 0), s("b", "Vật lý", 12)]} example="15/12/2031" />);
+    const aside = screen.getByRole("complementary", { name: "Kỳ thi gần nhất" });
+    expect(within(aside).getByText("Hôm nay")).toBeTruthy();
+    expect(within(aside).getByRole("link", { name: /Vào Toán/ }).className).not.toContain("bg-hong");
+  });
 });

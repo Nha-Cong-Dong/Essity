@@ -168,7 +168,7 @@ export function StatsScreen({
           <a
             href="/api/export"
             download
-            className="inline-flex min-h-11 items-center text-meta hover:text-ink rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken"
+            className="inline-flex min-h-11 items-center text-meta hover:text-ink rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken"
           >
             Tải dữ liệu (CSV)
           </a>

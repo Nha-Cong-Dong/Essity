@@ -28,4 +28,12 @@ describe("stepSim", () => {
     for (let i = 0; i < 200; i++) stepSim(ns, [], 0.1, Math.random);
     for (const p of ns) expect(Number.isFinite(p.x) && Number.isFinite(p.y)).toBe(true);
   });
+  it("pulls unlinked cards of one subject together and keeps two subjects apart", () => {
+    const mk = (id: string, x: number, group: string): SimNode => ({ ...node(id, x, (x % 7) * 9), group });
+    const ns = [mk("a1", 0, "A"), mk("a2", 300, "A"), mk("a3", -250, "A"), mk("b1", 20, "B"), mk("b2", 310, "B")];
+    for (let i = 0; i < 400; i++) stepSim(ns, [], 1, calm);
+    const dist = (p: SimNode, q: SimNode) => Math.hypot(p.x - q.x, p.y - q.y);
+    const within = (dist(ns[0], ns[1]) + dist(ns[0], ns[2]) + dist(ns[3], ns[4])) / 3;
+    expect(within).toBeLessThan(300);
+  });
 });

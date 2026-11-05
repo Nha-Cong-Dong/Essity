@@ -49,7 +49,7 @@ export function DocumentList({ subjectId, docs }: { subjectId: string; docs: Lis
         title="Chưa có tài liệu."
         hint="Tải giáo trình, slide hoặc ảnh vở để app biết bạn học từ đâu."
         action={
-          <a href={`/subjects/${subjectId}/upload`} className="font-semibold inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
+          <a href={`/subjects/${subjectId}/upload`} className="font-semibold inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
             Tải tài liệu lên
           </a>
         }
@@ -85,7 +85,7 @@ export function DocumentList({ subjectId, docs }: { subjectId: string; docs: Lis
         ))}
       </ul>
       <p className="mt-4 mb-0">
-        <a href={`/subjects/${subjectId}/upload`} className="font-semibold inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
+        <a href={`/subjects/${subjectId}/upload`} className="font-semibold inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
           Tải tài liệu lên
         </a>
       </p>
@@ -96,7 +96,7 @@ export function DocumentList({ subjectId, docs }: { subjectId: string; docs: Lis
 export function DocumentsFrame({ name, children }: { name: string; children: React.ReactNode }) {
   return (
     <PageColumn width="full" className="flex flex-col">
-      <a href="/subjects" className="mb-4 self-start text-small inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
+      <a href="/subjects" className="mb-4 self-start text-small inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
         Môn học
       </a>
       <h1 className="m-0 mb-8 font-display text-title wrap-anywhere">

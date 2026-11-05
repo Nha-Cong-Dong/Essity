@@ -15,7 +15,7 @@ import { mergeGraphs, type MultiCard, type SubjectGraph } from "@/lib/graph-mult
 // screen. A legend names each colour.
 
 let registered = false;
-const MAX_FIT_ZOOM = 1.1;
+const MAX_FIT_ZOOM = 1.5;
 const ZOOM =
   "inline-flex h-11 items-center justify-center rounded-full bg-sheet px-3 text-caption text-ink inset-ring-[1.5px] inset-ring-line-strong hover:bg-sunken";
 
@@ -93,7 +93,8 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
             id: c.id,
             label: shortLabel(c.title),
             color: bySubject.get(c.subjectId)?.color ?? ink,
-            size: 12 + 3 * Math.min(degree.get(c.id) ?? 0, 5),
+            subject: c.subjectId,
+            size: 18 + 4 * Math.min(degree.get(c.id) ?? 0, 5),
           },
         })),
         ...merged.edges.map((e) => ({ data: { id: e.id, source: e.from, target: e.to } })),
@@ -146,7 +147,7 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
       if (reduced) return;
       const list = cy.nodes().toArray();
       const index = new Map(list.map((n, i) => [n.id(), i] as const));
-      const sim: SimNode[] = list.map((n) => ({ id: n.id(), x: n.position("x"), y: n.position("y"), vx: 0, vy: 0, pinned: false }));
+      const sim: SimNode[] = list.map((n) => ({ id: n.id(), x: n.position("x"), y: n.position("y"), vx: 0, vy: 0, pinned: false, group: String(n.data("subject")) }));
       const links: SimEdge[] = cy
         .edges()
         .toArray()
@@ -264,7 +265,7 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
       <div className="flex flex-col items-start gap-3 rounded-tile bg-hong-tint p-6" data-empty>
         <p className="m-0 text-read">Chưa có thẻ kiến thức nào. Ghi một buổi học, các thẻ sẽ hiện thành đồ thị ở đây.</p>
         {graphs[0] && (
-          <a href={`/subjects/${graphs[0].id}/sessions/new`} className="inline-flex min-h-11 items-center font-semibold rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
+          <a href={`/subjects/${graphs[0].id}/sessions/new`} className="inline-flex min-h-11 items-center font-semibold rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
             Ghi buổi học
           </a>
         )}
@@ -283,7 +284,7 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
             type="button"
             aria-pressed={!hidden.has(s.id)}
             onClick={() => toggle(s.id)}
-            className="inline-flex h-11 max-w-full items-center gap-2 rounded-full bg-sheet px-4 text-meta font-medium text-ink inset-ring-1 inset-ring-line hover:bg-sunken aria-pressed:inset-ring-[1.5px] aria-pressed:inset-ring-line-strong aria-[pressed=false]:text-ink-soft aria-[pressed=false]:line-through"
+            className="inline-flex h-11 max-w-full items-center gap-2 rounded-full bg-sheet px-4 text-meta font-medium text-ink inset-ring-1 inset-ring-line-strong hover:bg-sunken aria-pressed:inset-ring-[1.5px] aria-pressed:inset-ring-line-strong aria-[pressed=false]:text-ink-soft aria-[pressed=false]:line-through"
           >
             <span aria-hidden="true" className="inline-block size-3 shrink-0 rounded-full" style={{ background: s.color }} />
             <span className="truncate">{s.name}</span>

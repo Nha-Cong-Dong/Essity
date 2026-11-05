@@ -30,7 +30,7 @@ export async function NewSessionEntry({
   const saved = typeof session === "string" && isSubjectId(session) ? session : undefined;
   return (
     <PageColumn width="full">
-      <a href={`/subjects/${subject.id}/documents`} className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken">
+      <a href={`/subjects/${subject.id}/documents`} className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
         ← {subject.name}
       </a>
       <Sheet className="relative mt-3" aria-labelledby="log-title">

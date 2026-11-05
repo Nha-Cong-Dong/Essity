@@ -2,7 +2,7 @@
 // springs, a weak pull keeps the cloud centred, and a faint drift keeps it alive. Pure maths over
 // plain arrays so it is unit-testable; the canvas copies positions in and out each frame.
 
-export type SimNode = { id: string; x: number; y: number; vx: number; vy: number; pinned: boolean };
+export type SimNode = { id: string; x: number; y: number; vx: number; vy: number; pinned: boolean; group?: string };
 export type SimEdge = { a: number; b: number };
 export type SimOptions = {
   repulsion: number;
@@ -11,9 +11,11 @@ export type SimOptions = {
   gravity: number;
   damping: number;
   drift: number;
+  /** Pull towards the centre of the node's own group (its subject), so same-subject cards sit together. */
+  cluster: number;
 };
 
-export const SIM_DEFAULTS: SimOptions = { repulsion: 9000, spring: 0.03, rest: 100, gravity: 0.003, damping: 0.86, drift: 0.05 };
+export const SIM_DEFAULTS: SimOptions = { repulsion: 9000, spring: 0.03, rest: 100, gravity: 0.003, damping: 0.86, drift: 0.05, cluster: 0.006 };
 
 /** A small graph is spread out to fill the canvas; a big one keeps its repulsion down so it stays compact. */
 export const optionsFor = (count: number): SimOptions => ({ ...SIM_DEFAULTS, repulsion: SIM_DEFAULTS.repulsion * Math.min(1, 30 / Math.max(count, 1)) });
@@ -62,11 +64,25 @@ export function stepSim(nodes: SimNode[], edges: SimEdge[], alpha: number, noise
   }
   cx /= n || 1;
   cy /= n || 1;
+  const sums = new Map<string, { x: number; y: number; n: number }>();
+  for (const p of nodes) {
+    if (p.group === undefined) continue;
+    const g = sums.get(p.group) ?? { x: 0, y: 0, n: 0 };
+    g.x += p.x;
+    g.y += p.y;
+    g.n += 1;
+    sums.set(p.group, g);
+  }
   for (const p of nodes) {
     if (p.pinned) {
       p.vx = 0;
       p.vy = 0;
       continue;
+    }
+    const g = p.group === undefined ? undefined : sums.get(p.group);
+    if (g && g.n > 1) {
+      p.vx += (g.x / g.n - p.x) * o.cluster * alpha;
+      p.vy += (g.y / g.n - p.y) * o.cluster * alpha;
     }
     p.vx += (cx - p.x) * o.gravity * alpha + (noise() - 0.5) * o.drift;
     p.vy += (cy - p.y) * o.gravity * alpha + (noise() - 0.5) * o.drift;

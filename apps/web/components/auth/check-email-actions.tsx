@@ -58,13 +58,10 @@ export function CheckEmailActions({ initialWait }: { initialWait: number }) {
         {resent ? "Đã gửi lại." : ""}
       </p>
       {error && <FieldError id="check-email-error">{authMessage(error)}</FieldError>}
-      <p className="m-0 text-body">
-        Sai email?{" "}
-        <button type="button" onClick={wrongEmail} className={AUTH_PILL}>
-          Đăng xuất
-        </button>{" "}
-        để đăng ký bằng email khác.
-      </p>
+      <p className="m-0 text-body">Sai email? Đăng xuất để đăng ký bằng email khác.</p>
+      <button type="button" onClick={wrongEmail} className={AUTH_PILL}>
+        Đăng xuất
+      </button>
     </div>
   );
 }

@@ -277,7 +277,7 @@ export function LogSession({
               <NoteDrop onAdd={notes.add} />
               <NoteList rows={notes.rows} onRemove={notes.remove} />
               <div className="mt-6">
-                <Button type="button" onClick={() => void send()}>
+                <Button type="button" className="max-sm:w-full" onClick={() => void send()}>
                   Gửi
                 </Button>
               </div>

@@ -351,7 +351,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy }: RowProps) {
 
 /** The soonest exam still ahead, as the one big number of the screen (user + ux-director 05/11). */
 function NextExam({ subjects }: { subjects: ListedSubject[] }) {
-  const ahead = subjects.filter((subject) => subject.days_until_exam > 0);
+  const ahead = subjects.filter((subject) => subject.days_until_exam >= 0);
   if (ahead.length === 0) return null;
   const next = ahead.reduce((a, b) =>
     b.days_until_exam < a.days_until_exam ? b : a,
@@ -365,14 +365,14 @@ function NextExam({ subjects }: { subjects: ListedSubject[] }) {
       <div>
         <p className="m-0 flex items-baseline gap-3">
           <span className="font-display text-display tabular-nums">
-            {next.days_until_exam}
+            {next.days_until_exam === 0 ? "Hôm nay" : next.days_until_exam}
           </span>
-          <span className="text-lead font-semibold">ngày nữa</span>
+          <span className="text-lead font-semibold">{next.days_until_exam === 0 ? "có kỳ thi" : "ngày nữa"}</span>
         </p>
       </div>
       <a
         href={`/subjects/${next.id}`}
-        className="inline-flex min-h-13 max-w-full items-center self-start rounded-full bg-hong px-6 py-2 text-left font-semibold text-on-hong no-underline hover:bg-[color-mix(in_oklab,var(--hong)_88%,var(--ink))]"
+        className="inline-flex min-h-13 max-w-full items-center self-start rounded-full bg-sheet px-6 py-2 text-left font-semibold text-ink no-underline inset-ring-[1.5px] inset-ring-line-strong hover:bg-sunken"
       >
         Vào {next.name}
       </a>

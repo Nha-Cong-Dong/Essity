@@ -147,7 +147,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <Logo />
         </div>
       </header>
-      <main className={cn(CONTAINER, "relative flex flex-1 items-start justify-center overflow-x-clip pt-12 pb-24")}>
+      <main className={cn(CONTAINER, "relative flex flex-1 items-start justify-center overflow-x-clip pt-12 pb-24 min-[900px]:items-center min-[900px]:pt-0 min-[900px]:pb-16")}>
         {children}
       </main>
     </div>

@@ -92,7 +92,7 @@ function Suggest({ suggestion, id }: { suggestion: Suggestion; id: string }) {
               type="button"
               aria-expanded={why}
               onClick={() => setWhy((value) => !value)}
-              className="min-h-11 text-body inline-flex items-center justify-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken"
+              className="min-h-11 text-body inline-flex items-center justify-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken"
             >
               Vì sao phần này?
             </button>
@@ -452,7 +452,7 @@ export function SessionScreen(props: SessionScreenProps) {
                 <button
                   type="button"
                   onClick={() => setFree(true)}
-                  className="min-h-11 self-start text-body inline-flex items-center justify-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line hover:bg-sunken"
+                  className="min-h-11 self-start text-body inline-flex items-center justify-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken"
                 >
                   Học tự do
                 </button>
