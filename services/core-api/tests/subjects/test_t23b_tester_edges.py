@@ -32,7 +32,7 @@ def test_us01_ac8_another_subjects_attempt_does_not_block_this_delete(
     idle = create(client, headers, "Hệ điều hành", in_days(user, 40)).json()["id"]
     attempt_on(db_session, user, busy, submitted=False)
     assert delete(client, headers, idle).status_code == 204
-    assert delete(client, headers, busy).status_code == 409
+    assert delete(client, headers, busy).status_code == 204  # Q13: history does not block
 
 
 def test_us01_ac8_soft_delete_keeps_the_exam_and_the_questions(
@@ -55,14 +55,13 @@ def test_us01_ac8_soft_delete_keeps_the_exam_and_the_questions(
     ) == before
 
 
-def test_us01_ac8_a_refused_delete_leaves_the_subject_renamable(
+def test_us01_ac8_has_history_still_reported_for_a_subject_that_is_not_deleted(
     client: TestClient, db_session: Session
 ) -> None:
-    # Red when: PATCH starts refusing subjects with history, or the 409 path marks the subject.
+    # Red when: PATCH starts refusing subjects with history, or has_history stops being reported.
     user, headers = signed_in(db_session)
     subject_id = create(client, headers, "Mạng", in_days(user, 30)).json()["id"]
     attempt_on(db_session, user, subject_id, submitted=True)
-    assert delete(client, headers, subject_id).status_code == 409
     renamed = client.patch(
         f"/v1/subjects/{subject_id}", json={"name": "Mạng máy tính"}, headers=headers
     )

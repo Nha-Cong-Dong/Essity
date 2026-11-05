@@ -20,7 +20,6 @@ from core_api.db.models import User
 from core_api.repositories.question import QuestionRepository
 from core_api.repositories.review import AttemptRepository, ReviewSessionRepository
 from core_api.repositories.subject import (
-    SubjectHasHistoryError,
     SubjectNotFoundError,
     SubjectRepository,
 )
@@ -68,18 +67,17 @@ def test_us01_ac8_soft_delete_hides_the_subject_at_the_given_instant(
 
 
 @pytest.mark.parametrize("submitted", [False, True], ids=["draft", "submitted"])
-def test_us01_ac8_a_subject_with_an_attempt_is_not_deleted(
+def test_us01_ac8_q13_a_subject_with_an_attempt_is_deleted_and_its_rows_stay(
     db_session: Session, two_users: tuple[User, User], submitted: bool
 ) -> None:
-    # Red when: the history check goes, or counts only submitted attempts (a draft is work too, F2).
+    # Q13 (05/11): history no longer blocks the soft delete; the attempt rows are kept.
     alice, _ = two_users
     subjects = SubjectRepository(db_session, alice.id)
     subject, _ = subjects.create_with_exam("Mạng", future_exam())
     with_attempt(db_session, alice, subject.id, submitted=submitted)
-    with pytest.raises(SubjectHasHistoryError):
-        subjects.soft_delete(subject.id, FROZEN_NOW)
+    subjects.soft_delete(subject.id, FROZEN_NOW)
     db_session.flush()
-    assert deleted_at(db_session, subject.id) is None
+    assert deleted_at(db_session, subject.id) == FROZEN_NOW
 
 
 def test_us01_ac8_a_subject_with_questions_but_no_attempt_is_deleted(

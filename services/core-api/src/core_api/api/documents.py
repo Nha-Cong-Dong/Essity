@@ -194,6 +194,24 @@ def request_upload(
 
     if not created:
         response.status_code = status.HTTP_200_OK
+    if not created and document.status == "failed":
+        # Q16: the same file again after a failed reading is read again, not handed back as failed.
+        # (Kept out of the docstring: it would change openapi.json, which only the serial lane
+        # regenerates.)
+        document.status = "uploaded"
+        document.failure_reason = None
+        document.uploaded_at = now
+        enqueue_event(
+            session,
+            DocumentUploaded(
+                document_id=document.id,
+                subject_id=document.subject_id,
+                object_key=document.object_key,
+                format=document.format,  # pyright: ignore[reportArgumentType]
+            ),
+            user_id=user.id,
+            now=now,
+        )
     if document.status not in UNCONFIRMED:
         return UploadOut(document=_out(document), upload=None, duplicate=True)
     signed = storage.presign_put(

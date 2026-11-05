@@ -21,7 +21,6 @@ from clock import future_exam
 from core_api.repositories.question import QuestionRepository
 from core_api.repositories.review import AttemptRepository, ReviewSessionRepository
 from core_api.repositories.subject import (
-    SubjectHasHistoryError,
     SubjectNotFoundError,
     SubjectRepository,
 )
@@ -67,12 +66,12 @@ def attempts_of(engine: Engine, user_id: uuid.UUID) -> int:
         ).scalar_one()
 
 
-def test_us01_ac8_delete_waits_for_a_draft_being_inserted_then_refuses_it(
+def test_us01_ac8_delete_waits_for_a_draft_being_inserted_then_hides_the_subject(
     engine: Engine, ready: Ready
 ) -> None:
-    # Red when: `create_draft` does not hold the subject (the delete does not wait and hides a
-    # subject with an attempt on it), or the history check runs before the lock or inside it
-    # (its snapshot misses the attempt that commits while the delete waits).
+    # Red when: `create_draft` does not hold the subject, so the delete does not wait for the
+    # insert in flight. Q13: the delete then succeeds (history no longer blocks) and the draft
+    # that committed meanwhile stays.
     with Session(engine) as writer, Session(engine) as deleter:
         AttemptRepository(writer, ready.user_id).create_draft(ready.review_id, ready.question_id)
         deleter.execute(text("SET LOCAL lock_timeout = '15s'"))
@@ -83,8 +82,8 @@ def test_us01_ac8_delete_waits_for_a_draft_being_inserted_then_refuses_it(
         wait_for_lock(engine, pid, outcome)
         writer.commit()
         result = finished(thread, outcome)
-        deleter.rollback()
-    assert isinstance(result, SubjectHasHistoryError), result
+        deleter.commit()
+    assert result is None, result
     assert attempts_of(engine, ready.user_id) == 1
 
 

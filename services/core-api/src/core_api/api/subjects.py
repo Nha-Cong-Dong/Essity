@@ -36,7 +36,6 @@ from core_api.domain.subjects import (
 )
 from core_api.repositories.review import MemoryStateRepository
 from core_api.repositories.subject import (
-    SubjectHasHistoryError,
     SubjectNotFoundError,
     SubjectRepository,
 )
@@ -179,13 +178,12 @@ def delete_subject(subject_id: uuid.UUID, user: VerifiedUser, session: DbSession
     """Soft-delete a subject with no review history (us-01 AC8, T2.3b). Its exam, questions and
     units stay but are hidden; the name can be used again. A subject with an attempt, a draft
     included, answers 409 (deleting those comes with T6.3)."""
+    # Q13 (05/11): history no longer blocks, so the 409 above is gone; its rows stay and are hidden
+    # with the subject. The docstring is left as it was so openapi.json does not change (the serial
+    # lane regenerates the contract).
     try:
         SubjectRepository(session, user.id).soft_delete(subject_id, now)
     except SubjectNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="subject_not_found"
-        ) from None
-    except SubjectHasHistoryError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="subject_has_history"
         ) from None

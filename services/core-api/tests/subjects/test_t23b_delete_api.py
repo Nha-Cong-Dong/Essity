@@ -27,6 +27,11 @@ def delete(client: TestClient, headers: dict[str, str], subject_id: str) -> Any:
     return client.delete(f"/v1/subjects/{subject_id}", headers=headers)
 
 
+def _rows(session: Session, table: str, user: User) -> int:
+    sql = text(f"select count(*) from {table} where user_id = :u")
+    return session.scalar(sql, {"u": user.id}) or 0
+
+
 def attempt_on(session: Session, user: User, subject_id: str, *, submitted: bool) -> None:
     question = QuestionRepository(session, user.id).add_idempotent(
         uuid.UUID(subject_id), level=1, prompt="TCP?", reference_answer="a", run_id=uuid.uuid4()
@@ -78,7 +83,7 @@ def test_us01_ac8_deleting_the_last_subject_clears_has_subjects(
 
 
 @pytest.mark.parametrize("submitted", [False, True], ids=["draft", "submitted"])
-def test_us01_ac8_a_subject_with_an_attempt_answers_409_subject_has_history(
+def test_us01_ac8_q13_a_subject_with_an_attempt_is_deleted_and_hidden(
     client: TestClient,
     db_session: Session,
     owned: tuple[User, dict[str, str], str],
@@ -87,8 +92,10 @@ def test_us01_ac8_a_subject_with_an_attempt_answers_409_subject_has_history(
     user, headers, subject_id = owned
     attempt_on(db_session, user, subject_id, submitted=submitted)
     response = delete(client, headers, subject_id)
-    assert (response.status_code, response.json()) == (409, {"detail": "subject_has_history"})
-    assert [s["id"] for s in client.get("/v1/subjects", headers=headers).json()] == [subject_id]
+    # Q13 (05/11): history no longer blocks; the subject is hidden and its rows are kept.
+    assert (response.status_code, response.content) == (204, b"")
+    assert client.get("/v1/subjects", headers=headers).json() == []
+    assert _rows(db_session, "attempt", user) >= 1
 
 
 def test_us01_ac8_list_reports_has_history(
