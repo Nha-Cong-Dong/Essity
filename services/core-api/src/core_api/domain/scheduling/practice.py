@@ -7,15 +7,18 @@ rating comes from the shared mapping in `domain.mastery.rating_for` (Easy needs 
 - First attempt creates the state; a question never attempted has none (`None`).
 - `remove` stops the schedule (`due` is None); `readd` resumes it where it left off. An attempt on
   a removed question is still scheduled but the question stays removed until `readd`.
+- Only the last attempt of a learning day counts (QA2-FSRS, user 04/11: "tính fsrs dựa vào lần
+  cuối cùng làm lại"): a same-day redo replaces the earlier tries in the schedule; they stay in
+  the log. `last_per_day` picks the rows that count.
 - `replay` folds a log (attempts, removals, re-adds, oldest first) through the same functions as
   the live path, so a rebuilt `practice_state` equals the cached one.
 - No exam constraint: it belongs to a subject's cards, and a practice question is not tied to one
   exam date (decision, Coder).
 """
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from core_api.domain.learning_day import day_bounds, learning_day
@@ -163,3 +166,20 @@ def is_due(state: PracticeState, now: datetime, *, tz: ZoneInfo, day_start_hour:
         return False
     _, end = day_bounds(learning_day(now, tz, day_start_hour), tz, day_start_hour)
     return state.due < end
+
+
+def last_per_day[T](
+    reviews: Iterable[T], at: Callable[[T], datetime], day_of: Callable[[datetime], date]
+) -> list[T]:
+    """Of one question's reviews, oldest first, the last of each learning day: a later try on
+    the same day replaces the earlier one in place."""
+    kept: list[T] = []
+    last_day: date | None = None
+    for review in reviews:
+        day = day_of(at(review))
+        if kept and day == last_day:
+            kept[-1] = review
+        else:
+            kept.append(review)
+        last_day = day
+    return kept

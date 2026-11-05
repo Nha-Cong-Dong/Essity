@@ -2,13 +2,14 @@
 never changed) and `practice_state` (layer 4, a cache rebuilt from the log, like `memory_state`).
 
 `practice_log` keeps the rating only, so the rebuild reads the *effective* log: the rows of each
-attempt's latest grade (a regrade adds a row, it never changes an old one), oldest first. The
+attempt's latest grade (a regrade adds a row, it never changes an old one), oldest first, and of
+those only the last of each learning day (QA2-FSRS: a same-day redo replaces the earlier try). The
 state's last verdict comes from the last effective rating. `removed_at` is a cache of the newest
 row of `practice_removal_log` (T9.2b); a question with no row there keeps the old row's value.
 """
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
@@ -18,10 +19,15 @@ from sqlalchemy.dialects.postgresql import insert
 
 from core_api.db.models import Grade, PracticeLog, Question, User
 from core_api.db.models import PracticeState as PracticeStateRow
-from core_api.domain.learning_day import day_bounds
+from core_api.domain.learning_day import day_bounds, learning_day
 from core_api.domain.mastery import PracticeRating
 from core_api.domain.scheduling.fsrs_adapter import MemoryState, Phase
-from core_api.domain.scheduling.practice import PracticeState, replay_ratings, verdict_of
+from core_api.domain.scheduling.practice import (
+    PracticeState,
+    last_per_day,
+    replay_ratings,
+    verdict_of,
+)
 from core_api.repositories.base import AppendOnlyRepository, UserScopedRepository
 from core_api.repositories.practice_removal import PracticeRemovalRepository
 from core_api.repositories.question import QuestionNotFoundError
@@ -66,9 +72,31 @@ class PracticeLogRepository(AppendOnlyRepository[PracticeLog]):
     def by_grade(self, grade_id: uuid.UUID) -> PracticeLog | None:
         return self.session.scalars(self._select().where(PracticeLog.grade_id == grade_id)).first()
 
+    def day_of(self) -> Callable[[datetime], date]:
+        """The learning day of an instant, in this user's timezone and day start."""
+        tz, start = self.session.execute(
+            select(User.timezone, User.day_start_hour).where(User.id == self.user_id)
+        ).one()
+        zone = ZoneInfo(tz)
+        return lambda at: learning_day(at, zone, start)
+
     def effective(self, question_ids: Sequence[uuid.UUID] | None = None) -> list[LoggedReview]:
         """The rows that count, per question oldest first: the log rows of each attempt's latest
-        grade (same rule as the card rebuild). One user's rows only, at every join."""
+        grade (same rule as the card rebuild), then only the last of each learning day (a
+        same-day redo replaces the earlier try, user 04/11). One user's rows only, at every
+        join."""
+        rows = self._latest_grades(question_ids)
+        day_of = self.day_of()
+        by_question: dict[uuid.UUID, list[LoggedReview]] = {}
+        for row in rows:
+            by_question.setdefault(row.question_id, []).append(row)
+        return [
+            kept
+            for reviews in by_question.values()
+            for kept in last_per_day(reviews, lambda r: r.reviewed_at, day_of)
+        ]
+
+    def _latest_grades(self, question_ids: Sequence[uuid.UUID] | None) -> list[LoggedReview]:
         latest = (
             select(Grade.id)
             .where(Grade.user_id == self.user_id)

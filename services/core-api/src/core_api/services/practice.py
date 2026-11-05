@@ -74,10 +74,14 @@ def record_grade(
     assert attempt.submitted_at is not None  # a grade exists only for a submitted attempt
     at = attempt.submitted_at
     if log.by_grade(grade_id) is None:
+        # "Previous" is the last counted attempt of an earlier learning day: a same-day try is
+        # replaced by this one (QA2-FSRS), so it cannot unlock Easy.
+        day_of = log.day_of()
+        today = day_of(at)
         earlier = [
             r
             for r in log.effective([question_id])
-            if r.attempt_id != grade.attempt_id and r.reviewed_at <= at
+            if r.attempt_id != grade.attempt_id and day_of(r.reviewed_at) < today
         ]
         previous = verdict_of(earlier[-1].rating) if earlier else None
         rating = rating_for(verdict, active_seconds, reference_seconds, previous, timing_ok, config)
