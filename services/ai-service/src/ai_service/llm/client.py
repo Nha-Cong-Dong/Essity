@@ -16,6 +16,7 @@ import logging
 import time
 import uuid
 from collections.abc import Mapping
+from typing import Any
 
 from ai_service.config import Settings
 from ai_service.db.models import LlmCall
@@ -53,6 +54,15 @@ class AuditUnavailableError(Exception):
 _NOT_CHARGED = frozenset({"rate_limited", "provider_error", "provider_rejected", "no_responder"})
 
 
+def params_of(adapter: Adapter, request: LlmRequest) -> dict[str, Any]:
+    """The adapter's request parameters as sent for `request`: its own output cap, if any,
+    replaces the adapter's default (an adapter with no cap, the fake, sends none)."""
+    params = adapter.params
+    if request.max_output_tokens is not None and "max_tokens" in params:
+        return {**params, "max_tokens": request.max_output_tokens}
+    return params
+
+
 class LlmClient:
     def __init__(
         self,
@@ -75,7 +85,8 @@ class LlmClient:
         """One call to the model; `deadline` is a `time.monotonic()` value."""
         model = self._adapter.fixed_model or self._models[request.task]
         price = price_for(model)
-        estimate = estimate_cost(price, request, self._adapter.params)
+        params = params_of(self._adapter, request)
+        estimate = estimate_cost(price, request, params)
         try:
             reservation = self._quota_guard.reserve(request, estimate)
         except QuotaUnavailableError as error:
@@ -110,7 +121,13 @@ class LlmClient:
                     self._quota_guard.release(reservation)
         if result is None:
             raise LlmUnavailableError(error_code or "provider_error")
-        return LlmResult(text=result.text, llm_call_id=call_id, provider=self.provider, model=model)
+        return LlmResult(
+            text=result.text,
+            llm_call_id=call_id,
+            provider=self.provider,
+            model=model,
+            stop_reason=result.stop_reason,
+        )
 
     def _write(
         self,
@@ -137,7 +154,7 @@ class LlmClient:
                 "messages": [{"role": "user", "content": request.user}],
                 "images": [{"sha256": i.sha256, "bytes": len(i.data)} for i in request.images],
                 "output_schema": request.output_schema,
-                "params": self._adapter.params,
+                "params": params_of(self._adapter, request),
             },
             output=result.text if result else None,
             stop_reason=result.stop_reason if result else None,

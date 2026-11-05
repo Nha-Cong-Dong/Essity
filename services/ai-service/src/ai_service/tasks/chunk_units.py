@@ -21,20 +21,22 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ai_service.domain.anchor_check import find_quote, normalize_with_map, unescape_quote
 from ai_service.tasks.chunk_models import (
     MAX_OUTPUT_CHARS,
     MAX_QUOTE_CHARS,
     MAX_TITLE_WORDS,
+    MAX_UNITS_OUT,
     Anchor,
     AnchorAddition,
     ChunkRequest,
     ChunkResult,
     Dropped,
+    LlmAnchor,
     LlmChunks,
     LlmUnit,
     NewUnit,
@@ -74,16 +76,34 @@ class ChunkInputTooLarge(ChunkInputError):
     """Over a size limit: refused, never cut silently (T4.16 splits into batches)."""
 
 
+class OutputCut(ChunkInputError):
+    """The model's answer was cut at the output cap (`stop_reason=max_tokens`): asking the same
+    again gives the same cut, so the caller halves the input instead (FIX-CHUNK)."""
+
+    def __init__(self) -> None:
+        super().__init__("output_cut")
+
+
 class ChunkInvalidError(Exception):
     """The model broke the output rules on every attempt."""
 
 
 class OutputViolation(Exception):
-    """The output broke rule `rule`. Carries the rule name only: it is logged."""
+    """The output broke rule `rule`. Carries the rule name and, for `schema`, where and why
+    (`error_shape`): both are logged, never the text."""
 
-    def __init__(self, rule: str) -> None:
+    def __init__(self, rule: str, errors: list[dict[str, Any]] | None = None) -> None:
         super().__init__(rule)
         self.rule = rule
+        self.errors = errors
+
+
+class _Envelope(BaseModel):
+    """The answer's outer shape; each unit is checked on its own (`LlmUnit`)."""
+
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+
+    units: Annotated[list[dict[str, Any]], Field(max_length=MAX_UNITS_OUT)]
 
 
 @dataclass(frozen=True)
@@ -236,22 +256,66 @@ def _resolve_anchors(unit: LlmUnit, labels: Labels, dropped: list[Dropped]) -> l
     return list(found.values())
 
 
+_KNOWN_KEYS = (
+    frozenset(LlmChunks.model_fields)
+    | frozenset(LlmUnit.model_fields)
+    | frozenset(LlmAnchor.model_fields)
+)
+
+
+def error_shape(error: ValidationError) -> list[dict[str, Any]]:
+    """Where and why pydantic refused, never what: positions and known field names only. A key
+    the model made up is model text, so it becomes "?" (ADR-0013)."""
+    return [
+        {
+            "loc": [p if isinstance(p, int) or p in _KNOWN_KEYS else "?" for p in e["loc"]],
+            "type": e["type"],
+        }
+        for e in error.errors(include_input=False, include_url=False, include_context=False)
+    ]
+
+
+def _units(text: str, dropped: list[Dropped]) -> list[LlmUnit]:
+    """The units of the answer. The envelope (JSON, `units` list, its length) is all or nothing;
+    a unit that breaks a rule of its own is dropped by rule name and the rest kept (FIX-CHUNK).
+    An answer whose every unit broke a rule raises, so the call is tried again."""
+    try:
+        envelope = _Envelope.model_validate_json(text)
+    except ValidationError as error:
+        raise OutputViolation("schema", error_shape(error)) from None  # never carries the text
+    units: list[LlmUnit] = []
+    first_rule: str | None = None
+    for raw in envelope.units:
+        try:
+            unit = LlmUnit.model_validate(raw)
+        except ValidationError as error:
+            _log.warning(
+                "chunk unit dropped", extra={"outcome": "schema", "errors": error_shape(error)}
+            )
+            dropped.append(Dropped(kind="unit", reason="schema"))
+            first_rule = first_rule or "schema"
+            continue
+        if len(unit.title.split()) > MAX_TITLE_WORDS:
+            dropped.append(Dropped(kind="unit", reason="title_words"))
+            first_rule = first_rule or "title_words"
+            continue
+        units.append(unit)
+    if first_rule is not None and not units:
+        raise OutputViolation(first_rule)
+    return units
+
+
 def check_output(text: str, labels: Labels) -> ChunkResult:
-    """Parse and verify the model's text. The first broken rule raises `OutputViolation`."""
+    """Parse and verify the model's text. A broken envelope raises `OutputViolation`."""
     if len(text) > MAX_OUTPUT_CHARS:
         raise OutputViolation("too_long")
-    try:
-        parsed = LlmChunks.model_validate_json(text)
-    except ValidationError:
-        raise OutputViolation("schema") from None  # never carries the text
-    if any(len(u.title.split()) > MAX_TITLE_WORDS for u in parsed.units):
-        raise OutputViolation("title_words")
-
     dropped: list[Dropped] = []
+    units = _units(text, dropped)
+
     new_units: list[NewUnit] = []
     merges: dict[uuid.UUID, dict[tuple[object, ...], Anchor]] = {}
     new_by_title: dict[str, dict[tuple[object, ...], Anchor]] = {}
-    for unit in parsed.units:
+    for unit in units:
         anchors = _resolve_anchors(unit, labels, dropped)
         if not anchors:
             dropped.append(Dropped(kind="unit", reason="no_valid_anchor"))
@@ -313,6 +377,7 @@ def chunk_units(request: ChunkRequest, ask: Callable[[ChunkPrompt], str]) -> Chu
             return check_output(ask(prompt), labels)
         except OutputViolation as violation:
             _log.warning(
-                "chunk output refused", extra={"outcome": violation.rule, "attempt": attempt}
+                "chunk output refused",
+                extra={"outcome": violation.rule, "attempt": attempt, "errors": violation.errors},
             )
     raise ChunkInvalidError

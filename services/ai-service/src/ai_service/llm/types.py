@@ -89,6 +89,9 @@ class LlmRequest(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict[str, Any])
     # Images of a vision call, shown to the model before `user`.
     images: tuple[ImagePart, ...] = ()
+    # The task's own output cap (FIX-CHUNK: a list of drafts does not fit 800 tokens); None
+    # keeps the adapter's default. Counted in the quota estimate and written to llm_call.
+    max_output_tokens: int | None = Field(default=None, ge=1, le=64_000)
 
 
 @dataclass(frozen=True)
@@ -105,6 +108,8 @@ class LlmResult:
     llm_call_id: uuid.UUID
     provider: ProviderName
     model: str
+    # The provider's own reason (end_turn, max_tokens, ...): `max_tokens` means the text was cut.
+    stop_reason: str | None = None
 
 
 class ProviderError(Exception):
