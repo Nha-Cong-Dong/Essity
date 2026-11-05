@@ -630,6 +630,8 @@ class ProcessSubmission:
             if len(batch.pages) < 2:
                 work.dropped_drafts += 1
                 work.malformed_batches += 1
+                for page in batch.pages:  # shown to the learner like any other skipped page
+                    work.skip("page", page.number, "truncated")
                 return []
             return self._halves(event, llm, run_id, context, batch, work)
         except ChunkInputError:

@@ -118,6 +118,21 @@ def test_fix_chunk_single_page_still_cut_is_skipped(
     assert all(r.attempt == 1 for r in adapter.draft_requests)
 
 
+# Red when: the skipped page is only counted, so the learner is not told which page made no
+# card (it must show through the existing `skipped` path, with a reason the contract knows).
+def test_fix_chunk_single_page_still_cut_is_listed_in_skipped(
+    redis_client: Redis, stream: str, sessions: sessionmaker[Session]
+) -> None:
+    storage = FakeStorage()
+    index(storage)
+    adapter = CutPage(page_no=2)
+    event = submitted(storage, mentions=[mention(1, 3)], files=[file_of(storage, b"x", TXT)])
+    run(handler(storage, redis_client, stream, sessions, adapter), event)
+    skipped = result(storage, event)["skipped"]
+    assert {"kind": "page", "ref": 2, "reason": "truncated"} in skipped
+    assert not any(s["kind"] == "page" and s["ref"] in (1, 3) for s in skipped)
+
+
 # Red when: every page still cut is reported as done with no cards (silence), or loops.
 def test_fix_chunk_every_page_cut_fails_the_submission(
     redis_client: Redis, stream: str, sessions: sessionmaker[Session]
