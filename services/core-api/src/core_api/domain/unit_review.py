@@ -509,9 +509,9 @@ class UnitReviewService:
                 count=count,
             )
         self._add_ranges(study.id, ranges)
-        self._credit_ranges(ranges)
+        self.credit_ranges(ranges)
 
-    def _credit_ranges(self, ranges: list[NewRange]) -> None:
+    def credit_ranges(self, ranges: list[NewRange]) -> None:
         """The declared scope makes sections "studied" (US-13 AC6, not the card's section): a leaf
         covered by the pages gets that share of its weight, never less than it had."""
         for item in ranges:
