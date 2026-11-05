@@ -16,7 +16,8 @@ export function NextStudyRow({ item, next = false }: { item: LearnItem; next?: b
   if (item.state === "next") {
     return (
       <NxRow
-                next={next}
+        next={next}
+        className={next ? undefined : "bg-block"}
         // The "next" label sits under the name, so a narrow column keeps the whole name line.
         why={
           next ? (
@@ -40,7 +41,7 @@ export function NextStudyRow({ item, next = false }: { item: LearnItem; next?: b
   }
   if (item.state === "no_textbook") {
     return (
-      <NxRow state={COPY.uploadTextbook} href={`${base}/documents`}>
+      <NxRow state={COPY.uploadTextbook} href={`${base}/documents`} className="bg-block">
         {name}
         <span className="block text-meta font-normal text-ink-soft break-words">
           Môn {item.subject.name} {COPY.noTextbook}
@@ -49,7 +50,7 @@ export function NextStudyRow({ item, next = false }: { item: LearnItem; next?: b
     );
   }
   return (
-    <NxRow>
+    <NxRow className="bg-block">
       {name}
       <span className="block text-meta font-normal text-ink-soft">{COPY.finished}</span>
     </NxRow>

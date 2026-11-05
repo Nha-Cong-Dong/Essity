@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 
-import { EmptyState } from "@/components/empty-state";
 import { FieldError } from "@/components/field-error";
 import {
   checkSubject,
@@ -17,6 +16,9 @@ import {
   type SubjectErrors,
   SubjectFields,
 } from "@/components/subjects/subject-fields";
+import { FieldGrain } from "@/components/today-v2/field-art";
+import { Mascot } from "@/components/mascot";
+import { SubjectMenu } from "@/components/subjects/subject-menu";
 import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 import { Button } from "@/components/ui/button";
 import { daysLeftText, formatExamDate } from "@/lib/exam-date";
@@ -98,7 +100,6 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
   const focusTo = useRef<"keep" | "delete" | "edit" | "name" | null>(null);
   const editRef = useRef<HTMLButtonElement>(null);
   const keepRef = useRef<HTMLButtonElement>(null);
-  const deleteRef = useRef<HTMLButtonElement>(null);
   const ids = {
     name: `subject-${subject.id}-name`,
     confirm: `subject-${subject.id}-confirm`,
@@ -113,7 +114,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
   useEffect(() => {
     if (focusTo.current === null) return;
     if (focusTo.current === "name") document.getElementById(`edit-${subject.id}-subject-name`)?.focus();
-    else ({ keep: keepRef, delete: deleteRef, edit: editRef })[focusTo.current].current?.focus();
+    else ({ keep: keepRef, delete: editRef, edit: editRef })[focusTo.current].current?.focus();
     focusTo.current = null;
   });
 
@@ -216,18 +217,23 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
     else setFormError(true);
   }
 
+  const letter = Array.from(subject.name.trim())[0]?.toLocaleUpperCase("vi") ?? "";
   return (
-    <li
-      className={`flex min-w-0 flex-col rounded-tile bg-hong-tint ${editing ? "col-span-full" : ""}`}
-    >
-      {/* V22 (landing "nx"): a row of the subjects tile, letter | name + date line | "Sửa". The name
-          wraps between words, never inside one. */}
-      <div className="flex min-h-40 flex-1 flex-col justify-between gap-4 p-5">
+    <li className="min-w-0 border-t border-line first:border-t-0">
+      {/* DESIGN-V4 (mockups subjects.html): a row of the one white sheet: letter tile | name + date line |
+          "⋯" (Sửa, Xóa). The name wraps between words, never inside one. */}
+      <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-4 py-4 min-[640px]:grid-cols-[3.5rem_minmax(0,1fr)_auto]">
+        <span
+          aria-hidden="true"
+          className="grid size-12 place-items-center rounded-slip bg-block font-display text-lead font-bold text-hong-text min-[640px]:size-14"
+        >
+          {letter}
+        </span>
         <div className="flex min-w-0 flex-col">
           <a
             id={ids.name}
             href={`/subjects/${subject.id}`}
-            className="min-w-0 text-lead font-semibold break-words text-inherit no-underline"
+            className="min-w-0 font-display text-tile font-semibold break-words text-inherit no-underline hover:text-hong-text"
           >
             {subject.name}
           </a>
@@ -241,33 +247,23 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
             </span>
           </span>
         </div>
-        {!editing && !confirming && (
-          <div className="flex flex-wrap items-center gap-2 self-end">
-            <Button
-              ref={editRef}
-              variant="quiet"
-              onClick={open}
-              aria-label={`Sửa ${subject.name}`}
-            >
-              Sửa
-            </Button>
-            <Button
-              ref={deleteRef}
-              variant="quiet"
-              onClick={askToDelete}
-              aria-label={`Xóa ${subject.name}`}
-              aria-describedby={ids.name}
-            >
-              Xóa
-            </Button>
-          </div>
+        {!editing && !confirming ? (
+          <SubjectMenu
+            ref={editRef}
+            name={subject.name}
+            onEdit={open}
+            onDelete={askToDelete}
+            describedBy={ids.name}
+          />
+        ) : (
+          <span aria-hidden="true" className="size-11" />
         )}
       </div>
       {/* Always on the page, so a screen reader reads "Đã lưu." when it appears (plan F7). */}
       <p
         role="status"
         className={
-          saved ? "m-0 px-3.5 pb-3 text-small text-ink-soft" : "sr-only"
+          saved ? "m-0 pb-3 text-small text-ink-soft" : "sr-only"
         }
       >
         {saved ? SUBJECT_MESSAGES.saved : ""}
@@ -277,7 +273,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
           role="group"
           aria-labelledby={`${ids.name} ${ids.confirm}`}
           onKeyDown={onConfirmKey}
-          className="flex max-w-120 flex-col gap-5 px-3.5 pb-4"
+          className="flex max-w-120 flex-col gap-5 pb-5"
         >
           <p id={ids.confirm} className="m-0 text-body">
             Xóa môn {subject.name}? Lịch sử ôn và luyện tập của môn cũng sẽ ẩn
@@ -316,7 +312,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
         <form
           method="post"
           onSubmit={save}
-          className="flex max-w-120 flex-col gap-5 px-3.5 pb-4"
+          className="flex max-w-120 flex-col gap-5 pb-5"
           noValidate
         >
           <SubjectFields
@@ -351,7 +347,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
   );
 }
 
-/** The soonest exam still ahead, as the one big number of the screen (user + ux-director 05/11). */
+/** The soonest exam still ahead, as the one field block of the screen (DESIGN-V4: the one field, sticky). */
 function NextExam({ subjects }: { subjects: ListedSubject[] }) {
   const ahead = subjects.filter((subject) => subject.days_until_exam >= 0);
   if (ahead.length === 0) return null;
@@ -361,20 +357,23 @@ function NextExam({ subjects }: { subjects: ListedSubject[] }) {
   return (
     <aside
       aria-label="Kỳ thi gần nhất"
-      className="flex min-w-0 flex-col justify-between gap-6 rounded-tile bg-hong-tint p-5 min-[1100px]:col-span-4 min-[1100px]:p-6"
+      className="relative isolate flex min-w-0 flex-col gap-5 overflow-hidden rounded-tile bg-field p-6 text-on-plum max-[1099px]:order-first min-[1100px]:sticky min-[1100px]:top-6 min-[1100px]:col-span-4 min-[1100px]:p-8"
     >
+      <FieldGrain />
       <p className="m-0 font-display text-lead">Kỳ thi gần nhất</p>
-      <div>
-        <p className="m-0 flex items-baseline gap-3">
-          <span className="font-display text-display tabular-nums">
-            {next.days_until_exam === 0 ? "Hôm nay" : next.days_until_exam}
-          </span>{" "}
-          <span className="text-lead font-semibold">{next.days_until_exam === 0 ? "có kỳ thi" : "ngày nữa"}</span>
-        </p>
+      <p className="m-0 flex items-baseline gap-3">
+        <span className={`font-display leading-none font-semibold tracking-[-0.05em] tabular-nums ${next.days_until_exam === 0 ? "text-title" : "text-display"}`}>
+          {next.days_until_exam === 0 ? "Hôm nay" : next.days_until_exam}
+        </span>{" "}
+        <span className="text-lead font-semibold">{next.days_until_exam === 0 ? "có kỳ thi" : "ngày"}</span>
+      </p>
+      <div className="flex flex-col gap-1">
+        <p className="m-0 font-display text-tile font-semibold break-words">{next.name}</p>
+        <p className="m-0 text-body text-on-plum-soft">thi {formatExamDate(next.exam_date)}</p>
       </div>
       <a
         href={`/subjects/${next.id}`}
-        className="inline-flex min-h-13 max-w-full items-center self-start rounded-full bg-sheet px-6 py-2 text-left font-semibold text-ink no-underline inset-ring-[1.5px] inset-ring-line-strong hover:bg-sunken"
+        className="inline-flex min-h-13 max-w-full items-center justify-center self-stretch rounded-full bg-on-plum-action px-6 py-2 text-center font-semibold text-on-plum-action-fg no-underline hover:brightness-105"
       >
         Vào {next.name}
       </a>
@@ -387,7 +386,7 @@ function DeletedRow() {
   const ref = useRef<HTMLParagraphElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
-    <li className="rounded-tile bg-hong-tint p-5">
+    <li className="border-t border-line py-5 first:border-t-0">
       <p ref={ref} tabIndex={-1} className="m-0 text-small text-ink-soft">
         Đã xóa môn.
       </p>
@@ -470,25 +469,34 @@ export function SubjectList({
       {remaining.length === 0 ? (
         <>
           {deletedId !== null && (
-            <ul className="m-0 flex list-none flex-col p-0">
+            <ul className="m-0 mb-5 flex list-none flex-col rounded-tile bg-sheet px-6 p-0 shadow-sheet">
               <DeletedRow key={deletedId} />
             </ul>
           )}
-          <EmptyState
-            className="py-8"
-            mascot="vui"
-            title="Chưa có môn nào."
-            hint="Tạo môn đầu tiên bằng tên và ngày thi."
-            action={
-              <Button render={<a href="/subjects/new" />} nativeButton={false}>
+          {/* No subject yet: one field block with Bé Trang and the one primary button (DESIGN-V4). */}
+          <section
+            aria-labelledby="subjects-empty"
+            className="relative isolate grid items-center gap-6 overflow-hidden rounded-tile bg-field p-8 text-on-plum min-[700px]:grid-cols-[minmax(0,1fr)_auto] min-[700px]:p-12"
+          >
+            <FieldGrain />
+            <div className="flex flex-col items-start gap-3">
+              <h2 id="subjects-empty" className="m-0 font-display text-title">
+                Chưa có môn nào.
+              </h2>
+              <p className="m-0 text-read text-on-plum-soft">Tạo môn đầu tiên bằng tên và ngày thi.</p>
+              <a
+                href="/subjects/new"
+                className="mt-2 inline-flex h-13 items-center rounded-full bg-on-plum-action px-6 font-semibold text-on-plum-action-fg no-underline hover:brightness-105"
+              >
                 Tạo môn
-              </Button>
-            }
-          />
+              </a>
+            </div>
+            <Mascot pose="rong" tone="solid" size="lg" className="max-[699px]:order-first max-[699px]:size-36" />
+          </section>
         </>
       ) : (
-        <div className="grid min-w-0 gap-4 min-[1100px]:grid-cols-12">
-          <ul className="m-0 grid list-none gap-4 p-0 min-[640px]:grid-cols-2 min-[1100px]:col-span-8 min-[1100px]:content-start">
+        <div className="grid min-w-0 items-start gap-5 min-[1100px]:grid-cols-12">
+          <ul className="m-0 list-none rounded-tile bg-sheet px-5 py-1 shadow-sheet min-[640px]:px-6 min-[1100px]:col-span-8">
             {rows.map((subject) =>
               subject.id === deletedId ? (
                 <DeletedRow key={subject.id} />
@@ -503,16 +511,6 @@ export function SubjectList({
                   onChanged={changed}
                 />
               ),
-            )}
-            {!anyBusy && (
-              <li className="min-w-0">
-                <a
-                  href="/subjects/new"
-                  className="flex h-full min-h-40 items-center justify-center rounded-tile border border-dashed border-line-strong px-3.5 text-body font-semibold text-ink no-underline hover:bg-sunken"
-                >
-                  + Thêm môn
-                </a>
-              </li>
             )}
           </ul>
           <NextExam subjects={remaining} />

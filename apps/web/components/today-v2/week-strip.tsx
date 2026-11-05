@@ -35,17 +35,28 @@ export function weekFromCells(
 
 export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; today: string; className?: string }) {
   const top = Math.max(1, ...cells.map((cell) => cell.count));
+  const empty = cells.every((cell) => cell.count === 0);
+  // DESIGN-V4 (mockups today.html): from 1024px this is the bottom half of the field poster (the review
+  // is its top half); below 1024px it is a white sheet. `--now` (pink, with a ring) marks today, never teal.
   return (
-    <section aria-labelledby="today-week" className={cn("min-w-0 rounded-tile bg-hong-tint p-4 min-[901px]:p-6", className)}>
-      <h2 id="today-week" className="m-0 font-display text-lead">
+    <section
+      aria-labelledby="today-week"
+      data-tier="week"
+      className={cn(
+        "flex min-w-0 flex-col rounded-tile bg-sheet p-6 text-ink shadow-sheet",
+        "min-[1024px]:[border-top-left-radius:0] min-[1024px]:[border-top-right-radius:0] min-[1024px]:bg-field min-[1024px]:p-8 min-[1024px]:pt-4 min-[1024px]:text-on-plum min-[1024px]:shadow-none",
+        className,
+      )}
+    >
+      <h2 id="today-week" className="m-0 font-display text-tile">
         Tuần này
       </h2>
-      {cells.every((cell) => cell.count === 0) ? (
-        <p className="m-0 mt-3 text-read text-ink-soft" data-week-empty>
+      {empty ? (
+        <p className="m-0 mt-3 text-read text-ink-soft min-[1024px]:text-on-plum-soft" data-week-empty>
           Chưa có hoạt động nào trong tuần này.
         </p>
       ) : null}
-      <ol hidden={cells.every((cell) => cell.count === 0)} className="m-0 mt-4 grid h-28 list-none grid-cols-7 items-end gap-3 p-0">
+      <ol hidden={empty} className="m-0 mt-4 grid min-h-36 flex-1 list-none grid-cols-7 items-end gap-2.5 p-0">
         {cells.map((cell, index) => {
           const on = cell.count > 0;
           const isToday = cell.day === today;
@@ -53,17 +64,24 @@ export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; toda
             <li
               key={cell.day}
               aria-current={isToday ? "date" : undefined}
-              className="flex h-full min-w-0 flex-col items-center justify-end gap-1 text-meta text-ink-soft"
+              className="flex h-full min-w-0 flex-col items-center justify-end gap-1.5 text-meta text-ink-soft min-[1024px]:text-on-plum-soft"
             >
-              <b className="font-display text-ink tabular-nums">{cell.count}</b>
+              <b className="font-display text-body text-ink tabular-nums min-[1024px]:text-on-plum">{cell.count}</b>
               <span
                 aria-hidden="true"
-                className={cn("w-full max-w-9 rounded-slip", on ? "bg-hong" : "bg-line-strong")}
-                style={{ height: on ? `${Math.max(12, (cell.count / top) * 56)}px` : "2px" }}
+                className={cn(
+                  "w-full max-w-9.5 rounded-slip",
+                  !on && "bg-line-strong min-[1024px]:bg-on-plum-soft/55",
+                  on && !isToday && "bg-hong min-[1024px]:bg-on-plum-soft",
+                  on &&
+                    isToday &&
+                    "bg-now shadow-[0_0_0_2px_var(--sheet),0_0_0_3.5px_var(--ink)] min-[1024px]:bg-now-on-field min-[1024px]:shadow-[0_0_0_2px_var(--field),0_0_0_3.5px_var(--on-plum)]",
+                )}
+                style={{ height: on ? `${Math.max(12, (cell.count / top) * 96)}px` : "2px" }}
               />
-              <span className={cn(isToday && "font-semibold text-ink")}>
+              <span className={cn("flex flex-col items-center gap-1", isToday && "font-semibold text-ink min-[1024px]:text-on-plum")}>
                 {NAMES[index]}
-                {isToday ? <span aria-hidden="true" className="mx-auto mt-1 block size-1.5 rounded-full bg-ink" /> : null}
+                {isToday ? <span aria-hidden="true" className="block size-1.5 rounded-full bg-ink min-[1024px]:bg-on-plum" /> : null}
               </span>
               <span className="sr-only">{on ? "hoạt động" : "nghỉ"}</span>
             </li>

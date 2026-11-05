@@ -3,17 +3,15 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
-import { Mascot } from "@/components/mascot";
-import { AppShell, PageColumn } from "@/components/shells";
-import { OutlineCard } from "@/components/subjects/outline-card";
-import { Sheet } from "@/components/ui/sheet";
+import { AppShell } from "@/components/shells";
+import { CreateFrame } from "@/components/subjects/create-steps";
 import { NewSubjectForm } from "@/components/subjects/new-subject-form";
 import { exampleFor } from "@/lib/exam-date";
 import { requireVerifiedSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Tạo môn · Essity" };
 
-// T1.20, DESIGN.md §6.8: a new subject is a notebook cover with a label of two fields (US-01 AC1).
+// T1.20, DESIGN.md §6.8; DESIGN-V4: "Tạo môn" step 1, two fields on a white sheet beside the steps (US-01 AC1).
 async function NewSubject() {
   await connection();
   const me = await requireVerifiedSession();
@@ -24,28 +22,11 @@ async function NewSubject() {
 export default function NewSubjectPage() {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <PageColumn width="read" className="flex flex-col gap-6">
-        <a href="/subjects" className="inline-flex min-h-11 items-center justify-center self-start rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-          Môn học
-        </a>
-        <header className="flex items-end justify-between gap-4">
-          <div className="flex min-w-0 flex-col gap-1">
-            <h1 className="m-0 font-display text-title">Môn mới</h1>
-            <p className="m-0 text-body text-ink-soft">
-              Bước 1/2 · Tạo môn. Đặt tên môn và ngày thi để app chia lịch học cho vừa sức.
-            </p>
-          </div>
-          <div className="hidden shrink-0 min-[641px]:block">
-            <Mascot pose="chuanbi" size="md" />
-          </div>
-        </header>
-        <Sheet className="min-w-0 border border-line p-5 shadow-none sm:p-8">
-          <Suspense fallback={<div aria-busy="true" className="h-60" />}>
-            <NewSubject />
-          </Suspense>
-        </Sheet>
-        <OutlineCard />
-      </PageColumn>
+      <CreateFrame current={1}>
+        <Suspense fallback={<div aria-busy="true" className="h-60" />}>
+          <NewSubject />
+        </Suspense>
+      </CreateFrame>
     </AppShell>
   );
 }

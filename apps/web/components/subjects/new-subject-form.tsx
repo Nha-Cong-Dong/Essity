@@ -39,7 +39,7 @@ export function NewSubjectForm({ example }: { example: string }) {
   }
 
   return (
-    <form method="post" onSubmit={submit} className="flex flex-col gap-6" noValidate>
+    <form method="post" onSubmit={submit} className="flex flex-col gap-7" noValidate>
       <SubjectFields
         name={name}
         examDate={examDate}
@@ -49,9 +49,14 @@ export function NewSubjectForm({ example }: { example: string }) {
         onExamDate={setExamDate}
       />
       {formError && <FieldError id="new-subject-error">{SUBJECT_MESSAGES.unavailable}</FieldError>}
-      <Button type="submit" pending={busy} className="w-full">
-        Tạo môn
-      </Button>
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        <Button render={<a href="/subjects" />} nativeButton={false} variant="quiet">
+          Hủy
+        </Button>
+        <Button type="submit" pending={busy} className="max-sm:flex-1">
+          Tiếp tục
+        </Button>
+      </div>
     </form>
   );
 }

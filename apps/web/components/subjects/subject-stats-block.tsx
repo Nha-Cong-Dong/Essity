@@ -1,4 +1,3 @@
-import { NxList } from "@/components/ui/nx-list";
 import type { ViewSubject } from "@/lib/stats-view";
 
 // Hackathon D7, V22: this subject's own numbers as a tile of the landing's "nx" list: label | value.
@@ -6,20 +5,20 @@ import type { ViewSubject } from "@/lib/stats-view";
 // and one meta line says what to do.
 function StatRow({ label, value, unit, hint }: { label: string; value: string | null; unit?: string; hint: string }) {
   return (
-    <li className="min-h-12 rounded-row bg-bg px-3.5 py-2">
-      <dl className="m-0 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3">
-        <dt className="min-w-0 text-body break-words">{label}</dt>
-        <dd className="m-0 flex items-baseline gap-1.5 justify-end">
+    <li className="border-t border-line py-3.5 first:border-t-0">
+      <dl className="m-0 grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4">
+        <dd className="m-0 order-first flex items-baseline gap-1.5">
           {value === null ? (
             <span className="text-body text-ink-soft">—</span>
           ) : (
             <>
-              <span className="font-display text-lead tabular-nums">{value}</span>
+              <span className="font-display text-verdict leading-none font-semibold tracking-[-0.03em] tabular-nums">{value}</span>
               {unit ? <span className="text-meta text-ink-soft">{unit}</span> : null}
             </>
           )}
         </dd>
-        {value === null && hint ? <dd className="m-0 col-span-2 text-meta text-ink-soft">{hint}</dd> : null}
+        <dt className="min-w-0 text-body break-words">{label}</dt>
+        {value === null && hint ? <dd className="m-0 col-span-2 mt-1 text-meta text-ink-soft">{hint}</dd> : null}
       </dl>
     </li>
   );
@@ -31,8 +30,14 @@ export function SubjectStatsBlock({ stats }: { stats: ViewSubject }) {
   const practiced = bank?.reduce((n, t) => n + t.practiced, 0) ?? 0;
   const mastered = bank?.reduce((n, t) => n + t.mastered, 0) ?? 0;
   return (
-    <div data-subject-stats aria-label="Thống kê môn" role="group" className="flex min-w-0 flex-col gap-3">
-      <NxList title="Thống kê môn này">
+    <div
+      data-subject-stats
+      aria-label="Thống kê môn"
+      role="group"
+      className="min-w-0 rounded-tile bg-sheet px-6 py-3 shadow-sheet"
+    >
+      <h2 className="sr-only">Thống kê môn này</h2>
+      <ul className="m-0 flex list-none flex-col p-0">
         <StatRow label="Đã học" value={`${syllabus.studied}/${syllabus.leaves}`} unit="phần" hint="" />
         <StatRow
           label="Câu sẵn sàng"
@@ -50,7 +55,7 @@ export function SubjectStatsBlock({ stats }: { stats: ViewSubject }) {
           value={retention === null ? null : `${Math.round(retention * 100)}%`}
           hint="Học một buổi để có thẻ"
         />
-      </NxList>
+      </ul>
     </div>
   );
 }

@@ -32,11 +32,9 @@ async function Upload({ params }: { params: Promise<{ id: string }> }) {
 export default function UploadPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <div className="flex justify-center">
-        <Suspense fallback={<div aria-busy="true" className="h-80 w-full max-w-220 rounded-sheet bg-sunken" />}>
-          <Upload params={params} />
-        </Suspense>
-      </div>
+      <Suspense fallback={<div aria-busy="true" className="h-80 w-full rounded-sheet bg-sunken" />}>
+        <Upload params={params} />
+      </Suspense>
     </AppShell>
   );
 }

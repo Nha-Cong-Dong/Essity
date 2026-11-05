@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { StartButton } from "@/components/today/start-button";
 import { Button } from "@/components/ui/button";
-import { NxRow } from "@/components/ui/nx-list";
+import { FieldGrain } from "@/components/today-v2/field-art";
+import { cn } from "@/lib/utils";
 import { studyHref } from "@/lib/session-study/entry";
-import { type Pace, TODAY_V2_COPY as COPY } from "@/lib/today-v2";
+import { type Pace, paceLine, TODAY_V2_COPY as COPY } from "@/lib/today-v2";
 
 // T7.13a (US-15 AC6, AC7; DESIGN §6.5 "Khối gợi ý hôm nay"): the suggestion block on a subject
 // screen, from a typed value, no API. "Gợi ý cho hôm nay" asks `resolve` (T7.13: the suggestions
@@ -24,22 +25,26 @@ export type SuggestionState =
   | { kind: "reading" };
 
 const FULL = "max-sm:w-full";
+// DESIGN-V4 (mockups subject-detail.html): this block is the screen's one field. Its buttons are pale pink
+// (the on-plum action pair), its quiet buttons are outlined in the soft pink; --hong never sits on the field.
+const ON_FIELD = "[--inverse-bg:var(--on-plum-action-bg)] [--inverse-fg:var(--on-plum-action-fg)]";
+const QUIET_ON_FIELD = "border-0 bg-transparent text-on-plum inset-ring-on-plum-soft hover:bg-on-plum/10";
 
-// V22: "Nội dung hôm nay" is a tile of the landing's "nx" list: the section is the one cam row.
+// The section to study is the title of the field: "Phần 3.2 Phân phối chuẩn", the page range and the pace under it.
 function Suggested({ id, subjectId, subjectName, next }: { id: string; subjectId: string; subjectName: string; next: NextSuggestion }) {
   return (
     <>
-      <h2 id={id} className="m-0 font-display text-lead break-words">
-        Nội dung hôm nay
+      <h2 id={id} className="m-0 max-w-[16ch] font-display text-[clamp(32px,2.2vw+20px,50px)] leading-[1.02] font-semibold tracking-[-0.035em] break-words text-balance">
+        {next.label ? `Phần ${next.label} ` : ""}
+        {next.title}
       </h2>
-      <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-        <NxRow lead={next.label} next state="Tiếp theo" why={next.reason || undefined}>
-          {next.title}
-          {next.pages ? ` · ${next.pages}` : ""}
-        </NxRow>
-      </ul>
-      <div className="mt-1">
+      <p className="m-0 text-body text-on-plum-soft">
+        Gợi ý cho hôm nay{next.pages ? ` · ${next.pages}` : ""} · {paceLine(next.pace)}
+      </p>
+      {next.reason ? <p className="m-0 text-meta text-on-plum-soft">{next.reason}</p> : null}
+      <div className={cn("mt-1", ON_FIELD)}>
         <Button
+          variant="primary-inverse"
           render={<a href={studyHref(subjectId, next.sectionId)} />}
           nativeButton={false}
           aria-label={`${COPY.enter} · ${subjectName}`}
@@ -105,9 +110,14 @@ export function SubjectSuggestion({
   const showExtras = shown.kind !== "reading";
   const learnedOut = shown.kind === "finished" || shown.kind === "rested" || shown.kind === "exam_over";
   return (
-    <section className="flex min-w-0 flex-col gap-3 rounded-tile bg-hong-tint p-4 min-[901px]:p-6" aria-labelledby={headingId} aria-busy={busy}>
+    <section
+      className="relative isolate flex min-h-60 min-w-0 flex-col justify-between gap-4 overflow-hidden rounded-tile bg-field p-6 text-on-plum min-[901px]:p-8"
+      aria-labelledby={headingId}
+      aria-busy={busy}
+    >
+      <FieldGrain />
       {computed && (
-        <div ref={result} tabIndex={-1} aria-live="polite" className="flex flex-col gap-3 outline-none">
+        <div ref={result} tabIndex={-1} aria-live="polite" className="flex flex-col items-start gap-3 outline-none">
           <Suggested
             id={headingId}
             subjectId={subjectId}
@@ -122,12 +132,12 @@ export function SubjectSuggestion({
             {COPY.learn}
           </h2>
           <div>
-            <Button variant="secondary" onClick={ask} pending={busy} className={FULL}>
+            <Button variant="secondary" onClick={ask} pending={busy} className={cn(FULL, QUIET_ON_FIELD)}>
               {busy ? "Đang tính…" : "Gợi ý cho hôm nay"}
             </Button>
           </div>
           {failed && (
-            <p role="alert" className="m-0 text-small">
+            <p role="alert" className="m-0 text-small text-on-plum-soft">
               Chưa tính được gợi ý. Thử lại sau giây lát.
             </p>
           )}
@@ -135,13 +145,13 @@ export function SubjectSuggestion({
       )}
       {shown.kind === "finished" && (
         <>
-          <h2 id={headingId} className="m-0 text-body">
+          <h2 id={headingId} className="m-0 font-display text-lead">
             {COPY.finished}
           </h2>
         </>
       )}
       {shown.kind === "rested" && (
-        <h2 id={headingId} className="m-0 text-body">
+        <h2 id={headingId} className="m-0 font-display text-lead">
           {COPY.rested}
         </h2>
       )}
@@ -152,20 +162,22 @@ export function SubjectSuggestion({
       )}
       {noTextbook && (
         <>
-          <h2 id={headingId} className="m-0 text-body">
-            Môn này {COPY.noTextbook}
-          </h2>
-          {/* SESSION-END: no outline, no study (core-api refuses too): the way on is the textbook. */}
-          <p className="m-0 text-body text-ink-soft">Tải giáo trình lên để có đề cương, rồi bắt đầu học.</p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <Button render={<a href={`/subjects/${subjectId}/documents`} />} nativeButton={false} className={FULL}>
+          <div className="flex min-w-0 flex-col gap-3">
+            <h2 id={headingId} className="m-0 font-display text-[clamp(32px,2.2vw+20px,50px)] leading-[1.02] font-semibold tracking-[-0.035em] text-balance">
+              Chưa có đề cương
+            </h2>
+            {/* SESSION-END: no outline, no study (core-api refuses too): the way on is the textbook. */}
+            <p className="m-0 text-body text-on-plum-soft">Chưa học được: tải giáo trình chính để lập đề cương.</p>
+          </div>
+          <div className={cn("flex flex-wrap items-center gap-x-4 gap-y-1", ON_FIELD)}>
+            <Button variant="primary-inverse" render={<a href={`/subjects/${subjectId}/documents`} />} nativeButton={false} className={FULL}>
               {COPY.uploadTextbook}
             </Button>
           </div>
         </>
       )}
       {shown.kind === "reading" && (
-        <h2 id={headingId} role="status" className="m-0 text-body text-ink-soft">
+        <h2 id={headingId} role="status" className="m-0 text-body text-on-plum-soft">
           Đang đọc mục lục giáo trình…
         </h2>
       )}
@@ -177,12 +189,12 @@ export function SubjectSuggestion({
             </StartButton>
           )}
           {learnedOut && practiceLink && (
-            <Button render={<a href={`/subjects/${subjectId}/practice`} />} nativeButton={false} variant="quiet">
+            <Button render={<a href={`/subjects/${subjectId}/practice`} />} nativeButton={false} variant="quiet" className={QUIET_ON_FIELD}>
               {COPY.practice}
             </Button>
           )}
           {!noTextbook && shown.kind !== "exam_over" && shown.kind !== "suggested" && (
-            <Button render={<a href={`/subjects/${subjectId}/sessions/new`} />} nativeButton={false} variant="quiet">
+            <Button render={<a href={`/subjects/${subjectId}/sessions/new`} />} nativeButton={false} variant="quiet" className={QUIET_ON_FIELD}>
               Học tự do môn này
             </Button>
           )}

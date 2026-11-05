@@ -4,22 +4,23 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SubjectList } from "@/components/subjects/subject-list";
+import { pick } from "./subject-menu-helpers";
 
 const s = (id: string, name: string, days: number) => ({ id, name, exam_date: "2026-12-15", days_until_exam: days, has_history: false });
 afterEach(cleanup);
 
 describe("SubjectList next exam", () => {
-  it("shows the smallest positive days-left with a button into that subject", () => {
+  it("shows the smallest positive days-left with a button into that subject", async () => {
     render(<SubjectList subjects={[s("a", "Toán", 40), s("b", "Vật lý", 12), s("c", "Hóa", -3)]} example="15/12/2031" />);
     const aside = screen.getByRole("complementary", { name: "Kỳ thi gần nhất" });
     expect(within(aside).getByText("12")).toBeTruthy();
     expect(within(aside).getByRole("link", { name: /Vào Vật lý/ }).getAttribute("href")).toBe("/subjects/b");
   });
-  it("is absent when every exam is over", () => {
+  it("is absent when every exam is over", async () => {
     render(<SubjectList subjects={[s("c", "Hóa", -3)]} example="15/12/2031" />);
     expect(screen.queryByRole("complementary")).toBeNull();
   });
-  it("counts an exam today, and its link is not a second solid button", () => {
+  it("counts an exam today, and its link is not a second solid button", async () => {
     render(<SubjectList subjects={[s("a", "Toán", 0), s("b", "Vật lý", 12)]} example="15/12/2031" />);
     const aside = screen.getByRole("complementary", { name: "Kỳ thi gần nhất" });
     expect(within(aside).getByText("Hôm nay")).toBeTruthy();
@@ -34,7 +35,7 @@ describe("SubjectList next exam", () => {
     render(<SubjectList subjects={[s("a", "Toán", 40), s("b", "Vật lý", 12)]} example="15/12/2031" />);
     const aside = () => screen.getByRole("complementary", { name: "Kỳ thi gần nhất" });
     expect(within(aside()).getByText("12")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Sửa Vật lý" }));
+    await pick("Sửa", "Vật lý");
     fireEvent.change(screen.getByLabelText("Môn"), { target: { value: "Vật lý 2" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(within(aside()).getByText("5")).toBeTruthy());

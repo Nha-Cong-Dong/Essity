@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { Marker } from "@/components/notebook";
 import { PageColumn } from "@/components/shells";
 
 /**
@@ -15,9 +14,7 @@ export function SubjectsFrame({ action, children }: { action?: ReactNode; childr
   return (
     <PageColumn width="full" className="flex flex-col">
       <div className="mb-8 flex min-h-13 flex-wrap items-center justify-between gap-x-4 gap-y-4">
-        <h1 className="m-0 font-display text-title">
-          <Marker>Môn học</Marker>
-        </h1>
+        <h1 className="m-0 font-display text-title">Môn học</h1>
         {action}
       </div>
       {children}

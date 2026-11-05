@@ -1,6 +1,5 @@
-import { Marker } from "@/components/notebook";
+import { BackLink } from "@/components/screen-kit";
 import { PageColumn } from "@/components/shells";
-import { CoverageBar } from "@/components/stats/stat-tile";
 import { SubjectOutlineAside } from "@/components/subjects/subject-chapters-aside";
 import { SubjectEntryRow } from "@/components/subjects/subject-entry-row";
 import { SubjectPracticeBlock } from "@/components/subjects/subject-practice-block";
@@ -37,60 +36,53 @@ export function SubjectView({
 }) {
   const examLine = (
     <>
-      Thi vào {dayLabel(subject.exam_date)}
-      {subject.days_until_exam >= 0 ? "" : " (đã qua)"}
+      Thi {dayLabel(subject.exam_date)}
+      {subject.days_until_exam > 0 ? ` · còn ${subject.days_until_exam} ngày` : subject.days_until_exam === 0 ? " · hôm nay" : " (đã qua)"}
     </>
   );
+  // SESSION-END / DESIGN-V4: no outline, no study. The field block says so and offers the textbook; the review,
+  // practice, entries and numbers do not exist yet, so none of them is drawn.
+  const locked = state.kind === "no_textbook";
+  const nextId = state.kind === "suggested" ? (state.next.sectionId ?? null) : null;
   return (
-    <PageColumn width="full" className="flex flex-col gap-10">
-      {/* V22 row 0: the name (cols 1-8, two lines at most) and the one big number (cols 9-12). */}
-      <header className="grid items-end gap-x-6 gap-y-3 min-[901px]:grid-cols-12">
-        <div className="flex min-w-0 flex-col gap-3 min-[901px]:col-span-8">
-          <a href="/subjects" className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-            Môn học ›
-          </a>
-          <h1 className="m-0 max-w-full font-display text-title break-words text-balance">
-            {subject.name}
-          </h1>
-          <p className="m-0 text-body text-ink-soft">{examLine}</p>
-        </div>
-        {subject.days_until_exam > 0 && (
-          <p className="m-0 flex items-baseline gap-2 min-[901px]:col-span-4 min-[901px]:justify-end" data-days-left>
-            <span className="font-display text-display font-medium tabular-nums">{subject.days_until_exam}</span>
-            <span className="text-body text-ink-soft">ngày nữa thi</span>
-          </p>
-        )}
-        {prog !== null && prog.total > 0 && (
-          <div className="flex flex-col gap-2 min-[901px]:col-span-8" data-subject-progress>
-            <CoverageBar percent={(prog.done / prog.total) * 100} />
-            <p className="m-0 text-meta text-ink-soft">
-              Đã học {prog.done}/{prog.total} phần
-            </p>
-          </div>
-        )}
+    <PageColumn width="full" className="flex flex-col gap-6">
+      <header className="flex flex-col gap-1">
+        <BackLink href="/subjects">Quay lại</BackLink>
+        <h1 className="m-0 max-w-full font-display text-title break-words text-balance">{subject.name}</h1>
+        <p className="m-0 text-body text-ink-soft">{examLine}</p>
       </header>
-      <div className="grid min-w-0 gap-x-4 gap-y-10 min-[901px]:grid-cols-12">
-        <div className="flex min-w-0 flex-col gap-10 min-[901px]:col-span-8">
+      {locked ? (
+        <div className="flex min-w-0 flex-col gap-5">
           <SubjectScreenBlock subjectId={subject.id} subjectName={subject.name} state={state} nothingDue={nothingDue} />
-          {/* UI-C: review and practice side by side (7/5), the entry row below. */}
-          <div className="grid min-w-0 items-start gap-x-4 gap-y-6 min-[1100px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-            <ReviewStack subjectId={subject.id} cards={dueCards} />
-            {questions !== null && (
-              <SubjectPracticeBlock
-                subjectId={subject.id}
-                total={questions.total}
-                ready={questions.ready}
-                dueToday={questions.due_today ?? null}
-              />
-            )}
+          <section aria-label="Đề cương" className="rounded-tile bg-sheet p-6 shadow-sheet">
+            <h2 className="m-0 font-display text-tile">Đề cương</h2>
+            <p className="m-0 mt-2 text-body text-ink-soft">Chưa có phần nào.</p>
+          </section>
+        </div>
+      ) : (
+        <div className="grid min-w-0 items-start gap-5 min-[901px]:grid-cols-12">
+          <div className="flex min-w-0 flex-col gap-5 min-[901px]:col-span-8">
+            <SubjectScreenBlock subjectId={subject.id} subjectName={subject.name} state={state} nothingDue={nothingDue} />
+            {/* UI-C: review and practice side by side (7/5), the entry row below. */}
+            <div className="grid min-w-0 items-start gap-5 min-[1100px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+              <ReviewStack subjectId={subject.id} cards={dueCards} />
+              {questions !== null && (
+                <SubjectPracticeBlock
+                  subjectId={subject.id}
+                  total={questions.total}
+                  ready={questions.ready}
+                  dueToday={questions.due_today ?? null}
+                />
+              )}
+            </div>
+            <SubjectEntryRow entries={rowEntries} />
           </div>
-          <SubjectEntryRow entries={rowEntries} />
+          <div className="flex min-w-0 flex-col gap-5 min-[901px]:col-span-4">
+            {stats !== null && <SubjectStatsBlock stats={stats} />}
+            {nodes !== null && <SubjectOutlineAside nodes={nodes} subjectId={subject.id} nextId={nextId} />}
+          </div>
         </div>
-        <div className="flex min-w-0 flex-col gap-10 min-[901px]:col-span-4">
-          {stats !== null && <SubjectStatsBlock stats={stats} />}
-          {nodes !== null && <SubjectOutlineAside nodes={nodes} subjectId={subject.id} />}
-        </div>
-      </div>
+      )}
     </PageColumn>
   );
 }
