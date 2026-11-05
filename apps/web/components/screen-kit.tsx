@@ -37,7 +37,7 @@ export function Block({
       className={cn(
         "min-w-0 rounded-tile p-6 min-[901px]:p-8",
         tier === "field" &&
-          "bg-plum text-on-plum [--focus:var(--focus-on-plum)] [&_a]:text-on-plum [&_a]:decoration-on-plum-soft",
+          "bg-plum text-on-plum [--focus:var(--focus-on-plum)] [&_a:not([class*=text-])]:text-on-plum [&_a]:decoration-on-plum-soft",
         tier === "tint" && (tone === "cam" ? "bg-cam-tint text-ink" : "bg-hong-tint text-ink"),
         tier === "sheet" && "border border-line bg-sheet text-ink",
         className,
