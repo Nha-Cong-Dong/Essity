@@ -103,6 +103,7 @@
 
 /* Today is an inner ring, so the outer ring stays the keyboard focus (WCAG 2.4.7, 1.4.11). */
 .cell[data-today="true"] {
+  background: var(--cam-fill, #FF7A5C);
   box-shadow: inset 0 0 0 2px var(--ink);
 }
 
@@ -170,7 +171,7 @@
 .swatch[data-level="2"] { background: var(--grid-2); box-shadow: none; }
 .swatch[data-level="3"] { background: var(--grid-3); box-shadow: none; }
 .swatch[data-level="4"] { background: var(--grid-4); box-shadow: none; }
-.swatch[data-today="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
+.swatch[data-today="true"] { background: var(--cam-fill, #FF7A5C); box-shadow: inset 0 0 0 2px var(--ink); }
 .swatch[data-exam="true"] {
   background: var(--ink);
   box-shadow: none;

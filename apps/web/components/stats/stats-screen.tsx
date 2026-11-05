@@ -29,21 +29,12 @@ function Skeleton() {
   );
 }
 
-/** V22: the numbers are plain type on the page, no surface; the lead one is the screen's answer. */
-function Kpi({ label, value, note, lead = false }: { label: string; value: string; note?: string; lead?: boolean }) {
-  if (lead) {
-    return (
-      <div data-kpi className="min-w-0">
-        <p className="m-0 text-meta text-ink-soft">{label}</p>
-        <p className="m-0 mt-1 font-display text-display tabular-nums">{value}</p>
-        {note && <p className="m-0 mt-1 text-meta text-ink-soft">{note}</p>}
-      </div>
-    );
-  }
+/** DESIGN-V3: one cell of the totals sheet; the number is plain ink type, no icon, no comparison. */
+function Kpi({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div data-kpi className="min-w-0">
+    <div data-kpi className="min-w-0 px-5 py-4 min-[641px]:px-6 min-[641px]:py-5">
       <p className="m-0 text-meta text-ink-soft">{label}</p>
-      <p className="m-0 mt-1 font-display text-title tabular-nums">{value}</p>
+      <p className="m-0 mt-1 font-display text-title tabular-nums text-ink">{value}</p>
       {note && <p className="m-0 mt-1 text-meta text-ink-soft">{note}</p>}
     </div>
   );
@@ -175,18 +166,19 @@ export function StatsScreen({
         </div>
       </div>
 
-      <div className="mt-12 grid gap-x-8 gap-y-8 min-[901px]:grid-cols-[1.4fr_1fr_1fr] min-[901px]:items-start" data-totals>
-        <Kpi
-          lead
-          label="Nội dung đã học"
-          value={`${t.unitsLearned}`}
-          note={`/ ${t.unitsTotal} phần · ${t.sessions} buổi học`}
-        />
-        <Kpi label="Thẻ đã ôn" value={`${t.cardsReviewed}`} note={`${t.cardsSaved} thẻ đã lưu`} />
-        <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
+      <div className="mt-8 rounded-sheet bg-[var(--plum,#4A1638)] p-4 min-[641px]:p-6" data-totals>
+        <div className="grid divide-y divide-line rounded-row bg-sheet min-[641px]:grid-cols-3 min-[641px]:divide-x min-[641px]:divide-y-0">
+          <Kpi
+            label="Nội dung đã học"
+            value={`${t.unitsLearned}`}
+            note={`/ ${t.unitsTotal} phần · ${t.sessions} buổi học`}
+          />
+          <Kpi label="Thẻ đã ôn" value={`${t.cardsReviewed}`} note={`${t.cardsSaved} thẻ đã lưu`} />
+          <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
+        </div>
       </div>
 
-      <div className="mt-14 grid gap-x-6 gap-y-8 min-[901px]:grid-cols-12">
+      <div className="mt-8 grid gap-x-5 gap-y-8 min-[901px]:grid-cols-12">
         <div className="min-w-0 min-[901px]:col-span-7 [&>*]:h-full">
           <Trend cells={cells} />
         </div>
@@ -202,7 +194,7 @@ export function StatsScreen({
         </NxList>
       </div>
 
-      <Sheet id="activity" className="mt-14 min-w-0" aria-labelledby="activity-h" role="region">
+      <Sheet id="activity" className="mt-8 min-w-0 w-full" aria-labelledby="activity-h" role="region">
         <h2 id="activity-h" className="m-0 mb-4 text-read font-semibold">
           Hoạt động cả năm
         </h2>

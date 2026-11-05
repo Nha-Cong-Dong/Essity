@@ -9,14 +9,15 @@ const DESKTOP = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
 
 for (const path of ["/login", "/register", "/forgot-password"]) {
-  test(`AC1: ${path} at 1440 is one card, at most 420px, centred`, async ({ page }) => {
+  test(`AC1: ${path} at 1440 is one card, at most 420px, centred in the right 7/12 beside the plum field`, async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await page.goto(path);
     await settled(page);
     const card = await page.locator("main > div").boundingBox();
     expect(card).not.toBeNull();
     expect(card!.width).toBeLessThanOrEqual(420.5);
-    expect(Math.abs(card!.x + card!.width / 2 - DESKTOP.width / 2)).toBeLessThan(2);
+    // the plum field takes the left 5/12; the card is centred in the rest
+    expect(Math.abs(card!.x + card!.width / 2 - (DESKTOP.width * 5) / 12 - (DESKTOP.width * 7) / 24)).toBeLessThan(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
