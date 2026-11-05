@@ -20,6 +20,15 @@ const SYLLABUS = new RegExp("^/subjects/[^/]+/syllabus$"); // B3: the bar lives 
 const BOTTOM = "[data-command-slot-bottom]";
 const EXAMPLE = "phần 3.4 kết thúc ở trang 80";
 
+// Module-level so React does not resubscribe (a new function identity each render) on every commit.
+const watchBody = (notify: () => void) => {
+  const watch = new MutationObserver(notify);
+  watch.observe(document.body, { childList: true, subtree: true });
+  return () => watch.disconnect();
+};
+const readSlot = () => document.querySelector(BOTTOM) ?? document.querySelector(SLOT);
+const noSlot = () => null;
+
 export function CommandLive({ subjectId }: { subjectId: string }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -41,15 +50,7 @@ export function CommandLive({ subjectId }: { subjectId: string }) {
   void pathname;
   // A streamed page brings its slot after this host hydrated (a full page load), so the slot is
   // watched for, not read once: without it the outline chat was missing after a reload.
-  const slot = useSyncExternalStore(
-    (notify) => {
-      const watch = new MutationObserver(notify);
-      watch.observe(document.body, { childList: true, subtree: true });
-      return () => watch.disconnect();
-    },
-    () => document.querySelector(BOTTOM) ?? document.querySelector(SLOT),
-    () => null,
-  );
+  const slot = useSyncExternalStore(watchBody, readSlot, noSlot);
 
   if (slot === null || !SYLLABUS.test(pathname)) return null;
   // The foot of the outline screen is the plain-language chat (E3), not the command bar.

@@ -59,6 +59,17 @@ it("offers Hoàn tác for a change that can be undone, and calls the undo route"
   expect(fetcher.mock.calls[1][0]).toBe("/api/commands/c1/undo");
   expect(changed).toHaveBeenCalledTimes(2);
   expect(screen.queryByRole("button", { name: "Hoàn tác" })).toBeNull();
+  // QA 05/11: focus returns to the input once the button is gone.
+  expect(document.activeElement).toBe(screen.getByLabelText(/Nói điều bạn muốn sửa/));
+});
+
+it("keeps the Hoàn tác button outside the live region", async () => {
+  reply({ status: "applied", reply: "Đã bỏ 1 mục.", command_id: "c1" });
+  render(<OutlineChat subjectId="9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b" onChanged={() => undefined} />);
+  fireEvent.change(screen.getByLabelText(/Nói điều bạn muốn sửa/), { target: { value: "bỏ chương 5" } });
+  fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
+  const undo = await screen.findByRole("button", { name: "Hoàn tác" });
+  expect(undo.closest("[aria-live]")).toBeNull();
 });
 
 it("shows no Hoàn tác when the change has no command to undo", async () => {

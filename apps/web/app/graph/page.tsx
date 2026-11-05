@@ -19,8 +19,9 @@ async function Account() {
   return <AccountMenu email={me.email} />;
 }
 
-async function Graphs() {
+async function Graphs({ search }: { search: Promise<{ subject?: string }> }) {
   await connection();
+  const subject = (await search).subject ?? null;
   await requireVerifiedSession();
   let graphs: SubjectGraph[] | null = null;
   try {
@@ -43,10 +44,10 @@ async function Graphs() {
       />
     );
   }
-  return <KnowledgeGraph graphs={graphs} />;
+  return <KnowledgeGraph graphs={graphs} focusSubject={subject} />;
 }
 
-export default function GraphPage() {
+export default function GraphPage({ searchParams }: { searchParams: Promise<{ subject?: string }> }) {
   return (
     <AppShell
       current="/graph"
@@ -59,7 +60,7 @@ export default function GraphPage() {
       <PageColumn width="full" className="flex flex-col gap-4">
         <h1 className="m-0 font-display text-title">Đồ thị tri thức</h1>
         <Suspense fallback={<div aria-busy="true" className="h-80 w-full rounded-sheet bg-sunken" />}>
-          <Graphs />
+          <Graphs search={searchParams} />
         </Suspense>
       </PageColumn>
     </AppShell>

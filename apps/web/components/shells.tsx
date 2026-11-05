@@ -62,6 +62,12 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-bg min-[1024px]:flex-row">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-(--z-header) focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-full focus:bg-sheet focus:px-4 focus:font-medium focus:text-ink focus:inset-ring-2 focus:inset-ring-focus"
+      >
+        Bỏ qua tới nội dung
+      </a>
       <header
         className={cn(
           "sticky top-0 z-(--z-header) flex h-12 items-center gap-4 border-b border-line bg-bg px-4 sm:h-14",
@@ -77,7 +83,7 @@ export function AppShell({
           {account}
         </div>
       </header>
-      <main className={cn(CONTAINER, "flex min-w-0 flex-1 flex-col pt-6 pb-[calc(56px+env(safe-area-inset-bottom)+16px)] min-[1024px]:pt-10 min-[1024px]:pb-24")}>
+      <main id="main" tabIndex={-1} className={cn(CONTAINER, "outline-none flex min-w-0 flex-1 flex-col pt-6 pb-[calc(56px+env(safe-area-inset-bottom)+16px)] min-[1024px]:pt-10 min-[1024px]:pb-24")}>
         {/* T9.3: the subject's command bar is drawn here (components/command-live.tsx). */}
         <div data-command-slot className="empty:hidden" />
         {children}
@@ -108,6 +114,12 @@ export function FocusShell({
   const percent = total > 0 ? Math.round((position / total) * 100) : 0;
   return (
     <div className="flex min-h-full flex-1 flex-col">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-(--z-header) focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-full focus:bg-sheet focus:px-4 focus:font-medium focus:text-ink focus:inset-ring-2 focus:inset-ring-focus"
+      >
+        Bỏ qua tới nội dung
+      </a>
       <header className="border-b border-line">
         <div className={cn(CONTAINER, "flex h-(--header-focus-h) items-center gap-4")}>
           {total > 0 && (
@@ -131,7 +143,7 @@ export function FocusShell({
           <div className="ml-auto text-meta whitespace-nowrap text-ink-soft">{exit}</div>
         </div>
       </header>
-      <main className={cn(CONTAINER, "flex flex-1 flex-col pt-14 pb-24")}>
+      <main id="main" tabIndex={-1} className={cn(CONTAINER, "outline-none flex flex-1 flex-col pt-14 pb-24")}>
         <div className="mx-auto w-full max-w-(--col-focus)">{children}</div>
       </main>
     </div>

@@ -347,7 +347,7 @@ function NextExam({ subjects }: { subjects: ListedSubject[] }) {
         <p className="m-0 flex items-baseline gap-3">
           <span className="font-display text-display tabular-nums">
             {next.days_until_exam === 0 ? "Hôm nay" : next.days_until_exam}
-          </span>
+          </span>{" "}
           <span className="text-lead font-semibold">{next.days_until_exam === 0 ? "có kỳ thi" : "ngày nữa"}</span>
         </p>
       </div>

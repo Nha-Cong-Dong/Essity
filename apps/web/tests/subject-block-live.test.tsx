@@ -123,5 +123,6 @@ describe("subject block (T7.13)", () => {
     expect(screen.getByText(/đủ nhịp học/)).toBeTruthy();
     expect(screen.queryByText(/học hết đề cương/)).toBeNull();
     expect(screen.getByRole("button", { name: "Luyện tập" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Học tự do môn này" })).toBeTruthy();
   });
 });

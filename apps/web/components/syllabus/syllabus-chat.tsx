@@ -85,6 +85,7 @@ export function OutlineChat({ subjectId, onChanged }: { subjectId: string; onCha
       setAnswer({ tone: "info", text: OFFLINE });
     } finally {
       setBusy(false);
+      input.current?.focus();
     }
   }
 
@@ -110,12 +111,13 @@ export function OutlineChat({ subjectId, onChanged }: { subjectId: string; onCha
       </form>
       <div role="status" aria-live="polite" data-chat-reply>
         {answer && <p className="m-0 text-body wrap-anywhere">{answer.text}</p>}
-        {answer?.undoId && (
-          <Button type="button" variant="quiet" onClick={() => void undo()} className="self-start">
-            Hoàn tác
-          </Button>
-        )}
       </div>
+      {/* Outside the live region: a button inside it is re-announced with every reply. */}
+      {answer?.undoId && (
+        <Button type="button" variant="quiet" onClick={() => void undo()} className="self-start">
+          Hoàn tác
+        </Button>
+      )}
       <p className="m-0 flex flex-wrap items-center gap-2 text-meta text-ink-soft">
         <span>Thử nói:</span>
         {EXAMPLES.map((example) => (

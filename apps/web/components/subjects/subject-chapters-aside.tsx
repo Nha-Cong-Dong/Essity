@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
 import type { SyllabusNode } from "@/lib/syllabus/tree";
 
 // Hackathon D3: read-only outline beside the subject page. A leaf is ticked by the system (it is
@@ -40,12 +44,26 @@ function isTicked(n: SyllabusNode): boolean {
 }
 
 export function SubjectOutlineAside({ nodes, subjectId }: { nodes: SyllabusNode[]; subjectId: string }) {
+  // The list is a tab stop only when it really scrolls, so a keyboard user can reach the hidden rows.
+  const list = useRef<HTMLUListElement>(null);
+  const [overflows, setOverflows] = useState(false);
+  useEffect(() => {
+    const el = list.current;
+    if (!el) return;
+    const measure = () => setOverflows(el.scrollHeight > el.clientHeight);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [nodes]);
   return (
     <aside aria-label="Đề cương" className="flex min-w-0 flex-col gap-3 rounded-tile bg-hong-tint p-4 min-[901px]:p-6">
       <h2 className="m-0 font-display text-lead">Đề cương</h2>
       <ul
-        // A list that scrolls must take the keyboard, or its lower part cannot be read without a mouse.
-        tabIndex={0}
+        ref={list}
+        // A list that scrolls must take the keyboard; one that fits is not a tab stop.
+        tabIndex={overflows ? 0 : undefined}
         aria-label="Các phần của đề cương"
         className="m-0 flex max-h-[60vh] list-none flex-col overflow-y-auto rounded-row bg-bg px-3.5 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >

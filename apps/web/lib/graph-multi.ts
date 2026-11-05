@@ -38,3 +38,9 @@ export function mergeGraphs(list: SubjectGraph[]): MultiGraph {
     edges,
   };
 }
+
+/** Subjects to start switched off so only `focus` shows; an unknown or missing id shows everything. */
+export function hiddenExcept(subjects: { id: string }[], focus: string | null | undefined): Set<string> {
+  if (!focus || !subjects.some((s) => s.id === focus)) return new Set();
+  return new Set(subjects.filter((s) => s.id !== focus).map((s) => s.id));
+}
