@@ -137,3 +137,28 @@ def test_request_bounds() -> None:
         request(rubric=["x"] * (gp.MAX_IDEAS + 1))
     with pytest.raises(ValueError):
         request(answer="  ")
+
+
+def test_ideas_named_by_their_words_are_taken_in_rubric_order() -> None:
+    # QA 05/11, real model. Red when: a reply that names each idea by its words (not "R1") is
+    # refused as malformed, so no practice answer is ever graded.
+    text = reply(idea("Three steps", "yes", "Client gui SYN"), idea("Names SYN", "no"))
+    result = gp.grade_practice(request(), FakeAsk(text))
+    assert result.status == "ok"
+    assert [i.verdict for i in result.ideas] == ["correct", "incorrect"]
+
+
+def test_a_wrong_count_of_ideas_named_by_words_is_still_refused() -> None:
+    result = gp.grade_practice(
+        request(), FakeAsk(reply(idea("Three steps", "yes", "Client gui SYN")))
+    )
+    assert result.status == "failed" and result.failure == gp.FAIL_MALFORMED
+
+
+def test_schema_limits_idea_to_this_requests_labels() -> None:
+    prompt = gp.build_prompt(request())
+    assert prompt.output_schema["$defs"]["LlmIdea"]["properties"]["idea"]["enum"] == ["R1", "R2"]
+    assert gp.OUTPUT_SCHEMA["$defs"]["LlmIdea"]["properties"]["idea"] == {
+        "title": "Idea",
+        "type": "string",
+    }

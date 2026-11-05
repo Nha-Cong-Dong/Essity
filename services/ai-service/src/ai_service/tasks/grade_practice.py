@@ -12,6 +12,7 @@ passed through to the result for the "differs from card X" line and never reache
 or a log. A quota or availability error becomes the `pending_ai` outcome (AC14).
 """
 
+import copy
 import hashlib
 import logging
 import re
@@ -47,6 +48,7 @@ MAX_OUTPUT_CHARS = 10_000
 
 FAIL_MALFORMED = "grade_malformed"
 FAIL_ANCHOR = "anchor_not_in_answer"
+_LABEL = re.compile(r"R\d+")
 
 _VERDICTS: dict[str, Verdict] = {"yes": "correct", "partial": "partial", "no": "incorrect"}
 
@@ -154,6 +156,15 @@ def _nonce_for(texts: list[str]) -> str:
     return nonce
 
 
+def _schema_for(request: PracticeGradeRequest) -> dict[str, Any]:
+    """The output schema with `idea` limited to this request's labels: left free, the model
+    answered with the idea's own words and every grade was refused as malformed (QA 05/11)."""
+    schema = copy.deepcopy(OUTPUT_SCHEMA)
+    labels = [f"R{n}" for n in range(1, len(request.rubric) + 1)]
+    schema["$defs"]["LlmIdea"]["properties"]["idea"] = {"type": "string", "enum": labels}
+    return schema
+
+
 def build_prompt(request: PracticeGradeRequest) -> PracticePrompt:
     nonce = _nonce_for(
         [request.question, *request.rubric, request.reference_answer, request.answer]
@@ -166,7 +177,7 @@ def build_prompt(request: PracticeGradeRequest) -> PracticePrompt:
     blocks.append(wrap_untrusted("reference", request.reference_answer, nonce))
     blocks.append(wrap_untrusted("answer", request.answer, nonce))
     system = load_prompt().text.replace(_NONCE_PLACEHOLDER, nonce)
-    return PracticePrompt(TASK, system, "\n\n".join(blocks), OUTPUT_SCHEMA, nonce)
+    return PracticePrompt(TASK, system, "\n\n".join(blocks), _schema_for(request), nonce)
 
 
 # --- Checks ---------------------------------------------------------------------------------
@@ -191,8 +202,14 @@ def check_output(text: str, request: PracticeGradeRequest) -> list[IdeaResult]:
     except ValidationError:
         raise _Malformed(FAIL_MALFORMED) from None  # never carries the text
     labels = [f"R{n}" for n in range(1, len(request.rubric) + 1)]
-    by_label = {i.idea: i for i in parsed.ideas}
-    if len(by_label) != len(parsed.ideas) or set(by_label) != set(labels):
+    ideas = parsed.ideas
+    if len(ideas) == len(labels) and not any(_LABEL.fullmatch(i.idea) for i in ideas):
+        # The model named each idea by its words, not its label: take them in the rubric's order.
+        ideas = [
+            i.model_copy(update={"idea": label}) for i, label in zip(ideas, labels, strict=True)
+        ]
+    by_label = {i.idea: i for i in ideas}
+    if len(by_label) != len(ideas) or set(by_label) != set(labels):
         raise _Malformed(FAIL_MALFORMED)
     answer = _norm(request.answer)
     results: list[IdeaResult] = []
