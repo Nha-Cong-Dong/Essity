@@ -180,7 +180,9 @@ def complete(  # noqa: PLR0913
 ) -> SubmissionOut:
     """Hand every piece in as one submission (queued for the worker). 404 `session_not_found`;
     422 `nothing_submitted`; the rest as `POST /v1/submissions`."""
-    if StudySessionRepository(session, user.id).get(session_id) is None:
+    # Locked like `drop_piece` and `add_piece`: a piece dropped at the same moment is either gone
+    # before this reads the pieces or the drop waits and is refused (the session is handed in).
+    if StudySessionRepository(session, user.id).lock(session_id) is None:
         raise _error(404, "session_not_found")
     rows = _pieces(session, user.id, session_id)
     if not rows:

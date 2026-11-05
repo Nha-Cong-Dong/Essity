@@ -111,3 +111,19 @@ def test_dropping_a_piece_refuses_an_unverified_user(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 403
+
+
+def test_complete_hands_in_only_the_pieces_left_after_a_drop(
+    client: TestClient, world: World
+) -> None:
+    # Red when: complete reads pieces without the session lock a drop takes, so a piece dropped at
+    # the same moment can still be handed in (here: the order drop, complete, then drop again).
+    keep = piece(client, world, text="Giữ lại").json()
+    gone = piece(client, world, text="Bỏ đi").json()
+    base = f"/v1/study-sessions/{world.draft.id}/pieces"
+    assert client.delete(f"{base}/{gone['id']}", headers=world.headers).status_code == 204
+    done = client.post(f"/v1/study-sessions/{world.draft.id}/complete", headers=world.headers)
+    assert done.status_code == 201, done.text
+    # the lock is the same row lock `drop_piece` takes: it is free again after the commit
+    assert client.delete(f"{base}/{keep['id']}", headers=world.headers).status_code == 409
+    assert world.db.scalar(select(func.count()).select_from(SessionPiece)) == 1
