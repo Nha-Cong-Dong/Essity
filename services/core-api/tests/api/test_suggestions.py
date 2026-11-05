@@ -41,7 +41,9 @@ def subject_with(
     subject = make_subject(session, user, name)
     if days is not None:
         SubjectRepository(session, user.id).update(subject.id, exam_date=TODAY + timedelta(days))
-    doc = make_document(session, user, subject, sha=uuid.uuid4().hex + uuid.uuid4().hex)
+    doc = make_document(
+        session, user, subject, sha=uuid.uuid4().hex + uuid.uuid4().hex, role="textbook"
+    )
     sections = [
         make_section(session, user, doc, ord=i, title=f"Mục {i + 1}", **extra)
         for i, extra in enumerate(leaves)

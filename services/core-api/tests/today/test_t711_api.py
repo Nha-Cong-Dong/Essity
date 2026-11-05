@@ -12,13 +12,20 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 from test_t28_today_api import Space, today
 
 from accounts import signed_in
 from clock import FROZEN_NOW
-from core_api.db.models import KnowledgeUnit, Subject, Submission, UnitRevision
+from core_api.db.models import (
+    DocSection,
+    Document,
+    KnowledgeUnit,
+    Subject,
+    Submission,
+    UnitRevision,
+)
 from core_api.domain.learning_day import day_bounds
 from core_api.domain.today_v2 import (
     EMPTY_LINKS,
@@ -60,10 +67,17 @@ def subject_row(session: Session, subject_id: uuid.UUID) -> Subject:
 def add_section(
     session: Session, space: Space, subject_id: uuid.UUID, title: str, **extra: Any
 ) -> None:
-    document = make_document(
-        session, space.user, subject_row(session, subject_id), sha=uuid.uuid4().hex * 2
+    subject = subject_row(session, subject_id)
+    # Only the main textbook's sections are leaves to study: one textbook, many sections.
+    document = session.scalars(
+        select(Document).where(Document.subject_id == subject.id, Document.role == "textbook")
+    ).first() or make_document(
+        session, space.user, subject, sha=uuid.uuid4().hex * 2, role="textbook"
     )
-    make_section(session, space.user, document, ord=0, title=title, weight=10, **extra)
+    ord_ = len(
+        session.scalars(select(DocSection).where(DocSection.document_id == document.id)).all()
+    )
+    make_section(session, space.user, document, ord=ord_, title=title, weight=10, **extra)
 
 
 # US-03 AC1, T8.5 stable contract. Red when: a part is missing or a v1 field changes.

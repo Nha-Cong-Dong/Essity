@@ -158,3 +158,15 @@ def test_the_mention_ceiling_is_twenty() -> None:
     twenty = "; ".join(f"@CSDL slide {i}" for i in range(1, 21))
     assert len(resolve_mentions(twenty, [SLIDES], {})) == 20
     assert code_of(twenty + "; @CSDL slide 21", [SLIDES], {}) == "too_many_mentions"
+
+
+def test_a_lone_at_sign_is_plain_text_not_a_mention() -> None:
+    # QA 05/11. Red when: an "@" typed and dismissed (nothing after it) or followed by a space
+    # makes "Hoàn thành" refuse the whole session with mention_not_found, and the piece was
+    # already saved, so the learner cannot fix it.
+    docs = [BOOK]
+    for text in ("xem lại @ và làm bài", "xong @", "gửi @ \n tiếp", "a @, b", "c @. d"):
+        assert resolve_mentions(text, docs, {}) == []
+    # A real mention next to a lone one still resolves.
+    found = resolve_mentions("@ rồi @Sách", docs, {})
+    assert [m.document_id for m in found] == [BOOK.id]

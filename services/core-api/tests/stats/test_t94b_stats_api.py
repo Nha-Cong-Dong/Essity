@@ -108,7 +108,7 @@ def test_syllabus_percent_by_leaf_with_units_apart(
     alice, _ = two_users
     headers = headers_of(db_session, alice)
     subject = make_subject(db_session, alice)
-    doc = make_document(db_session, alice, subject)
+    doc = make_document(db_session, alice, subject, role="textbook")
     parent = make_section(db_session, alice, doc, title="Chương", weight=15)
     make_section(db_session, alice, doc, parent_id=parent.id, weight=10, studied_weight=10)
     make_section(db_session, alice, doc, parent_id=parent.id, weight=5)
@@ -120,6 +120,29 @@ def test_syllabus_percent_by_leaf_with_units_apart(
     by_unit = {u["unit"]: (u["studied"], u["total"]) for u in syllabus["by_unit"]}
     assert by_unit == {"page": (10.0, 15.0), "slide": (3.0, 3.0)}
     assert body["days_left"] == 62
+
+
+def test_syllabus_counts_the_textbook_leaves_only(
+    client: TestClient, db_session: Session, two_users: tuple[User, User]
+) -> None:
+    # QA 05/11. Red when: a question bank, an auxiliary file or a failed file adds leaves, so the
+    # stats say "x/85" while the Đề cương and Hôm nay say 83.
+    alice, _ = two_users
+    headers = headers_of(db_session, alice)
+    subject = make_subject(db_session, alice)
+    book = make_document(db_session, alice, subject, role="textbook", status="pending")
+    make_section(db_session, alice, book, title="A", weight=4, studied_weight=4)
+    make_section(db_session, alice, book, title="B", weight=4)
+    for i, (role, status) in enumerate(
+        (("question_bank", "pending"), ("auxiliary", "pending"), ("textbook", "failed"))
+    ):
+        extra = {"failure_reason": "unreadable", "uploaded_at": NOW} if status == "failed" else {}
+        other = make_document(
+            db_session, alice, subject, sha=f"{i + 1:064x}", role=role, status=status, **extra
+        )
+        make_section(db_session, alice, other, title=f"X{i}", weight=2)
+    syllabus = one(stats(client, headers), subject)["syllabus"]
+    assert (syllabus["leaves"], syllabus["studied_leaves"]) == (2, 1)
 
 
 # US-10 AC2, AC10: share of cards with recall >= 90%; skipped and unscheduled cards leave it.

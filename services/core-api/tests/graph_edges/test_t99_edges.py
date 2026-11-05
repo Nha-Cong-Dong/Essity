@@ -365,6 +365,7 @@ def test_suggestion_follows_a_proposed_prerequisite_until_the_card_is_replaced(
     from core_api.repositories.study_ledger import StudyLedgerRepository
 
     doc = make_document(db_session, alice, subject)
+    doc.role = "textbook"  # only the main textbook's sections are leaves
     first, second = (make_section(db_session, alice, doc, ord=i, title=f"M{i}") for i in range(2))
     needed = card(db_session, alice, subject)
     needs = card(db_session, alice, subject, SAVED_QUOTE)
