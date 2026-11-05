@@ -285,4 +285,35 @@ def match_titles(
             continue
         found = _match_siblings([old[o] for o in olds], [new[n] for n in news])
         matched.update({news[n]: olds[o] for n, o in found.items()})
+    _match_orphans(old, new, old_parent, new_parent, matched)
     return matched
+
+
+def _match_orphans(
+    old: Sequence[str],
+    new: Sequence[str],
+    old_parent: Sequence[int | None],
+    new_parent: Sequence[int | None],
+    matched: dict[int, int],
+) -> None:
+    """A section whose old parent was garbage (a stray ")" the new reading no longer has) matches
+    by its exact title when it is the only such title left on both sides and its new parent is
+    matched: the section moved to the right parent, it is not a new one. Without this the old
+    row stayed (a question hangs on it), excluded, under the garbage parent, which stayed too."""
+    taken = set(matched.values())
+    lost = {
+        o
+        for o, parent in enumerate(old_parent)
+        if o not in taken and parent is not None and parent not in taken
+    }
+    free_old: dict[str, list[int]] = {}
+    for o in lost:
+        free_old.setdefault(old[o].strip().casefold(), []).append(o)
+    free_new: dict[str, list[int]] = {}
+    for n, parent in enumerate(new_parent):
+        if n not in matched and parent is not None and parent in matched:
+            free_new.setdefault(new[n].strip().casefold(), []).append(n)
+    for title, news in free_new.items():
+        olds = free_old.get(title, [])
+        if len(news) == 1 and len(olds) == 1:
+            matched[news[0]] = olds[0]

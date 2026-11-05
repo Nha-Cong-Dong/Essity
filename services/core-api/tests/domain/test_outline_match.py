@@ -60,3 +60,20 @@ def test_a_unique_number_never_crosses_parents() -> None:
 
 def test_a_new_section_under_an_unmatched_parent_matches_nothing() -> None:
     assert _match(["1. A", "1.1. B"], ["2. Z", "1.1. B"], [None, 0], [None, 0]) == {}
+
+
+def test_a_section_left_under_a_vanished_garbage_parent_matches_by_its_title() -> None:
+    # QA 05/11. Red when: the old "2.4.7" under a stray ")" is kept (excluded) beside the new
+    # "2.4.7", and the ")" stays with it: the outline count grows after "Tách lại".
+    old = ["Chương 2", "2.4. Quy luật", ")", "2.4.7. Các định lí giới hạn"]
+    new = ["Chương 2", "2.4. Quy luật", "2.4.7. Các định lí giới hạn"]
+    got = _match(old, new, [None, 0, 0, 2], [None, 0, 1])
+    assert got == {0: 0, 1: 1, 2: 3}
+
+
+def test_the_title_fallback_needs_a_unique_title_and_a_matched_new_parent() -> None:
+    old = ["Chương 2", ")", "Bài tập", "Bài tập"]
+    new = ["Chương 2", "Bài tập"]
+    assert _match(old, new, [None, 0, 1, 1], [None, 0]) == {0: 0}  # two old "Bài tập": no guess
+    # the new parent is not matched: nothing is moved under it
+    assert _match(["1. A", ")", "1.1. B"], ["2. Z", "1.1. B"], [None, 0, 1], [None, 0]) == {}
