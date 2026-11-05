@@ -1,6 +1,8 @@
 import { Check, Sparkle } from "lucide-react";
 import type { CSSProperties } from "react";
 
+import { Block } from "@/components/screen-kit";
+
 import { WeekStrip, type WeekCell } from "@/components/today-v2/week-strip";
 import { LearnActions } from "@/components/today-v2/learn-actions";
 import { Mascot } from "@/components/mascot";
@@ -89,22 +91,17 @@ export function ResumeStrip({ items }: { items: Unfinished[] }) {
   );
 }
 
-// DESIGN-A (direction §C/§F3): the review is the one T1 field of the screen, always plum (tokens fall back to the
-// planned values until W0 lands). Inside it the ink tokens are re-scoped to the on-plum ones, so the shared
+// DESIGN-A (direction §C/§F3): the review is the one T1 field of the screen, always plum . Inside it the ink tokens are re-scoped to the on-plum ones, so the shared
 // Button and StartButton read correctly without a new variant. It is as tall as "Học gì tiếp theo?" beside it.
 const PLUM_TONE = {
-  "--ink": "var(--on-plum, #ffffff)",
-  "--ink-soft": "var(--on-plum-soft, #ffc2d9)",
-  "--line-strong": "var(--on-plum-soft, #ffc2d9)",
-  "--sunken": "color-mix(in srgb, var(--on-plum, #ffffff) 14%, transparent)",
-  "--focus": "var(--on-plum-soft, #ffc2d9)",
-  "--inverse-bg": "var(--on-plum-soft, #ffc2d9)",
-  "--inverse-fg": "var(--plum, #4a1638)",
+  "--ink": "var(--on-plum)",
+  "--ink-soft": "var(--on-plum-soft)",
+  "--line-strong": "var(--on-plum-soft)",
+  "--sunken": "color-mix(in srgb, var(--on-plum) 14%, transparent)",
+  "--inverse-bg": "var(--on-plum-action-bg)",
+  "--inverse-fg": "var(--on-plum-action-fg)",
 } as CSSProperties;
-const REVIEW =
-  "relative flex min-w-0 flex-col justify-between gap-6 overflow-hidden rounded-tile bg-[var(--plum,#4a1638)] p-5 text-ink min-[901px]:col-span-5 min-[901px]:p-6";
-// The one motif of the field, drawn in the highlighter yellow (F2); decoration only.
-const YELLOW = "var(--hl)";
+const REVIEW = "relative flex flex-col justify-between gap-6 overflow-hidden min-[901px]:col-span-5 min-[901px]:p-6";
 
 export function ReviewTile({
   review,
@@ -117,7 +114,7 @@ export function ReviewTile({
 }) {
   if (review.state === "none") {
     return (
-      <section className={REVIEW} style={PLUM_TONE} data-tier="field" aria-labelledby="today-review">
+      <Block as="section" tier="field" className={REVIEW} style={PLUM_TONE} aria-labelledby="today-review">
         <h2 id="today-review" className="m-0 font-display text-lead">
           {COPY.review}
         </h2>
@@ -131,23 +128,21 @@ export function ReviewTile({
           <span
             aria-hidden="true"
             data-motif="sticker"
-            className="grid size-24 shrink-0 -rotate-[8deg] place-items-center rounded-full text-[var(--plum,#4a1638)]"
-            style={{ background: YELLOW }}
+            className="grid size-24 shrink-0 -rotate-[8deg] place-items-center rounded-full bg-[var(--cam-fill)] text-plum"
           >
             <Check className="size-12" strokeWidth={3} focusable="false" />
           </span>
         </div>
-      </section>
+      </Block>
     );
   }
   return (
-    <section className={REVIEW} style={PLUM_TONE} data-tier="field" aria-labelledby="today-review">
+    <Block as="section" tier="field" className={REVIEW} style={PLUM_TONE} aria-labelledby="today-review">
       <Sparkle
         aria-hidden="true"
         focusable="false"
         data-motif="doodle"
-        className="absolute top-5 right-5 size-9"
-        style={{ color: YELLOW, fill: YELLOW }}
+        className="absolute top-5 right-5 size-9 fill-[var(--cam-fill)] text-[var(--cam-fill)]"
         strokeWidth={1.5}
       />
       <h2 id="today-review" className="m-0 font-display text-lead">
@@ -173,7 +168,7 @@ export function ReviewTile({
           </div>
         )}
       </div>
-    </section>
+    </Block>
   );
 }
 

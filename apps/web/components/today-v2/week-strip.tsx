@@ -63,7 +63,7 @@ export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; toda
                 data-bar={isToday ? "today" : on ? "on" : "rest"}
                 className={cn(
                   "w-full max-w-9 rounded-slip",
-                  isToday ? "bg-[var(--cam-fill,#ff7a5c)] ring-[1.5px] ring-ink" : on ? "bg-hong" : "bg-line-strong",
+                  isToday ? "bg-[var(--cam-fill)] ring-[1.5px] ring-ink" : on ? "bg-hong" : "bg-line-strong",
                 )}
                 style={{ height: on ? `${Math.max(12, (cell.count / top) * 56)}px` : isToday ? "6px" : "2px" }}
               />

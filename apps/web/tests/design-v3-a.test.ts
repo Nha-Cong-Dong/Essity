@@ -35,7 +35,7 @@ describe("DESIGN-A Hôm nay", () => {
     expect(markup.slice(markup.lastIndexOf("<section", learn), learn)).toContain("col-span-7");
     const field = markup.slice(markup.lastIndexOf("<section", review), review);
     expect(field).toContain("col-span-5");
-    expect(field).toContain("--plum");
+    expect(field).toContain("bg-plum");
     expect(field).toContain('data-tier="field"');
   });
 
