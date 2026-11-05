@@ -116,4 +116,12 @@ describe("subject block (T7.13)", () => {
     show({ state: { kind: "finished" } });
     expect(screen.getByRole("button", { name: "Luyện tập" })).toBeTruthy();
   });
+
+  // Red when: a learner who met today's pace is told the outline is finished (QA 05/11).
+  it("rested: says today's pace is met, not that the outline is done", () => {
+    show({ state: { kind: "rested" } });
+    expect(screen.getByText(/đủ nhịp học/)).toBeTruthy();
+    expect(screen.queryByText(/học hết đề cương/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Luyện tập" })).toBeTruthy();
+  });
 });

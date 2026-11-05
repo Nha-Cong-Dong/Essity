@@ -139,6 +139,11 @@ describe("toTodayV2", () => {
     ["nothing_open", "exams_over"],
     ["no_syllabus", "no_textbook"],
     ["all_studied", "finished"],
+    // Today sends the reason's own words (QA 05/11): none of them may fall back to "no textbook".
+    ["Các môn đã thi xong.", "exams_over"],
+    ["Chưa có giáo trình để gợi ý.", "no_textbook"],
+    ["Đã học hết đề cương.", "finished"],
+    ["Hôm nay bạn đã học đủ nhịp. Mai học tiếp, hoặc học thêm nếu bạn muốn.", "ahead"],
   ])("US-15 AC11: empty reason %s", (reason, expected) => {
     const out = toTodayV2(base({ next_study: { items: [], empty_reason: reason, links: [] } }));
     expect(out.learn.empty_reason).toBe(expected);
@@ -206,6 +211,11 @@ describe("subjectState (the button's answer)", () => {
     expect(subjectState(next())).toMatchObject({ kind: "suggested" });
     expect(subjectState(next({ kind: "review_practice" }))).toEqual({ kind: "finished" });
     expect(subjectState(next({ kind: "free_session" }))).toEqual({ kind: "no_textbook" });
+  });
+
+  // Red when: a learner who met today's pace is told the whole outline is studied.
+  it("QA 05/11: review_practice with nothing_today is rested, not finished", () => {
+    expect(subjectState(next({ kind: "review_practice", nothing_today: true }))).toEqual({ kind: "rested" });
   });
 
   // Red when: a title without a number loses its text.
