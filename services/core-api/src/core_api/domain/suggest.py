@@ -106,6 +106,9 @@ class Suggestion:
     # Today's leaves (may be empty); `nothing_today` is true when leaves remain but none is due.
     units: tuple[Leaf, ...] = ()
     nothing_today: bool = False
+    # Free study (SESSION-END): the next section by the outline, due today or not.
+    free_leaf_id: uuid.UUID | None = None
+    free_leaf_title: str | None = None
 
 
 def _days_left(exam: date | None, today: date) -> int | None:
@@ -167,7 +170,18 @@ def suggest_for_subject(subject: SubjectInput, today: date) -> Suggestion:
     units = plan_units(subject, today)
     if not units:  # ahead of the pace: nothing new today
         return Suggestion(
-            subject.id, "review_practice", None, None, None, False, None, pace, (), True
+            subject.id,
+            "review_practice",
+            None,
+            None,
+            None,
+            False,
+            None,
+            pace,
+            (),
+            True,
+            leaf.id,
+            leaf.title,
         )
     if leaf not in units:  # a prerequisite hole comes first
         units = [leaf, *units[:-1]]
@@ -181,6 +195,9 @@ def suggest_for_subject(subject: SubjectInput, today: date) -> Suggestion:
         leaf.unit,
         pace,
         tuple(units),
+        False,
+        leaf.id,
+        leaf.title,
     )
 
 

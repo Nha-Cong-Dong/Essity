@@ -4,7 +4,14 @@ import uuid
 
 from sqlalchemy import func, select
 
-from core_api.db.models import NoteFile, SessionRange, StudySession, Submission
+from core_api.db.models import (
+    DocSection,
+    Document,
+    NoteFile,
+    SessionRange,
+    StudySession,
+    Submission,
+)
 from core_api.repositories.base import UserScopedRepository
 from core_api.repositories.subject import SubjectRepository
 
@@ -22,6 +29,25 @@ class StudySessionRepository(UserScopedRepository[StudySession]):
         )
         self.session.flush()
         return draft
+
+    def has_outline(self, subject_id: uuid.UUID) -> bool:
+        """The subject has an outline: a textbook (not rejected or failed) with at least one
+        section. Progress is the textbook's outline, so without it there is nothing to study."""
+        return (
+            self.session.scalars(
+                select(DocSection.id)
+                .join(Document, Document.id == DocSection.document_id)
+                .where(
+                    DocSection.user_id == self.user_id,
+                    DocSection.subject_id == subject_id,
+                    Document.user_id == self.user_id,
+                    Document.role == "textbook",
+                    Document.status.not_in(("rejected", "failed")),
+                )
+                .limit(1)
+            ).first()
+            is not None
+        )
 
     def open_draft(self, subject_id: uuid.UUID, description: str) -> StudySession | None:
         """The newest draft of the subject that still holds `description` (the empty-draft

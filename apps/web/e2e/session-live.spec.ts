@@ -61,7 +61,7 @@ async function sendSentence(page: Page) {
   await page.getByRole("combobox").fill("Hôm nay học cửa sổ trượt.");
   await page.getByRole("button", { name: "Ghi lại" }).click();
   await expect(page.getByText("Đã học trong buổi")).toBeVisible();
-  await page.getByRole("button", { name: "Hoàn thành" }).click();
+  await page.getByRole("button", { name: "Kết thúc buổi học" }).click();
   await expect(page.getByText("Đang chờ đọc bài nộp…")).toBeVisible();
   await expect(page.getByRole("heading", { name: /Đã thêm vào Kho|Chưa có thẻ mới/ })).toBeVisible({ timeout: 15_000 });
 }
@@ -118,7 +118,7 @@ test.describe("study session on the real screen", () => {
     await expect(page.getByText(/Định dạng này chưa dùng được/)).toBeVisible();
     await page.getByRole("button", { name: "Ghi lại" }).click();
   await expect(page.getByText("Đã học trong buổi")).toBeVisible();
-  await page.getByRole("button", { name: "Hoàn thành" }).click();
+  await page.getByRole("button", { name: "Kết thúc buổi học" }).click();
     await expect(page.getByText("Đã thêm 2 thẻ vào Kho.").first()).toBeVisible({ timeout: 15_000 });
     expect(seen.uploads).toHaveLength(1);
     expect(seen.submitted).toEqual([
