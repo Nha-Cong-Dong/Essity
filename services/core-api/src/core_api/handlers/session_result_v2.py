@@ -22,6 +22,7 @@ Logs hold ids and counts, never a title, a quote or a key (ADR-0013).
 
 import logging
 import uuid
+from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -29,7 +30,8 @@ from sqlalchemy.orm import Session
 
 from core_api.clients.storage import ObjectStorage
 from core_api.db.models import Anchor as AnchorRow
-from core_api.db.models import DocSection, Submission
+from core_api.db.models import DocSection, StudySession, Submission, User
+from core_api.domain.unit_review import NewRange, UnitReviewService
 from core_api.messaging.envelope import Event, SubmissionFailedEvent, SubmissionProcessedEvent
 from core_api.messaging.session_result_v2 import Anchor, Draft, SessionResultV2, parse_result
 from core_api.repositories.document import DocumentRepository
@@ -96,7 +98,9 @@ class OnSubmissionProcessed:
             _log.error("submission result refused", extra=extra | {"reason": "session"})
             _end(submission, "failed", event)
             return
-        written = _write(session, drafts, study.subject_id, study.id, payload.run_id, parsed)
+        written = _write(session, drafts, study, event, payload.run_id, parsed)
+        study.title = parsed.title
+        submission.notice = parsed.notice
         _end(submission, "done", event)
         _log.info("submission result written", extra=extra | written)
 
@@ -109,12 +113,17 @@ def _end(submission: Submission, status: str, event: Event) -> None:
 def _write(
     session: Session,
     drafts: DraftRepository,
-    subject_id: uuid.UUID,
-    study_session_id: uuid.UUID,
+    study: StudySession,
+    event: Event,
     run_id: uuid.UUID,
     parsed: SessionResultV2,
 ) -> dict[str, int]:
+    """The cards go straight to the vault (CARDS-V3): each is written as a draft with the AI's
+    rev 0 and its anchors, then every new one is promoted by the same door a Save uses
+    (`UnitReviewService.promote`: canonical, the learner's rev, ledger, ranges, `unit.saved.v1`,
+    review question and edge jobs), all in this transaction."""
     user_id = drafts.user_id
+    subject_id, study_session_id = study.subject_id, study.id
     documents = {d.id for d in DocumentRepository(session, user_id).of_subject(subject_id)}
     sections = set(
         session.scalars(
@@ -124,6 +133,8 @@ def _write(
         )
     )
     added = skipped = dropped = 0
+    made: list[uuid.UUID] = []
+    pages: dict[uuid.UUID, tuple[int, int]] = {}
     for draft in parsed.drafts:
         anchors = [a for a in draft.anchors if _anchor_ok(a, documents)]
         if not anchors:
@@ -149,9 +160,24 @@ def _write(
         )
         for found in anchors:
             session.add(_anchor_row(user_id, unit_id, found, run_id))
+            if found.document_id is not None and found.page_no is not None:
+                low, high = pages.get(found.document_id, (found.page_no, found.page_no))
+                pages[found.document_id] = (min(low, found.page_no), max(high, found.page_no))
         drafts.add_sections(unit_id, subject_id, linked)
+        made.append(unit_id)
         added += 1
     session.flush()
+    if made:
+        user = session.get(User, user_id)
+        assert user is not None
+        UnitReviewService(session, user_id).promote(
+            study,
+            drafts.lock_drafts(study_session_id, sorted(made)),
+            now=event.occurred_at,
+            tz=ZoneInfo(user.timezone),
+            day_start_hour=user.day_start_hour,
+            ranges=[NewRange(d, lo, hi) for d, (lo, hi) in pages.items()],
+        )
     return {"drafts": added, "already_there": skipped, "dropped_drafts": dropped}
 
 

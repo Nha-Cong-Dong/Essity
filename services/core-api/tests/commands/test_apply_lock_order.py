@@ -44,6 +44,9 @@ def world(engine: Engine, eraser_engine: Engine) -> Iterator[Ids]:
     try:
         yield ids
     finally:
+        # A card added by a command is promoted, so its `unit.saved.v1` is committed: sweep it.
+        with engine.begin() as connection:
+            connection.execute(text("DELETE FROM outbox WHERE user_id = :u"), {"u": ids.user})
         erase_user(eraser_engine, ids.user)
 
 

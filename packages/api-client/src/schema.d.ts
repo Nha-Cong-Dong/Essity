@@ -415,59 +415,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/drafts/{unit_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Draft */
-        get: operations["get_draft_v1_drafts__unit_id__get"];
-        put?: never;
-        post?: never;
-        /** Discard Draft */
-        delete: operations["discard_draft_v1_drafts__unit_id__delete"];
-        options?: never;
-        head?: never;
-        /** Edit Draft */
-        patch: operations["edit_draft_v1_drafts__unit_id__patch"];
-        trace?: never;
-    };
-    "/v1/drafts/{unit_id}/split": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Split Draft */
-        post: operations["split_draft_v1_drafts__unit_id__split_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/drafts/{unit_id}/undo": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Undo Discard */
-        post: operations["undo_discard_v1_drafts__unit_id__undo_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/export.csv": {
         parameters: {
             query?: never;
@@ -885,58 +832,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/sessions/{session_id}/drafts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Drafts */
-        get: operations["list_drafts_v1_sessions__session_id__drafts_get"];
-        put?: never;
-        /** Add Draft */
-        post: operations["add_draft_v1_sessions__session_id__drafts_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/sessions/{session_id}/drafts/merge": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Merge Drafts */
-        post: operations["merge_drafts_v1_sessions__session_id__drafts_merge_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/sessions/{session_id}/drafts/save": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Save Drafts */
-        post: operations["save_drafts_v1_sessions__session_id__drafts_save_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/sessions/{session_id}/notes/upload-url": {
         parameters: {
             query?: never;
@@ -1040,6 +935,28 @@ export interface paths {
          */
         post: operations["add_piece_v1_study_sessions__session_id__pieces_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/study-sessions/{session_id}/pieces/{piece_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Drop Piece
+         * @description Drop a piece kept by mistake, before the session is handed in (else the learner cannot
+         *     fix a piece `complete` refuses). 404 `session_not_found`, `piece_not_found`; 409
+         *     `session_confirmed`.
+         */
+        delete: operations["drop_piece_v1_study_sessions__session_id__pieces__piece_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1495,6 +1412,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/vault/sessions/{session_id}/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Session Result */
+        get: operations["session_result_v1_vault_sessions__session_id__result_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/vault/subjects": {
         parameters: {
             query?: never;
@@ -1533,40 +1467,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** AddIn */
-        AddIn: {
-            /** Content */
-            content: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "concept" | "mechanism" | "comparison" | "formula" | "example";
-            /** Section Id */
-            section_id?: string | null;
-            /** Title */
-            title: string;
-        };
-        /** AnchorOut */
-        AnchorOut: {
-            /** Document Id */
-            document_id: string | null;
-            /** End */
-            end: number | null;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Page No */
-            page_no: number | null;
-            /** Quote Text */
-            quote_text: string;
-            /** Source */
-            source: string;
-            /** Start */
-            start: number | null;
-        };
         /** AnswerIn */
         AnswerIn: {
             /** Answer Text */
@@ -1895,21 +1795,13 @@ export interface components {
              */
             dont_remember: boolean;
         };
-        /** DraftsOut */
-        DraftsOut: {
-            /** Drafts */
-            drafts: components["schemas"]["core_api__api__drafts__DraftOut"][];
-            /** Submission Status */
-            submission_status: string | null;
-        };
-        /** EditIn */
-        EditIn: {
-            /** Content */
-            content?: string | null;
-            /** Kind */
-            kind?: ("concept" | "mechanism" | "comparison" | "formula" | "example") | null;
-            /** Title */
-            title?: string | null;
+        /** DraftOut */
+        DraftOut: {
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
         };
         /** EmailBody */
         EmailBody: {
@@ -2211,11 +2103,6 @@ export interface components {
             /** Section Id */
             section_id: string | null;
         };
-        /** MergeIn */
-        MergeIn: {
-            /** Unit Ids */
-            unit_ids: string[];
-        };
         /** NamedOut */
         NamedOut: {
             /**
@@ -2372,18 +2259,6 @@ export interface components {
             text: string;
             /** Unit */
             unit: string | null;
-        };
-        /** PartIn */
-        PartIn: {
-            /**
-             * Anchor Ids
-             * @default []
-             */
-            anchor_ids: string[];
-            /** Content */
-            content: string;
-            /** Title */
-            title: string;
         };
         /** PieceIn */
         PieceIn: {
@@ -2777,37 +2652,6 @@ export interface components {
             /** Next Due Day */
             next_due_day: string | null;
         };
-        /** RevisionOut */
-        RevisionOut: {
-            /** Content */
-            content: {
-                [key: string]: string;
-            };
-            /** Origin */
-            origin: string;
-            /** Rev */
-            rev: number;
-        };
-        /** SaveIn */
-        SaveIn: {
-            /** Units */
-            units: components["schemas"]["SaveItemIn"][];
-        };
-        /** SaveItemIn */
-        SaveItemIn: {
-            /**
-             * Unit Id
-             * Format: uuid
-             */
-            unit_id: string;
-            /** Version */
-            version: number;
-        };
-        /** SaveOut */
-        SaveOut: {
-            /** Saved */
-            saved: string[];
-        };
         /** SectionGroupOut */
         SectionGroupOut: {
             /** Section Id */
@@ -2923,6 +2767,26 @@ export interface components {
             /** Studied On */
             studied_on?: string | null;
         };
+        /**
+         * SessionResultOut
+         * @description Where a handed-in session stands: the screen polls it until `submission_status` is done or
+         *     failed. `notice` says why a done session has no card (a closed list).
+         */
+        SessionResultOut: {
+            /** Cards */
+            cards: number;
+            /** Notice */
+            notice: string | null;
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Submission Status */
+            submission_status: string | null;
+            /** Title */
+            title: string;
+        };
         /** SkipIn */
         SkipIn: {
             /** Review Session Id */
@@ -2979,11 +2843,6 @@ export interface components {
             quote: string;
             /** Source */
             source: string;
-        };
-        /** SplitIn */
-        SplitIn: {
-            /** Parts */
-            parts: components["schemas"]["PartIn"][];
         };
         /** StartIn */
         StartIn: {
@@ -3526,32 +3385,6 @@ export interface components {
             /** Title */
             title: string;
         };
-        /** DraftOut */
-        core_api__api__drafts__DraftOut: {
-            /** Anchors */
-            anchors: components["schemas"]["AnchorOut"][];
-            /** Content */
-            content: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Kind */
-            kind: string;
-            /** Revisions */
-            revisions: components["schemas"]["RevisionOut"][];
-            /** Section Ids */
-            section_ids: string[];
-            /** Session Id */
-            session_id: string | null;
-            /** Status */
-            status: string;
-            /** Title */
-            title: string;
-            /** Version */
-            version: number;
-        };
         /** SessionOut */
         core_api__api__review_sessions__SessionOut: {
             /** Answered */
@@ -3601,14 +3434,6 @@ export interface components {
              * Format: uuid
              */
             subject_id: string;
-        };
-        /** DraftOut */
-        core_api__api__submissions__DraftOut: {
-            /**
-             * Session Id
-             * Format: uuid
-             */
-            session_id: string;
         };
         /** SessionOut */
         core_api__api__today__SessionOut: {
@@ -4283,173 +4108,6 @@ export interface operations {
             };
         };
     };
-    get_draft_v1_drafts__unit_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                unit_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["core_api__api__drafts__DraftOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    discard_draft_v1_drafts__unit_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                unit_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["core_api__api__drafts__DraftOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    edit_draft_v1_drafts__unit_id__patch: {
-        parameters: {
-            query?: never;
-            header?: {
-                "if-match"?: string | null;
-            };
-            path: {
-                unit_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EditIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["core_api__api__drafts__DraftOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    split_draft_v1_drafts__unit_id__split_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "if-match"?: string | null;
-            };
-            path: {
-                unit_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SplitIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DraftsOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    undo_discard_v1_drafts__unit_id__undo_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                unit_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["core_api__api__drafts__DraftOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     export_csv_v1_export_csv_get: {
         parameters: {
             query?: never;
@@ -5092,142 +4750,6 @@ export interface operations {
             };
         };
     };
-    list_drafts_v1_sessions__session_id__drafts_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                session_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DraftsOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    add_draft_v1_sessions__session_id__drafts_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                session_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AddIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["core_api__api__drafts__DraftOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    merge_drafts_v1_sessions__session_id__drafts_merge_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                session_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MergeIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["core_api__api__drafts__DraftOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    save_drafts_v1_sessions__session_id__drafts_save_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                session_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SaveIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SaveOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     request_note_upload_v1_sessions__session_id__notes_upload_url_post: {
         parameters: {
             query?: never;
@@ -5430,6 +4952,36 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PieceOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    drop_piece_v1_study_sessions__session_id__pieces__piece_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5952,7 +5504,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["core_api__api__submissions__DraftOut"];
+                    "application/json": components["schemas"]["DraftOut"];
                 };
             };
             /** @description subject_not_found, or the feature is off */
@@ -6361,6 +5913,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VaultCardsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_result_v1_vault_sessions__session_id__result_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResultOut"];
                 };
             };
             /** @description Validation Error */

@@ -39,6 +39,7 @@ const CODES = new Set([
   "unit_not_found",
   "not_indexed",
   "session_confirmed",
+  "piece_not_found",
   "too_many_pieces",
   "session_not_found",
   "size_mismatch",
@@ -69,6 +70,7 @@ export async function forwardSession(
   }
   const { data, error, response } = result;
   if (data !== undefined) return Response.json(data, { status: response.status });
+  if (response.status === 204) return new Response(null, { status: 204 });
   if (response.status === 401) return errorResponse("signed_out", 401);
   if (response.status === 429) return rateLimited(response);
   const detail = (error as { detail?: unknown } | undefined)?.detail;

@@ -259,3 +259,21 @@ def test_ac4_service_errors_become_codes_without_detail(cw: CmdWorld) -> None:
         assert caught.value.code == code and "BIMAT" not in str(caught.value)
     assert rows(cw) == 0
     assert isinstance(service, CommandService)
+
+
+def test_command_card_add_lands_in_vault(cw: CmdWorld) -> None:
+    # Red when: a card added by a command stays a draft: with the review screen gone nothing would
+    # show it, review it or count it (CARDS-V3, reviewer O2).
+    from core_api.db.models import Outbox
+
+    add = cw.run(
+        [{"kind": "card_add", "text": "Thẻ do lệnh tạo\nchi tiết", "section": str(cw.leaf1.id)}]
+    )
+    unit = cw.db.get(KnowledgeUnit, uuid.UUID(add.diff[0]["id"]))
+    assert unit is not None and unit.status == "canonical" and unit.saved_at is not None
+    saved = cw.db.scalars(
+        select(Outbox).where(
+            Outbox.event_type == "unit.saved.v1", Outbox.payload["unit_id"].astext == str(unit.id)
+        )
+    ).all()
+    assert len(saved) == 1

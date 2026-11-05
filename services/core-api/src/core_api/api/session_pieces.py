@@ -134,6 +134,35 @@ def add_piece(
     return _out(row)
 
 
+@router.delete("/study-sessions/{session_id}/pieces/{piece_id}", status_code=204)
+def drop_piece(
+    session_id: uuid.UUID, piece_id: uuid.UUID, user: VerifiedUser, session: DbSession
+) -> Response:
+    """Drop a piece kept by mistake, before the session is handed in (else the learner cannot
+    fix a piece `complete` refuses). 404 `session_not_found`, `piece_not_found`; 409
+    `session_confirmed`."""
+    draft = StudySessionRepository(session, user.id).lock(session_id)
+    if draft is None:
+        raise _error(404, "session_not_found")
+    if (
+        draft.status != "draft"
+        or session.scalars(select(Submission.id).where(Submission.session_id == session_id)).first()
+    ):
+        raise _error(409, "session_confirmed")
+    row = session.scalars(
+        select(SessionPiece).where(
+            SessionPiece.user_id == user.id,
+            SessionPiece.session_id == session_id,
+            SessionPiece.id == piece_id,
+        )
+    ).one_or_none()
+    if row is None:
+        raise _error(404, "piece_not_found")
+    session.delete(row)
+    session.flush()
+    return Response(status_code=204)
+
+
 @router.post(
     "/study-sessions/{session_id}/complete",
     response_model=SubmissionOut,
@@ -151,7 +180,9 @@ def complete(  # noqa: PLR0913
 ) -> SubmissionOut:
     """Hand every piece in as one submission (queued for the worker). 404 `session_not_found`;
     422 `nothing_submitted`; the rest as `POST /v1/submissions`."""
-    if StudySessionRepository(session, user.id).get(session_id) is None:
+    # Locked like `drop_piece` and `add_piece`: a piece dropped at the same moment is either gone
+    # before this reads the pieces or the drop waits and is refused (the session is handed in).
+    if StudySessionRepository(session, user.id).lock(session_id) is None:
         raise _error(404, "session_not_found")
     rows = _pieces(session, user.id, session_id)
     if not rows:

@@ -85,14 +85,14 @@ class World:
         )
         return key
 
-    def processed(self, key: str, *, user: User | None = None) -> Event:
+    def processed(self, key: str, *, user: User | None = None, at: datetime | None = None) -> Event:
         return parse_event(
             json.dumps(
                 {
                     "event_id": str(uuid.uuid4()),
                     "event_type": "submission.processed.v1",
                     "schema_version": 1,
-                    "occurred_at": "2026-11-01T03:00:00.000000Z",
+                    "occurred_at": (at or NOW).strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
                     "user_id": str((user or self.user).id),
                     "trace_context": {},
                     "payload": {

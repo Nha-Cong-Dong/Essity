@@ -35,7 +35,7 @@ async function Preview({ searchParams }: { searchParams: Promise<{ section?: str
       docs={DOCS}
       suggestion={section ? FOR_SECTION : undefined}
       sectionId={section ?? undefined}
-      initial={{ round: initialRound, drafts: [], text: "", mentions: [], files: [], scope: [], saved: "free", resumed: false }}
+      initial={{ round: initialRound, text: "", mentions: [], files: [] }}
     />
   );
 }

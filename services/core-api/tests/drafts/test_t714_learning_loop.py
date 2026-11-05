@@ -1,7 +1,7 @@
 """T7.14 (US-02b AC6/AC9/AC12, US-03 AC1/AC4): the loop through the real API, one database.
 
-A submission's drafts come back from the result handler, Lưu (POST .../drafts/save) stores
-them, and GET /v1/today decides, by the learning day, whether the saved card is in Ôn."""
+A submission's cards come back from the result handler straight into the vault (no review
+screen), and GET /v1/today decides, by the learning day, whether the saved card is in Ôn."""
 
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -32,25 +32,15 @@ def test_saved_card_is_in_on_from_the_next_learning_day_only(
     user, headers = signed_in(db_session)
     world = World(db_session, user, fake_storage)
     key = world.put([world.draft(1)])
-    OnSubmissionProcessed(fake_storage)(db_session, world.processed(key))
+    OnSubmissionProcessed(fake_storage)(db_session, world.processed(key, at=FROZEN_NOW))
     db_session.commit()
 
-    base = f"/v1/sessions/{world.study.id}/drafts"
-    listed = client.get(base, headers=headers).json()
-    assert listed["submission_status"] == "done" and len(listed["drafts"]) == 1
-    draft = listed["drafts"][0]
-    saved = client.post(
-        f"{base}/save",
-        json={"units": [{"unit_id": draft["id"], "version": draft["version"]}]},
-        headers=headers,
-    )
-    assert saved.status_code == 200 and saved.json()["saved"] == [draft["id"]]
     db_session.expire_all()
     unit = db_session.scalars(select(KnowledgeUnit)).one()
     assert unit.status == "canonical" and unit.saved_learning_day is not None
 
-    # Save enqueues the job that makes the card's review question; the job's step runs here with
-    # the AI double (the only external part).
+    # The result enqueued the job that makes the card's review question; the job's step runs
+    # here with the AI double (the only external part).
     assert ensure_review_question(db_session, user.id, unit.id, FakeAi(), lazy=False) == "created"
     db_session.commit()
 

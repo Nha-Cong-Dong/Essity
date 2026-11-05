@@ -37,6 +37,8 @@ TASKS = frozenset(
         "generate_like",
         "judge_questions",
         "propose_edges",
+        "pick_sections",
+        "merge_drafts",
     }
 )
 PROVIDERS = frozenset({"anthropic", "fake"})

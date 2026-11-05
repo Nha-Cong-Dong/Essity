@@ -15,8 +15,10 @@ from ai_service.llm.client import LlmClient
 from ai_service.llm.fake_adapter import FakeAdapter
 from ai_service.llm.types import LlmRequest
 from ai_service.messaging.envelope import SubmissionCreatedEvent, parse_event
+from ai_service.tasks.merge_drafts import fake_merge_drafts
 from ai_service.tasks.process_session import fake_chunk
 from ai_service.tasks.process_submission import ProcessSubmission, fake_read_notes
+from ai_service.tasks.scope_resolve import fake_pick_sections
 from tests.llm.helpers import NoQuota
 from tests.tasks.helpers import FakeStorage
 
@@ -30,7 +32,12 @@ PAGES = {
     2: "The Krebs cycle oxidises acetyl-CoA to carbon dioxide in the matrix.",
     3: "Ribosomes translate messenger RNA into protein chains.",
 }
-MODELS = {"draft_units": "claude-haiku-5-5", "read_notes": "claude-haiku-5-5"}
+MODELS = {
+    "draft_units": "claude-haiku-5-5",
+    "read_notes": "claude-haiku-5-5",
+    "pick_sections": "claude-haiku-5-5",
+    "merge_drafts": "claude-haiku-5-5",
+}
 
 
 def prefix() -> str:
@@ -74,6 +81,7 @@ def submitted(
     submission_id: uuid.UUID | None = None,
     session_id: uuid.UUID | None = None,
     write_context: bool = True,
+    documents: list[dict[str, Any]] | None = None,
 ) -> SubmissionCreatedEvent:
     submission_id = submission_id or uuid.uuid4()
     session_id = session_id or uuid.uuid4()
@@ -85,6 +93,7 @@ def submitted(
                 "description": description,
                 "mentions": [mention(1, 2)] if mentions is None else mentions,
                 "existing_units": [],
+                **({"documents": documents} if documents is not None else {}),
             }
         ).encode()
     event = parse_event(
@@ -138,9 +147,11 @@ class Model:
         self,
         draft: Callable[[LlmRequest], str] = fake_chunk,
         read: Callable[[LlmRequest], str] = fake_read_notes,
+        pick: Callable[[LlmRequest], str] = fake_pick_sections,
+        merge: Callable[[LlmRequest], str] = fake_merge_drafts,
     ) -> None:
         self.requests: list[LlmRequest] = []
-        self._draft, self._read = draft, read
+        self._draft, self._read, self._pick, self._merge = draft, read, pick, merge
 
     def _record(self, fn: Callable[[LlmRequest], str]) -> Callable[[LlmRequest], str]:
         def run(request: LlmRequest) -> str:
@@ -152,7 +163,12 @@ class Model:
     @property
     def adapter(self) -> FakeAdapter:
         return FakeAdapter(
-            {"draft_units": self._record(self._draft), "read_notes": self._record(self._read)}
+            {
+                "draft_units": self._record(self._draft),
+                "read_notes": self._record(self._read),
+                "pick_sections": self._record(self._pick),
+                "merge_drafts": self._record(self._merge),
+            }
         )
 
     def calls(self, task: str) -> list[LlmRequest]:
@@ -181,3 +197,25 @@ def handler(
 
 def run(h: ProcessSubmission, event: SubmissionCreatedEvent) -> None:
     h(cast(Session, None), event)
+
+
+def outline(
+    sections: list[tuple[uuid.UUID, str, int | None, int | None, int]],
+) -> list[dict[str, Any]]:
+    """`documents` of a context: one document (DOC) with these (id, title, first, last, depth)."""
+    return [
+        {
+            "document_id": str(DOC),
+            "name": "Giao trinh",
+            "sections": [
+                {
+                    "section_id": str(i),
+                    "title": title,
+                    "first_page": first,
+                    "last_page": last,
+                    "depth": depth,
+                }
+                for i, title, first, last, depth in sections
+            ],
+        }
+    ]

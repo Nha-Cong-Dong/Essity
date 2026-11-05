@@ -11,33 +11,26 @@ import { type FileRef, rowStateOf } from "@/lib/session-study/files";
 import { uploadPdf } from "@/lib/upload-client";
 import type { Piece, SessionApi } from "@/lib/session-study/api";
 import { rememberPendingSession } from "@/lib/session-study/pending";
-import { type Draft, draftsReducer } from "@/lib/session-study/drafts";
 import { appendMention, type DocRef, type Mention } from "@/lib/session-study/mention";
-import { type Round, roundReducer } from "@/lib/session-study/round";
+import { type Round, roundReducer, type SessionResult } from "@/lib/session-study/round";
 
 import { FileDrop } from "./session-file-drop";
 import { MentionBox } from "./session-mention-box";
 import { DoneLine, Region } from "./session-parts";
 import { ProcessingArea } from "./session-processing";
-import { ReviewArea, type ScopeRow } from "./session-review";
-import { SavedArea, type SavedKind } from "./session-saved";
-import { useDraftSync } from "./use-live-session";
+import { DoneArea } from "./session-saved";
 
 // T7.12a (US-02, US-02b; DESIGN.md §6.7; docs in .work/T7.12a/design-decisions.md): the whole study
-// session on one screen: suggestion, submission, reading, cards, "Học tiếp hay dừng?". One round
+// session on one screen: suggestion, submission, reading, result, "Học tiếp hay dừng?". CARDS-V3:
+// the cards go straight to the Kho, so the result is a confirmation, not a list to approve. One round
 // is a list of areas; the one being worked on is open and a finished one folds into a line. No API
 // here: the caller gives the data and, in the preview, decides how a send ends. T7.12 wires it.
 
 export type SessionInitial = {
   round: Round;
-  drafts: Draft[];
   text: string;
   mentions: Mention[];
   files: FileRow[];
-  scope: ScopeRow[];
-  saved: SavedKind;
-  /** Opened again from "Tiếp tục": drafts were kept. */
-  resumed: boolean;
   tooManyPages?: { total: number; read: number } | null;
 };
 
@@ -54,10 +47,8 @@ export type SessionScreenProps = {
   initial: SessionInitial;
   /** Preview only: a send runs on to its cards by itself after a moment. */
   autoAdvance?: boolean;
-  /** The cards a finished read produces (the preview). */
-  readDrafts?: () => Draft[];
-  /** What the server holds when a card was changed elsewhere (409, "Tải lại thẻ"; the preview). */
-  serverDraft?: Draft;
+  /** The result a finished read produces (the preview). */
+  readResult?: () => SessionResult;
   /** T7.12: core-api behind the screen. Without it (the preview) the screen runs on its own. */
   api?: SessionApi;
   /** T7.12d: shown under the areas of the round (the subject's cards by section). */
@@ -71,10 +62,21 @@ export const SUBMIT_COPY = {
   tooLong: "Câu mô tả dài quá. Rút gọn bớt rồi gửi lại.",
   nothing: "Chưa có gì để gửi. Viết vài dòng hoặc thêm file rồi gửi.",
   mention: "Chưa hiểu một chỗ @ trong câu. Xem chỗ được đánh dấu rồi gửi lại.",
-  saveFailed: "Chưa lưu được.",
-  saveConflict: "Có thẻ đã đổi ở nơi khác. Tải lại thẻ trước khi lưu.",
-  saveEmpty: "Thẻ mới cần có tên và nội dung để lưu.",
+  mentionPiece: "Có một chỗ @ không khớp tài liệu nào. Bỏ phần có chỗ @ đó (hoặc ghi lại phần mới) rồi bấm Hoàn thành.",
+  closed: "Buổi này đã được gửi đi rồi.",
+  other: "Chưa hoàn thành được. Thử lại sau ít phút.",
 } as const;
+
+/** What to tell the learner when handing a session in (or dropping a piece) fails: by the code,
+ * not "network" for everything (only a dropped connection, status 0, is the network). */
+export function completeProblem(status: number, error: string): string {
+  if (status === 0) return SUBMIT_COPY.network;
+  if (error.startsWith("mention_") || error.startsWith("scope_") || error === "document_not_found") return SUBMIT_COPY.mentionPiece;
+  if (error === "nothing_submitted") return SUBMIT_COPY.nothing;
+  if (error === "text_too_long") return SUBMIT_COPY.tooLong;
+  if (error === "session_confirmed") return SUBMIT_COPY.closed;
+  return SUBMIT_COPY.other;
+}
 
 const kindOf = (name: string): FileRow["kind"] =>
   /\.(jpe?g|png|heic|webp)$/i.test(name) ? "image" : /\.pdf$/i.test(name) ? "pdf" : /\.docx$/i.test(name) ? "docx" : /\.pptx$/i.test(name) ? "pptx" : "text";
@@ -112,7 +114,6 @@ export function SessionScreen(props: SessionScreenProps) {
   const [recording, setRecording] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [round, send] = useReducer(roundReducer, initial.round);
-  const [drafts, dispatch] = useReducer(draftsReducer, initial.drafts);
   const [text, setText] = useState(initial.text);
   const [mentions, setMentions] = useState(initial.mentions);
   // The upload callbacks outlive a render: they read the newest words and mentions from here.
@@ -121,10 +122,8 @@ export function SessionScreen(props: SessionScreenProps) {
     latest.current = { text, mentions };
   }, [text, mentions]);
   const [files, setFiles] = useState(initial.files);
-  const [scope, setScope] = useState(initial.scope);
   const [note, setNote] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [free, setFree] = useState(props.suggestion.kind === "free");
   const counter = useRef(0);
@@ -135,7 +134,6 @@ export function SessionScreen(props: SessionScreenProps) {
 
   const newId = () => `new-${++counter.current}`;
   const say = (value: string) => setNote(value);
-  const { act, saveAll, reload: reloadFromServer } = useDraftSync(api, drafts, dispatch, say);
   const later = (ms: number, run: () => void) => {
     timers.current.push(window.setTimeout(run, ms));
   };
@@ -182,13 +180,25 @@ export function SessionScreen(props: SessionScreenProps) {
     say("Đã ghi lại một phần.");
   }
 
+  async function dropPiece(id: string) {
+    if (!api || completing) return;
+    const result = await api.removePiece(id);
+    if (result.ok) {
+      setPieces((rows) => rows.filter((p) => p.id !== id));
+      setProblem(null);
+      say("Đã bỏ một phần.");
+    } else {
+      setProblem(completeProblem(result.status, result.error));
+    }
+  }
+
   async function complete() {
     if (!api || completing || pieces.length === 0) return;
     setCompleting(true);
     const result = await api.complete();
     if (!result.ok) {
       setCompleting(false);
-      setProblem(SUBMIT_COPY.network);
+      setProblem(completeProblem(result.status, result.error));
       return;
     }
     if (!subjectId || props.stayOnComplete) {
@@ -206,25 +216,20 @@ export function SessionScreen(props: SessionScreenProps) {
   const isFree = free && round.round === 1;
 
   function finishRead() {
-    const made = props.readDrafts?.() ?? [];
-    dispatch({ type: "clear" });
-    dispatch({ type: "append-ai", drafts: made });
-    setScope(isFree ? [] : mentions.length > 0 ? mentions.map((m) => ({ id: `${m.docId}`, doc: m.name, from: 52, to: 58 })) : [{ id: "textbook", doc: "Giáo trình", from: 52, to: 58 }]);
-    send({ type: "drafts-ready", count: made.length });
+    send({ type: "done", result: props.readResult?.() ?? { cards: 0, title: null, notice: "no_content_found" } });
   }
 
   // T7.12: while the reading runs, ask core-api where it stands (never kept here, so leaving the
-  // screen and coming back shows the true state). Cards that arrive replace the list.
+  // screen and coming back shows the true state). Done or failed ends the poll.
   useEffect(() => {
     if (!api || round.phase !== "processing" || round.submission === "failed") return;
     let stopped = false;
     const timer = window.setInterval(async () => {
-      const found = await api.load();
+      const found = await api.result();
       if (stopped || !found.ok) return;
       if (found.data.phase === "done") {
-        dispatch({ type: "clear" });
-        dispatch({ type: "append-ai", drafts: found.data.drafts });
-        send({ type: "drafts-ready", count: found.data.drafts.length });
+        const { cards, title, notice } = found.data;
+        send({ type: "done", result: { cards, title, notice } });
       } else if (found.data.phase === "failed") send({ type: "failed" });
       else if (found.data.phase === "pending_ai") send({ type: "pending-ai" });
       else if (found.data.phase === "processing") send({ type: "processing" });
@@ -345,51 +350,8 @@ export function SessionScreen(props: SessionScreenProps) {
     void handIn();
   }
 
-  async function saveLive() {
-    setSaving(true);
-    const result = await saveAll();
-    setSaving(false);
-    if (result.kind === "ok") send({ type: "save-ok" });
-    else if (result.kind === "conflict") say(SUBMIT_COPY.saveConflict);
-    else if (result.kind === "empty") say(SUBMIT_COPY.saveEmpty);
-    else send({ type: "save-error" });
-  }
-
-  function save() {
-    if (api) {
-      if (!drafts.some((d) => d.status === "draft" && d.conflict)) {
-        void saveLive();
-        return;
-      }
-    }
-    const hit = drafts.find((d) => d.status === "draft" && d.conflict);
-    if (hit) {
-      say("Có thẻ đã đổi ở nơi khác. Tải lại thẻ trước khi lưu.");
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      document.getElementById(`session-card-${hit.id}`)?.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
-      return;
-    }
-    setSaving(true);
-    later(500, () => {
-      setSaving(false);
-      send({ type: "save-ok" });
-    });
-  }
-
-  function reload(id: string) {
-    if (api) {
-      void reloadFromServer(id);
-      return;
-    }
-    const current = drafts.find((d) => d.id === id);
-    if (!current) return;
-    const server = props.serverDraft?.id === id ? props.serverDraft : { ...current, version: current.version + 1 };
-    dispatch({ type: "reload", draft: server });
-  }
-
-  const savedCount = drafts.filter((d) => d.status === "draft" && (d.title.trim() || d.summary.trim())).length;
   const exit =
-    round.phase === "saved" ? null : (
+    round.phase === "done" ? null : (
       <Link href={stopHref} className={buttonVariants({ variant: "quiet" })}>
         Dừng
       </Link>
@@ -401,9 +363,6 @@ export function SessionScreen(props: SessionScreenProps) {
         <p className="sr-only" role="status" aria-live="polite">
           {note || round.announce}
         </p>
-        {initial.resumed && (
-          <p className="m-0 text-meta text-ink-soft">Buổi học đang dở: các thẻ nháp của bạn được giữ.</p>
-        )}
         {history.map((line) => (
           <DoneLine key={line} label={line} />
         ))}
@@ -466,7 +425,17 @@ export function SessionScreen(props: SessionScreenProps) {
                   <ol className="m-0 flex list-none flex-col gap-2 p-0">
                     {pieces.map((p, index) => (
                       <li key={p.id} className="rounded-control bg-sunken p-3 text-body wrap-anywhere">
-                        <span className="text-meta text-ink-soft">Phần {index + 1}</span>
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="text-meta text-ink-soft">Phần {index + 1}</span>
+                          <button
+                            type="button"
+                            aria-label={`Bỏ phần ${index + 1}`}
+                            onClick={() => void dropPiece(p.id)}
+                            className="min-h-11 rounded-full px-3 text-meta text-ink-soft underline underline-offset-4"
+                          >
+                            Bỏ phần này
+                          </button>
+                        </span>
                         <p className="m-0 whitespace-pre-line">
                           {p.text || `${p.fileCount} file`}
                           {p.text && p.fileCount > 0 ? ` (+${p.fileCount} file)` : ""}
@@ -501,41 +470,23 @@ export function SessionScreen(props: SessionScreenProps) {
 
         {round.phase === "processing" && round.submission && (
           <Region phase="processing" title="Đang đọc bài nộp">
-            <ProcessingArea submission={round.submission} onRetry={retry} onManual={() => send({ type: "manual" })} />
+            <ProcessingArea submission={round.submission} onRetry={retry} />
           </Region>
         )}
 
-        {round.phase === "review" && (
-          <Region phase="review" title="Thẻ nháp">
-            <ReviewArea
-              drafts={drafts}
-              dispatch={act}
-              sections={api ? [] : undefined}
-              scope={scope}
-              partialNote={round.partialNote}
-              saveError={round.saveError}
-              saving={saving}
-              newId={newId}
-              onSave={save}
-              onRetryRead={retry}
-              onReload={reload}
-              lateCount={0}
-              say={say}
-            />
-          </Region>
-        )}
-
-        {round.phase === "saved" && (
+        {round.phase === "done" && round.result && (
           <>
-            <DoneLine label={`Đã lưu ${savedCount} thẻ`} />
-            <Region phase="saved" title="Đã lưu">
-              <SavedArea
-                kind={api || isFree ? "free" : initial.saved}
-                count={savedCount}
+            <Region phase="done" title={round.result.cards > 0 ? "Đã thêm vào Kho" : "Chưa có thẻ mới"}>
+              <DoneArea
+                result={round.result}
+                subjectId={subjectId}
+                sessionId={api?.sessionId ?? ""}
                 stopHref={stopHref}
                 onContinue={() => {
-                  setHistory((lines) => [...lines, `Vòng ${round.round}: đã lưu ${savedCount} thẻ`]);
-                  dispatch({ type: "clear" });
+                  setHistory((lines) => [
+                    ...lines,
+                    round.result && round.result.cards > 0 ? `Vòng ${round.round}: đã thêm ${round.result.cards} thẻ vào Kho` : `Vòng ${round.round}: chưa có thẻ mới`,
+                  ]);
                   setText("");
                   setMentions([]);
                   setFiles([]);

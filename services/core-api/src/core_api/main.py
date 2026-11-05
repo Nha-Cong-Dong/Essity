@@ -9,7 +9,6 @@ from core_api.api import (
     auth,
     commands,
     documents,
-    drafts,
     export,
     generated_questions,
     grades,
@@ -95,7 +94,6 @@ app.include_router(session_confirm.router)
 app.include_router(session_pieces.router)
 app.include_router(session_notes.router)
 app.include_router(submissions.router)
-app.include_router(drafts.router)
 app.include_router(stats.router)
 app.include_router(suggestions.router)
 app.include_router(commands.router)

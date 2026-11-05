@@ -272,7 +272,7 @@ def test_context_file_carries_resolved_scope_not_the_raw_text(
     assert response.status_code == 201
     [event] = events(world)
     context = world.context_of(event)
-    assert set(context) == {"version", "description", "mentions", "existing_units"}
+    assert set(context) == {"version", "description", "mentions", "existing_units", "documents"}
     assert context["mentions"] == [
         {
             "document_id": str(world.document.id),
@@ -318,3 +318,84 @@ def test_store_down_while_writing_the_context_is_503_and_removes_the_typed_text(
     assert response.status_code == 503 and response.json()["detail"] == "storage_unavailable"
     nothing_written(world)
     assert not [k for k in world.storage.objects if k.endswith(".txt")]
+
+
+# --- Context: the outline of the mentioned documents (CARDS-V3) -------------------------------
+
+
+def test_context_outline_of_a_mentioned_document_in_tree_order(
+    client: TestClient, world: World
+) -> None:
+    # Red when: a vague mention ("@Mạng máy tính phần 3.1") reaches ai-service with no outline to
+    # resolve it against, or the sections are not parent-before-child with their depth.
+    sub = world.section(world.document, "3.1 Định tuyến", parent_id=world.chapter.id, ord=0)
+    world.section(world.document, "Chương 4. Tầng vận chuyển", ord=1)
+    response = submit(client, world, description="@Mạng máy tính phần 3.1", files=[world.pdf()])
+    assert response.status_code == 201, response.text
+    [event] = events(world)
+    [document] = world.context_of(event)["documents"]
+    assert document["document_id"] == str(world.document.id) and document["name"]
+    assert [(s["title"], s["depth"]) for s in document["sections"]] == [
+        ("Chương 3. Tầng mạng", 0),
+        ("3.1 Định tuyến", 1),
+        ("Chương 4. Tầng vận chuyển", 0),
+    ]
+    assert document["sections"][1]["section_id"] == str(sub.id)
+    assert document["sections"][0]["first_page"] == 40
+
+
+def test_context_outline_is_empty_without_a_mention_and_has_no_page_text(
+    client: TestClient, world: World
+) -> None:
+    response = submit(client, world, description="học bài hôm nay", files=[world.pdf()])
+    assert response.status_code == 201, response.text
+    [event] = events(world)
+    assert world.context_of(event)["documents"] == []
+
+
+def test_context_outline_is_capped_and_titles_are_bounded(client: TestClient, world: World) -> None:
+    from core_api.domain.submission_outline import MAX_SECTIONS, MAX_TITLE
+
+    for n in range(MAX_SECTIONS + 20):
+        world.section(world.document, "t" * 250 + " abc", ord=n + 1)
+    response = submit(client, world, description="@Mạng máy tính chương 3", files=[world.pdf()])
+    assert response.status_code == 201, response.text
+    [event] = events(world)
+    [document] = world.context_of(event)["documents"]
+    assert len(document["sections"]) == MAX_SECTIONS
+    assert all(len(s["title"]) <= MAX_TITLE for s in document["sections"])
+
+
+def test_context_with_outline_validates_against_the_contract(
+    client: TestClient, world: World
+) -> None:
+    # Red when: core writes a context the contract (and so ai-service) refuses.
+    from pathlib import Path
+
+    from jsonschema import Draft202012Validator, FormatChecker
+
+    path = Path(__file__).resolve().parents[4] / "contracts/files/submission-context.v1.schema.json"
+    validator: Any = Draft202012Validator(
+        json.loads(path.read_text(encoding="utf-8")), format_checker=FormatChecker()
+    )
+    world.section(world.document, "3.1 Định tuyến", parent_id=world.chapter.id, ord=0)
+    response = submit(client, world, description="@Mạng máy tính phần 3.1", files=[world.pdf()])
+    assert response.status_code == 201, response.text
+    [event] = events(world)
+    assert validator.is_valid(world.context_of(event))
+
+
+def test_context_outline_leaves_out_excluded_sections_and_stays_under_its_byte_cap(
+    client: TestClient, world: World
+) -> None:
+    from core_api.domain import submission_outline as outline
+
+    hidden = world.section(world.document, "Phần đã loại", ord=1)
+    hidden.excluded = True
+    world.db.flush()
+    response = submit(client, world, description="@Mạng máy tính chương 3", files=[world.pdf()])
+    assert response.status_code == 201, response.text
+    [event] = events(world)
+    titles = [s["title"] for s in world.context_of(event)["documents"][0]["sections"]]
+    assert "Phần đã loại" not in titles and "Chương 3. Tầng mạng" in titles
+    assert outline.MAX_OUTLINE_BYTES < 1_000_000 // 2

@@ -30,6 +30,13 @@ def draft_key(study_session_id: uuid.UUID, quote_hash_: str) -> str:
     return hashlib.sha256(f"{study_session_id}:{quote_hash_}".encode()).hexdigest()
 
 
+def draft_key_for_set(study_session_id: uuid.UUID, quote_hashes: list[str]) -> str:
+    """Key of a draft merged from several sources: the distinct quote hashes, sorted, joined by
+    ":". For one quote it is `draft_key`, so one-source drafts keep their key (a retry or a result
+    written before the merge step still matches)."""
+    return draft_key(study_session_id, ":".join(sorted(set(quote_hashes))))
+
+
 class _Closed(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, frozen=True, hide_input_in_errors=True)
 
@@ -73,6 +80,9 @@ class SessionResultV2(_Closed):
     drafts: Annotated[list[Draft], Field(max_length=200)]
     dropped: Dropped
     skipped: list[Skipped]
+    # Optional and additive (read-side first: an older writer omits them).
+    title: Annotated[str, StringConstraints(min_length=1, max_length=200)] | None = None
+    notice: Literal["no_content_found"] | None = None
 
     @model_validator(mode="after")
     def _keys_are_the_formula_and_unique(self) -> "SessionResultV2":
@@ -80,8 +90,13 @@ class SessionResultV2(_Closed):
         for draft in self.drafts:
             if draft.quote_hash != quote_hash(draft.anchors[0].quote_text):
                 raise ValueError("quote_hash is not the hash of the first anchor's quote")
-            if draft.draft_key != draft_key(self.study_session_id, draft.quote_hash):
-                raise ValueError("draft_key is not the hash of session and quote")
+            if draft.draft_key not in (
+                draft_key(self.study_session_id, draft.quote_hash),
+                draft_key_for_set(
+                    self.study_session_id, [quote_hash(a.quote_text) for a in draft.anchors]
+                ),
+            ):
+                raise ValueError("draft_key is not the hash of session and quotes")
             if draft.section_ids is not None:
                 if draft.section_id != draft.section_ids[0]:
                     raise ValueError("section_id is not the first of section_ids")
@@ -98,4 +113,4 @@ def parse_result(raw: str | bytes) -> SessionResultV2:
     return SessionResultV2.model_validate_json(raw)
 
 
-__all__ = ["SessionResultV2", "draft_key", "parse_result", "quote_hash"]
+__all__ = ["SessionResultV2", "draft_key", "draft_key_for_set", "parse_result", "quote_hash"]

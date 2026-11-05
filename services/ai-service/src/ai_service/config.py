@@ -70,6 +70,8 @@ class Settings(DatabaseSettings):
             "generate_like": "claude-haiku-5-5",
             "judge_questions": "claude-haiku-5-5",
             "propose_edges": "claude-haiku-5-5",
+            "pick_sections": "claude-haiku-5-5",
+            "merge_drafts": "claude-haiku-5-5",
         },
         validate_default=True,
     )

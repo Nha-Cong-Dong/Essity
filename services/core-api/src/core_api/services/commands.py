@@ -28,6 +28,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Any, cast
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, select, text, update
 from sqlalchemy.engine import CursorResult
@@ -42,6 +43,7 @@ from core_api.db.models import (
     Question,
     UnitLineage,
     UnitSection,
+    User,
 )
 from core_api.domain import outline as rules
 from core_api.domain.commands.inverse import Change, diff
@@ -654,6 +656,18 @@ class CommandService:
             content=change.after.text,
             kind="concept",
             section_id=op.section,
+        )
+        # There is no draft stage any more (CARDS-V3): a card the learner adds goes to the vault
+        # by the same door a Save uses, so it has its event, ledger row and review question.
+        user = self.session.get(User, self.user_id)
+        assert user is not None
+        review.promote(
+            study,
+            [unit],
+            now=ctx.now,
+            tz=ZoneInfo(user.timezone),
+            day_start_hour=user.day_start_hour,
+            ranges=[],
         )
         ctx.made[change.id] = unit.id
         ctx.keep("unit", unit.id, None, ("card", change.id))

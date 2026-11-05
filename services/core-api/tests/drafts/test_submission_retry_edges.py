@@ -5,7 +5,6 @@ two real connections, the exact context key, and the ids carried by `unit.saved.
 import uuid
 from collections.abc import Iterator
 from datetime import timedelta
-from zoneinfo import ZoneInfo
 
 import pytest
 from draft_world import NOW, World
@@ -15,7 +14,6 @@ from test_submission_retry import park, sent
 
 from accounts import signed_in
 from core_api.db.models import KnowledgeUnit, Outbox, Submission, User
-from core_api.domain.unit_review import SaveItem, UnitReviewService
 from core_api.handlers.session_result_v2 import OnSubmissionProcessed, on_submission_failed
 from core_api.jobs.submission_retry import retry_pending_ai
 from fake_storage import FakeStorage
@@ -141,15 +139,11 @@ def test_ac9_unit_saved_carries_the_unit_its_revision_and_its_subject(world: Wor
     units = list(
         world.db.scalars(select(KnowledgeUnit).where(KnowledgeUnit.user_id == world.user.id))
     )
-    UnitReviewService(world.db, world.user.id).save(
-        world.study.id,
-        [SaveItem(unit_id=u.id, version=u.version) for u in units],
-        now=NOW,
-        tz=ZoneInfo("Asia/Ho_Chi_Minh"),
-        day_start_hour=4,
-        ranges=[],
-    )
-    events = list(world.db.scalars(select(Outbox).where(Outbox.event_type == "unit.saved.v1")))
+    events = [
+        e
+        for e in world.db.scalars(select(Outbox).where(Outbox.event_type == "unit.saved.v1"))
+        if e.payload["subject_id"] == str(world.subject.id)
+    ]
     assert sorted(e.payload["unit_id"] for e in events) == sorted(str(u.id) for u in units)
     for event in events:
         assert event.user_id == world.user.id

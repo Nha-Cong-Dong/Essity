@@ -50,6 +50,18 @@ class VaultSessionOut(BaseModel):
     cards: int
 
 
+class SessionResultOut(BaseModel):
+    """Where a handed-in session stands: the screen polls it until `submission_status` is done or
+    failed. `notice` says why a done session has no card (a closed list)."""
+
+    session_id: uuid.UUID
+    # queued / processing / pending_ai / done / failed, or None before a submission.
+    submission_status: str | None
+    title: str
+    cards: int
+    notice: str | None
+
+
 class VaultAnchorOut(BaseModel):
     id: uuid.UUID
     source: str
@@ -103,7 +115,11 @@ def _error(code: int, detail: str) -> HTTPException:
     return HTTPException(status_code=code, detail=detail)
 
 
-def session_title(raw: str) -> str:
+def session_title(raw: str, title: str | None = None) -> str:
+    """The topic the AI named the session by (CARDS-V3); older sessions, which have none, keep the
+    first line of the note (80 characters)."""
+    if title and title.strip():
+        return title.strip()
     lines = raw.strip().splitlines()
     return lines[0][:80] if lines else ""
 
@@ -194,7 +210,7 @@ def vault_sessions(
     return [
         VaultSessionOut(
             id=r.id,
-            title=session_title(r.description_raw),
+            title=session_title(r.description_raw, r.title),
             studied_on=r.studied_on,
             cards=counts.get(r.id, 0),
         )
@@ -229,6 +245,33 @@ def _anchor_out(a: Anchor, names: dict[uuid.UUID, str]) -> VaultAnchorOut:
     )
 
 
+@router.get("/sessions/{session_id}/result")
+def session_result(
+    session_id: uuid.UUID, user: VerifiedUser, session: DbSession
+) -> SessionResultOut:
+    study = session.scalar(
+        select(StudySession).where(StudySession.id == session_id, StudySession.user_id == user.id)
+    )
+    if study is None:
+        raise _error(status.HTTP_404_NOT_FOUND, "session_not_found")
+    submission = session.scalar(
+        select(Submission)
+        .where(Submission.user_id == user.id, Submission.session_id == session_id)
+        .order_by(Submission.created_at.desc())
+        .limit(1)
+    )
+    cards = session.scalar(
+        select(func.count()).where(*_card_clause(user.id), KnowledgeUnit.session_id == session_id)
+    )
+    return SessionResultOut(
+        session_id=session_id,
+        submission_status=submission.status if submission is not None else None,
+        title=session_title(study.description_raw, study.title),
+        cards=cards or 0,
+        notice=submission.notice if submission is not None else None,
+    )
+
+
 @router.get("/sessions/{session_id}/cards")
 def vault_cards(session_id: uuid.UUID, user: VerifiedUser, session: DbSession) -> VaultCardsOut:
     study = session.scalar(
@@ -258,7 +301,7 @@ def vault_cards(session_id: uuid.UUID, user: VerifiedUser, session: DbSession) -
         by_unit.setdefault(a.unit_id, []).append(_anchor_out(a, names))
     return VaultCardsOut(
         session_id=session_id,
-        title=session_title(study.description_raw),
+        title=session_title(study.description_raw, study.title),
         cards=[
             VaultCardOut(
                 id=u.id,
