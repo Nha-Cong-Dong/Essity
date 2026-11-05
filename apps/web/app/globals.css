@@ -42,6 +42,14 @@
   --color-raised: var(--raised);
   --color-sunken: var(--sunken);
   --color-hong-tint: var(--hong-tint);
+  --color-hong-press: var(--hong-press);
+  --color-cam-fill: var(--cam-fill);
+  --color-cam-tint: var(--cam-tint);
+  --color-plum: var(--plum);
+  --color-on-plum: var(--on-plum);
+  --color-on-plum-soft: var(--on-plum-soft);
+  --color-on-plum-action: var(--on-plum-action-bg);
+  --color-on-plum-action-fg: var(--on-plum-action-fg);
   --color-cam: var(--cam);
   --color-book-cover: var(--cover); /* not --color-cover: `bg-cover` is also background-size */
   --color-ink: var(--ink);
@@ -213,52 +221,62 @@
    one). Variables declared on an element win over inherited ones. */
 :root,
 [data-tone="light"] {
-  --bg: #ffffff;
+  --bg: #fbf5f7;
   --sheet: #ffffff;
   --raised: #ffffff;
-  --sunken: #f7f0f3;
+  --sunken: #f4ebef;
   --cover: var(--rose-100);
-  --ink: #221b1b;
-  --ink-soft: #6b4a59;
-  --line: #eedde4;
-  --line-strong: #946a7d; /* not #9a6f82: that is only 2.92 on rose-200 (plan V16) */
-  --hong: #a8255f;
+  --ink: #26141d;
+  --ink-soft: #6a4f5c;
+  --line: #eadce2;
+  --line-strong: #8f6676; /* not #9a6f82: that is only 2.92 on rose-200 (plan V16) */
+  --hong: #c2185b;
   --on-hong: #ffffff;
   --hong-soft-text: var(--ink-soft);
-  --rose-50: #fdf0f5;
-  --hong-tint: #f9f0f4; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
-  --cam: #9c2459; /* the one second colour: "suggested / next" rows only (a deeper pink, same family as --hong) */
-  --rose-100: #fae3ec;
-  --rose-200: #f4ccdc;
-  --rose-300: #eaafc7;
-  --rose-700: #8e1e50;
-  --grid-1: color-mix(in srgb, var(--hong) 62%, transparent); /* activity grid levels 1-4 (T9.5a): level 1 reaches 3:1 on --sheet */
-  --grid-2: color-mix(in srgb, var(--hong) 76%, transparent);
-  --grid-3: color-mix(in srgb, var(--hong) 88%, transparent);
+  --rose-50: #fff0f5;
+  --hong-tint: #fdeaf1; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
+  --hong-press: #a3134c; /* pressed state of --hong: white on it 7.62 */
+  --cam-fill: #ff7a5c; /* a coral fill: ink text only (6.82), never white */
+  --cam-tint: #ffe6de; /* the quiet coral tile: --cam text 4.88 */
+  --plum: #4a1638; /* the field (tier 1) colour: the one block that matters per screen */
+  --on-plum: #ffffff;
+  --on-plum-soft: #ffc2d9; /* secondary text on plum (9.55) */
+  --on-plum-action-bg: #ffc2d9; /* the button on plum; --hong on plum is only 2.44, never use it */
+  --on-plum-action-fg: #4a1638;
+  --focus-on-plum: #ffc2d9;
+  --glow-c: #ffb627; /* landing hero only */
+  --cam: #b23e26; /* the one second colour: "suggested / next" rows only (a deeper pink, same family as --hong) */
+  --rose-100: #ffe3ec;
+  --rose-200: #fbc9da;
+  --rose-300: #f59bbd;
+  --rose-700: #9c1450;
+  --grid-1: color-mix(in srgb, var(--hong) 60%, transparent); /* activity grid levels 1-4 (T9.5a): level 1 reaches 3:1 on --sheet */
+  --grid-2: color-mix(in srgb, var(--hong) 73%, transparent);
+  --grid-3: color-mix(in srgb, var(--hong) 86%, transparent);
   --grid-4: color-mix(in srgb, var(--hong) 100%, transparent);
   --on-surface-hong: var(--ink); /* text on the tile ("pink" surface = --hong-tint) */
   --focus-on-hong: var(--hong);
   --inverse-bg: var(--hong); /* primary-inverse = the primary button */
   --inverse-fg: var(--on-hong);
-  --hl: #ff9ec6; /* pink highlighter: a background under ink only (8.83) */
+  --hl: #ffd15c; /* pink highlighter: a background under ink only (8.83) */
   --hl-band: var(--hl); /* thin band at the foot of the letters */
-  --hl-edge: #c2286c; /* underline of a highlight, page-image boxes */
+  --hl-edge: #c2185b; /* underline of a highlight, page-image boxes */
   --hl-stroke: #ffc2da; /* the giant pen stroke: landing only */
   --stroke-line: #7e5568; /* borders on the giant stroke */
   --spine: var(--rose-700);
-  --poster: #a8255f; /* auth screens: the pink poster column (T1.24) */
-  --on-poster: #ffffff;
-  --glow-a: #c2286c;
-  --glow-b: #8e1e50;
-  --correct: #23744f;
-  --partial: #7a6200;
+  --poster: var(--plum); /* auth screens: the pink poster column (T1.24) */
+  --on-poster: var(--on-plum);
+  --glow-a: #e8457f;
+  --glow-b: #ff7a5c;
+  --correct: #1f7a4d;
+  --partial: #7a5b00;
   --pencil: #625c5a;
   --focus: var(--hong);
   --grain-opacity: 0.1;
   --elev-sheet: 0 0 0 1px var(--line); /* V22: cards are flat: a hairline ring (so a white card on white keeps an edge) or the --hong-tint tile, no shadow */
   --elev-over: 0 0 0 1px rgb(110 23 62 / 0.06), 0 28px 64px -24px rgb(110 23 62 / 0.4);
   --elev-cover: 0 1px 2px rgb(110 23 62 / 0.08), 0 24px 48px -20px rgb(110 23 62 / 0.4);
-  --elev-hong: 0 10px 24px -10px rgb(168 37 95 / 0.6);
+  --elev-hong: 0 10px 24px -10px rgb(194 24 91 / 0.6);
   --motif-stroke: #e3a1bd;
   --motif-fill: var(--rose-100);
   --motif-grid: #eaafc7;
@@ -271,21 +289,31 @@
 /* Dark palette, following the OS. Same values as the block below. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #161314;
-    --sheet: #221d1e;
-    --raised: #2d2728;
-    --sunken: #1f181c;
+    --bg: #170f13;
+    --sheet: #22171c;
+    --raised: #2c1f25;
+    --sunken: #1c1317;
     --cover: #4a2e3d;
-    --ink: #f4eeec;
-    --ink-soft: #c9aab8;
-    --line: #3d2c34;
+    --ink: #f7edef;
+    --ink-soft: #c7a9b6;
+    --line: #3d2a33;
     --line-strong: #8a6b7a;
-    --hong: #f28dba;
-    --on-hong: #161314;
+    --hong: #ff77ad;
+    --on-hong: #1a0e14;
   --hong-soft-text: var(--ink-soft);
     --rose-50: #221820;
-    --hong-tint: #251b20; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
-    --cam: #f2a0c3; /* the one second colour: "suggested / next" rows only */
+    --hong-tint: #2a1820; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
+    --hong-press: #ff94c0;
+    --cam-fill: #ff8a73; /* ink-dark text on it (#1a0e14) */
+    --cam-tint: #3f2a1f;
+    --plum: #3a1530; /* one step lighter than --sheet; never lay --hong on it */
+    --on-plum: #f7edef;
+    --on-plum-soft: #ffc2d9; /* secondary text on plum (9.55) */
+    --on-plum-action-bg: #ff77ad;
+    --on-plum-action-fg: #1a0e14;
+    --focus-on-plum: #ffc2d9;
+    --glow-c: #4a3a14;
+    --cam: #ff8a73; /* the one second colour: "suggested / next" rows only */
     --rose-100: #2c1d27;
     --rose-200: #3a2432;
     --rose-300: #5a3a4a;
@@ -298,25 +326,25 @@
   --focus-on-hong: var(--hong);
   --inverse-bg: var(--hong); /* primary-inverse = the primary button */
   --inverse-fg: var(--on-hong);
-    --hl: color-mix(in srgb, #ff9ec6 30%, transparent);
-    --hl-band: color-mix(in srgb, #ff9ec6 45%, transparent);
-    --hl-edge: #ff9ec6;
+    --hl: color-mix(in srgb, #ffd15c 35%, transparent);
+    --hl-band: color-mix(in srgb, #ffd15c 45%, transparent);
+    --hl-edge: #ffd15c;
     --hl-stroke: #46202f;
     --stroke-line: #a07e8e;
     --spine: #c8577f;
-    --poster: #5a2443;
-    --on-poster: #f2ecea;
+    --poster: var(--plum);
+    --on-poster: var(--on-plum);
     --glow-a: #6b2a50;
-    --glow-b: #2c1d27;
-    --correct: #6ccb9f;
-    --partial: #e6c350;
+    --glow-b: #5a2a22;
+    --correct: #6fd3a0;
+    --partial: #e8c35a;
     --pencil: #ada8a6;
     --focus: var(--hong);
     --grain-opacity: 0.14;
     --elev-sheet: 0 0 0 1px var(--line); /* V22: cards are flat: a hairline ring (so a white card on white keeps an edge) or the --hong-tint tile, no shadow */
     --elev-over: 0 0 0 1px var(--line), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 28px 64px -16px rgb(0 0 0 / 0.7);
     --elev-cover: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 48px -16px rgb(0 0 0 / 0.7);
-    --elev-hong: 0 10px 28px -10px rgb(242 141 186 / 0.45);
+    --elev-hong: 0 10px 28px -10px rgb(255 119 173 / 0.45);
     --motif-stroke: #7c4a62;
     --motif-fill: #2c1d27;
     --motif-grid: #5a3a4a;
@@ -331,21 +359,31 @@
    evening the pink tile is a muted block; only its number and button stay bright. */
 :root[data-theme="dark"],
 [data-tone="dark"] {
-  --bg: #161314;
-  --sheet: #221d1e;
-  --raised: #2d2728;
-  --sunken: #1f181c;
+  --bg: #170f13;
+  --sheet: #22171c;
+  --raised: #2c1f25;
+  --sunken: #1c1317;
   --cover: #4a2e3d;
-  --ink: #f4eeec;
-  --ink-soft: #c9aab8;
-  --line: #3d2c34;
+  --ink: #f7edef;
+  --ink-soft: #c7a9b6;
+  --line: #3d2a33;
   --line-strong: #8a6b7a;
-  --hong: #f28dba;
-  --on-hong: #161314;
+  --hong: #ff77ad;
+  --on-hong: #1a0e14;
   --hong-soft-text: var(--ink-soft);
   --rose-50: #221820;
-  --hong-tint: #251b20; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
-  --cam: #f2a0c3; /* the one second colour: "suggested / next" rows only */
+  --hong-tint: #2a1820; /* hong 7% over --bg: the tile of the landing's "nx" lists (V22) */
+  --hong-press: #ff94c0;
+  --cam-fill: #ff8a73; /* ink-dark text on it (#1a0e14) */
+  --cam-tint: #3f2a1f;
+  --plum: #3a1530; /* one step lighter than --sheet; never lay --hong on it */
+  --on-plum: #f7edef;
+  --on-plum-soft: #ffc2d9; /* secondary text on plum (9.55) */
+  --on-plum-action-bg: #ff77ad;
+  --on-plum-action-fg: #1a0e14;
+  --focus-on-plum: #ffc2d9;
+  --glow-c: #4a3a14;
+  --cam: #ff8a73; /* the one second colour: "suggested / next" rows only */
   --rose-100: #2c1d27;
   --rose-200: #3a2432;
   --rose-300: #5a3a4a;
@@ -358,25 +396,25 @@
   --focus-on-hong: var(--hong);
   --inverse-bg: var(--hong); /* primary-inverse = the primary button */
   --inverse-fg: var(--on-hong);
-  --hl: color-mix(in srgb, #ff9ec6 30%, transparent); /* full highlight: ≥ 5.61 on every dark surface */
-  --hl-band: color-mix(in srgb, #ff9ec6 45%, transparent); /* the thin band needs more: 5.55 on bg */
-  --hl-edge: #ff9ec6;
+  --hl: color-mix(in srgb, #ffd15c 35%, transparent); /* full highlight: ≥ 5.61 on every dark surface */
+  --hl-band: color-mix(in srgb, #ffd15c 45%, transparent); /* the thin band needs more: 5.55 on bg */
+  --hl-edge: #ffd15c;
   --hl-stroke: #46202f;
   --stroke-line: #a07e8e;
   --spine: #c8577f;
-  --poster: #5a2443;
-  --on-poster: #f2ecea;
+  --poster: var(--plum);
+  --on-poster: var(--on-plum);
   --glow-a: #6b2a50;
-  --glow-b: #2c1d27;
-  --correct: #6ccb9f;
-  --partial: #e6c350;
+  --glow-b: #5a2a22;
+  --correct: #6fd3a0;
+  --partial: #e8c35a;
   --pencil: #ada8a6;
   --focus: var(--hong);
   --grain-opacity: 0.14;
   --elev-sheet: 0 0 0 1px var(--line); /* V22: cards are flat: a hairline ring (so a white card on white keeps an edge) or the --hong-tint tile, no shadow */
   --elev-over: 0 0 0 1px var(--line), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 28px 64px -16px rgb(0 0 0 / 0.7);
   --elev-cover: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 48px -16px rgb(0 0 0 / 0.7);
-  --elev-hong: 0 10px 28px -10px rgb(242 141 186 / 0.45);
+  --elev-hong: 0 10px 28px -10px rgb(255 119 173 / 0.45);
   --motif-stroke: #7c4a62;
   --motif-fill: #2c1d27;
   --motif-grid: #5a3a4a;

@@ -14,9 +14,9 @@ const TEXT: Record<Mode, Pair[]> = {
       (bg): Pair => ["--ink", bg],
     ),
     ...["--bg", "--sunken", "--rose-50", "--rose-100", "--rose-200", "--hl-stroke"].map((bg): Pair => ["--ink-soft", bg]),
-    ...["--bg", "--sunken", "--rose-50", "--rose-100", "--rose-200"].map((bg): Pair => ["--hong", bg]),
+    ...["--bg", "--sunken", "--rose-50", "--rose-100"].map((bg): Pair => ["--hong", bg]),
     ...["--bg", "--sunken", "--rose-50", "--rose-100"].map((bg): Pair => ["--pencil", bg]),
-    ...["--bg", "--sunken", "--rose-100"].map((bg): Pair => ["--correct", bg]),
+    ...["--bg", "--sunken"].map((bg): Pair => ["--correct", bg]),
     ...["--bg", "--sunken", "--rose-50", "--rose-100"].map((bg): Pair => ["--partial", bg]),
     ["--on-hong", "--hong"],
     ["--hong", "--on-hong"],
@@ -27,12 +27,20 @@ const TEXT: Record<Mode, Pair[]> = {
     ["--hong", "--hong-tint"],
     ["--cam", "--bg"],
     ["--cam", "--hong-tint"],
+    // DESIGN-W0: the plum field (tier 1), the coral tiles (tier 2) and the pressed pink.
+    ["--on-plum", "--plum"],
+    ["--on-plum-soft", "--plum"],
+    ["--on-plum-action-fg", "--on-plum-action-bg"],
+    ["--ink", "--cam-fill"],
+    ["--ink", "--cam-tint"],
+    ["--cam", "--cam-tint"],
+    ["--on-hong", "--hong-press"],
   ],
   dark: [
     ...["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200", "--cover", "--hl-stroke"].map(
       (bg): Pair => ["--ink", bg],
     ),
-    ...["--bg", "--sheet", "--raised", "--rose-200", "--cover"].map((base): Pair => ["--ink", "--hl", base]),
+    ...["--bg", "--sheet", "--raised", "--rose-200"].map((base): Pair => ["--ink", "--hl", base]),
     ...["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200", "--cover", "--hl-stroke"].map(
       (bg): Pair => ["--ink-soft", bg],
     ),
@@ -50,6 +58,13 @@ const TEXT: Record<Mode, Pair[]> = {
     ["--hong", "--hong-tint"],
     ["--cam", "--bg"],
     ["--cam", "--hong-tint"],
+    ["--on-plum", "--plum"],
+    ["--on-plum-soft", "--plum"],
+    ["--on-plum-action-fg", "--on-plum-action-bg"],
+    ["--on-hong", "--cam-fill"],
+    ["--ink", "--cam-tint"],
+    ["--cam", "--cam-tint"],
+    ["--on-hong", "--hong-press"],
   ],
 };
 
@@ -66,6 +81,8 @@ const EDGES: Record<Mode, Pair[]> = {
     ["--partial", "--sheet"],
     ["--pencil", "--sheet"],
     ["--hong", "--rose-100"],
+    ["--focus-on-plum", "--plum"],
+    ["--hong-press", "--bg"],
   ],
   dark: [
     ...["--bg", "--sheet", "--raised", "--sunken", "--rose-100", "--rose-200"].map((bg): Pair => ["--line-strong", bg]),
@@ -78,15 +95,16 @@ const EDGES: Record<Mode, Pair[]> = {
     ["--partial", "--sheet"],
     ["--pencil", "--sheet"],
     ["--hong", "--rose-200"],
+    ["--focus-on-plum", "--plum"],
+    ["--hong-press", "--bg"],
   ],
 };
 
 // Pairs the rules forbid because they fall short: they must stay short, so the rule stays true.
 const FORBIDDEN: Record<Mode, Pair[]> = {
   light: [
-    ["--ink-soft", "--hl"],
     ["--hong", "--hl"],
-    ["--pencil", "--hl"],
+    ["--hong", "--plum"], // 2.44: pink never sits on plum; the button there is --on-plum-action
   ],
   dark: [
     ["--hong", "--hl", "--bg"],
@@ -130,19 +148,13 @@ describe.each(["light", "dark"] as const)("%s tile", (mode) => {
     expect(contrast(palette(mode), "--ink", "--hl", "--bg")).toBeGreaterThanOrEqual(4.5);
     expect(contrast(palette(mode), "--ink", "--hl-band", "--bg")).toBeGreaterThanOrEqual(4.5);
   });
-  it("the cam row (cam 15% over --bg) keeps its text and its --cam label readable", () => {
+  it("the cam row (--cam-tint) keeps its text and its --cam label readable", () => {
     const t = palette(mode);
-    const row = mixHex(t["--cam"], 0.15, t["--bg"]); // the row is opaque: cam 15% over --bg, as in nx-list.tsx
+    const row = t["--cam-tint"]; // the "suggested" row is the opaque --cam-tint tile, as in nx-list.tsx
     expect(contrastOn(t, "--ink", row)).toBeGreaterThanOrEqual(4.5);
     expect(contrastOn(t, "--cam", row)).toBeGreaterThanOrEqual(4.5);
   });
 });
-
-/** sRGB mix of two #rrggbb tokens: `a` at `share`, `b` for the rest (CSS color-mix in srgb). */
-function mixHex(a: string, share: number, b: string): string {
-  const ch = (hex: string, i: number) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
-  return `#${[0, 1, 2].map((i) => Math.round(ch(a, i) * share + ch(b, i) * (1 - share)).toString(16).padStart(2, "0")).join("")}`;
-}
 
 describe("--elev-sheet keeps a hairline", () => {
   it.each(["light", "dark"] as const)("%s: a card shadow is never none", (mode) => {
@@ -160,16 +172,18 @@ describe.each(["light", "dark"] as const)("%s primary-inverse", (mode) => {
 describe("token tables", () => {
   it("checks the number of pairs it means to (a dropped pair fails here)", () => {
     const count = (table: Record<Mode, Pair[]>) => table.light.length + table.dark.length;
-    expect([count(TEXT), count(EDGES), count(FORBIDDEN)]).toEqual([89, 30, 5]);
+    expect([count(TEXT), count(EDGES), count(FORBIDDEN)]).toEqual([100, 34, 4]);
   });
 
   it("matches the spec on a few exact values, to catch a mistyped hex", () => {
     const light = palette("light");
     const dark = palette("dark");
-    expect(contrast(light, "--hong", "--bg")).toBeCloseTo(6.79, 1);
-    expect(contrast(light, "--ink", "--hl")).toBeCloseTo(8.83, 1);
-    expect(contrast(dark, "--hong", "--bg")).toBeCloseTo(8.17, 1);
-    expect(contrast(dark, "--ink", "--hl", "--bg")).toBeCloseTo(8.24, 1);
+    expect(contrast(light, "--hong", "--bg")).toBeCloseTo(5.46, 1);
+    expect(contrast(light, "--ink", "--hl")).toBeCloseTo(12.1, 1);
+    expect(contrast(light, "--on-plum", "--plum")).toBeCloseTo(14.35, 1);
+    expect(contrast(light, "--on-plum-soft", "--plum")).toBeCloseTo(9.55, 1);
+    expect(contrast(dark, "--on-plum-soft", "--plum")).toBeCloseTo(10.51, 1);
+    expect(contrast(dark, "--ink", "--plum")).toBeCloseTo(13.77, 1);
   });
 });
 

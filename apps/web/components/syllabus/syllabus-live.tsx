@@ -131,7 +131,7 @@ export function SyllabusLive({
       </a>
       <div className="flex items-center justify-between gap-3">
         <h1 className="m-0 font-display text-title">
-          <span className="hl-word">{COPY.heading}</span>
+          {COPY.heading}
         </h1>
         <Button className="max-sm:px-4" variant="secondary" render={<a href={subjectHref} />} nativeButton={false}>
           Quay lại

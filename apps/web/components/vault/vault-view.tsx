@@ -53,7 +53,7 @@ export function VaultView({
             ← Các môn
           </a>
           <h1 className="m-0 font-display text-title">
-            <span className="hl-word">Các buổi học</span>
+            Các buổi học
           </h1>
           {view.sessions.length === 0 ? (
             <EmptyState
@@ -97,7 +97,7 @@ export function VaultView({
     <div className="flex min-w-0 flex-col gap-8">
       <div>
         <h1 className="m-0 font-display text-title">
-          <span className="hl-word">Kho</span> kiến thức
+          Kho kiến thức
         </h1>
         {subjects.length > 0 && (
           // UI-A: the one big number of the screen is the whole vault; the tiles below carry smaller ones.
