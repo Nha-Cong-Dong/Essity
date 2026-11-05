@@ -19,6 +19,19 @@ describe("frames share one container (§5)", () => {
     expect(containers(markup)).toHaveLength(1);
   });
 
+  // QA 05/11: a keyboard user can jump past the navigation.
+  it("AppShell and FocusShell open with a skip link to the main landmark", () => {
+    const app = renderToStaticMarkup(h(AppShell, { current: "/today", children: "x" }));
+    const focus = renderToStaticMarkup(
+      h(FocusShell, { position: 1, total: 2, exit: "x", children: "x" }),
+    );
+    for (const markup of [app, focus]) {
+      expect(markup).toContain('href="#main"');
+      expect(markup).toContain("Bỏ qua tới nội dung");
+      expect(markup).toMatch(/<main id="main"/);
+    }
+  });
+
   it("FocusShell and AuthShell too", () => {
     const focus = renderToStaticMarkup(
       h(FocusShell, { position: 3, total: 14, exit: h("a", { href: "/today" }, "Dừng tại đây"), children: "x" }),

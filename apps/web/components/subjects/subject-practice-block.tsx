@@ -23,7 +23,7 @@ export function SubjectPracticeBlock({
       ) : (
         <>
           <p className="m-0 flex items-baseline gap-2" data-due-today>
-            <span className="font-display text-display tabular-nums">{dueToday === null ? ready : dueToday}</span>
+            <span className="font-display text-display tabular-nums">{dueToday === null ? ready : dueToday}</span>{" "}
             <span className="text-lead font-semibold">{dueToday === null ? "câu sẵn sàng" : "câu cần luyện hôm nay"}</span>
           </p>
           <p className="m-0 text-meta text-ink-soft">

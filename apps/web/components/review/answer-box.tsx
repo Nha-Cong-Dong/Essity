@@ -64,7 +64,7 @@ export function AnswerBox({ id, value, onChange, onSubmit, onForgot, save, pendi
         id={id}
         value={value}
         maxLength={ANSWER_MAX}
-        placeholder="Viết câu trả lời của bạn"
+        placeholder="Viết ở đây"
         // Focus goes to the box when the question shows (DESIGN.md §6.4).
         autoFocus
         aria-invalid={problem ? true : undefined}
@@ -104,7 +104,7 @@ export function AnswerBox({ id, value, onChange, onSubmit, onForgot, save, pendi
         </div>
       )}
       <div className="sticky bottom-0 z-10 mt-6 flex flex-wrap items-center gap-3 bg-bg py-3 min-[641px]:static min-[641px]:bg-transparent min-[641px]:py-0">
-        <Button type="button" className="max-[640px]:flex-1" pending={pending === "submit"} disabled={busy && pending !== "submit"} onClick={send}>
+        <Button type="button" className="min-w-28" pending={pending === "submit"} disabled={busy && pending !== "submit"} onClick={send}>
           Gửi
         </Button>
         <Button

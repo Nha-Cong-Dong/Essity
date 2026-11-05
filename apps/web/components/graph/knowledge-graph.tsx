@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { shortLabel } from "@/lib/graph";
 import { multiStylesheet } from "@/lib/graph-multi-style";
 import { optionsFor, type SimEdge, type SimNode, stepSim } from "@/lib/graph-sim";
-import { mergeGraphs, type MultiCard, type SubjectGraph } from "@/lib/graph-multi";
+import { hiddenExcept, mergeGraphs, type MultiCard, type SubjectGraph } from "@/lib/graph-multi";
 
 // V16/V17: the knowledge graph of one or several subjects. Nodes are cards coloured by subject,
 // edges are the links between cards, a tap on a node opens the card in a popup in the middle of the
@@ -62,12 +62,22 @@ function CardPopup({ card, subject, color, onClose }: { card: MultiCard; subject
   );
 }
 
-export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15rem))" }: { graphs: SubjectGraph[]; height?: string }) {
+export function KnowledgeGraph({
+  graphs,
+  height = "max(26rem, calc(100dvh - 15rem))",
+  focusSubject = null,
+}: {
+  graphs: SubjectGraph[];
+  height?: string;
+  focusSubject?: string | null;
+}) {
   const merged = useMemo(() => mergeGraphs(graphs), [graphs]);
   const host = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(null);
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [hidden, setHidden] = useState<Set<string>>(() => hiddenExcept(graphs, focusSubject));
+  // Q24: the full title of the node under the pointer; the node's own label is cut at 24 characters.
+  const [tip, setTip] = useState<{ title: string; x: number; y: number } | null>(null);
   const bySubject = useMemo(() => new Map(merged.subjects.map((s) => [s.id, s] as const)), [merged]);
   const picked = merged.cards.find((c) => c.id === pickedId) ?? null;
 
@@ -92,6 +102,7 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
           data: {
             id: c.id,
             label: shortLabel(c.title),
+            full: c.title,
             color: bySubject.get(c.subjectId)?.color ?? ink,
             subject: c.subjectId,
             size: 18 + 4 * Math.min(degree.get(c.id) ?? 0, 5),
@@ -112,12 +123,21 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
     labelByZoom();
     cy.on("tap", "node", (ev) => setPickedId(ev.target.id()));
     // Hover lights a node and its neighbours; the rest dims (Obsidian-style).
+    const showTip = (ev: cytoscape.EventObject) => {
+      const p = ev.target.renderedPosition();
+      setTip({ title: String(ev.target.data("full")), x: p.x, y: p.y });
+    };
+    cy.on("mouseover", "node", showTip);
+    cy.on("drag zoom pan", () => setTip(null));
     cy.on("mouseover", "node", (ev) => {
       const hood = ev.target.closedNeighborhood();
       cy.elements().not(hood).addClass("dim");
       hood.addClass("hot");
     });
-    cy.on("mouseout", "node", () => cy.elements().removeClass("dim hot"));
+    cy.on("mouseout", "node", () => {
+      cy.elements().removeClass("dim hot");
+      setTip(null);
+    });
     // UI-A: fit puts the whole graph in the middle; a graph of a few cards is not blown up, so its
     // labels keep their size and the canvas does not look empty at the edges.
     const layout = cy.layout({
@@ -276,15 +296,15 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
   return (
     <div className="flex flex-col gap-3">
       {/* One row on top: the card count, then each subject as a colour chip that also hides / shows it. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="m-0 mr-2 font-display text-lead">{merged.cards.length} thẻ</p>
+      <div className="flex items-center gap-2 overflow-x-auto min-[768px]:flex-wrap min-[768px]:overflow-visible">
+        <p className="m-0 mr-2 shrink-0 font-display text-lead">{merged.cards.length} thẻ</p>
         {merged.subjects.map((s) => (
           <button
             key={s.id}
             type="button"
             aria-pressed={!hidden.has(s.id)}
             onClick={() => toggle(s.id)}
-            className="inline-flex h-11 max-w-full items-center gap-2 rounded-full bg-sheet px-4 text-meta font-medium text-ink inset-ring-1 inset-ring-line-strong hover:bg-sunken aria-pressed:inset-ring-[1.5px] aria-pressed:inset-ring-line-strong aria-[pressed=false]:text-ink-soft aria-[pressed=false]:line-through"
+            className="inline-flex h-11 max-w-full shrink-0 items-center gap-2 rounded-full bg-sheet px-4 text-meta font-medium text-ink inset-ring-1 inset-ring-line-strong hover:bg-sunken aria-pressed:inset-ring-[1.5px] aria-pressed:inset-ring-line-strong aria-[pressed=false]:text-ink-soft aria-[pressed=false]:line-through"
           >
             <span aria-hidden="true" className="inline-block size-3 shrink-0 rounded-full" style={{ background: s.color }} />
             <span className="truncate">{s.name}</span>
@@ -295,10 +315,20 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
       <div className="relative">
         <div
           ref={host}
-          aria-label="Đồ thị tri thức"
+          role="img"
+          aria-label={`Đồ thị tri thức, ${merged.cards.length} thẻ. Duyệt bằng bàn phím ở danh sách thẻ bên dưới.`}
           style={{ height }}
           className="min-h-70 w-full cursor-grab touch-none overflow-hidden rounded-tile bg-sheet inset-ring-1 inset-ring-line active:cursor-grabbing"
         />
+        {tip && (
+          <div
+            aria-hidden="true"
+            style={{ left: tip.x, top: tip.y }}
+            className="pointer-events-none absolute z-10 max-w-64 -translate-x-1/2 -translate-y-[calc(100%+14px)] rounded-control bg-ink px-3 py-2 text-meta text-sheet wrap-anywhere"
+          >
+            {tip.title}
+          </div>
+        )}
         <div className="absolute right-2 bottom-2 flex gap-2">
           <button type="button" aria-label="Phóng to" className={ZOOM} onClick={() => zoomBy(1.3)}>
             +
@@ -319,6 +349,25 @@ export function KnowledgeGraph({ graphs, height = "max(26rem, calc(100dvh - 15re
           </button>
         </div>
       </div>
+      <details className="rounded-tile bg-sheet p-3 inset-ring-1 inset-ring-line" data-card-list>
+        <summary className="inline-flex min-h-11 cursor-pointer items-center text-meta font-medium">Danh sách thẻ</summary>
+        <ul className="m-0 mt-2 flex list-none flex-col p-0">
+          {merged.cards
+            .filter((c) => !hidden.has(c.subjectId))
+            .map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => setPickedId(c.id)}
+                  className="flex min-h-11 w-full items-center gap-2 rounded-control px-2 text-left text-meta hover:bg-sunken"
+                >
+                  <span aria-hidden="true" className="inline-block size-3 shrink-0 rounded-full" style={{ background: bySubject.get(c.subjectId)?.color }} />
+                  <span className="wrap-anywhere">{c.title}</span>
+                </button>
+              </li>
+            ))}
+        </ul>
+      </details>
       {picked && subject && <CardPopup card={picked} subject={subject.name} color={subject.color} onClose={() => setPickedId(null)} />}
     </div>
   );

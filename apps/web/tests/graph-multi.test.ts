@@ -1,7 +1,7 @@
 // V16/V17: several subjects in one graph, one colour each.
 import { describe, expect, it } from "vitest";
 
-import { colorOf, mergeGraphs, SUBJECT_COLORS } from "@/lib/graph-multi";
+import { colorOf, hiddenExcept, mergeGraphs, SUBJECT_COLORS } from "@/lib/graph-multi";
 import type { GraphCard, GraphData } from "@/lib/graph";
 
 const card = (id: string): GraphCard => ({ id, title: id, body: "b", sectionId: "", anchors: [], neededBy: [] });
@@ -25,5 +25,16 @@ describe("mergeGraphs", () => {
     const m = mergeGraphs([{ id: "s1", name: "A", data: data(["a"], [["a", "zzz"]]) }]);
     expect(m.edges).toHaveLength(0);
     expect(colorOf(SUBJECT_COLORS.length)).toBe(colorOf(0));
+  });
+});
+
+describe("hiddenExcept", () => {
+  const subs = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  it("hides every subject but the focused one", () => {
+    expect([...hiddenExcept(subs, "b")].sort()).toEqual(["a", "c"]);
+  });
+  it("shows everything for a missing or unknown id", () => {
+    expect(hiddenExcept(subs, null).size).toBe(0);
+    expect(hiddenExcept(subs, "zzz").size).toBe(0);
   });
 });

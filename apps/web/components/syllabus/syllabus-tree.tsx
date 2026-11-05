@@ -70,7 +70,6 @@ const splitTitle = (title: string): [string | null, string] => {
 // The visible mark is 28 px; its touch area is 44 px (after:) without widening the indent step.
 // Panel buttons wrap their label (a long one such as "Đánh dấu 12 phần chưa học là đã học" must fit 320 px).
 const WRAP = "h-auto min-h-11 max-w-full shrink whitespace-normal py-2 text-left";
-const HIT = "relative after:absolute after:-inset-2 after:content-['']";
 
 function Tick() {
   return (
@@ -566,7 +565,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
                   tabIndex={-1}
                   aria-hidden="true"
                   data-chevron
-                  className={`${HIT} flex h-7 w-7 items-center justify-center rounded-control text-ink-soft`}
+                  className="relative flex size-7 shrink-0 items-center justify-center rounded-control text-ink-soft after:absolute after:left-1/2 after:top-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']"
                   onClick={(e) => {
                     e.stopPropagation();
                     fold(node.id, !isOpen);
@@ -621,7 +620,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
               aria-label={`Hành động cho ${node.title}`}
               aria-expanded={panelHere}
               data-more
-              className={`${HIT} flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-ink-soft focus-visible:outline-2 focus-visible:outline-focus`}
+              className="relative flex size-7 shrink-0 items-center justify-center rounded-control text-ink-soft focus-visible:outline-2 focus-visible:outline-focus after:absolute after:left-1/2 after:top-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']"
               onClick={(e) => {
                 e.stopPropagation();
                 openPanel(node.id);
