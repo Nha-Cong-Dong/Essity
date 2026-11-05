@@ -15,6 +15,11 @@ const EMPTY: Record<string, EmptyReason> = {
   nothing_open: "exams_over",
   no_syllabus: "no_textbook",
   all_studied: "finished",
+  // Today answers with the reason's own words (core today_v2), not a code.
+  "Các môn đã thi xong.": "exams_over",
+  "Chưa có giáo trình để gợi ý.": "no_textbook",
+  "Đã học hết đề cương.": "finished",
+  "Hôm nay bạn đã học đủ nhịp. Mai học tiếp, hoặc học thêm nếu bạn muốn.": "ahead",
 };
 
 const paceOf = (s: SuggestionApi): Pace => ({
@@ -40,7 +45,8 @@ function nextOf(s: SuggestionApi): NextSuggestion {
 /** One suggestion, in the shape the subject block shows it. */
 export function subjectState(s: SuggestionApi): SuggestionState {
   if (s.kind === "next_leaf") return { kind: "suggested", next: nextOf(s) };
-  return s.kind === "free_session" ? { kind: "no_textbook" } : { kind: "finished" };
+  if (s.kind === "free_session") return { kind: "no_textbook" };
+  return s.nothing_today ? { kind: "rested" } : { kind: "finished" };
 }
 
 function learnItem(s: SuggestionApi): LearnItem {

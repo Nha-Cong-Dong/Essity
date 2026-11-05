@@ -29,7 +29,7 @@ export type Unfinished =
   | { kind: "session"; subject: NamedSubject; session_id: string; line: string }
   | { kind: "note"; text: string };
 
-export type EmptyReason = "exams_over" | "no_textbook" | "finished";
+export type EmptyReason = "exams_over" | "no_textbook" | "finished" | "ahead";
 export type PracticeRow = { subject_id: string; name: string; ready: number; kinds: number };
 
 export type TodayV2 = {
@@ -91,10 +91,12 @@ export const TODAY_V2_COPY = {
   noTextbook: "chưa có giáo trình chính nên chưa có đề cương.",
   uploadTextbook: "Tải giáo trình",
   finished: "Bạn đã học hết đề cương. Ôn và luyện tập là việc tiếp theo.",
+  rested: "Hôm nay môn này đã đủ nhịp học. Mai học tiếp, hoặc học thêm nếu bạn muốn.",
   emptyReason: {
     exams_over: "Các môn đã thi xong.",
     no_textbook: "Chưa có giáo trình để gợi ý.",
     finished: "Đã học hết đề cương.",
+    ahead: "Hôm nay bạn đã học đủ nhịp. Mai học tiếp, hoặc học thêm nếu bạn muốn.",
   } satisfies Record<EmptyReason, string>,
   practice: "Luyện tập",
   openPractice: "Mở luyện tập",

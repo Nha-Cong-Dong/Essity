@@ -50,6 +50,7 @@ REASON_NO_SUBJECTS = "Chưa có môn nào."
 REASON_EXAMS_OVER = "Các môn đã thi xong."
 REASON_NO_SYLLABUS = "Chưa có giáo trình để gợi ý."
 REASON_ALL_STUDIED = "Đã học hết đề cương."
+REASON_AHEAD = "Hôm nay bạn đã học đủ nhịp. Mai học tiếp, hoặc học thêm nếu bạn muốn."
 REASON_FILTERED = "Bộ lọc tuần này đã ẩn hết các môn."
 
 
@@ -300,4 +301,6 @@ def _empty_reason(inputs: TodayInputs, today: date) -> str:
         return REASON_FILTERED
     if not any(s.leaves for s in visible):
         return REASON_NO_SYLLABUS
+    if any(leaf.open for s in visible for leaf in s.leaves):
+        return REASON_AHEAD  # sections are left, only today's pace is met (not "all studied")
     return REASON_ALL_STUDIED

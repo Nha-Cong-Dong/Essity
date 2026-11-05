@@ -18,6 +18,7 @@ export type SuggestionState =
   | { kind: "suggested"; next: NextSuggestion }
   | { kind: "not_suggested" }
   | { kind: "finished" }
+  | { kind: "rested" }
   | { kind: "exam_over" }
   | { kind: "no_textbook" }
   | { kind: "reading" };
@@ -102,7 +103,7 @@ export function SubjectSuggestion({
 
   const noTextbook = shown.kind === "no_textbook";
   const showExtras = shown.kind !== "reading";
-  const learnedOut = shown.kind === "finished" || shown.kind === "exam_over";
+  const learnedOut = shown.kind === "finished" || shown.kind === "rested" || shown.kind === "exam_over";
   return (
     <section className="flex min-w-0 flex-col gap-3 rounded-tile bg-hong-tint p-4 min-[901px]:p-6" aria-labelledby={headingId} aria-busy={busy}>
       {computed && (
@@ -138,6 +139,11 @@ export function SubjectSuggestion({
             {COPY.finished}
           </h2>
         </>
+      )}
+      {shown.kind === "rested" && (
+        <h2 id={headingId} className="m-0 text-body">
+          {COPY.rested}
+        </h2>
       )}
       {shown.kind === "exam_over" && (
         <h2 id={headingId} className="sr-only">

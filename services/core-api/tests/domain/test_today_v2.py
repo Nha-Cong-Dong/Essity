@@ -11,6 +11,7 @@ from core_api.domain.suggest import Leaf, SubjectInput, SuggestFilter
 from core_api.domain.today import MAX_QUESTIONS, PlannedQuestion, TodayPlan
 from core_api.domain.today_v2 import (
     EMPTY_LINKS,
+    REASON_AHEAD,
     REASON_ALL_STUDIED,
     REASON_EXAMS_OVER,
     REASON_FILTERED,
@@ -128,6 +129,15 @@ def test_ac11_no_syllabus():  # US-15 AC11
 def test_ac11_syllabus_all_studied():  # US-15 AC11
     ns = compose(inputs([subject([leaf("a", covered=10)])])).next_study
     assert ns.items == () and ns.empty_reason == REASON_ALL_STUDIED and ns.links == EMPTY_LINKS
+
+
+def test_ahead_of_pace_is_not_all_studied():  # QA 05/11
+    # Red when: a learner who met today's pace with sections left is told the syllabus is done
+    # (or has no textbook): the reason must name today's pace, not the end of the outline.
+    sub = SubjectInput(uuid.uuid4(), TODAY + timedelta(days=50), None, [leaf("a"), leaf("b")], 5)
+    ns = compose(inputs([sub])).next_study
+    assert ns.items == () and ns.empty_reason == REASON_AHEAD and ns.links == EMPTY_LINKS
+    assert not _has_banned(REASON_AHEAD)
 
 
 def test_empty_no_subjects_and_filtered():  # US-15 AC11
