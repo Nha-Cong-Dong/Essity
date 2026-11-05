@@ -1,0 +1,12 @@
+task: V4-SCREENS-C
+lane: L2
+status: done
+step: stats + graph recoloured to v4 (no layout change beyond the approved field block)
+tests: {cmd: "vitest full (1986 + design-guards fixed re-run 67 green); tsc; eslint 0 errors; e2e stats 79, graph 75; taste inspect --app stats+graph 0 FAIL", failed: 0}
+blockers: []
+decisions:
+  - "Stats totals sit on the field block with white numbers, 20% dividers and the pink-200 star; this week's bar and today's cell use --now with an ink ring; bars hong at .78"
+  - "Graph: lit link = hong, picked card = --now fill + ink border (class picked, lib/graph-multi.ts v4Highlights); SUBJECT_COLORS = #d1347a #5d55a9 #891b4c #7c6d72 (no teal, no yellow)"
+  - "inspect --app WARNs left: h1 40px (the v4 title scale from W0), unused-canvas on stats (existing layout)"
+  - "Mockup's subject hub nodes and trend-only row not built: they change layout/data, out of scope"
+next: "orchestrator opens PR (base design-w0v4)"

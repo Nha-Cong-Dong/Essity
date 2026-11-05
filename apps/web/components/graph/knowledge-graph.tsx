@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { shortLabel } from "@/lib/graph";
 import { multiStylesheet } from "@/lib/graph-multi-style";
 import { optionsFor, type SimEdge, type SimNode, stepSim } from "@/lib/graph-sim";
-import { hiddenExcept, mergeGraphs, type MultiCard, type SubjectGraph } from "@/lib/graph-multi";
+import { hiddenExcept, mergeGraphs, type MultiCard, type SubjectGraph, v4Highlights } from "@/lib/graph-multi";
 
 // V16/V17: the knowledge graph of one or several subjects. Nodes are cards coloured by subject,
 // edges are the links between cards, a tap on a node opens the card in a popup in the middle of the
@@ -95,6 +95,8 @@ export function KnowledgeGraph({
     const css = getComputedStyle(document.documentElement);
     const ink = css.getPropertyValue("--ink").trim() || "#26141d";
     const line = css.getPropertyValue("--line-strong").trim() || "#8f6676";
+    const hong = css.getPropertyValue("--hong").trim() || "#d1347a";
+    const now = css.getPropertyValue("--now").trim() || "#891b4c";
     const cy = cytoscape({
       container: host.current,
       elements: [
@@ -110,7 +112,7 @@ export function KnowledgeGraph({
         })),
         ...merged.edges.map((e) => ({ data: { id: e.id, source: e.from, target: e.to } })),
       ],
-      style: multiStylesheet(ink, line, css.getPropertyValue("--sheet").trim() || "#ffffff"),
+      style: [...multiStylesheet(ink, line, css.getPropertyValue("--sheet").trim() || "#ffffff"), ...v4Highlights(ink, hong, now)],
       minZoom: 0.2,
       maxZoom: 3,
       wheelSensitivity: 0.3,
@@ -258,6 +260,14 @@ export function KnowledgeGraph({
       cyRef.current = null;
     };
   }, [merged, bySubject]);
+
+  // The card being read stands out in the graph.
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.nodes().removeClass("picked");
+    if (pickedId) cy.getElementById(pickedId).addClass("picked");
+  }, [pickedId, merged]);
 
   // The subjects switched off in the chips are not drawn (their edges go with them).
   useEffect(() => {
