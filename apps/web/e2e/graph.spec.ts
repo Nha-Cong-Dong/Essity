@@ -27,9 +27,10 @@ const noSideScroll = (page: Page) => page.evaluate(() => document.documentElemen
 type CyHost = HTMLDivElement & {
   __cy?: {
     zoom: (z?: number) => number;
-    nodes: (s: string) => {
+    nodes: (s?: string) => {
       length: number;
       first: () => { renderedPosition: () => { x: number; y: number }; renderedBoundingBox: () => { w: number; h: number } };
+      map: <T>(f: (n: { renderedPosition: () => { x: number; y: number } }) => T) => T[];
     };
   };
 };
@@ -169,4 +170,29 @@ test.describe("T9.10 live screen", () => {
     await expect(page.getByRole("button", { name: "Gỡ liên kết này" })).toHaveCount(0);
     expect(await noSideScroll(page)).toBe(true);
   });
+});
+
+// QA2-WEB: dragging a node moves that node alone (Obsidian style); the rest of the graph stays put.
+// Red when: the drag pans the whole graph instead.
+test("graph: dragging a node moves only that node", async ({ page }) => {
+  await open(page, 1440, "/design-preview/graph-all?state=few");
+  const canvas = page.locator("[data-graph-canvas]");
+  const read = () => canvas.evaluate((el) => (el as CyHost).__cy!.nodes().map((n) => n.renderedPosition()));
+  await expect.poll(async () => (await read()).length).toBeGreaterThan(1);
+  await page.waitForTimeout(800);
+  const before = await read();
+  const frame = await box(canvas);
+  const target = { x: frame.x + before[0].x, y: frame.y + before[0].y };
+  await page.mouse.move(target.x, target.y);
+  await page.mouse.down();
+  await page.mouse.move(target.x + 60, target.y + 40, { steps: 6 });
+  await page.mouse.move(target.x + 120, target.y + 80, { steps: 6 });
+  await page.mouse.up();
+  const after = await read();
+  expect(Math.abs(after[0].x - before[0].x)).toBeGreaterThan(60);
+  // A pan would carry every node by the same delta; a node drag leaves some node behind.
+  const delta = (i: number) => ({ x: after[i].x - before[i].x, y: after[i].y - before[i].y });
+  const moved = delta(0);
+  const left = after.some((_, i) => Math.hypot(delta(i).x - moved.x, delta(i).y - moved.y) > 25);
+  expect(left).toBe(true);
 });
