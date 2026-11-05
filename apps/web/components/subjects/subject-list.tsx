@@ -77,9 +77,11 @@ type RowProps = {
   onDeleted: () => void;
   /** Tells the list a row is being edited or asked about deletion, so it can hide "Thêm môn". */
   onBusy: (id: string, busy: boolean) => void;
+  /** A saved edit: the list takes the new values (the "Kỳ thi gần nhất" block reads them). */
+  onChanged: (subject: ListedSubject) => void;
 };
 
-function SubjectRow({ initial, example, onOpen, onDeleted, onBusy }: RowProps) {
+function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: RowProps) {
   const [subject, setSubject] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(initial.name);
@@ -180,6 +182,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy }: RowProps) {
         : undefined;
     if (changed) {
       setSubject(changed);
+      onChanged(changed);
       setEditing(false);
       setSaved(true);
       return;
@@ -413,6 +416,13 @@ export function SubjectList({
     );
   }
 
+  function changed(next: ListedSubject) {
+    setList((list) => ({
+      ...list,
+      rows: list.rows.map((row) => (row.id === next.id ? { ...row, ...next } : row)),
+    }));
+  }
+
   function deleted(id: string) {
     setList((list) => ({
       rows: list.rows.filter(
@@ -469,6 +479,7 @@ export function SubjectList({
                   onOpen={dropPlaceholder}
                   onDeleted={() => deleted(subject.id)}
                   onBusy={setBusy}
+                  onChanged={changed}
                 />
               ),
             )}
