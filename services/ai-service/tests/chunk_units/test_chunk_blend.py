@@ -12,7 +12,7 @@ NOTE_QUOTE = "ty the la noi hop ho hap te bao"
 
 
 def test_g2_prompt_v2_asks_for_one_blended_card() -> None:
-    assert PROMPT_VERSION == "v2"
+    assert PROMPT_VERSION == "v3"
     text = load_prompt().text
     for needle in ("ONE card per idea", "Merge:", "Add:", "Drop duplicates", "Bite-size"):
         assert needle in text
@@ -36,3 +36,11 @@ def test_g2_blended_unit_keeps_an_anchor_from_each_source() -> None:
     # The prompt the model got is the v2 one, and carries both the page and the notes.
     assert "ONE card per idea" in ask.prompts[0].system
     assert 'kind="notes"' in ask.prompts[0].user and 'kind="page"' in ask.prompts[0].user
+
+
+# Red when: the card generator stops asking for Markdown and LaTeX maths in $...$ (CARD-MD).
+def test_prompt_v3_asks_for_markdown_and_latex_in_dollars() -> None:
+    assert PROMPT_VERSION == "v3"
+    text = load_prompt().text
+    for needle in ("Markdown", "$...$", r"\mid", r"\cdots", "never converted to LaTeX or Markdown"):
+        assert needle in text

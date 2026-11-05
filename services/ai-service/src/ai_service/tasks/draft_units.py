@@ -57,7 +57,7 @@ from ai_service.tasks.chunk_units import (
 from ai_service.tasks.grade import wrap_untrusted
 
 TASK: Task = "draft_units"
-PROMPT_VERSION = "v2"
+PROMPT_VERSION = "v3"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
 _NONCE_PLACEHOLDER = "{{NONCE}}"
 MAX_DESCRIPTION_CHARS = 500

@@ -1,5 +1,6 @@
 "use client";
 
+import { Markdown } from "@/components/markdown/markdown";
 import { useEffect, useState } from "react";
 
 import { loadUnitsBySection, type SectionGroup } from "@/lib/session-study/by-section";
@@ -39,7 +40,7 @@ export function UnitsBySection({ subjectId, fetchFn }: { subjectId: string; fetc
                   {card.title}
                   {card.status === "draft" && <span className="text-meta text-ink-soft"> · nháp</span>}
                 </span>
-                <span className="text-meta text-ink-soft">{card.content}</span>
+                <Markdown className="text-meta text-ink-soft" text={card.content} />
               </li>
             ))}
           </ul>

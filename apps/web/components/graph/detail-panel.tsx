@@ -1,5 +1,6 @@
 "use client";
 
+import { Markdown } from "@/components/markdown/markdown";
 import type { Ref } from "react";
 
 import { Marker } from "@/components/notebook";
@@ -51,9 +52,9 @@ function CardDetail({ card, view, onSelectCard }: { card: GraphCard; view: Graph
   const two = [...neighbourhood(view.edges, card.id, 2)].filter(([, d]) => d === 2).map(([id]) => byId.get(id)).filter((c): c is GraphCard => c !== undefined);
   return (
     <>
-      <p data-user className="m-0 text-read wrap-anywhere">
-        {card.body}
-      </p>
+      <div data-user className="text-read wrap-anywhere">
+        <Markdown text={card.body} />
+      </div>
       {card.anchors.length > 0 && (
         <section aria-labelledby="tray-anchors" className="flex flex-col gap-1">
           <h3 id="tray-anchors" className="m-0 text-caption font-semibold">

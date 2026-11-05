@@ -46,7 +46,7 @@ from ai_service.tasks.grade import new_nonce, wrap_untrusted
 _log = logging.getLogger(__name__)
 
 TASK = "chunk_units"
-PROMPT_VERSION = "v2"
+PROMPT_VERSION = "v3"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
 _NONCE_PLACEHOLDER = "{{NONCE}}"
 
