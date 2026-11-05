@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Mascot } from "@/components/mascot";
+import { Block } from "@/components/screen-kit";
 import { NxList } from "@/components/ui/nx-list";
 import { Sheet } from "@/components/ui/sheet";
 import { formatExamDate } from "@/lib/exam-date";
@@ -166,7 +167,7 @@ export function StatsScreen({
         </div>
       </div>
 
-      <div className="mt-8 rounded-sheet bg-[var(--plum,#4A1638)] p-4 min-[641px]:p-6" data-totals>
+      <Block tier="field" className="mt-8 p-4 min-[641px]:p-6" data-totals>
         <div className="grid divide-y divide-line rounded-row bg-sheet min-[641px]:grid-cols-3 min-[641px]:divide-x min-[641px]:divide-y-0">
           <Kpi
             label="Nội dung đã học"
@@ -176,7 +177,7 @@ export function StatsScreen({
           <Kpi label="Thẻ đã ôn" value={`${t.cardsReviewed}`} note={`${t.cardsSaved} thẻ đã lưu`} />
           <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
         </div>
-      </div>
+      </Block>
 
       <div className="mt-8 grid gap-x-5 gap-y-8 min-[901px]:grid-cols-12">
         <div className="min-w-0 min-[901px]:col-span-7 [&>*]:h-full">

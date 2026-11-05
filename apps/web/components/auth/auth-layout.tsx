@@ -6,7 +6,7 @@ import { Mascot } from "@/components/mascot";
 // star doodle) and the form sits in a 400px sheet on the right; at 360 a 140px plum strip sits above
 // the form. The page title stays the sheet's h1. Plum tokens come from W0; the fallbacks are theirs.
 
-const PLUM = "bg-[var(--plum,#4A1638)] text-[var(--on-plum,#FFFFFF)]";
+const PLUM = "bg-plum text-on-plum";
 
 /** One account screen: the plum field with the logo, then a sheet with the page title (h1) and the form. */
 export function AuthLayout({ title, children }: { title: ReactNode; children: ReactNode }) {
@@ -19,7 +19,7 @@ export function AuthLayout({ title, children }: { title: ReactNode; children: Re
         <a
           href="/"
           aria-label="Essity"
-          className="inline-flex min-h-11 items-center self-start font-display text-logo text-[var(--on-plum,#FFFFFF)] no-underline"
+          className="inline-flex min-h-11 items-center self-start font-display text-logo text-on-plum no-underline"
         >
           Essity
         </a>
@@ -30,7 +30,7 @@ export function AuthLayout({ title, children }: { title: ReactNode; children: Re
           aria-hidden="true"
           focusable="false"
           viewBox="0 0 100 100"
-          className="absolute right-6 top-4 size-10 fill-[var(--hl,#FFD15C)] min-[1024px]:right-12 min-[1024px]:top-12 min-[1024px]:size-16"
+          className="absolute right-6 top-4 size-10 fill-hl min-[1024px]:right-12 min-[1024px]:top-12 min-[1024px]:size-16"
         >
           <path d="M50 3 L59 29 L86 19 L71 43 L97 58 L68 63 L72 95 L50 74 L28 95 L32 63 L3 58 L29 43 L14 19 L41 29 Z" />
         </svg>

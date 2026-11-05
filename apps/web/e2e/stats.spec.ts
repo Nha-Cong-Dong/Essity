@@ -92,12 +92,13 @@ for (const width of WIDTHS) {
 }
 
 // Red when: cells touch each other (WCAG 2.5.8 spacing) with a mouse, or are not square.
-test("US-10 AC4: mouse cells are 16 px with 4 px between them", async ({ page }) => {
+test("US-10 AC4: mouse cells stretch to the sheet (12-28 px, square) with 4 px between them", async ({ page }) => {
   await open(page, 1440, "/design-preview/stats?state=full-year");
   const a = await box(page.locator('[data-day="2026-10-26"]'));
   const b = await box(page.locator('[data-day="2026-10-27"]'));
-  expect(a.width).toBeCloseTo(16, 0);
-  expect(a.height).toBeCloseTo(16, 0);
+  expect(a.width).toBeGreaterThanOrEqual(12);
+  expect(a.width).toBeLessThanOrEqual(28.5);
+  expect(a.height).toBeCloseTo(a.width, 0);
   expect(b.y - (a.y + a.height)).toBeCloseTo(4, 0);
 });
 

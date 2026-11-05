@@ -8,14 +8,14 @@ const read = (f: string) => readFileSync(join(__dirname, "..", f), "utf8");
 describe("DESIGN-E", () => {
   it("auth layout has a plum field with the tagline and a 400px sheet", () => {
     const src = read("components/auth/auth-layout.tsx");
-    expect(src).toContain("var(--plum");
+    expect(src).toContain("bg-plum");
     expect(src).toContain("Tối nay ôn gì, đã có app lo");
     expect(src).toContain("max-w-[400px]");
     expect(src).toContain("min-[1024px]:col-span-5");
   });
   it("stats: totals sit on one plum block, today is cam-fill with an ink ring", () => {
     const src = read("components/stats/stats-screen.tsx");
-    expect(src.match(/var\(--plum/g)).toHaveLength(1);
+    expect(src.match(/tier="field"/g)).toHaveLength(1);
     const css = read("components/stats/stats.module.css");
     expect(css).toMatch(/data-today="true"\]\s*\{[^}]*cam-fill[^}]*var\(--ink\)/);
   });
