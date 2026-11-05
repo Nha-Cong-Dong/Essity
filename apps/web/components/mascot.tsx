@@ -44,7 +44,8 @@ export function Mascot({
       viewBox="0 0 200 200"
       className={cn("shrink-0", SIZES[size], className)}
       style={tone === "solid" ? SOLID : undefined}
-      dangerouslySetInnerHTML={{ __html: MASCOT_ART[ART[pose]] }}
-    />
+    >
+      {MASCOT_ART[ART[pose]]}
+    </svg>
   );
 }

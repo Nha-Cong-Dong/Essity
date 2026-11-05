@@ -1,0 +1,14 @@
+task: DESIGN-W0V4
+lane: L2
+status: done
+head_sha: see git log (branch design-w0v4)
+step: tokens + mascot v4 done
+tests: {cmd: "vitest full 1987; tsc; eslint 0 errors; e2e layout 78 + today 20 (build ok)", passed: 2085, failed: 0}
+blockers: []
+decisions:
+  - "Branch is design-w0v4, not design-w0: design-w0 is checked out in worktree L4 (rebased on main, clean)"
+  - "Three spec values failed their own contrast rules, nudged: light --pencil #7c6d72->#726469 (4.0->4.59 on bg), dark --pencil #918186->#a89a9f, dark --line-strong #8a6b7a->#9d7d8c (2.69->3.46 on --raised); activity grid starts at rose-500 not rose-200 (US-10 AC4 needs 3:1)"
+  - "Pink text: all text-hong classes now text-hong-text (hong is 3.83 on bg); new utilities bg-field, bg-block, text-hong-text, accent-teal/on-accent-teal/accent-tint/accent-bright, now, rose-400..950, elev-1/tile/elev-2 shadows"
+  - "Mascot: 5 poses + glyph as JSX (no innerHTML), old names mapped; outline/teal via --mascot-line/--mascot-teal, tone=solid for field/pink; shell header uses glyph"
+  - "primary-inverse tokens fixed in palette (white/hong-text, dark #1a0e14/#ff77ad); no layout changes; hex in screen folders untouched"
+next: "orchestrator opens PR; screen lanes rebase for tokens"
