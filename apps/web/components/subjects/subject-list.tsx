@@ -95,7 +95,8 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
   const [deleteFailed, setDeleteFailed] = useState(false);
   // Where focus goes once the view it names is on screen (plan F7): set with the state change
   // that shows that view, taken after the render.
-  const focusTo = useRef<"keep" | "delete" | null>(null);
+  const focusTo = useRef<"keep" | "delete" | "edit" | "name" | null>(null);
+  const editRef = useRef<HTMLButtonElement>(null);
   const keepRef = useRef<HTMLButtonElement>(null);
   const deleteRef = useRef<HTMLButtonElement>(null);
   const ids = {
@@ -111,7 +112,8 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
 
   useEffect(() => {
     if (focusTo.current === null) return;
-    ({ keep: keepRef, delete: deleteRef })[focusTo.current].current?.focus();
+    if (focusTo.current === "name") document.getElementById(`edit-${subject.id}-subject-name`)?.focus();
+    else ({ keep: keepRef, delete: deleteRef, edit: editRef })[focusTo.current].current?.focus();
     focusTo.current = null;
   });
 
@@ -152,7 +154,25 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
     setSaved(false);
     setConfirming(false);
     setEditing(true);
+    focusTo.current = "name";
   }
+
+  // Leaves the edit form for the row and gives focus back to "Sửa" (not while a save is running).
+  function closeEdit() {
+    if (busy) return;
+    setEditing(false);
+    focusTo.current = "edit";
+  }
+
+  // Escape works wherever focus is while the form is open (it was form-only before).
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") closeEdit();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -224,6 +244,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
         {!editing && !confirming && (
           <div className="flex flex-wrap items-center gap-2 self-end">
             <Button
+              ref={editRef}
               variant="quiet"
               onClick={open}
               aria-label={`Sửa ${subject.name}`}
@@ -295,9 +316,6 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
         <form
           method="post"
           onSubmit={save}
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && !busy) setEditing(false);
-          }}
           className="flex max-w-120 flex-col gap-5 px-3.5 pb-4"
           noValidate
         >
@@ -322,7 +340,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
             <Button
               type="button"
               variant="quiet"
-              onClick={() => setEditing(false)}
+              onClick={closeEdit}
             >
               Hủy
             </Button>
