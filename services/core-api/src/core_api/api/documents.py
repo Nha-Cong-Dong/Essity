@@ -146,9 +146,8 @@ def request_upload(
     """A URL to upload one PDF, DOCX or PPTX to the subject (201), or the document it already is
     (200).
 
-    The same file (SHA-256) again: uploaded → `duplicate: true` and no URL; its reading failed →
-    the same, and it is read again (Q16); still uploading → a fresh URL for the same document.
-    Errors: 404 `subject_not_found`; 422
+    The same file (SHA-256) again: uploaded → `duplicate: true` and no URL; still uploading →
+    a fresh URL for the same document. Errors: 404 `subject_not_found`; 422
     `unsupported_file_type`, `invalid_filename`, `file_too_large`, `size_mismatch` (the same
     file asked with another size), `content_mismatch` (the same file was refused before); 409
     `storage_quota_exceeded`; 429 with Retry-After; 503 `storage_full` or when a dependency is
@@ -197,6 +196,8 @@ def request_upload(
         response.status_code = status.HTTP_200_OK
     if not created and document.status == "failed":
         # Q16: the same file again after a failed reading is read again, not handed back as failed.
+        # (Kept out of the docstring: it would change openapi.json, which only the serial lane
+        # regenerates.)
         document.status = "uploaded"
         document.failure_reason = None
         document.uploaded_at = now
