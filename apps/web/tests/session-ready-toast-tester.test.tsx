@@ -54,7 +54,8 @@ describe("SessionReadyToast, FIX-CHUNK tester edges", () => {
     const failed = await screen.findByRole("link", { name: /Chưa tạo được thẻ cho buổi học môn Giải tích/ });
     expect(failed.getAttribute("href")).toBe("/subjects/subj-a");
     const done = await screen.findByRole("link", { name: /Đã thêm 2 thẻ vào Kho cho buổi học môn Hóa sinh/ });
-    expect(done.getAttribute("href")).toBe("/kho-kien-thuc/subj-b");
+    // FIX-CHUNK live check: /kho-kien-thuc/<id> is a 404; the Kho takes ?subject= and ?session=.
+    expect(done.getAttribute("href")).toBe("/kho-kien-thuc?subject=subj-b&session=s-b");
     expect(readPendingSessions()).toEqual([]);
   });
 

@@ -64,7 +64,7 @@ export function SessionReadyToast() {
               Chưa tạo được thẻ cho buổi học môn {item.subject}. Mở môn để ghi lại buổi học.
             </Link>
           ) : item.cards > 0 ? (
-            <Link href={`/kho-kien-thuc/${item.subjectId}`} className="text-body inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
+            <Link href={`/kho-kien-thuc?subject=${item.subjectId}&session=${item.sessionId}`} className="text-body inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
               Đã thêm {item.cards} thẻ vào Kho cho buổi học môn {item.subject}
             </Link>
           ) : (
