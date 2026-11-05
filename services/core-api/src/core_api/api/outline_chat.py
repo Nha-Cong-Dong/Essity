@@ -21,10 +21,14 @@ from core_api.api.text import storable_text
 from core_api.clients.ai_client import NotGraded
 from core_api.db.session import DbSession
 from core_api.domain.commands.registry import CommandRejected
+from core_api.repositories.command_log import CommandLogRepository
+from core_api.repositories.doc_section import DocSectionRepository
+from core_api.repositories.document import DocumentRepository
 from core_api.repositories.subject import SubjectRepository
 from core_api.services.command_context import build_parse_payload
 from core_api.services.commands import ApplyOutcome, CommandIdReused, CommandRequest, CommandService
-from core_api.services.outline_edit import EditRefused, merge_sections, split_section
+from core_api.services.outline_edit import EditRefused, merge_targets, split_section
+from core_api.services.outline_nl import read_outline_sentence
 from core_api.services.suggestions import learning_today
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(verified_user)])
@@ -83,6 +87,8 @@ def _titles(diff: list[dict[str, Any]], key: str) -> list[str]:
 def reply_for(outcome: ApplyOutcome) -> str:
     """A short Vietnamese confirmation of what ran."""
     kind = outcome.op_kinds[0] if outcome.op_kinds else ""
+    if outcome.affected == 0 and kind in ("section_exclude", "section_mark"):
+        return "Việc đó đã đúng như vậy rồi, mình không cần đổi gì."
     names = _titles(list(outcome.diff), "after")
     shown = ", ".join(f"“{n}”" for n in names[:3]) + (" và vài mục khác" if len(names) > 3 else "")
     what = f" ({shown})" if shown else ""
@@ -91,6 +97,13 @@ def reply_for(outcome: ApplyOutcome) -> str:
             return f"Đã bỏ {outcome.affected} mục khỏi đề cương{what}. Bấm Hoàn tác nếu bạn đổi ý."
         case "section_mark":
             return f"Đã cập nhật trạng thái đã học cho {outcome.affected} mục{what}."
+        case "section_merge":
+            removed = sum(
+                1
+                for item in outcome.diff
+                if item.get("after") is None and item.get("before") is not None
+            )
+            return f"Đã gộp {removed + 1} mục thành một. Bấm Hoàn tác nếu bạn đổi ý."
         case "section_set_pages":
             return f"Đã chỉnh lại số trang của mục{what}."
         case _:
@@ -104,26 +117,50 @@ _SPLIT = re.compile(
 )
 
 
-def _structural(
+def _line(text: str) -> str:
+    return " ".join(unicodedata.normalize("NFC", text).casefold().split()).rstrip(".!")
+
+
+def _split(
     session: DbSession, user_id: uuid.UUID, subject_id: uuid.UUID, text: str
 ) -> OutlineChatOut | None:
-    """ "gộp mục 1.2 với 1.3" and "tách chương 3 [thành 2 phần]": read by pattern, run at once."""
-    line = " ".join(unicodedata.normalize("NFC", text).casefold().split()).rstrip(".!")
-    merge, split = _MERGE.match(line), _SPLIT.match(line)
-    if merge is None and split is None:
+    """ "tách chương 3 [thành 2 phần]": read by pattern, run at once (no undo yet)."""
+    split = _SPLIT.match(_line(text))
+    if split is None:
         return None
     try:
-        if merge is not None:
-            edit = merge_sections(session, user_id, subject_id, re.findall(_NUM, merge.group(1)))
-        else:
-            assert split is not None
-            parts = int(split.group(2)) if split.group(2) else None
-            edit = split_section(session, user_id, subject_id, split.group(1), parts)
+        parts = int(split.group(2)) if split.group(2) else None
+        edit = split_section(session, user_id, subject_id, split.group(1), parts)
     except EditRefused as refused:
         session.rollback()
         return OutlineChatOut(status="failed", reply=str(refused))
     session.commit()
     return OutlineChatOut(status="applied", reply=edit.reply, affected=edit.changed)
+
+
+def _by_pattern(
+    session: DbSession, user_id: uuid.UUID, subject_id: uuid.UUID, text: str
+) -> list[dict[str, Any]] | OutlineChatOut | None:
+    """The ops of a sentence read without the model ("gộp mục 1.2 với 1.3", "bỏ Bài tập chương
+    3"), or a friendly refusal, or None when the sentence is not one of these."""
+    merge = _MERGE.match(_line(text))
+    if merge is not None:
+        try:
+            ids = merge_targets(session, user_id, subject_id, re.findall(_NUM, merge.group(1)))
+        except EditRefused as refused:
+            session.rollback()
+            return OutlineChatOut(status="failed", reply=str(refused))
+        return [{"kind": "section_merge", "sections": [str(i) for i in ids]}]
+    sections: list[Any] = []
+    for document in DocumentRepository(session, user_id).of_subject(subject_id):
+        sections += DocSectionRepository(session, user_id).of_document(document.id)
+    intent = read_outline_sentence(sections, text)
+    if intent is None:
+        return None
+    op: dict[str, Any] = {"kind": intent.kind, "sections": [str(s.id) for s in intent.sections]}
+    if intent.kind == "section_mark":
+        op["studied"] = intent.studied
+    return [op]
 
 
 @router.post("/subjects/{subject_id}/outline/chat")
@@ -137,9 +174,24 @@ def outline_chat(
 ) -> OutlineChatOut:
     if SubjectRepository(session, user.id).get(subject_id) is None:
         raise HTTPException(status_code=404, detail="subject_not_found")
-    edit = _structural(session, user.id, subject_id, body.text)
-    if edit is not None:
-        return edit
+    split = _split(session, user.id, subject_id, body.text)
+    if split is not None:
+        return split
+    if body.command_id is not None and _MERGE.match(_line(body.text)):
+        # a retry of a merge that went through: the merged-away section is gone, so the
+        # sentence no longer reads; answer from the log instead of "no such section"
+        stored = CommandLogRepository(session, user.id).by_command_id(body.command_id)
+        if stored is not None and [o["kind"] for o in stored.ops_json] == ["section_merge"]:
+            again = CommandService(session, user.id)._replay(stored, stored.payload_hash)  # pyright: ignore[reportPrivateUsage]
+            return OutlineChatOut(
+                status="applied",
+                reply=reply_for(again),
+                command_id=again.command_id,
+                affected=again.affected,
+            )
+    read = _by_pattern(session, user.id, subject_id, body.text)
+    if isinstance(read, OutlineChatOut):
+        return read
     command_id = body.command_id or uuid.uuid4()
 
     def parse(text: str) -> Sequence[Mapping[str, Any]]:
@@ -160,7 +212,7 @@ def outline_chat(
         outcome = CommandService(session, user.id).apply(
             command_id,
             body.screen_session_id or uuid.uuid4(),
-            CommandRequest(body.text, None),
+            CommandRequest(body.text, read),
             parse=parse,
             now=now,
         )

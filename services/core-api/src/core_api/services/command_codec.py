@@ -32,6 +32,7 @@ APPLICABLE_KINDS = frozenset(
         "card_add_idea",
         "section_exclude",
         "section_mark",
+        "section_merge",
         "suggest_only_subject",
         "suggest_defer_subject",
         "question_set_type",

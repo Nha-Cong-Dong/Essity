@@ -61,6 +61,7 @@ from core_api.domain.commands.registry import (
     QuestionSetType,
     SectionExclude,
     SectionMark,
+    SectionMerge,
     SuggestDeferSubject,
     SuggestOnlySubject,
     kind_of,
@@ -107,6 +108,7 @@ from core_api.services.outline import (
     RangeError,
     SectionNotFoundError,
 )
+from core_api.services.outline_edit import EditRefused, check_merge, merge_rows
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +229,17 @@ _CODES: dict[type[Exception], str] = {
 def _title_of(content: str) -> str:
     first = next((line.strip() for line in content.splitlines() if line.strip()), "")
     return first[:200] or "Thẻ mới"
+
+
+def _plain(value: Any) -> Any:
+    return str(value) if isinstance(value, uuid.UUID) else value
+
+
+_UUID_COLUMNS = frozenset({"subject_id", "document_id", "parent_id"})
+
+
+def _unplain(column: str, value: Any) -> Any:
+    return uuid.UUID(value) if column in _UUID_COLUMNS and value is not None else value
 
 
 def _s(value: uuid.UUID | None) -> str | None:
@@ -392,7 +405,7 @@ class CommandService:
         entries = self._entries(ctx, diff(start, state))
         for entry in entries:  # `undo_revs_json` stays empty: the undo writes it, once
             for revert in entry["reverts"]:
-                revert["expected_rev"] = self._rev(revert["table"], uuid.UUID(revert["id"]))
+                revert["expected_rev"] = self._rev_or_none(revert["table"], uuid.UUID(revert["id"]))
         row = self.log.add_new(
             command_id=command_id,
             payload_hash=digest,
@@ -550,6 +563,8 @@ class CommandService:
             self._add_card(ctx, review, op, changes)
         elif isinstance(op, SectionExclude | SectionMark):
             self._sections(ctx, op, changes)
+        elif isinstance(op, SectionMerge):
+            self._merge_sections(ctx, op)
         elif isinstance(op, SuggestOnlySubject | SuggestDeferSubject):
             self._filter(ctx, op)
         elif isinstance(op, QuestionSetType | QuestionSetAnswer):
@@ -694,6 +709,45 @@ class CommandService:
                         ctx.keep("doc_section", sid, image, owner)
                 outline.edit_section(section.id, studied=op.studied)
 
+    _MERGE_IMAGE = ("parent_id", "ord", "weight", "studied_weight", "first_page", "last_page")
+    _ROW_IMAGE = (
+        "subject_id",
+        "document_id",
+        "parent_id",
+        "ord",
+        "title",
+        "weight",
+        "studied_weight",
+        "unit",
+        "source",
+        "excluded",
+        "first_page",
+        "last_page",
+    )
+
+    def _merge_sections(self, ctx: _Ctx, op: SectionMerge) -> None:
+        """Sections into the first (outline chat). Every row the merge moves keeps a before-image;
+        a row it removes keeps all its columns, so the undo can put it back (`insert`)."""
+        picked = [ctx.sections[i] for i in op.sections]
+        try:
+            check_merge(self.session, self.user_id, picked)
+        except EditRefused:
+            raise CommandRejected("merge_refused") from None
+        first = picked[0]
+        rows = ctx.by_document[first.document_id]
+        before = {s.id: {k: _plain(getattr(s, k)) for k in self._MERGE_IMAGE} for s in rows}
+        gone = {s.id: {k: _plain(getattr(s, k)) for k in self._ROW_IMAGE} for s in picked[1:]}
+        merge_rows(self.session, self.user_id, picked)
+        now = {
+            s.id: s for s in DocSectionRepository(self.session, self.user_id).by_ids(list(before))
+        }
+        for id_, image in before.items():
+            if id_ in gone:
+                ctx.keep("doc_section", id_, gone[id_], ("section", id_))
+                ctx.reverts[("doc_section", id_)]["insert"] = True
+            elif id_ in now and {k: _plain(getattr(now[id_], k)) for k in image} != image:
+                ctx.keep("doc_section", id_, image, ("section", first.id))
+
     def _filter(self, ctx: _Ctx, op: SuggestOnlySubject | SuggestDeferSubject) -> None:
         filters = StudyFilterRepository(self.session, self.user_id)
         before = filters.state(op.subject)
@@ -836,7 +890,8 @@ class CommandService:
             now_rev = self._rev_or_none(revert["table"], uuid.UUID(revert["id"]))
             if now_rev != expected[f"{revert['table']}:{revert['id']}"]:
                 raise CommandRejected("changed_after", f"{revert['table']} {revert['id']}")
-        for revert in reversed(reverts):
+        # removed rows come back first: the rows that were under them point at them again after
+        for revert in sorted(reversed(reverts), key=lambda r: not r.get("insert")):
             self._restore(revert, expected[f"{revert['table']}:{revert['id']}"], row, now)
         self.session.flush()
         self.session.expire_all()
@@ -880,8 +935,14 @@ class CommandService:
     ) -> None:
         table, id_, before = revert["table"], uuid.UUID(revert["id"]), revert["before"]
         uid = self.user_id
-        if table == "doc_section":
-            self._versioned(DocSection, id_, expected, dict(before), revert)
+        if table == "doc_section" and revert.get("insert"):
+            back = DocSection(**{k: _unplain(k, v) for k, v in before.items()})
+            back.id = id_
+            back.user_id = uid
+            self.session.add(back)
+        elif table == "doc_section":
+            before = {k: _unplain(k, v) for k, v in before.items()}
+            self._versioned(DocSection, id_, expected, before, revert)
         elif table == "question":
             values = dict(before)
             if "type_id" in values:

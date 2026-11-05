@@ -91,6 +91,13 @@ class SectionExclude(Op):
 
 
 @dataclass(frozen=True)
+class SectionMerge(Op):
+    """Sibling sections into the first one (outline chat); the others leave the outline."""
+
+    sections: Sequence[uuid.UUID]
+
+
+@dataclass(frozen=True)
 class SectionMark(Op):
     sections: Sequence[uuid.UUID]
     studied: bool
@@ -253,6 +260,23 @@ def _section_exclude(s: Snapshot, op: SectionExclude, ids: IdSource) -> Snapshot
     return s
 
 
+def _section_merge(s: Snapshot, op: SectionMerge, ids: IdSource) -> Snapshot:
+    targets = _distinct(op.sections)
+    if len(targets) < 2:
+        raise CommandRejected("too_few_sections", str(len(targets)))
+    first = _section(s, targets[0])
+    rest = [_section(s, t) for t in targets[1:]]
+    out = s.put(
+        first.changed(
+            from_page=min(first.from_page, *(r.from_page for r in rest)),
+            to_page=max(first.to_page, *(r.to_page for r in rest)),
+        )
+    )
+    for r in rest:
+        out = out.drop(("section", r.id))
+    return out
+
+
 def _section_mark(s: Snapshot, op: SectionMark, ids: IdSource) -> Snapshot:
     for target in _distinct(op.sections):
         s = s.put(_section(s, target).changed(studied=op.studied))
@@ -311,6 +335,7 @@ REGISTRY: dict[str, Entry] = {
     "section_set_pages": Entry(SectionSetPages, _section_set_pages),
     "section_exclude": Entry(SectionExclude, _section_exclude),
     "section_mark": Entry(SectionMark, _section_mark),
+    "section_merge": Entry(SectionMerge, _section_merge),
     "suggest_only_subject": Entry(SuggestOnlySubject, _filter("only")),
     "suggest_defer_subject": Entry(SuggestDeferSubject, _filter("defer")),
     "question_set_type": Entry(QuestionSetType, _question_set_type),

@@ -97,14 +97,10 @@ def _reindex(
     session.flush()
 
 
-def merge_sections(
-    session: Session, user_id: uuid.UUID, subject_id: uuid.UUID, refs: list[str]
-) -> Edit:
-    """Sibling sections into the first one: pages and weight add up, children move under it."""
-    if len(refs) < 2:
+def check_merge(session: Session, user_id: uuid.UUID, picked: list[DocSection]) -> None:
+    """Why `picked` cannot be merged (`EditRefused`), or nothing."""
+    if len(picked) < 2:
         raise EditRefused("Bạn muốn gộp những mục nào? Ví dụ: “gộp mục 1.2 với 1.3”.")
-    sections = _subject_sections(session, user_id, subject_id)
-    picked = [find_section(sections, r) for r in refs]
     if len({s.id for s in picked}) != len(picked):
         raise EditRefused("Bạn nhắc cùng một mục hai lần.")
     first, rest = picked[0], picked[1:]
@@ -112,6 +108,12 @@ def merge_sections(
         raise EditRefused("Chỉ gộp được các mục cùng cấp, cùng nằm dưới một chương.")
     if any(_linked(session, user_id, s.id) for s in rest):
         raise EditRefused("Có mục đã gắn thẻ hoặc câu hỏi nên mình không gộp được.")
+
+
+def merge_rows(session: Session, user_id: uuid.UUID, picked: list[DocSection]) -> Edit:
+    """Sibling sections into the first one: pages and weight add up, children move under it.
+    `check_merge` has passed."""
+    first, rest = picked[0], picked[1:]
     for s in rest:
         first.weight += s.weight
         first.studied_weight += s.studied_weight
@@ -128,6 +130,27 @@ def merge_sections(
     _reindex(session, user_id, first.document_id, first.id)
     _reindex(session, user_id, first.document_id, first.parent_id)
     return Edit(f"Đã gộp {len(picked)} mục thành “{first.title}”.", len(picked))
+
+
+def merge_sections(
+    session: Session, user_id: uuid.UUID, subject_id: uuid.UUID, refs: list[str]
+) -> Edit:
+    sections = _subject_sections(session, user_id, subject_id)
+    picked = [find_section(sections, r) for r in refs]
+    check_merge(session, user_id, picked)
+    return merge_rows(session, user_id, picked)
+
+
+def merge_targets(
+    session: Session, user_id: uuid.UUID, subject_id: uuid.UUID, refs: list[str]
+) -> list[uuid.UUID]:
+    """The ids "gộp 1.2 với 1.3" names, checked: what the chat hands to the command service."""
+    if len(refs) < 2:
+        check_merge(session, user_id, [])
+    sections = _subject_sections(session, user_id, subject_id)
+    picked = [find_section(sections, r) for r in refs]
+    check_merge(session, user_id, picked)
+    return [s.id for s in picked]
 
 
 def split_section(
