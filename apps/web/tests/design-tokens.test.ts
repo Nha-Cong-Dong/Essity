@@ -140,9 +140,11 @@ describe.each(["light", "dark"] as const)("%s tile", (mode) => {
   it.each([
     ["--on-surface-hong", 4.5],
     ["--hong-soft-text", 4.5],
-    ["--focus-on-hong", 3],
   ] as const)("%s on --hong-tint", (fg, limit) => {
     expect(contrast(palette(mode), fg, "--hong-tint")).toBeGreaterThanOrEqual(limit);
+  });
+  it("--focus-on-hong reads on a --hong fill (direction §F1)", () => {
+    expect(contrast(palette(mode), "--focus-on-hong", "--hong")).toBeGreaterThanOrEqual(3);
   });
   it("--ink reads on the highlighter band under an h1 phrase (≥ 4.5)", () => {
     expect(contrast(palette(mode), "--ink", "--hl", "--bg")).toBeGreaterThanOrEqual(4.5);
@@ -178,12 +180,12 @@ describe("token tables", () => {
   it("matches the spec on a few exact values, to catch a mistyped hex", () => {
     const light = palette("light");
     const dark = palette("dark");
-    expect(contrast(light, "--hong", "--bg")).toBeCloseTo(5.46, 1);
+    expect(contrast(light, "--hong", "--bg")).toBeCloseTo(5.17, 1);
     expect(contrast(light, "--ink", "--hl")).toBeCloseTo(12.1, 1);
     expect(contrast(light, "--on-plum", "--plum")).toBeCloseTo(14.35, 1);
     expect(contrast(light, "--on-plum-soft", "--plum")).toBeCloseTo(9.55, 1);
-    expect(contrast(dark, "--on-plum-soft", "--plum")).toBeCloseTo(10.51, 1);
-    expect(contrast(dark, "--ink", "--plum")).toBeCloseTo(13.77, 1);
+    expect(contrast(dark, "--on-plum-soft", "--plum")).toBeCloseTo(8.13, 1);
+    expect(contrast(dark, "--ink", "--plum")).toBeCloseTo(10.65, 1);
   });
 });
 

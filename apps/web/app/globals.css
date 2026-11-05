@@ -222,7 +222,7 @@
    one). Variables declared on an element win over inherited ones. */
 :root,
 [data-tone="light"] {
-  --bg: #fbf5f7;
+  --bg: #f8eef2;
   --sheet: #ffffff;
   --raised: #ffffff;
   --sunken: #f4ebef;
@@ -247,7 +247,7 @@
   --on-plum-action-fg: #4a1638;
   --focus-on-plum: #ffc2d9;
   --glow-c: #ffb627; /* landing hero only */
-  --cam: #b23e26; /* the one second colour: "suggested / next" rows only (a deeper pink, same family as --hong) */
+  --cam: #a3361e; /* the one second colour: "suggested / next" rows only (a deeper pink, same family as --hong) */
   --rose-100: #ffe3ec;
   --rose-200: #fbc9da;
   --rose-300: #f59bbd;
@@ -257,7 +257,7 @@
   --grid-3: color-mix(in srgb, var(--hong) 86%, transparent);
   --grid-4: color-mix(in srgb, var(--hong) 100%, transparent);
   --on-surface-hong: var(--ink); /* text on the tile ("pink" surface = --hong-tint) */
-  --focus-on-hong: var(--hong);
+  --focus-on-hong: #ffffff;
   --inverse-bg: var(--hong); /* primary-inverse = the primary button */
   --inverse-fg: var(--on-hong);
   --hl: #ffd15c; /* pink highlighter: a background under ink only (8.83) */
@@ -309,7 +309,7 @@
     --cam-fill: #ff8a73; /* dark text on it (#1a0e14) */
     --on-cam-fill: #1a0e14;
     --cam-tint: #3f2a1f;
-    --plum: #3a1530; /* one step lighter than --sheet; never lay --hong on it */
+    --plum: #5c1d46; /* one step lighter than --sheet; never lay --hong on it */
     --on-plum: #f7edef;
     --on-plum-soft: #ffc2d9; /* secondary text on plum (9.55) */
     --on-plum-action-bg: #ff77ad;
@@ -326,7 +326,7 @@
     --grid-3: color-mix(in srgb, var(--hong) 86%, transparent);
     --grid-4: color-mix(in srgb, var(--hong) 100%, transparent);
   --on-surface-hong: var(--ink); /* text on the tile ("pink" surface = --hong-tint) */
-  --focus-on-hong: var(--hong);
+  --focus-on-hong: #1a0e14;
   --inverse-bg: var(--hong); /* primary-inverse = the primary button */
   --inverse-fg: var(--on-hong);
     --hl: color-mix(in srgb, #ffd15c 35%, transparent);
@@ -380,7 +380,7 @@
   --cam-fill: #ff8a73; /* dark text on it (#1a0e14) */
   --on-cam-fill: #1a0e14;
   --cam-tint: #3f2a1f;
-  --plum: #3a1530; /* one step lighter than --sheet; never lay --hong on it */
+  --plum: #5c1d46; /* one step lighter than --sheet; never lay --hong on it */
   --on-plum: #f7edef;
   --on-plum-soft: #ffc2d9; /* secondary text on plum (9.55) */
   --on-plum-action-bg: #ff77ad;
@@ -397,7 +397,7 @@
   --grid-3: color-mix(in srgb, var(--hong) 86%, transparent);
   --grid-4: color-mix(in srgb, var(--hong) 100%, transparent);
   --on-surface-hong: var(--ink); /* text on the tile ("pink" surface = --hong-tint) */
-  --focus-on-hong: var(--hong);
+  --focus-on-hong: #1a0e14;
   --inverse-bg: var(--hong); /* primary-inverse = the primary button */
   --inverse-fg: var(--on-hong);
   --hl: color-mix(in srgb, #ffd15c 35%, transparent); /* full highlight: ≥ 5.61 on every dark surface */
