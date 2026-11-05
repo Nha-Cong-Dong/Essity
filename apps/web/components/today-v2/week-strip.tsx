@@ -33,19 +33,21 @@ export function weekFromCells(
   return weekFor(today, new Map(cells.map((cell) => [cell.day, cell.cardsSaved + cell.questionsAnswered])));
 }
 
+// DESIGN-A: a T3 sheet. Bars are pink (--hong); today is the cam-fill bar with an ink ring and a dot (shape,
+// not colour alone); a day with nothing is a thin line and no printed "0".
 export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; today: string; className?: string }) {
   const top = Math.max(1, ...cells.map((cell) => cell.count));
+  const quiet = cells.every((cell) => cell.count === 0);
   return (
-    <section aria-labelledby="today-week" className={cn("min-w-0 rounded-tile bg-hong-tint p-4 min-[901px]:p-6", className)}>
+    <section
+      aria-labelledby="today-week"
+      data-tier="sheet"
+      className={cn("min-w-0 rounded-tile bg-sheet p-4 inset-ring-1 inset-ring-line min-[901px]:p-6", className)}
+    >
       <h2 id="today-week" className="m-0 font-display text-lead">
         Tuần này
       </h2>
-      {cells.every((cell) => cell.count === 0) ? (
-        <p className="m-0 mt-3 text-read text-ink-soft" data-week-empty>
-          Chưa có hoạt động nào trong tuần này.
-        </p>
-      ) : null}
-      <ol hidden={cells.every((cell) => cell.count === 0)} className="m-0 mt-4 grid h-28 list-none grid-cols-7 items-end gap-3 p-0">
+      <ol className="m-0 mt-4 grid h-28 list-none grid-cols-7 items-end gap-3 p-0">
         {cells.map((cell, index) => {
           const on = cell.count > 0;
           const isToday = cell.day === today;
@@ -55,11 +57,15 @@ export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; toda
               aria-current={isToday ? "date" : undefined}
               className="flex h-full min-w-0 flex-col items-center justify-end gap-1 text-meta text-ink-soft"
             >
-              <b className="font-display text-ink tabular-nums">{cell.count}</b>
+              {on ? <b className="font-display text-ink tabular-nums">{cell.count}</b> : null}
               <span
                 aria-hidden="true"
-                className={cn("w-full max-w-9 rounded-slip", on ? "bg-hong" : "bg-line-strong")}
-                style={{ height: on ? `${Math.max(12, (cell.count / top) * 56)}px` : "2px" }}
+                data-bar={isToday ? "today" : on ? "on" : "rest"}
+                className={cn(
+                  "w-full max-w-9 rounded-slip",
+                  isToday ? "bg-[var(--cam-fill,#ff7a5c)] ring-[1.5px] ring-ink" : on ? "bg-hong" : "bg-line-strong",
+                )}
+                style={{ height: on ? `${Math.max(12, (cell.count / top) * 56)}px` : isToday ? "6px" : "2px" }}
               />
               <span className={cn(isToday && "font-semibold text-ink")}>
                 {NAMES[index]}
@@ -70,6 +76,11 @@ export function WeekStrip({ cells, today, className }: { cells: WeekCell[]; toda
           );
         })}
       </ol>
+      {quiet ? (
+        <p className="m-0 mt-3 text-meta text-ink-soft" data-week-empty>
+          Chưa có hoạt động nào trong tuần này.
+        </p>
+      ) : null}
     </section>
   );
 }

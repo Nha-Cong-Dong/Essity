@@ -119,7 +119,7 @@ test("US-15 AC6: a failing suggestion route ends in a message, not Đang tính�
   await expect(page.getByText("Đang tính…")).toHaveCount(0);
 });
 
-test("US-03 AC7: the preview's Ôn ngay never calls the API", async ({ page }) => {
+test("US-03 AC7: the preview's Bắt đầu ôn never calls the API", async ({ page }) => {
   const calls: string[] = [];
   await page.route("**/api/**", (route) => {
     calls.push(route.request().url());
@@ -127,7 +127,7 @@ test("US-03 AC7: the preview's Ôn ngay never calls the API", async ({ page }) =
   });
   await page.goto("/design-preview/today?state=review");
   await settled(page);
-  await page.getByRole("button", { name: "Ôn ngay" }).click();
+  await page.getByRole("button", { name: "Bắt đầu ôn" }).click();
   expect(calls).toEqual([]);
 });
 

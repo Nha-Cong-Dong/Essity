@@ -57,9 +57,9 @@ for (const width of WIDTHS) {
     });
 
     // Red when: the review start button falls outside the review block it belongs to (UI-A: flat, no tile).
-    test("US-03 AC1: review: Ôn ngay sits inside the review block", async ({ page }) => {
+    test("US-03 AC1: review: Bắt đầu ôn sits inside the review block", async ({ page }) => {
       await open(page, width, "/design-preview/today?state=review");
-      const start = page.getByRole("button", { name: "Ôn ngay" });
+      const start = page.getByRole("button", { name: "Bắt đầu ôn" });
       expect(inside(await box(start), await box(page.locator('section[aria-labelledby="today-review"]')))).toBe(true);
     });
 

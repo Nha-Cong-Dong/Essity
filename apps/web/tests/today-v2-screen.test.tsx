@@ -74,7 +74,7 @@ describe("Hôm nay v2 states", () => {
     expect((box.match(/<li/g) ?? []).length).toBe(1);
     expect(box).not.toContain("chưa có giáo trình chính");
     expect(box).toContain(COPY.seeAll);
-    expect(markup).toContain("Hôm nay chưa có gì cần ôn");
+    expect(markup).toContain("Xong phần ôn hôm nay");
     expect(markup).toContain("Lần tới đến hạn: thứ Hai, 02/11");
   });
 

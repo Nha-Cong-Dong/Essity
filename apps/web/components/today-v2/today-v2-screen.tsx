@@ -1,4 +1,6 @@
-import { Marker } from "@/components/notebook";
+import { Check, Sparkle } from "lucide-react";
+import type { CSSProperties } from "react";
+
 import { WeekStrip, type WeekCell } from "@/components/today-v2/week-strip";
 import { LearnActions } from "@/components/today-v2/learn-actions";
 import { Mascot } from "@/components/mascot";
@@ -20,15 +22,16 @@ import {
 // Order: Việc dở, Ôn hôm nay, Học gì tiếp, Luyện tập. Exactly one primary button per state.
 
 const FULL = "max-sm:w-full";
+// DESIGN-A copy (Claude's pick,): the plum field says it is done, or offers to start.
+const REVIEW_DONE = "Xong phần ôn hôm nay";
+const REVIEW_START = "Bắt đầu ôn";
 // V22: no card chrome except the one tinted sheet ("tờ chính") of the review; lists are rows.
 const EDGE = "min-w-0";
 
 function Heading({ day }: { day: string }) {
   return (
-    <div className="mb-8 grid items-end gap-x-6 gap-y-2 min-[901px]:grid-cols-12">
-      <h1 className="m-0 font-display text-title min-[901px]:col-span-8">
-        <Marker>{COPY.heading}</Marker>
-      </h1>
+    <div className="mb-6 grid items-end gap-x-6 gap-y-2 min-[901px]:grid-cols-12">
+      <h1 className="m-0 font-display text-title min-[901px]:col-span-8">{COPY.heading}</h1>
       <p className="m-0 text-body text-ink-soft min-[901px]:col-span-4 min-[901px]:justify-self-end">{dayLabel(day)}</p>
     </div>
   );
@@ -73,7 +76,7 @@ function ResumeRow({ item, primary }: { item: Unfinished; primary: boolean }) {
 export function ResumeStrip({ items }: { items: Unfinished[] }) {
   const first = items.findIndex((item) => item.kind !== "note");
   return (
-    <section className="min-w-0 border-b border-line pb-6 min-[901px]:col-span-12" aria-labelledby="today-unfinished">
+    <section className="min-w-0 border-b border-line pb-5 min-[901px]:col-span-12" aria-labelledby="today-unfinished">
       <h2 id="today-unfinished" className="m-0 mb-3 text-body font-semibold">
         {COPY.unfinished}
       </h2>
@@ -86,10 +89,22 @@ export function ResumeStrip({ items }: { items: Unfinished[] }) {
   );
 }
 
-// UI-A: the review is the answer of the screen: one tile (the page's one tint), the number at display
-// size with Bé Trang beside it, the minutes, and the solid pink button at the foot. It is as tall as its
-// neighbour ("Học gì tiếp"), so neither side has a hollow.
-const REVIEW = "relative flex min-w-0 flex-col justify-between gap-6 rounded-tile bg-hong-tint p-4 min-[901px]:col-span-6 min-[901px]:p-6";
+// DESIGN-A (direction §C/§F3): the review is the one T1 field of the screen, always plum (tokens fall back to the
+// planned values until W0 lands). Inside it the ink tokens are re-scoped to the on-plum ones, so the shared
+// Button and StartButton read correctly without a new variant. It is as tall as "Học gì tiếp theo?" beside it.
+const PLUM_TONE = {
+  "--ink": "var(--on-plum, #ffffff)",
+  "--ink-soft": "var(--on-plum-soft, #ffc2d9)",
+  "--line-strong": "var(--on-plum-soft, #ffc2d9)",
+  "--sunken": "color-mix(in srgb, var(--on-plum, #ffffff) 14%, transparent)",
+  "--focus": "var(--on-plum-soft, #ffc2d9)",
+  "--inverse-bg": "var(--on-plum-soft, #ffc2d9)",
+  "--inverse-fg": "var(--plum, #4a1638)",
+} as CSSProperties;
+const REVIEW =
+  "relative flex min-w-0 flex-col justify-between gap-6 overflow-hidden rounded-tile bg-[var(--plum,#4a1638)] p-5 text-ink min-[901px]:col-span-5 min-[901px]:p-6";
+// The one motif of the field, drawn in the highlighter yellow (F2); decoration only.
+const YELLOW = "var(--hl)";
 
 export function ReviewTile({
   review,
@@ -102,35 +117,49 @@ export function ReviewTile({
 }) {
   if (review.state === "none") {
     return (
-      <section className={REVIEW} data-surface="hong" aria-labelledby="today-review">
+      <section className={REVIEW} style={PLUM_TONE} data-tier="field" aria-labelledby="today-review">
         <h2 id="today-review" className="m-0 font-display text-lead">
           {COPY.review}
         </h2>
-        <div className="flex items-end justify-between gap-4">
+        <div className="flex flex-1 items-center justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-2">
-            <p className="m-0 font-display text-title">{COPY.nothingDue}</p>
+            <p className="m-0 font-display text-title text-balance">
+              {REVIEW_DONE}
+            </p>
             {review.next_due && <p className="m-0 text-body text-ink-soft">{nextDueLabel(review.next_due)}</p>}
           </div>
-          <Mascot pose="vui" className="size-24 shrink-0 min-[901px]:size-32" />
+          <span
+            aria-hidden="true"
+            data-motif="sticker"
+            className="grid size-24 shrink-0 -rotate-[8deg] place-items-center rounded-full text-[var(--plum,#4a1638)]"
+            style={{ background: YELLOW }}
+          >
+            <Check className="size-12" strokeWidth={3} focusable="false" />
+          </span>
         </div>
       </section>
     );
   }
   return (
-    <section className={REVIEW} data-surface="hong" aria-labelledby="today-review">
+    <section className={REVIEW} style={PLUM_TONE} data-tier="field" aria-labelledby="today-review">
+      <Sparkle
+        aria-hidden="true"
+        focusable="false"
+        data-motif="doodle"
+        className="absolute top-5 right-5 size-9"
+        style={{ color: YELLOW, fill: YELLOW }}
+        strokeWidth={1.5}
+      />
       <h2 id="today-review" className="m-0 font-display text-lead">
         {COPY.review}
       </h2>
-      <div className="flex flex-1 items-center justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className="m-0 flex items-baseline gap-3">
-            <span className="font-display text-display tabular-nums">{review.count}</span>
-            <span className="text-lead font-semibold">{COPY.questions}</span>
-          </p>
-          {/* V5: the total only, no subject names. */}
-          <p className="m-0 text-body text-ink-soft">khoảng {review.minutes} phút</p>
-        </div>
-        <Mascot pose="vui" className="size-24 shrink-0 min-[901px]:size-36" />
+      <div className="flex min-w-0 flex-col gap-1">
+        <p className="m-0 flex items-baseline gap-3">
+          <span className="font-display text-display tabular-nums">{review.count}</span>
+          <span className="text-lead font-semibold">{COPY.questions}</span>
+        </p>
+        {/* V5: the total only, no subject names. */}
+        <p className="m-0 text-body text-ink-soft">khoảng {review.minutes} phút</p>
       </div>
       <div className="flex flex-col gap-3">
         {review.note && <p className="m-0 text-meta break-words">{review.note}</p>}
@@ -138,8 +167,8 @@ export function ReviewTile({
           <p className="m-0 text-meta">{COPY.inProgressHint}</p>
         ) : (
           <div className="max-sm:w-full">
-            <StartButton variant={primary ? "primary" : "secondary"} preview={preview}>
-              {COPY.start}
+            <StartButton variant={primary ? "primary-inverse" : "secondary"} preview={preview}>
+              {REVIEW_START}
             </StartButton>
           </div>
         )}
@@ -154,7 +183,7 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
   const first = items.findIndex((item) => item.state === "next");
   return (
     <section
-      className={`${EDGE} flex flex-col gap-3.5 rounded-tile bg-hong-tint p-4 min-[901px]:col-span-6 min-[901px]:p-6`}
+      className={`${EDGE} flex flex-col gap-3.5 rounded-tile bg-hong-tint p-4 min-[901px]:col-span-7 min-[901px]:p-6`}
       aria-labelledby="today-learn"
     >
       <div className="flex items-baseline justify-between gap-3">
@@ -188,7 +217,7 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
 
 function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2["practice"]>; primary: boolean }) {
   return (
-    <section className={`${EDGE} rounded-tile bg-hong-tint p-4 min-[901px]:col-span-6 min-[901px]:p-6`} aria-labelledby="today-practice">
+    <section className={`${EDGE} rounded-tile bg-sheet p-4 inset-ring-1 inset-ring-line min-[901px]:col-span-7 min-[901px]:p-6`} aria-labelledby="today-practice">
       <h2 id="today-practice" className="m-0 font-display text-lead">
         {COPY.practice}
       </h2>
@@ -250,16 +279,16 @@ export function TodayV2Screen({
   return (
     <>
       <Heading day={today.learning_day} />
-      <div className="grid gap-x-4 gap-y-8 min-[901px]:grid-cols-12 min-[901px]:items-start min-[901px]:gap-y-10">
+      <div data-reveal className="grid gap-5 min-[901px]:grid-cols-12 min-[901px]:items-stretch">
         {today.unfinished.length > 0 && <ResumeStrip items={today.unfinished} />}
-        <ReviewTile review={today.review} primary={primary === "review"} preview={preview} />
         <LearnSection today={today} primary={primary === "learn"} />
+        <ReviewTile review={today.review} primary={primary === "review"} preview={preview} />
         {today.practice && <PracticeSection practice={today.practice} primary={primary === "practice"} />}
         {week && (
           <WeekStrip
             cells={week}
             today={today.learning_day}
-            className={today.practice ? "min-[901px]:col-span-6" : "min-[901px]:col-span-12"}
+            className={today.practice ? "min-[901px]:col-span-5" : "min-[901px]:col-span-12"}
           />
         )}
       </div>
@@ -270,10 +299,11 @@ export function TodayV2Screen({
 /** While the day loads: the shape of the four areas, never a page spinner. */
 export function TodayV2Loading() {
   return (
-    <div aria-busy="true" className="grid gap-6 min-[901px]:grid-cols-12">
-      <div className="h-64 rounded-tile bg-hong-tint min-[901px]:col-span-6" />
-      <div className="h-64 rounded-tile bg-hong-tint min-[901px]:col-span-6" />
-      <div className="h-32 rounded-tile bg-hong-tint min-[901px]:col-span-12" />
+    <div aria-busy="true" className="grid gap-5 min-[901px]:grid-cols-12">
+      <div className="h-64 rounded-tile bg-sunken min-[901px]:col-span-7" />
+      <div className="h-64 rounded-tile bg-sunken min-[901px]:col-span-5" />
+      <div className="h-40 rounded-tile bg-sunken min-[901px]:col-span-7" />
+      <div className="h-40 rounded-tile bg-sunken min-[901px]:col-span-5" />
       <p className="sr-only" role="status">
         {COPY.loading}
       </p>
