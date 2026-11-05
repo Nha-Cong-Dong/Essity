@@ -13,10 +13,6 @@ class SubjectNotFoundError(LookupError):
     """No such subject for this user: missing, deleted, or someone else's."""
 
 
-class SubjectHasHistoryError(ValueError):
-    """The subject has an attempt, a draft included: it stays (us-01 AC8; T6.3 deletes those)."""
-
-
 class SubjectRepository(UserScopedRepository[Subject]):
     model = Subject
 
@@ -115,7 +111,9 @@ class SubjectRepository(UserScopedRepository[Subject]):
             raise SubjectNotFoundError(id)
 
     def soft_delete(self, id: uuid.UUID, now: datetime) -> None:
-        """Hide a subject with no review history (us-01 AC8), in the caller's transaction.
+        """Hide a subject (us-01 AC8; Q13: history no longer blocks), in the caller's transaction.
+
+        Its rows, attempts and cards included, are kept; they are hidden with it.
 
         Lock the row FOR UPDATE first: an attempt being written holds the subject FOR SHARE
         (`AttemptRepository.create_draft`), so this waits for it to commit. Only then, in a
@@ -125,8 +123,6 @@ class SubjectRepository(UserScopedRepository[Subject]):
         ).one_or_none()
         if subject is None:
             raise SubjectNotFoundError(id)
-        if self.session.scalar(select(self._history_of(id))):
-            raise SubjectHasHistoryError(id)
         subject.deleted_at = now
         self.session.flush()
 
