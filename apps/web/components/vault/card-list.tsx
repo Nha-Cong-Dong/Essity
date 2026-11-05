@@ -104,6 +104,8 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
   const [showSource, setShowSource] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Q14 (QA 05/11): deleting asks first, in the page.
+  const [confirming, setConfirming] = useState(false);
 
   async function save() {
     if (!draft) return;
@@ -159,10 +161,23 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
             <Button variant="quiet" onClick={() => setDraft(null)} disabled={busy}>
               Hủy
             </Button>
-            <Button variant="quiet" onClick={remove} disabled={busy}>
+            <Button variant="quiet" onClick={() => setConfirming(true)} disabled={busy || confirming}>
               Xóa thẻ
             </Button>
           </div>
+          {confirming ? (
+            <div role="group" aria-label="Xác nhận xóa thẻ" className="flex flex-col gap-3 rounded-tile bg-sunken p-4">
+              <p className="m-0 text-body">Xóa thẻ này? Thẻ sẽ không còn trong Kho và không được ôn nữa.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="primary" onClick={remove} pending={busy}>
+                  Xóa hẳn thẻ
+                </Button>
+                <Button variant="quiet" onClick={() => setConfirming(false)} disabled={busy}>
+                  Giữ thẻ
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </>
       ) : (
         <>
