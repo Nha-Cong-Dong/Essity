@@ -26,7 +26,6 @@ export function HeroBook() {
           <div className={styles.hbSpine} />
           <div className={styles.hbHead}>
             <span className={styles.cvH}>Hôm nay</span>
-            <span className={styles.cvDate}>thứ Tư, 21/10</span>
           </div>
         </div>
         <button

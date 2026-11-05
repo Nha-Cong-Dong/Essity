@@ -87,6 +87,21 @@ export function ActivityGrid({
     if (box && el) box.scrollLeft = Math.max(el.offsetLeft + el.offsetWidth - box.clientWidth + 16, 0);
   }, [start]);
 
+  // A month label that scrolls under the weekday column would show cut ("h2"): hide it instead.
+  useEffect(() => {
+    const box = scroller.current;
+    if (!box) return;
+    const sync = () => {
+      const edge = box.getBoundingClientRect().left + 36;
+      for (const el of box.querySelectorAll<HTMLElement>("[data-month]")) {
+        el.style.visibility = el.textContent && el.getBoundingClientRect().left < edge ? "hidden" : "";
+      }
+    };
+    sync();
+    box.addEventListener("scroll", sync, { passive: true });
+    return () => box.removeEventListener("scroll", sync);
+  }, [start, labels]);
+
   function pin(i: number) {
     setPinned(i);
     setAnnounce(cellLabel(cells[i], today));
@@ -132,7 +147,7 @@ export function ActivityGrid({
             <span className={styles.corner} />
             <div className={styles.months}>
               {Array.from({ length: columns }, (_, col) => (
-                <span key={col} className={styles.month}>
+                <span key={col} className={styles.month} data-month>
                   {labels.get(col) ?? ""}
                 </span>
               ))}

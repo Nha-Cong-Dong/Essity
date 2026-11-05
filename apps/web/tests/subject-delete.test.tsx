@@ -247,6 +247,13 @@ describe("SubjectList: no add button while a row is being edited (UI-A, user 05/
     fireEvent.click(screen.getByRole("button", { name: "Hủy" }));
     expect(adds()).toHaveLength(2);
   });
+  it("Escape leaves the edit mode", () => {
+    render(<SubjectList subjects={[MMT, HDH]} example={EXAMPLE} />);
+    openEdit(MMT.name);
+    expect(adds()).toHaveLength(0);
+    fireEvent.keyDown(screen.getByRole("button", { name: "Hủy" }), { key: "Escape" });
+    expect(adds()).toHaveLength(2);
+  });
   it("hides them while a delete is being confirmed too", () => {
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
     openConfirm(MMT.name);

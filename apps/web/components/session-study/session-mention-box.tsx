@@ -30,7 +30,7 @@ export type MentionBoxProps = {
   problem: string | null;
 };
 
-const PLACEHOLDER = "Tối nay mình học @Giáo trình phần 3.2 và xem lại @slide c3 tr. 10–14.";
+const PLACEHOLDER = "Tối nay mình học @Giáo trình phần 3.2 và xem lại @slide chương 3.";
 
 export function MentionBox({ value, mentions, docs, onChange, say, rejectedDoc, problem }: MentionBoxProps) {
   const id = useId();

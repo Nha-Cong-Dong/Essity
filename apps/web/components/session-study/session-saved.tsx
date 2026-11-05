@@ -11,7 +11,7 @@ import type { SessionResult } from "@/lib/session-study/round";
 // and under which session name, or, with none, says so and points to the outline. Then "Học tiếp
 // hay dừng?" with two secondary buttons of the same size and no primary.
 
-const link = "min-h-11 self-start text-body underline decoration-line-strong decoration-[1.5px] underline-offset-[5px]";
+const link = "inline-flex min-h-11 items-center justify-center self-start rounded-full bg-sheet px-4 text-body font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken";
 
 export function DoneArea({
   result,
