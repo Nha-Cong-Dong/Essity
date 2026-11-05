@@ -23,6 +23,8 @@ const next = (over = {}) => ({
   units: [] as { section_id: string; title: string; chapter_title: string | null }[],
   nothing_today: false,
   remaining_chapters: 12,
+  free_section_id: null,
+  free_section_title: null,
   ...over,
 });
 

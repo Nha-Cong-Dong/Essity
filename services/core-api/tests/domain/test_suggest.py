@@ -260,3 +260,19 @@ def test_units_of_a_day_are_several_leaves_and_chapters_are_counted():
     out = suggest_for_subject(s, TODAY)
     assert len(out.units) == 5 and out.pace.remaining_chapters == 2
     assert out.pace.text.startswith("còn 2 chương")
+
+
+def test_free_study_names_the_next_section_even_when_nothing_is_due_today():
+    """SESSION-END: "Học tiếp" past today's plan still gets the next section by the outline."""
+    first, second = leaf("a"), leaf("b")
+    ahead = suggest_for_subject(subject([first, second], last=TODAY - timedelta(days=1)), TODAY)
+    assert ahead.nothing_today and ahead.leaf_id is None
+    assert ahead.free_leaf_id == first.id and ahead.free_leaf_title == "a"
+    due = suggest_for_subject(subject([first, second]), TODAY)
+    assert due.free_leaf_id == due.leaf_id == first.id
+
+
+def test_free_study_has_no_section_without_an_open_leaf():
+    assert suggest_for_subject(subject([]), TODAY).free_leaf_id is None
+    done = suggest_for_subject(subject([leaf("a", excluded=True)]), TODAY)
+    assert done.free_leaf_id is None

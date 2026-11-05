@@ -66,7 +66,7 @@ describe("pieces of a session", () => {
     const fake = api();
     show(fake);
     await act(async () => undefined);
-    fireEvent.click(screen.getByRole("button", { name: "Hoàn thành" }));
+    fireEvent.click(screen.getByRole("button", { name: "Kết thúc buổi học" }));
     await act(async () => undefined);
     expect(screen.getAllByText(SUBMIT_COPY.mentionPiece).length).toBeGreaterThan(0);
     expect(screen.queryByText(SUBMIT_COPY.network)).toBeNull();
@@ -77,7 +77,7 @@ describe("pieces of a session", () => {
     const fake = api();
     show(fake);
     await act(async () => undefined);
-    fireEvent.click(screen.getByRole("button", { name: "Hoàn thành" }));
+    fireEvent.click(screen.getByRole("button", { name: "Kết thúc buổi học" }));
     await act(async () => undefined);
     fireEvent.click(screen.getByRole("button", { name: "Bỏ phần 1" }));
     await act(async () => undefined);

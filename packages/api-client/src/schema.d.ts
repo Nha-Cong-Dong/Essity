@@ -3006,6 +3006,10 @@ export interface components {
         };
         /** SuggestionOut */
         SuggestionOut: {
+            /** Free Section Id */
+            free_section_id: string | null;
+            /** Free Section Title */
+            free_section_title: string | null;
             /**
              * Kind
              * @enum {string}
@@ -5509,6 +5513,13 @@ export interface operations {
             };
             /** @description subject_not_found, or the feature is off */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description no_syllabus: the subject has no outline yet */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

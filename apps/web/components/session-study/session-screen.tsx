@@ -18,6 +18,7 @@ import { FileDrop } from "./session-file-drop";
 import { MentionBox } from "./session-mention-box";
 import { DoneLine, Region } from "./session-parts";
 import { ProcessingArea } from "./session-processing";
+import { SessionEndDialog } from "./session-end-dialog";
 import { DoneArea } from "./session-saved";
 
 // T7.12a (US-02, US-02b; DESIGN.md §6.7; docs in .work/T7.12a/design-decisions.md): the whole study
@@ -62,7 +63,7 @@ export const SUBMIT_COPY = {
   tooLong: "Câu mô tả dài quá. Rút gọn bớt rồi gửi lại.",
   nothing: "Chưa có gì để gửi. Viết vài dòng hoặc thêm file rồi gửi.",
   mention: "Chưa hiểu một chỗ @ trong câu. Xem chỗ được đánh dấu rồi gửi lại.",
-  mentionPiece: "Có một chỗ @ không khớp tài liệu nào. Bỏ phần có chỗ @ đó (hoặc ghi lại phần mới) rồi bấm Hoàn thành.",
+  mentionPiece: "Có một chỗ @ không khớp tài liệu nào. Bỏ phần có chỗ @ đó (hoặc ghi lại phần mới) rồi bấm Kết thúc buổi học.",
   closed: "Buổi này đã được gửi đi rồi.",
   other: "Chưa hoàn thành được. Thử lại sau ít phút.",
 } as const;
@@ -128,7 +129,7 @@ export function SessionScreen(props: SessionScreenProps) {
   const [note, setNote] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
-  const [free, setFree] = useState(props.suggestion.kind === "free");
+  const [ended, setEnded] = useState(false);
   const counter = useRef(0);
   // T7.12c: what each uploaded row hands in, and the file itself for "Thử lại".
   const refs = useRef(new Map<string, FileRef>());
@@ -209,14 +210,16 @@ export function SessionScreen(props: SessionScreenProps) {
       send({ type: "send" });
       return;
     }
+    // SESSION-END: the session is in. The pop-up says well done and offers the way on; the "đã vào Kho"
+    // toast comes by itself from the pending session.
     rememberPendingSession({ sessionId: api.sessionId, subjectId, subject });
-    window.location.assign(`/subjects/${subjectId}`);
+    setEnded(true);
   }
 
   const uploading = files.filter((f) => f.state === "uploading").length;
   const usableFiles = files.filter((f) => f.state === "done").length;
   const suggestion = round.round > 1 ? props.nextSuggestion : props.suggestion;
-  const isFree = free && round.round === 1;
+  const isFree = props.suggestion.kind === "free" && round.round === 1;
 
   function finishRead() {
     send({ type: "done", result: props.readResult?.() ?? { cards: 0, title: null, notice: "no_content_found" } });
@@ -448,18 +451,9 @@ export function SessionScreen(props: SessionScreenProps) {
                     ))}
                   </ol>
                   <Button type="button" aria-disabled={completing || undefined} onClick={() => void complete()}>
-                    {completing ? "Đang hoàn thành…" : "Hoàn thành"}
+                    {completing ? "Đang kết thúc…" : "Kết thúc buổi học"}
                   </Button>
                 </section>
-              )}
-              {isFree ? null : (
-                <button
-                  type="button"
-                  onClick={() => setFree(true)}
-                  className="min-h-11 self-start text-body inline-flex items-center justify-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken"
-                >
-                  Học tự do
-                </button>
               )}
             </Region>
           </>
@@ -496,7 +490,6 @@ export function SessionScreen(props: SessionScreenProps) {
                   setFiles([]);
                   refs.current.clear();
                   blobs.current.clear();
-                  setFree(false);
                   send({ type: "continue" });
                 }}
               />
@@ -505,6 +498,13 @@ export function SessionScreen(props: SessionScreenProps) {
         )}
         {footer}
       </div>
+      {subjectId && (
+        <SessionEndDialog
+          open={ended}
+          onHome={() => window.location.assign("/today")}
+          onMore={() => window.location.assign(`/subjects/${subjectId}/sessions/study`)}
+        />
+      )}
     </FocusShell>
   );
 }

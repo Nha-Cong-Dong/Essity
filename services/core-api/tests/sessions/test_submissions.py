@@ -57,6 +57,7 @@ class World:
         self.document = indexed_document(
             db, storage, self.user, self.subject, name="Mạng máy tính", pages=100
         )
+        self.document.role = "textbook"  # SESSION-END: a session needs the outline
         self.draft = self.new_draft()
         self.chapter = self.section(
             self.document, "Chương 3. Tầng mạng", first_page=40, last_page=55
@@ -553,6 +554,9 @@ def test_us02_ac1_a_handed_in_draft_is_not_reopened(client: TestClient, world: W
 def test_us02_ac1_open_draft_is_per_subject_and_per_user(client: TestClient, world: World) -> None:
     # Red when: another subject's or another user's draft is returned.
     other_subject = subject_of(world.db, world.user)
+    book = indexed_document(world.db, world.storage, world.user, other_subject, sha="ef" * 32)
+    book.role = "textbook"
+    world.section(book, "Chương 1")
     response = client.post(
         f"/v1/subjects/{other_subject.id}/submission-drafts", headers=world.headers
     )

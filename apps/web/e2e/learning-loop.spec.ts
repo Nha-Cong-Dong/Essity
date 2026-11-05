@@ -91,7 +91,7 @@ test("the loop: suggestion, sentence, photo, cards in the Kho", async ({ page })
   await expect(page.getByText("Đã tải", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Ghi lại" }).click();
   await expect(page.getByText("Đã học trong buổi")).toBeVisible();
-  await page.getByRole("button", { name: "Hoàn thành" }).click();
+  await page.getByRole("button", { name: "Kết thúc buổi học" }).click();
   await expect(page.getByText("Đã thêm 2 thẻ vào Kho.").first()).toBeVisible({ timeout: 15_000 });
   expect(core.uploads).toBe(1);
   expect(core.submitted).toEqual([

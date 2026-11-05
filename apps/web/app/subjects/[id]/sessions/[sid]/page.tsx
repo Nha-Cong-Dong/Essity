@@ -7,8 +7,8 @@ import { SessionLive } from "@/components/session-study/session-live";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { requireVerifiedSession } from "@/lib/session";
 import { sectionParam } from "@/lib/session-study/entry";
-import { sessionSuggestion } from "@/lib/session-study/suggestion";
-import { getSuggestions } from "@/lib/today";
+import { freeSuggestion, sessionSuggestion } from "@/lib/session-study/suggestion";
+import { getSubjectSuggestion, getSuggestions } from "@/lib/today";
 import { loadSession } from "@/lib/session-study/load";
 import { CoreStatusError } from "@/lib/subjects";
 
@@ -37,6 +37,9 @@ async function Study({ params, searchParams }: Props) {
   }
   // T7.19 F2: opened from a suggestion, the session is for that section (if it is still today's one).
   const suggestion = section ? await getSuggestions().then((all) => sessionSuggestion(all, subject.id, section)).catch(() => null) : null;
+  // SESSION-END: no schedule for it today (or "Học tiếp"): free study, still on the next section of the
+  // outline, so the suggestion shows and finishing counts toward progress.
+  const free = suggestion ? null : await getSubjectSuggestion(subject.id).then(freeSuggestion).catch(() => null);
   return (
     <SessionLive
       sessionId={sid}
@@ -45,8 +48,8 @@ async function Study({ params, searchParams }: Props) {
       stopHref="/today"
       docs={loaded.docs}
       initial={loaded.initial}
-      suggestion={suggestion ?? undefined}
-      sectionId={suggestion ? (section ?? undefined) : undefined}
+      suggestion={suggestion ?? free?.suggestion}
+      sectionId={suggestion ? (section ?? undefined) : free?.sectionId}
     />
   );
 }

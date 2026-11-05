@@ -146,6 +146,7 @@ def _mention_error(error: MentionError) -> HTTPException:
     responses={
         200: {"description": "the subject's open draft, reopened (US-02 AC1)"},
         404: {"description": "subject_not_found, or the feature is off"},
+        409: {"description": "no_syllabus: the subject has no outline yet"},
     },
 )
 def create_submission_draft(
@@ -159,6 +160,13 @@ def create_submission_draft(
     one not yet handed in (200, US-02 AC1: reopening continues it). Calls no AI."""
     response.headers["Cache-Control"] = "no-store"
     drafts = StudySessionRepository(session, user.id)
+    if not drafts.has_outline(subject_id):
+        # SESSION-END: no outline, no study. An unknown subject stays 404.
+        try:
+            SubjectRepository(session, user.id).hold_for_share(subject_id)
+        except SubjectNotFoundError:
+            raise _error(404, "subject_not_found") from None
+        raise _error(409, "no_syllabus")
     open_draft = drafts.open_draft(subject_id, PLACEHOLDER_DESCRIPTION)
     if open_draft is not None:
         response.status_code = 200

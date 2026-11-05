@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 
+import { NoOutlineBlock } from "@/components/session-study/empty-block";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { coreClient } from "@/lib/core-client";
 import { requireVerifiedSession, SESSION_COOKIE } from "@/lib/session";
@@ -23,6 +24,8 @@ export async function StartStudy({ params, section }: { params: Promise<{ id: st
   if (response.status === 401) redirect("/login");
   // Submissions off in core-api (404): the v1 flow still works, so go there (T7.17).
   if (response.status === 404) redirect(v1Fallback(subject.id));
+  // SESSION-END: no outline, no study. The screen says so and leads to the textbook upload.
+  if (response.status === 409) return <NoOutlineBlock subjectId={subject.id} subjectName={subject.name} />;
   if (!data) throw new Error(`core-api answered submission-drafts with ${response.status}`);
   // T7.19 F2: the suggestion's section follows the learner into the session.
   redirect(`/subjects/${subject.id}/sessions/${data.session_id}${section ? `?section=${section}` : ""}`);

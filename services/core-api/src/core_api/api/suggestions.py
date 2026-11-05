@@ -48,6 +48,9 @@ class SuggestionOut(BaseModel):
     units: list[PlannedUnitOut]
     nothing_today: bool
     remaining_chapters: int
+    # Free study ("Học tiếp"): the next section by the outline, due today or not.
+    free_section_id: uuid.UUID | None
+    free_section_title: str | None
 
 
 class EmptyOut(BaseModel):
@@ -84,6 +87,8 @@ def suggestion_out(s: Suggestion, name: str) -> SuggestionOut:
             for u in s.units
         ],
         nothing_today=s.nothing_today,
+        free_section_id=s.free_leaf_id,
+        free_section_title=s.free_leaf_title,
         remaining_chapters=s.pace.remaining_chapters,
         pace=PaceOut(
             remaining_leaves=s.pace.remaining_leaves,

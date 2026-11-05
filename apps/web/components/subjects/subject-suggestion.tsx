@@ -155,11 +155,10 @@ export function SubjectSuggestion({
           <h2 id={headingId} className="m-0 text-body">
             Môn này {COPY.noTextbook}
           </h2>
+          {/* SESSION-END: no outline, no study (core-api refuses too): the way on is the textbook. */}
+          <p className="m-0 text-body text-ink-soft">Tải giáo trình lên để có đề cương, rồi bắt đầu học.</p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <Button render={<a href={`/subjects/${subjectId}/sessions/new`} />} nativeButton={false} className={FULL}>
-              Học tự do
-            </Button>
-            <Button render={<a href={`/subjects/${subjectId}/documents`} />} nativeButton={false} variant="quiet">
+            <Button render={<a href={`/subjects/${subjectId}/documents`} />} nativeButton={false} className={FULL}>
               {COPY.uploadTextbook}
             </Button>
           </div>

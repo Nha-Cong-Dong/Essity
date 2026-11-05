@@ -26,3 +26,11 @@ export async function getSuggestions(): Promise<Suggestions> {
   if (!data) throw new CoreStatusError("/v1/suggestions", response.status);
   return data;
 }
+
+/** SESSION-END: one subject's suggestion (free study reads its `free_section_*`). */
+export async function getSubjectSuggestion(subjectId: string): Promise<Suggestions["suggestions"][number]> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const { data, response } = await coreClient({ token }).GET("/v1/subjects/{subject_id}/suggestion", { params: { path: { subject_id: subjectId } } });
+  if (!data) throw new CoreStatusError("/v1/subjects/{subject_id}/suggestion", response.status);
+  return data.suggestion;
+}

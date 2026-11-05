@@ -126,9 +126,10 @@ describe("subject suggestion block", () => {
     expect(markup).not.toContain("không phải ngày");
   });
 
-  it("US-15 AC7: no textbook: Học tự do is the primary and not repeated in the footer", () => {
+  it("SESSION-END: no textbook: no way into a session, the upload is the primary", () => {
+    // Red when: a subject with no outline still offers "Học tự do".
     const markup = draw1("no-textbook");
-    expect(markup.match(/Học tự do/g)).toHaveLength(1);
+    expect(markup).not.toContain("Học tự do");
     expect(markup).toContain("Tải giáo trình");
   });
 
