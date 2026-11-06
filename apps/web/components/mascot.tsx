@@ -27,25 +27,30 @@ const SOLID = { "--mascot-line": "#441125", "--mascot-teal": "#70c8cd" } as Reac
 
 export function Mascot({
   pose,
+  kind,
   size = "md",
   tone = "page",
   className,
 }: {
   pose: MascotPose;
+  /** "sun" (pink mascot) or undefined (cloud mascot, default). */
+  kind?: "sun";
   size?: keyof typeof SIZES;
   tone?: "page" | "solid";
   className?: string;
 }) {
+  const art = kind === "sun" ? ART[pose] + "-sun" : ART[pose];
   return (
     <svg
       aria-hidden="true"
       focusable="false"
       data-mascot={pose}
+      data-kind={kind}
       viewBox="0 0 200 200"
       className={cn("shrink-0", SIZES[size], className)}
       style={tone === "solid" ? SOLID : undefined}
     >
-      {MASCOT_ART[ART[pose]]}
+      {MASCOT_ART[art as keyof typeof MASCOT_ART]}
     </svg>
   );
 }
