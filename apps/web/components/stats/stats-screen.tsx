@@ -29,22 +29,13 @@ function Skeleton() {
   );
 }
 
-/** V22: the numbers are plain type on the page, no surface; the lead one is the screen's answer. */
+/** V4: the three totals sit on the field block (tier 1, one per screen); the lead one is the screen's answer. */
 function Kpi({ label, value, note, lead = false }: { label: string; value: string; note?: string; lead?: boolean }) {
-  if (lead) {
-    return (
-      <div data-kpi className="min-w-0">
-        <p className="m-0 text-meta text-ink-soft">{label}</p>
-        <p className="m-0 mt-1 font-display text-display tabular-nums">{value}</p>
-        {note && <p className="m-0 mt-1 text-meta text-ink-soft">{note}</p>}
-      </div>
-    );
-  }
   return (
-    <div data-kpi className="min-w-0">
-      <p className="m-0 text-meta text-ink-soft">{label}</p>
-      <p className="m-0 mt-1 font-display text-title tabular-nums">{value}</p>
-      {note && <p className="m-0 mt-1 text-meta text-ink-soft">{note}</p>}
+    <div data-kpi className="min-w-0 px-6 py-5 max-[900px]:px-4 max-[900px]:py-4 min-[901px]:[&:not(:first-of-type)]:border-l min-[901px]:[&:not(:first-of-type)]:border-on-plum-soft/20 max-[900px]:[&:not(:first-of-type)]:border-t max-[900px]:[&:not(:first-of-type)]:border-on-plum-soft/20">
+      <p className="m-0 text-meta text-on-plum-soft">{label}</p>
+      <p className={`m-0 my-1.5 font-display tabular-nums text-on-plum ${lead ? "text-display" : "text-title"}`}>{value}</p>
+      {note && <p className="m-0 text-meta text-on-plum-soft">{note}</p>}
     </div>
   );
 }
@@ -69,12 +60,13 @@ function Trend({ cells }: { cells: GridCell[] }) {
         12 tuần gần đây
       </h2>
       <p className="m-0 mb-3 text-meta text-ink-soft">Thẻ đã lưu và câu đã làm theo từng tuần.</p>
-      <div className="flex min-h-28 flex-1 items-end gap-1.5" data-trend>
+      <div className="flex min-h-28 flex-1 items-end gap-2 min-[901px]:gap-3.5" data-trend>
         {weeks.map((n, i) => (
           <div key={i} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${n}`}>
             <div
-              className="w-full rounded-control bg-hong"
-              style={{ height: `${n === 0 ? 2 : Math.max((n / top) * 100, 6)}%`, opacity: n === 0 ? 0.3 : 1 }}
+              data-now={i === weeks.length - 1 ? "" : undefined}
+              className={`w-full rounded-control ${i === weeks.length - 1 ? "bg-now inset-ring-[1.5px] inset-ring-ink" : "bg-hong"}`}
+              style={{ height: `${n === 0 ? 2 : Math.max((n / top) * 100, 6)}%`, opacity: n === 0 ? 0.3 : i === weeks.length - 1 ? 1 : 0.78 }}
             />
           </div>
         ))}
@@ -175,7 +167,18 @@ export function StatsScreen({
         </div>
       </div>
 
-      <div className="mt-12 grid gap-x-8 gap-y-8 min-[901px]:grid-cols-[1.4fr_1fr_1fr] min-[901px]:items-start" data-totals>
+      <section
+        aria-label="Tổng quan"
+        className="relative mt-7 grid rounded-tile bg-field text-on-plum min-[901px]:grid-cols-3"
+        data-totals
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 100 100"
+          className="pointer-events-none absolute -top-4 right-5 z-10 w-14 rotate-12 fill-hl stroke-bg [stroke-width:5] max-[900px]:hidden"
+        >
+          <path d="M50 3 L59 29 L86 19 L71 43 L97 58 L68 63 L72 95 L50 74 L28 95 L32 63 L3 58 L29 43 L14 19 L41 29 Z" />
+        </svg>
         <Kpi
           lead
           label="Nội dung đã học"
@@ -184,9 +187,9 @@ export function StatsScreen({
         />
         <Kpi label="Thẻ đã ôn" value={`${t.cardsReviewed}`} note={`${t.cardsSaved} thẻ đã lưu`} />
         <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
-      </div>
+      </section>
 
-      <div className="mt-14 grid gap-x-6 gap-y-8 min-[901px]:grid-cols-12">
+      <div className="mt-5 grid gap-x-5 gap-y-8 min-[901px]:grid-cols-12">
         <div className="min-w-0 min-[901px]:col-span-7 [&>*]:h-full">
           <Trend cells={cells} />
         </div>
@@ -202,7 +205,7 @@ export function StatsScreen({
         </NxList>
       </div>
 
-      <Sheet id="activity" className="mt-14 min-w-0" aria-labelledby="activity-h" role="region">
+      <Sheet id="activity" className="mt-5 min-w-0" aria-labelledby="activity-h" role="region">
         <h2 id="activity-h" className="m-0 mb-4 text-read font-semibold">
           Hoạt động cả năm
         </h2>

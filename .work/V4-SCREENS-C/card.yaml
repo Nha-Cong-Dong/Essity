@@ -1,0 +1,6 @@
+task: V4-SCREENS-C
+lane: L2
+branch: v4-screens-c
+risk: yellow
+worktree: D:/Essity/.claude/worktrees/L2
+spec: người dùng duyệt mockup v4 stats.html, graph.html (05/11); .work/DESIGN-V4/design-system.md D
