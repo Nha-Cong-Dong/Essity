@@ -14,8 +14,8 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
   const [order, setOrder] = useState(cards);
   if (order.length === 0) {
     return (
-      <section className="flex min-w-0 flex-col items-start gap-3" aria-labelledby={`rv-${subjectId}`} data-review-empty>
-        <h2 id={`rv-${subjectId}`} className="m-0 text-body font-semibold">
+      <section className="flex min-w-0 flex-col items-start gap-3 rounded-tile bg-sheet p-5 shadow-sheet min-[901px]:p-6" aria-labelledby={`rv-${subjectId}`} data-review-empty>
+        <h2 id={`rv-${subjectId}`} className="m-0 font-display text-tile">
           Ôn tập hôm nay
         </h2>
         {/* mascot placeholder */}
@@ -32,8 +32,8 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
   }
   const shown = order.slice(0, 3);
   return (
-    <section className="flex min-w-0 flex-col gap-3" aria-labelledby={`rv-${subjectId}`}>
-      <h2 id={`rv-${subjectId}`} className="m-0 text-body font-semibold">
+    <section className="flex min-w-0 flex-col gap-3 rounded-tile bg-sheet p-5 shadow-sheet min-[901px]:p-6" aria-labelledby={`rv-${subjectId}`}>
+      <h2 id={`rv-${subjectId}`} className="m-0 font-display text-tile">
         Ôn tập hôm nay
         <span className="sr-only"> ({order.length} thẻ)</span>
       </h2>
@@ -49,7 +49,7 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
               onClick={() => setOrder((o) => [...o.slice(1), o[0]!])}
               aria-label={i === 0 ? "Thẻ trên cùng: bấm để xem thẻ tiếp theo" : undefined}
               style={{ transform: `translate(${i * 10}px, ${i * 10}px)`, zIndex: 10 - i }}
-              className="absolute inset-0 mr-3 mb-3 flex flex-col gap-3 overflow-hidden rounded-sheet border border-line bg-sheet p-4 text-left transition-transform duration-300 disabled:cursor-default"
+              className="absolute inset-0 mr-3 mb-3 flex flex-col gap-3 overflow-hidden rounded-sheet border border-line bg-block p-4 text-left transition-transform duration-300 disabled:cursor-default"
             >
               <span className="inline-flex items-center gap-2 text-meta text-ink-soft">
                 {card.kind === "practice" ? "Câu luyện tập" : "Thẻ ôn"}

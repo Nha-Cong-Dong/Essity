@@ -18,8 +18,8 @@ afterEach(cleanup);
 
 function dateLine() {
   render(<SubjectList subjects={[MMT]} example="15/12/2031" />);
-  const exam = screen.getByText("thi 15/12/2026");
-  return { exam, left: screen.getByText("còn 54 ngày"), line: exam.parentElement as HTMLElement };
+  const exam = within(screen.getByRole("list")).getByText("thi 15/12/2026");
+  return { exam, left: within(screen.getByRole("list")).getByText("còn 54 ngày"), line: exam.parentElement as HTMLElement };
 }
 
 describe("subject row (T2.3c, R44)", () => {
@@ -42,12 +42,12 @@ describe("subject row (T2.3c, R44)", () => {
   // only, and keeps the id the row's labels point at.
   it("R44-b the name wraps between words, never inside one, and keeps its id", () => {
     render(<SubjectList subjects={[MMT]} example="15/12/2031" />);
-    const name = screen.getByText("Mạng máy tính");
+    const name = within(screen.getByRole("list")).getByText("Mạng máy tính");
     expect(name.className).toContain("break-words");
     expect(name.className).not.toMatch(/wrap-anywhere/);
     expect(name.id).toBe(`subject-${MMT.id}-name`);
     const row = name.closest("li") as HTMLElement;
-    expect(within(row).getByRole("button", { name: "Sửa Mạng máy tính" })).toBeTruthy();
+    expect(within(row).getByRole("button", { name: "Tùy chọn môn Mạng máy tính" })).toBeTruthy();
   });
 });
 

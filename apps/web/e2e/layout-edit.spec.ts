@@ -34,8 +34,9 @@ for (const width of WIDTHS) {
   test(`R44-k the edit form of the long-word row stays inside the row and the page @ ${width}px`, async ({ page }) => {
     await open(page, width);
     const row = page.locator("main li").nth(2);
-    await row.getByRole("button", { name: /^Sửa / }).click();
-    await expect(row.getByLabel("Môn")).toBeVisible();
+    await row.getByRole("button", { name: /^Tùy chọn môn / }).click();
+    await page.getByRole("menuitem", { name: /^Sửa / }).click();
+    await expect(row.getByLabel("Môn", { exact: true })).toBeVisible();
     await withinRow(row, row.locator("input, button, p:not(.sr-only)"));
     expect(await noPageScroll(page)).toBe(true);
   });
@@ -45,7 +46,8 @@ for (const width of WIDTHS) {
   test(`R44-k the delete confirmation stays inside the row and the page @ ${width}px`, async ({ page }) => {
     await open(page, width);
     const row = page.locator("main li").nth(1);
-    await row.getByRole("button", { name: /^Xóa / }).click();
+    await row.getByRole("button", { name: /^Tùy chọn môn / }).click();
+    await page.getByRole("menuitem", { name: /^Xóa / }).click();
     await expect(row.getByRole("button", { name: "Giữ môn" })).toBeFocused();
     await withinRow(row, row.locator("button, p:not(.sr-only)"));
     expect(await noPageScroll(page)).toBe(true);
@@ -58,8 +60,9 @@ for (const width of WIDTHS) {
     const row = page.locator("main li").first();
     const name = row.locator('a[id$="-name"]');
     const before = await name.boundingBox();
-    await row.getByRole("button", { name: /^Sửa / }).click();
-    await expect(row.getByRole("button", { name: /^Sửa / })).toHaveCount(0);
+    await row.getByRole("button", { name: /^Tùy chọn môn / }).click();
+    await page.getByRole("menuitem", { name: /^Sửa / }).click();
+    await expect(row.getByRole("button", { name: /^Tùy chọn môn / })).toHaveCount(0);
     const after = await name.boundingBox();
     expect(before).not.toBeNull();
     expect(after).not.toBeNull();

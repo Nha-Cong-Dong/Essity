@@ -11,7 +11,7 @@ afterEach(cleanup);
 it("upload step promises only PDFs", () => {
   render(<UploadStep name="MMT" subjectId="9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b" />);
   expect(screen.queryByText(/ảnh vở/)).toBeNull();
-  expect(screen.getByText(/dạng PDF/)).toBeTruthy();
+  expect((document.querySelector('input[type="file"]') as HTMLInputElement).accept).toContain("pdf");
 });
 
 it("note-only card tells the photo is read after Save, only with a photo", () => {

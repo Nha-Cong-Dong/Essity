@@ -5,6 +5,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { pick } from "./subject-menu-helpers";
 
 vi.mock("next/navigation", () => ({
   redirect: (to: string) => {
@@ -49,7 +50,7 @@ const creates = () => screen.queryAllByText("Tạo môn", { selector: "a" });
 
 describe("/subjects frame (T2.3c, R44, plan G15)", () => {
   // Red when: "Tạo môn" is pulled up with -mt-16 again, or sits outside the title's row.
-  it("a list: one h1, then Tạo môn in the same row, the only primary button", () => {
+  it("a list: one h1, then Tạo môn in the same row, the only primary button", async () => {
     render(<SubjectList subjects={[MMT]} example="15/12/2031" />);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     const [create] = creates();
@@ -60,7 +61,7 @@ describe("/subjects frame (T2.3c, R44, plan G15)", () => {
     expect(document.body.innerHTML).not.toMatch(/-mt-16/);
   });
 
-  it("empty: one h1 with nothing beside it; Tạo môn is in the empty state", () => {
+  it("empty: one h1 with nothing beside it; Tạo môn is in the empty state", async () => {
     render(<SubjectList subjects={[]} example="15/12/2031" />);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(within(header()).queryByText("Tạo môn")).toBeNull();
@@ -80,7 +81,7 @@ describe("/subjects frame (T2.3c, R44, plan G15)", () => {
     );
     render(<SubjectList subjects={[MMT]} example="15/12/2031" />);
     const before = title();
-    fireEvent.click(screen.getByRole("button", { name: `Xóa ${MMT.name}` }));
+    await pick("Xóa", MMT.name);
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Xóa môn" })));
     await screen.findByText("Đã xóa môn.");
     expect(title()).toBe(before);
@@ -89,7 +90,7 @@ describe("/subjects frame (T2.3c, R44, plan G15)", () => {
 
   // Red when: the loading state has no title, so a slow network shows two grey blocks and a
   // screen reader no heading (design-critic, plan G15).
-  it("loading: the title is there, with no button", () => {
+  it("loading: the title is there, with no button", async () => {
     render(<SubjectsLoading />);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(header().className).toMatch(/(^| )min-h-13( |$)/);

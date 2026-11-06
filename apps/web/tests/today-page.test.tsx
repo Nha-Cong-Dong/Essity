@@ -61,7 +61,7 @@ describe("/today page (T2.14)", () => {
       },
     });
     const markup = await html();
-    expect(markup).toContain("Hôm nay chưa có gì cần ôn");
+    expect(markup).toContain("Xong phần ôn hôm nay");
     expect(markup).toContain("TCP flow control");
     expect(markup).toContain("Xem tất cả");
     expect(markup).toContain("còn 3 phần, 55 ngày");

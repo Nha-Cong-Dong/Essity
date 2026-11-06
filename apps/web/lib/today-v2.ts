@@ -81,7 +81,7 @@ export const TODAY_V2_COPY = {
   start: "Ôn ngay",
   nextState: "Tiếp theo",
   inProgressHint: "Phiên ôn đang dở nằm ở mục Việc dở.",
-  nothingDue: "Hôm nay chưa có gì cần ôn",
+  nothingDue: "Xong phần ôn hôm nay",
   learn: "Học gì tiếp theo?",
   enter: "Vào buổi học",
   seeAll: "Xem tất cả",

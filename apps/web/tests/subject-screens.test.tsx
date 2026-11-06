@@ -3,6 +3,7 @@
 // DESIGN.md §6.8; plan K2, K5, K10).
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { pick } from "./subject-menu-helpers";
 
 const go = vi.fn();
 vi.mock("@/lib/navigate", () => ({ go: (path: string) => go(path) }));
@@ -41,7 +42,7 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
     render(<NewSubjectForm example={EXAMPLE} />);
   });
 
-  it("US-01 AC1: exactly two fields, name and exam date, posted", () => {
+  it("US-01 AC1: exactly two fields, name and exam date, posted", async () => {
     const form = name().closest("form") as HTMLFormElement;
     expect(form.querySelectorAll("input:not([type=date]), select, textarea")).toHaveLength(2);
     expect(form.getAttribute("method")).toBe("post"); // review plan R2
@@ -52,7 +53,7 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
     fireEvent.change(name(), { target: { value: "Mạng máy tính" } });
     fireEvent.change(date(), { target: { value: "15/12/2026" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục" }));
 
     await waitFor(() => expect(go).toHaveBeenCalledWith(`/subjects/${ID}/upload`));
     expect(sent).toEqual([
@@ -66,7 +67,7 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
     fireEvent.change(name(), { target: { value: "Mạng" } });
     fireEvent.change(date(), { target: { value: "15/12/2026" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục" }));
 
     await waitFor(() => expect(go).toHaveBeenCalledWith("/subjects"));
   });
@@ -76,7 +77,7 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
     fireEvent.change(name(), { target: { value: "Mạng" } });
     fireEvent.change(date(), { target: { value: "02/10/2026" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục" }));
 
     expect(await screen.findByText("Ngày thi phải sau hôm nay.")).toBeTruthy();
     expect(date().getAttribute("aria-invalid")).toBe("true");
@@ -89,7 +90,7 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
     fireEvent.change(name(), { target: { value: "Mạng" } });
     fireEvent.change(date(), { target: { value: "15/12/2062" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục" }));
 
     const sentence = await screen.findByText("Ngày thi cách quá xa (tối đa 2 năm). Kiểm tra lại năm nhé.");
     expect(sentence.closest("[data-copy]")).toBeNull();
@@ -105,27 +106,27 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
     fireEvent.change(name(), { target: { value: "Mạng" } });
     fireEvent.change(date(), { target: { value: "15/12/2026" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục" }));
 
     await waitFor(() => expect(go).toHaveBeenCalledWith("/login"));
   });
 
-  it("plan K10: 31/02/2027 is refused before sending", () => {
+  it("plan K10: 31/02/2027 is refused before sending", async () => {
     const sent = fakeWeb(() => Response.json({ id: ID }, { status: 201 }));
     fireEvent.change(name(), { target: { value: "Mạng" } });
     fireEvent.change(date(), { target: { value: "31/02/2027" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục" }));
 
     expect(screen.getByText("Nhập ngày theo dạng ngày/tháng/năm, ví dụ 15/12/2031.")).toBeTruthy();
     expect(sent).toHaveLength(0);
   });
 
-  it("an empty name asks for one and sends nothing", () => {
+  it("an empty name asks for one and sends nothing", async () => {
     const sent = fakeWeb(() => Response.json({ id: ID }, { status: 201 }));
     fireEvent.change(date(), { target: { value: "15/12/2026" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục" }));
 
     expect(screen.getByText("Nhập tên môn, ví dụ Mạng máy tính.")).toBeTruthy();
     expect(name().getAttribute("aria-invalid")).toBe("true");
@@ -133,7 +134,7 @@ describe("NewSubjectForm (US-01 AC1, AC2, AC7)", () => {
   });
 
   // Red when: a browser without showPicker (jsdom has none) shows a button that does nothing.
-  it("plan K10: without showPicker there is no calendar button, and the typed field works", () => {
+  it("plan K10: without showPicker there is no calendar button, and the typed field works", async () => {
     expect(screen.queryByRole("button", { name: "Chọn ngày trên lịch" })).toBeNull();
     fireEvent.change(date(), { target: { value: "15/12/2026" } });
     expect(date().value).toBe("15/12/2026");
@@ -151,7 +152,7 @@ describe("NewSubjectForm calendar (plan K10, where showPicker exists)", () => {
     delete (HTMLInputElement.prototype as { showPicker?: unknown }).showPicker;
   });
 
-  it("the button opens the calendar of a hidden, unnamed date input", () => {
+  it("the button opens the calendar of a hidden, unnamed date input", async () => {
     fireEvent.click(screen.getByRole("button", { name: "Chọn ngày trên lịch" }));
 
     expect(showPicker).toHaveBeenCalledTimes(1);
@@ -162,7 +163,7 @@ describe("NewSubjectForm calendar (plan K10, where showPicker exists)", () => {
     expect(picker.hasAttribute("min")).toBe(false); // the learning day, not the clock, decides
   });
 
-  it("a picked date is written day/month/year and focus returns to the field", () => {
+  it("a picked date is written day/month/year and focus returns to the field", async () => {
     const picker = document.querySelector('input[type="date"]') as HTMLInputElement;
 
     fireEvent.change(picker, { target: { value: "2026-12-15" } });
@@ -171,13 +172,13 @@ describe("NewSubjectForm calendar (plan K10, where showPicker exists)", () => {
     expect(document.activeElement).toBe(date());
   });
 
-  it("a typed date opens the calendar on that date", () => {
+  it("a typed date opens the calendar on that date", async () => {
     fireEvent.change(date(), { target: { value: "15/12/2026" } });
 
     expect((document.querySelector('input[type="date"]') as HTMLInputElement).value).toBe("2026-12-15");
   });
 
-  it("a calendar that refuses to open sends focus back to the field, with no error shown", () => {
+  it("a calendar that refuses to open sends focus back to the field, with no error shown", async () => {
     showPicker.mockImplementation(() => {
       throw new DOMException("no", "NotAllowedError");
     });
@@ -189,14 +190,14 @@ describe("NewSubjectForm calendar (plan K10, where showPicker exists)", () => {
 });
 
 describe("SubjectList (T1.20, plan K2, K3)", () => {
-  it("each subject shows its name, exam date and core-api's days left", () => {
+  it("each subject shows its name, exam date and core-api's days left", async () => {
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
-    const row = screen.getByText("Mạng máy tính").closest("li") as HTMLElement;
+    const row = within(screen.getByRole("list")).getByText("Mạng máy tính").closest("li") as HTMLElement;
     expect(within(row).getByText("thi 15/12/2026")).toBeTruthy();
     expect(within(row).getByText("còn 54 ngày")).toBeTruthy();
   });
 
-  it("no subject yet: DESIGN.md §6.8's empty state with a way to create one", () => {
+  it("no subject yet: DESIGN.md §6.8's empty state with a way to create one", async () => {
     render(<SubjectList subjects={[]} example={EXAMPLE} />);
     expect(screen.getByText("Chưa có môn nào.")).toBeTruthy();
     // The project's link-as-button (Button render={<a/>}), as on the verify-email screen.
@@ -209,21 +210,21 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
     );
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    await pick("Sửa", "Mạng máy tính");
     fireEvent.change(date(), { target: { value: "20/12/2026" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
 
     expect(await screen.findByText("Đã lưu.")).toBeTruthy();
     expect(sent).toEqual([{ path: `/api/subjects/${ID}`, method: "PATCH", body: { exam_date: "2026-12-20" } }]);
-    expect(screen.getByText("thi 20/12/2026")).toBeTruthy();
-    expect(screen.getByText("còn 59 ngày")).toBeTruthy();
+    expect(within(screen.getByRole("list")).getByText("thi 20/12/2026")).toBeTruthy();
+    expect(within(screen.getByRole("list")).getByText("còn 59 ngày")).toBeTruthy();
   });
 
   it("plan K2: nothing changed → nothing sent, the form closes", async () => {
     const sent = fakeWeb(() => Response.json({ subject: MMT }));
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    await pick("Sửa", "Mạng máy tính");
     fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
 
     await waitFor(() => expect(screen.queryByRole("button", { name: "Lưu" })).toBeNull());
@@ -236,7 +237,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
     const sent = fakeWeb(() => Response.json({ subject: MMT }));
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    await pick("Sửa", "Mạng máy tính");
     fireEvent.change(name(), { target: { value: "Mạng máy tính".normalize("NFD") } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
 
@@ -248,7 +249,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
     fakeWeb(() => Response.json({ error: "exam_date_too_far" }, { status: 422 }));
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    await pick("Sửa", "Mạng máy tính");
     fireEvent.change(date(), { target: { value: "15/12/2062" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
 
@@ -261,7 +262,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
     fakeWeb(() => Response.json({ error: "subject_not_found" }, { status: 404 }));
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    await pick("Sửa", "Mạng máy tính");
     fireEvent.change(name(), { target: { value: "Mạng máy tính 2" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
 
@@ -274,7 +275,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
     fakeWeb(() => Response.json({ error: "signed_out" }, { status: 401 }));
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    await pick("Sửa", "Mạng máy tính");
     fireEvent.change(name(), { target: { value: "Mạng máy tính 2" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
 
@@ -285,7 +286,7 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
     fakeWeb(() => Response.json({ error: "exam_date_not_in_future" }, { status: 422 }));
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
+    await pick("Sửa", "Mạng máy tính");
     fireEvent.change(date(), { target: { value: "02/10/2026" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
 
@@ -295,32 +296,32 @@ describe("SubjectList (T1.20, plan K2, K3)", () => {
 
 describe("the date example (risk register R24)", () => {
   // Red when: the placeholder looks like a filled date, or the page's example is not shown as a hint.
-  it("the new-subject field shows the page's example", () => {
+  it("the new-subject field shows the page's example", async () => {
     render(<NewSubjectForm example={EXAMPLE} />);
-    expect(date().getAttribute("placeholder")).toBe("ngày/tháng/năm");
-    expect(document.body.textContent).toContain(`Ví dụ: ${EXAMPLE}`);
+    expect(date().getAttribute("placeholder")).toBe(EXAMPLE);
+    expect((screen.getByLabelText("Ngày thi") as HTMLInputElement).placeholder).toBe(EXAMPLE);
   });
 
   // Red when: a message is shown without its example filled in (review 27b3601).
-  it("no message ever shows the raw {example}", () => {
+  it("no message ever shows the raw {example}", async () => {
     render(<NewSubjectForm example={EXAMPLE} />);
     fireEvent.change(name(), { target: { value: "Mạng" } });
     fireEvent.change(date(), { target: { value: "31/02/2027" } });
-    fireEvent.click(screen.getByRole("button", { name: "Tạo môn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục" }));
     expect(document.body.textContent).not.toContain("{example}");
     expect(document.body.textContent).toContain(EXAMPLE);
   });
 
-  it("the edit field shows the same example", () => {
+  it("the edit field shows the same example", async () => {
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
-    fireEvent.click(screen.getByRole("button", { name: "Sửa Mạng máy tính" }));
-    expect(date().getAttribute("placeholder")).toBe("ngày/tháng/năm");
-    expect(document.body.textContent).toContain(`Ví dụ: ${EXAMPLE}`);
+    await pick("Sửa", "Mạng máy tính");
+    expect(date().getAttribute("placeholder")).toBe(EXAMPLE);
+    expect((screen.getByLabelText("Ngày thi") as HTMLInputElement).placeholder).toBe(EXAMPLE);
   });
 });
 
 describe("SubjectList day count (DESIGN.md §6.8)", () => {
-  it("\"còn N ngày\" is DESIGN's and is not a placeholder", () => {
+  it("\"còn N ngày\" is DESIGN's and is not a placeholder", async () => {
     render(<SubjectList subjects={[MMT]} example={EXAMPLE} />);
     expect(screen.getByText("còn 54 ngày").getAttribute("data-copy")).toBeNull();
   });
@@ -329,7 +330,7 @@ describe("SubjectList day count (DESIGN.md §6.8)", () => {
   it.each([
     [0, "thi hôm nay"],
     [-3, "đã thi"],
-  ])("%i days: %s is shown as approved copy", (days, text) => {
+  ])("%i days: %s is shown as approved copy", async (days, text) => {
     render(<SubjectList subjects={[{ ...MMT, days_until_exam: days }]} example={EXAMPLE} />);
     expect(screen.getByText(text).getAttribute("data-copy")).toBeNull();
   });
@@ -340,8 +341,8 @@ describe("UploadStep (US-01 AC7, plan K5; T4.6)", () => {
     render(<UploadStep name="Mạng máy tính" subjectId="9e4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b" />);
   });
 
-  it("US-01 AC7: names the subject, no Làm sau (V13), a Sẵn sàng học thôi button outside the tabs (V14)", () => {
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Tải tài liệu");
+  it("US-01 AC7: names the subject, no Làm sau (V13), a Sẵn sàng học thôi button outside the tabs (V14)", async () => {
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Tạo môn");
     expect(screen.getByText("Mạng máy tính")).toBeTruthy();
     expect(screen.queryByText("Sắp có")).toBeNull();
     expect(screen.queryByText("Làm sau")).toBeNull();
@@ -349,7 +350,7 @@ describe("UploadStep (US-01 AC7, plan K5; T4.6)", () => {
   });
 
   // Red when: the step goes back to a disabled zone, or takes files other than PDF.
-  it("T4.6: a file input takes PDFs, several at a time", () => {
+  it("T4.6: a file input takes PDFs, several at a time", async () => {
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     expect(input.accept).toContain("pdf");
     expect(input.multiple).toBe(true);

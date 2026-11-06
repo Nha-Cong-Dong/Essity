@@ -96,7 +96,7 @@ async function rebuildFallbacks(page: Page) {
 const nav = (page: Page) => page.getByRole("navigation", { name: "Chính" });
 const logo = (page: Page) => page.locator("header").getByText("Essity", { exact: true });
 const account = (page: Page) => page.getByRole("button", { name: "Tài khoản" });
-// V22: the subjects tile also holds the "+ Thêm môn" row, so a subject row is the li with a name link.
+// DESIGN-V4: the subjects sheet holds only the subject rows; a row is the li with a name link.
 const rows = (page: Page) => page.locator("main li").filter({ has: page.locator('a[id$="-name"]') });
 
 /** The parts of one subject tile: name, the date line (two halves) and "Sửa". */
@@ -106,7 +106,7 @@ function parts(row: Locator) {
     name: row.locator('a[id$="-name"]'),
     date: exam.locator("xpath=.."),
     halves: exam.locator("xpath=../span"),
-    edit: row.getByRole("button", { name: /^Sửa / }),
+    edit: row.getByRole("button", { name: /^Tùy chọn môn / }),
   };
 }
 
@@ -137,14 +137,15 @@ test("smoke: the fixture renders, hydrates and breaks no CSP rule", async ({ pag
   await expect(rows(page)).toHaveCount(ROWS);
   await expect(nav(page).getByRole("link")).toHaveText(["Hôm nay", "Môn học", "Kho kiến thức", "Đồ thị", "Thống kê"]);
   // Hydrated: "Sửa" opens the edit form only once React runs.
-  await page.getByRole("button", { name: "Sửa Mạng máy tính" }).click();
-  await expect(page.getByLabel("Môn")).toBeVisible();
+  await page.getByRole("button", { name: "Tùy chọn môn Mạng máy tính" }).click();
+  await page.getByRole("menuitem", { name: "Sửa Mạng máy tính" }).click();
+  await expect(page.getByLabel("Môn", { exact: true })).toBeVisible();
   expect(problems).toEqual([]);
 });
 
 // Text at 200%: the type scale is px and @theme inline writes it into each utility, so the classes
 // themselves are overridden (T2.3c plan G10.1), and the precondition proves it took.
-const DOUBLE = [".text-meta{font-size:28px!important}", ".text-small{font-size:28px!important}", ".text-body{font-size:32px!important}", ".text-lead{font-size:32px!important}", ".text-section{font-size:44px!important}", ".text-logo{font-size:48px!important}", ".text-title{font-size:72px!important}"].join("");
+const DOUBLE = [".text-meta{font-size:28px!important}", ".text-small{font-size:28px!important}", ".text-body{font-size:32px!important}", ".text-lead{font-size:32px!important}", ".text-tile{font-size:32px!important}", ".text-section{font-size:44px!important}", ".text-logo{font-size:48px!important}", ".text-title{font-size:72px!important}"].join("");
 // --- Preconditions: never marked as failing. A rule above that fails must fail on its measure,
 // not because a part was not found, the text was not doubled or the fonts were not blocked
 // (review 790bc58 #1).
