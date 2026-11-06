@@ -10,6 +10,9 @@
   A task whose answer is a list (draft_units) sets its own `request.max_output_tokens`.
 - Errors become `ProviderError` with a stable code. Exception messages, which can quote the
   request, are never passed on.
+- The instructions are a cache breakpoint (T2.13): every call of a task sends the same `system`
+  prompt byte for byte, so the calls after the first read it at the cache-read price. A prompt
+  under the provider's minimum is not cached and costs nothing extra.
 """
 
 import logging
@@ -65,6 +68,16 @@ def _error_type(error: anthropic.APIStatusError) -> str | None:
     return kind if isinstance(kind, str) and _ERROR_TYPE.fullmatch(kind) else None
 
 
+def _system(text: str) -> Any:
+    """The instructions, marked as a cache breakpoint (T2.13).
+
+    Every call of a task sends the same `system` prompt byte for byte: chunk_units 5.2 KB,
+    draft_units 2.7 KB, grade 1.2 KB. Unmarked, each call pays the write price for them again;
+    marked, the calls after the first read them at a tenth. One breakpoint only: the user message
+    changes on every call, so there is nothing stable behind it to cache."""
+    return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
+
+
 def _content(request: LlmRequest) -> Any:
     """A plain string for text-only tasks; image blocks first, then the text, for vision."""
     if not request.images:
@@ -96,7 +109,7 @@ class AnthropicAdapter:
             message = self._client.messages.create(
                 model=model,
                 max_tokens=request.max_output_tokens or MAX_TOKENS,
-                system=request.system,
+                system=_system(request.system),
                 messages=[{"role": "user", "content": _content(request)}],
                 output_config={
                     "format": {"type": "json_schema", "schema": _supported(request.output_schema)}
@@ -121,9 +134,12 @@ class AnthropicAdapter:
             # A response the SDK could not read.
             raise ProviderError("provider_error") from None
         text = "".join(block.text for block in message.content if block.type == "text")
+        usage = message.usage
         return AdapterResult(
             text=text,
-            input_tokens=message.usage.input_tokens,
-            output_tokens=message.usage.output_tokens,
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
             stop_reason=message.stop_reason,
+            cache_read_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
+            cache_write_tokens=getattr(usage, "cache_creation_input_tokens", 0) or 0,
         )

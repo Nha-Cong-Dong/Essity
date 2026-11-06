@@ -53,3 +53,20 @@ def test_t210_every_price_is_a_decimal() -> None:
     for model, price in PRICES.items():
         assert isinstance(price.input_per_mtok, Decimal), model
         assert isinstance(price.output_per_mtok, Decimal), model
+
+
+def test_t213_cached_tokens_are_priced_apart_from_fresh_input() -> None:
+    # Red when: a cache read is billed as fresh input (over-charging the saving away) or is
+    # ignored (under-charging the quota). Haiku 5.5 $0.10/Mtok: read 1.0x/10, write 1.25x.
+    price = price_for("claude-haiku-5-5")
+    assert cost_usd(price, input_tokens=0, output_tokens=0, cache_read_tokens=1000) == Decimal(
+        "0.000010"
+    )
+    # A write costs 1.25x input: 1000 tokens at $0.10/Mtok x 1.25 = $0.000125.
+    assert cost_usd(price, input_tokens=0, output_tokens=0, cache_write_tokens=1000) == Decimal(
+        "0.000125"
+    )
+    # A second call that reads its whole prompt from the cache costs a tenth of the first.
+    fresh = cost_usd(price, input_tokens=5200, output_tokens=0)
+    cached = cost_usd(price, input_tokens=0, output_tokens=0, cache_read_tokens=5200)
+    assert cached * 10 == fresh

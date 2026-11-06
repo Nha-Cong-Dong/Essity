@@ -36,7 +36,13 @@ def test_t210_anthropic_sends_instructions_as_system_and_data_as_the_user_messag
     adapter_on(api).complete(request, model=MODEL, timeout=5.0)
     body = api.body()
     assert body["model"] == MODEL
-    assert body["system"] == request.system
+    assert body["system"] == [
+        {
+            "type": "text",
+            "text": request.system,
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
     assert body["messages"] == [{"role": "user", "content": request.user}]
     assert body["output_config"]["format"] == {"type": "json_schema", "schema": SCHEMA}
 
@@ -333,3 +339,12 @@ def test_t716_rejection_logs_status_and_error_type_but_not_the_message(
     assert rejected[0]["status"] == 400
     assert rejected[0]["error_type"] == "invalid_request_error"
     assert "learner-text-xyz" not in logged
+
+
+def test_t213_cache_counts_come_back_from_usage() -> None:
+    # Red when: the adapter drops the cache counters, and the ledger bills a cached call as if
+    # every prompt token were fresh (T2.13).
+    api = answering(cache_read_tokens=5200)
+    result = adapter_on(api).complete(make_request(), model=MODEL, timeout=5.0)
+    assert result.cache_read_tokens == 5200
+    assert result.cache_write_tokens == 0

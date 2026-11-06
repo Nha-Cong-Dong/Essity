@@ -164,6 +164,8 @@ class LlmClient:
                 price,
                 input_tokens=result.input_tokens if result else None,
                 output_tokens=result.output_tokens if result else None,
+                cache_read_tokens=result.cache_read_tokens if result else 0,
+                cache_write_tokens=result.cache_write_tokens if result else 0,
             ),
             latency_ms=latency_ms,
             error_code=error_code,

@@ -41,7 +41,13 @@ def make_request(**overrides: Any) -> LlmRequest:
     return LlmRequest(**{**values, **overrides})
 
 
-def message_json(text: str, input_tokens: int = 1000, output_tokens: int = 200) -> dict[str, Any]:
+def message_json(
+    text: str,
+    input_tokens: int = 1000,
+    output_tokens: int = 200,
+    cache_read_tokens: int = 0,
+    cache_write_tokens: int = 0,
+) -> dict[str, Any]:
     return {
         "id": "msg_test",
         "type": "message",
@@ -50,7 +56,12 @@ def message_json(text: str, input_tokens: int = 1000, output_tokens: int = 200) 
         "content": [{"type": "text", "text": text}],
         "stop_reason": "end_turn",
         "stop_sequence": None,
-        "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
+        "usage": {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cache_read_input_tokens": cache_read_tokens,
+            "cache_creation_input_tokens": cache_write_tokens,
+        },
     }
 
 
@@ -72,8 +83,19 @@ class FakeAnthropicApi:
         return json.loads(self.requests[index].content)
 
 
-def answering(text: str = '{"ok": true}') -> FakeAnthropicApi:
-    return FakeAnthropicApi(lambda _: httpx2.Response(200, json=message_json(text)))
+def answering(
+    text: str = '{"ok": true}', cache_read_tokens: int = 0, cache_write_tokens: int = 0
+) -> FakeAnthropicApi:
+    return FakeAnthropicApi(
+        lambda _: httpx2.Response(
+            200,
+            json=message_json(
+                text,
+                cache_read_tokens=cache_read_tokens,
+                cache_write_tokens=cache_write_tokens,
+            ),
+        )
+    )
 
 
 def failing(status: int) -> FakeAnthropicApi:
