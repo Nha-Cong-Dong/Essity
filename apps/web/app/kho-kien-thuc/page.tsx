@@ -6,8 +6,6 @@ import { AccountMenu } from "@/components/account-menu";
 import { EmptyState } from "@/components/empty-state";
 import { AppShell, PageColumn } from "@/components/shells";
 import { VaultView, type VaultViewData } from "@/components/vault/vault-view";
-import type { SubjectGraph } from "@/lib/graph-multi";
-import { loadAllGraphs } from "@/lib/graph-multi-load";
 import { requireVerifiedSession } from "@/lib/session";
 import {
   vaultCards,
@@ -31,18 +29,28 @@ async function Account() {
 
 type View = VaultViewData;
 
+/** The subject's name for the headings; the page still draws without it. */
+async function nameOf(subjectId?: string): Promise<string | undefined> {
+  if (!subjectId) return undefined;
+  try {
+    return (await vaultSubjects()).find((s) => s.id === subjectId)?.name;
+  } catch {
+    return undefined;
+  }
+}
+
 async function load(
   subjectId?: string,
   sessionId?: string,
 ): Promise<View | null> {
   try {
-    if (sessionId) return { level: "cards", ...(await vaultCards(sessionId)) };
+    if (sessionId) {
+      const [cards, subjectName] = await Promise.all([vaultCards(sessionId), nameOf(subjectId)]);
+      return { level: "cards", ...cards, subjectName };
+    }
     if (subjectId) {
-      const [sessions, graphs] = await Promise.all([
-        vaultSessions(subjectId),
-        loadAllGraphs(subjectId).catch(() => [] as SubjectGraph[]),
-      ]);
-      return { level: "sessions", sessions, graphs };
+      const [sessions, subjectName] = await Promise.all([vaultSessions(subjectId), nameOf(subjectId)]);
+      return { level: "sessions", sessions, subjectName };
     }
     return { level: "subjects", subjects: await vaultSubjects() };
   } catch {

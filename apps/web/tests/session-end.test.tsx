@@ -72,8 +72,7 @@ describe("session end", () => {
     const dialog = await screen.findByRole("dialog");
     expect(dialog.getAttribute("aria-labelledby")).toBeTruthy();
     expect(dialog.textContent).toContain(END_COPY.title);
-    expect(dialog.textContent).toContain(END_COPY.praise);
-    expect(dialog.textContent).toContain(END_COPY.cards);
+    expect(dialog.textContent).toContain(END_COPY.recorded(1));
     expect(screen.getByRole("button", { name: END_COPY.home })).toBeTruthy();
     expect(screen.getByRole("button", { name: END_COPY.more })).toBeTruthy();
     // the "đã vào Kho" toast still follows: the session is remembered as pending
@@ -178,7 +177,8 @@ describe("session end, typed text and empty session", () => {
     });
     const dialog = await screen.findByRole("dialog");
     expect(dialog.textContent).toContain(END_COPY.emptyTitle);
-    expect(dialog.textContent).not.toContain(END_COPY.cards);
+    expect(dialog.textContent).not.toContain(END_COPY.praise);
+    expect(dialog.textContent).not.toContain(END_COPY.title);
     expect(fake.complete).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: END_COPY.home })).toBeTruthy();
     expect(screen.getByRole("button", { name: END_COPY.more })).toBeTruthy();

@@ -4,9 +4,11 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useReducer, useRef, useState } from "react";
 
 import { FieldHint } from "@/components/field-error";
+import { Block } from "@/components/screen-kit";
 import { FocusShell } from "@/components/shells";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { FileRow, Suggestion } from "@/lib/fixtures/session-study";
+import { cn } from "@/lib/utils";
 import { type FileRef, rowStateOf } from "@/lib/session-study/files";
 import { uploadPdf } from "@/lib/upload-client";
 import type { Piece, SessionApi } from "@/lib/session-study/api";
@@ -82,10 +84,10 @@ export function completeProblem(status: number, error: string): string {
 const kindOf = (name: string): FileRow["kind"] =>
   /\.(jpe?g|png|heic|webp)$/i.test(name) ? "image" : /\.pdf$/i.test(name) ? "pdf" : /\.docx$/i.test(name) ? "docx" : /\.pptx$/i.test(name) ? "pptx" : "text";
 
-function Suggest({ suggestion, id }: { suggestion: Suggestion; id: string }) {
+function Suggest({ suggestion, id, tuck = false }: { suggestion: Suggestion; id: string; tuck?: boolean }) {
   const [why, setWhy] = useState(false);
   if (suggestion.kind !== "section") {
-    return <p className="m-0 -mt-6 text-body text-ink-soft">{suggestion.text}</p>;
+    return <p className={cn("m-0 text-body text-ink-soft", tuck && "-mt-6")}>{suggestion.text}</p>;
   }
   return (
     <Region phase={id} title={suggestion.text}>
@@ -379,6 +381,8 @@ export function SessionScreen(props: SessionScreenProps) {
     void handIn();
   }
 
+  // V4-SCREENS-B: while writing in piece mode the screen is two columns (the work, and the plum "đang học" column).
+  const wide = round.phase === "compose" && pieceMode;
   const exit =
     round.phase === "done" ? null : (
       <Link href={stopHref} className={buttonVariants({ variant: "quiet" })}>
@@ -388,7 +392,7 @@ export function SessionScreen(props: SessionScreenProps) {
 
   return (
     <FocusShell position={0} total={0} exit={exit} title={<span title={subject}>{subject}</span>}>
-      <div className="mx-auto flex w-full max-w-170 flex-col gap-10">
+      <div className={cn("mx-auto flex w-full flex-col gap-10", wide ? "max-w-5xl" : "max-w-170")}>
         <p className="sr-only" role="status" aria-live="polite">
           {note || round.announce}
         </p>
@@ -398,91 +402,119 @@ export function SessionScreen(props: SessionScreenProps) {
 
         {round.phase === "compose" ? (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h1 className="m-0 font-display text-title">Buổi học mới</h1>
+            <h1 className="m-0 font-display text-title">Buổi học mới</h1>
+            <div className={cn(pieceMode && "grid gap-5 min-[1024px]:grid-cols-[minmax(0,1fr)_320px] min-[1024px]:items-start")}>
               {pieceMode && (
-                <Button type="button" variant="quiet" aria-disabled={completing || uploading > 0 || undefined} onClick={() => void complete()}>
-                  {completing ? "Đang kết thúc…" : "Kết thúc buổi học"}
-                </Button>
-              )}
-            </div>
-            <Suggest suggestion={isFree ? { kind: "free", text: "Buổi học tự do. Bài nộp không gắn phần đề cương." } : suggestion} id="suggest" />
-            <Region phase="compose" title="Bạn đã học gì?">
-              <MentionBox
-                value={text}
-                mentions={mentions}
-                docs={docs}
-                say={say}
-                rejectedDoc={round.rejectedDoc}
-                problem={problem}
-                onChange={(value, next) => {
-                  setText(value);
-                  setMentions(next);
-                  setProblem(null);
-                }}
-              />
-              <FileDrop
-                rows={files}
-                tooManyPages={initial.tooManyPages}
-                onAdd={
-                  api
-                    ? addFiles
-                    : (added) =>
-                        setFiles((rows) => [
-                          ...rows,
-                          ...added.map((file) => ({ id: newId(), name: file.name, kind: kindOf(file.name), state: "done" as const })),
-                        ])
-                }
-                onRemove={removeFile}
-                onRetry={(id) => {
-                  const file = blobs.current.get(id);
-                  if (api && file) startUpload(id, file);
-                  else patchRow(id, { state: "done" });
-                }}
-              />
-              <div className="sticky bottom-0 z-10 flex flex-col items-start gap-2 bg-bg py-3 max-[640px]:[&>button]:w-full min-[641px]:static min-[641px]:bg-transparent min-[641px]:py-0">
-                <Button
-                  type="button"
-                  className="max-[480px]:w-full"
-                  aria-disabled={uploading > 0 || undefined}
-                  aria-describedby={uploading > 0 ? "session-send-why" : undefined}
-                  onClick={pieceMode ? () => void record() : submit}
+                // The one "Kết thúc buổi học": a strip above the work on a phone, the right column from 1024.
+                <Block
+                  as="aside"
+                  tier="field"
+                  aria-label="Buổi học đang diễn ra"
+                  className="order-first flex flex-wrap items-center justify-between gap-x-4 gap-y-3 p-5 min-[1024px]:sticky min-[1024px]:top-6 min-[1024px]:order-last min-[1024px]:min-h-72 min-[1024px]:flex-col min-[1024px]:items-stretch min-[1024px]:justify-between min-[1024px]:p-6"
                 >
-                  {pieceMode ? (recording ? "Đang ghi…" : "Ghi lại") : "Gửi"}
-                </Button>
-                {uploading > 0 && (
-                  <span id="session-send-why">
-                    <FieldHint id="session-send-hint">Đang tải {uploading} file…</FieldHint>
-                  </span>
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <p className="m-0 text-meta text-on-plum-soft">Đang học</p>
+                    <p className="m-0 font-display text-lead wrap-anywhere">{subject}</p>
+                    <p className="m-0 text-meta text-on-plum-soft">{pieces.length > 0 ? `Đã ghi lại ${pieces.length} lần` : "Chưa ghi lại lần nào"}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="primary-inverse"
+                    aria-disabled={completing || uploading > 0 || undefined}
+                    onClick={() => void complete()}
+                    className="min-[1024px]:w-full"
+                  >
+                    {completing ? "Đang kết thúc…" : "Kết thúc buổi học"}
+                  </Button>
+                </Block>
+              )}
+              <div className="flex min-w-0 flex-col gap-8">
+                <Suggest tuck={!pieceMode} suggestion={isFree ? { kind: "free", text: "Buổi học tự do. Bài nộp không gắn phần đề cương." } : suggestion} id="suggest" />
+                <Region
+                  phase="compose"
+                  title="Bạn đã học gì?"
+                  className={cn(pieceMode && "rounded-tile border border-line bg-sheet p-5 min-[641px]:p-7")}
+                >
+                  <MentionBox
+                    value={text}
+                    mentions={mentions}
+                    docs={docs}
+                    say={say}
+                    rejectedDoc={round.rejectedDoc}
+                    problem={problem}
+                    onChange={(value, next) => {
+                      setText(value);
+                      setMentions(next);
+                      setProblem(null);
+                    }}
+                  />
+                  <FileDrop
+                    rows={files}
+                    tooManyPages={initial.tooManyPages}
+                    onAdd={
+                      api
+                        ? addFiles
+                        : (added) =>
+                            setFiles((rows) => [
+                              ...rows,
+                              ...added.map((file) => ({ id: newId(), name: file.name, kind: kindOf(file.name), state: "done" as const })),
+                            ])
+                    }
+                    onRemove={removeFile}
+                    onRetry={(id) => {
+                      const file = blobs.current.get(id);
+                      if (api && file) startUpload(id, file);
+                      else patchRow(id, { state: "done" });
+                    }}
+                  />
+                  <div className="sticky bottom-0 z-10 flex flex-col items-start gap-2 bg-bg py-3 max-[640px]:[&>button]:w-full min-[641px]:static min-[641px]:bg-transparent min-[641px]:py-0">
+                    <Button
+                      type="button"
+                      className="max-[480px]:w-full"
+                      aria-disabled={uploading > 0 || undefined}
+                      aria-describedby={uploading > 0 ? "session-send-why" : undefined}
+                      onClick={pieceMode ? () => void record() : submit}
+                    >
+                      {pieceMode ? (recording ? "Đang ghi…" : "Ghi lại") : "Gửi"}
+                    </Button>
+                    {uploading > 0 && (
+                      <span id="session-send-why">
+                        <FieldHint id="session-send-hint">Đang tải {uploading} file…</FieldHint>
+                      </span>
+                    )}
+                  </div>
+                </Region>
+                {pieceMode && pieces.length > 0 && (
+                  <section aria-label="Đã học trong buổi" className="flex flex-col gap-3">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h3 className="m-0 font-display text-lead">Đã học trong buổi</h3>
+                      <span className="text-meta text-ink-soft">{pieces.length} lần ghi</span>
+                    </div>
+                    <ol className="m-0 flex list-none flex-col gap-3 p-0">
+                      {pieces.map((p, index) => (
+                        <li key={p.id} className="rounded-tile border border-line bg-sheet p-4 text-body wrap-anywhere">
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="text-meta text-ink-soft">Phần {index + 1}</span>
+                            <button
+                              type="button"
+                              aria-label={`Bỏ phần ${index + 1}`}
+                              onClick={() => void dropPiece(p.id)}
+                              className="inline-flex min-h-11 items-center justify-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken"
+                            >
+                              Bỏ phần này
+                            </button>
+                          </span>
+                          <p className="m-0 whitespace-pre-line">
+                            {p.text || `${p.fileCount} file`}
+                            {p.text && p.fileCount > 0 ? ` (+${p.fileCount} file)` : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
                 )}
               </div>
-              {pieceMode && pieces.length > 0 && (
-                <section aria-label="Đã học trong buổi" className="flex flex-col gap-3 border-t border-line pt-5">
-                  <h3 className="m-0 font-display text-lead">Đã học trong buổi</h3>
-                  <ol className="m-0 flex list-none flex-col gap-2 p-0">
-                    {pieces.map((p, index) => (
-                      <li key={p.id} className="rounded-control bg-sunken p-3 text-body wrap-anywhere">
-                        <span className="flex items-center justify-between gap-2">
-                          <span className="text-meta text-ink-soft">Phần {index + 1}</span>
-                          <button
-                            type="button"
-                            aria-label={`Bỏ phần ${index + 1}`}
-                            onClick={() => void dropPiece(p.id)}
-                            className="inline-flex min-h-11 items-center justify-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken"
-                          >
-                            Bỏ phần này
-                          </button>
-                        </span>
-                        <p className="m-0 whitespace-pre-line">
-                          {p.text || `${p.fileCount} file`}
-                          {p.text && p.fileCount > 0 ? ` (+${p.fileCount} file)` : ""}
-                        </p>
-                      </li>
-                    ))}
-                  </ol>
-                </section>
-              )}
-            </Region>
+            </div>
           </>
         ) : (
           <>
@@ -529,6 +561,7 @@ export function SessionScreen(props: SessionScreenProps) {
         <SessionEndDialog
           open={ended}
           empty={emptyEnd}
+          recorded={pieces.length}
           onHome={() => window.location.assign("/today")}
           onMore={() => window.location.assign(`/subjects/${subjectId}/sessions/study`)}
         />

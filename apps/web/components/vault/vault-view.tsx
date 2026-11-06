@@ -1,92 +1,136 @@
-import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
+
 import { EmptyState } from "@/components/empty-state";
-import { KnowledgeGraph } from "@/components/graph/knowledge-graph";
-import { NxList, NxRow } from "@/components/ui/nx-list";
+import { BackLink, Block } from "@/components/screen-kit";
+import { Button } from "@/components/ui/button";
 import { CardList } from "@/components/vault/card-list";
-import type { SubjectGraph } from "@/lib/graph-multi";
 import type { VaultCard, VaultSession, VaultSubject } from "@/lib/vault-api";
 
-// G1: the three levels of the Kho kiến thức (môn, buổi học, thẻ) as one view; the page loads, this draws.
+// V4-SCREENS-B (design-v4 mockups vault, vault-subject, vault-session): the three levels of the Kho
+// kiến thức (môn, buổi học, thẻ). Each level opens with one plum field (T1: the number of cards),
+// then one white sheet of full-row links; the cards of a session are a horizontal band on a plum
+// stage (CardList). The page loads, this draws.
 
 export type VaultViewData =
-  | { level: "cards"; title: string; cards: VaultCard[] }
-  | { level: "sessions"; sessions: VaultSession[]; graphs: SubjectGraph[] }
+  | { level: "cards"; title: string; cards: VaultCard[]; subjectName?: string }
+  | { level: "sessions"; sessions: VaultSession[]; subjectName?: string }
   | { level: "subjects"; subjects: VaultSubject[] };
 
-export function VaultView({
-  view,
-  subjectId,
-}: {
-  view: VaultViewData;
-  subjectId?: string;
-}) {
+/** "04/11/2026" or "2026-11-04" -> { day: "04", month: "11" }; anything else is shown as it is. */
+function dayParts(value: string | null): { day: string; month: string } | null {
+  if (!value) return null;
+  const dmy = /^(\d{1,2})\/(\d{1,2})\/\d{4}$/.exec(value);
+  if (dmy) return { day: dmy[1].padStart(2, "0"), month: dmy[2] };
+  const ymd = /^\d{4}-(\d{2})-(\d{2})/.exec(value);
+  if (ymd) return { day: ymd[2], month: String(Number(ymd[1])) };
+  return null;
+}
+
+const ROW =
+  "grid grid-cols-[44px_minmax(0,1fr)] items-center gap-3.5 rounded-row p-3 no-underline text-ink hover:bg-sunken min-[641px]:grid-cols-[52px_minmax(0,1fr)_auto] min-[641px]:gap-4.5 min-[641px]:px-5 min-[641px]:py-4";
+
+function Go({ label }: { label: string }) {
+  return (
+    <span aria-hidden="true" className="hidden items-center gap-2 text-meta whitespace-nowrap text-ink-soft min-[641px]:inline-flex">
+      {label}
+      <ArrowRight className="size-5" />
+    </span>
+  );
+}
+
+/** The plum field every level opens with: the number of cards, once, and a line under it. */
+function Field({ cards, meta, label = "thẻ" }: { cards: number; meta: string; label?: string }) {
+  return (
+    <Block as="section" tier="field" aria-label="Tóm tắt" className="flex flex-col gap-1" data-vault-sub>
+      <p className="m-0 flex items-baseline gap-3">
+        <span className="font-display text-display tabular-nums" data-vault-total>
+          {cards}
+        </span>
+        <span className="text-lead font-semibold">{label}</span>
+      </p>
+      <p className="m-0 text-body text-on-plum-soft">{meta}</p>
+    </Block>
+  );
+}
+
+export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?: string }) {
   if (view.level === "cards") {
     return (
       <div className="flex min-w-0 flex-col gap-4">
-        <a
-          href={
-            subjectId ? `/kho-kien-thuc?subject=${subjectId}` : "/kho-kien-thuc"
-          }
-          className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken"
-        >
-          ← Các buổi học
-        </a>
+        <BackLink href={subjectId ? `/kho-kien-thuc?subject=${subjectId}` : "/kho-kien-thuc"}>Quay lại</BackLink>
         <div className="max-w-160">
-          <h1 className="m-0 text-title wrap-anywhere">
-            {view.title || "Buổi học"}
-          </h1>
-          {view.cards.length > 0 && (
+          <h1 className="m-0 text-title wrap-anywhere">{view.title || "Buổi học"}</h1>
+          {view.subjectName || view.cards.length > 0 ? (
             <p className="m-0 mt-1 text-read text-ink-soft">
-              {view.cards.length} thẻ
+              {[view.subjectName, view.cards.length > 0 ? `${view.cards.length} thẻ` : null].filter(Boolean).join(" · ")}
             </p>
-          )}
+          ) : null}
         </div>
         <CardList cards={view.cards} />
       </div>
     );
   }
   if (view.level === "sessions") {
+    const cards = view.sessions.reduce((n, s) => n + s.cards, 0);
     return (
-      <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div className="flex min-w-0 flex-col gap-4">
-          <a href="/kho-kien-thuc" className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-            ← Các môn
-          </a>
-          <h1 className="m-0 font-display text-title">
-            Các buổi học
-          </h1>
-          {view.sessions.length === 0 ? (
+      <div className="flex min-w-0 flex-col gap-5">
+        <header className="flex flex-col gap-2">
+          <BackLink href="/kho-kien-thuc">Quay lại</BackLink>
+          <h1 className="m-0 text-title wrap-anywhere">{view.subjectName || "Các buổi học"}</h1>
+        </header>
+        {view.sessions.length === 0 ? (
+          <Block as="section" tier="sheet" aria-label="Chưa có buổi học">
             <EmptyState
-              mascot="cho"
+              mascot="rong"
               title="Môn này chưa có buổi học nào."
               hint="Ghi một buổi học, thẻ sẽ xuất hiện ở đây."
+              action={
+                subjectId ? (
+                  <Button render={<a href={`/subjects/${subjectId}/sessions/study`} />} nativeButton={false}>
+                    Bắt đầu buổi học
+                  </Button>
+                ) : undefined
+              }
             />
-          ) : (
-            <NxList title="Buổi học" hint="Mới nhất trước">
-              {view.sessions.map((s, i) => (
-                <NxRow
-                  key={s.id}
-                  lead={i + 1}
-                  state={`${s.cards} thẻ`}
-                  href={`/kho-kien-thuc?subject=${subjectId}&session=${s.id}`}
-                >
-                  <span className="block font-semibold wrap-anywhere">
-                    {s.title || "Buổi học"}
-                  </span>
-                  {s.studied_on && (
-                    <span className="block text-meta text-ink-soft">
-                      {s.studied_on}
-                    </span>
-                  )}
-                </NxRow>
-              ))}
-            </NxList>
-          )}
-        </div>
-        <div className="flex min-w-0 flex-col gap-4">
-          <h2 className="m-0 font-display text-lead">Đồ thị tri thức</h2>
-          <KnowledgeGraph graphs={view.graphs} height="55vh" />
-        </div>
+          </Block>
+        ) : (
+          <>
+            <Field cards={cards} meta={`${view.sessions.length} buổi học`} />
+            <Block as="section" tier="sheet" aria-label="Các buổi học" className="p-2 min-[901px]:p-2">
+              <ul className="m-0 flex list-none flex-col p-0">
+                {view.sessions.map((s) => {
+                  const when = dayParts(s.studied_on);
+                  return (
+                    <li key={s.id} className="border-t border-line first:border-t-0">
+                      <a href={`/kho-kien-thuc?subject=${subjectId}&session=${s.id}`} className={ROW}>
+                        <span
+                          aria-hidden="true"
+                          className="grid size-11 place-items-center rounded-control bg-hong-tint leading-none min-[641px]:size-13"
+                        >
+                          {when ? (
+                            <span className="flex flex-col items-center">
+                              <b className="font-display text-lead">{when.day}</b>
+                              <span className="text-meta text-ink-soft">Th{when.month}</span>
+                            </span>
+                          ) : (
+                            <span className="font-display text-lead">·</span>
+                          )}
+                        </span>
+                        <span className="flex min-w-0 flex-col">
+                          <span className="font-display text-lead wrap-anywhere">{s.title || "Buổi học"}</span>
+                          <span className="text-meta text-ink-soft">
+                            {[when ? null : s.studied_on, `${s.cards} thẻ`].filter(Boolean).join(" · ")}
+                          </span>
+                        </span>
+                        <Go label="Mở buổi" />
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Block>
+          </>
+        )}
       </div>
     );
   }
@@ -94,92 +138,48 @@ export function VaultView({
   const totalCards = subjects.reduce((n, s) => n + s.cards, 0);
   const totalSessions = subjects.reduce((n, s) => n + s.sessions, 0);
   return (
-    <div className="flex min-w-0 flex-col gap-8">
-      <div>
-        <h1 className="m-0 font-display text-title">
-          Kho kiến thức
-        </h1>
-        {subjects.length > 0 && (
-          // UI-A: the one big number of the screen is the whole vault; the tiles below carry smaller ones.
-          <div className="mt-6" data-vault-sub>
-            <p className="m-0 flex items-baseline gap-3">
-              <span
-                className="font-display text-display tabular-nums"
-                data-vault-total
-              >
-                {totalCards}
-              </span>
-              <span className="text-lead font-semibold">thẻ trong kho</span>
-            </p>
-            <p className="m-0 mt-1 text-read text-ink-soft">
-              {totalSessions} buổi học · {subjects.length} môn
-            </p>
-          </div>
-        )}
-      </div>
+    <div className="flex min-w-0 flex-col gap-5">
+      <h1 className="m-0 font-display text-title">Kho kiến thức</h1>
       {subjects.length === 0 ? (
-        <EmptyState
-          mascot="vui"
-          title="Chưa có môn nào."
-          hint="Tạo môn và ghi buổi học đầu tiên, các thẻ sẽ được lưu ở đây."
-          action={
-            <a href="/subjects/new" className="text-body font-semibold">
-              Tạo môn
-            </a>
-          }
-        />
+        <Block as="section" tier="sheet" aria-label="Chưa có môn">
+          <EmptyState
+            mascot="rong"
+            title="Chưa có môn nào."
+            hint="Tạo môn và ghi buổi học đầu tiên, các thẻ sẽ được lưu ở đây."
+            action={
+              <Button render={<a href="/subjects/new" />} nativeButton={false}>
+                Tạo môn
+              </Button>
+            }
+          />
+        </Block>
       ) : (
-        // UI-A: one card per subject in a 2-3 column grid; the card count is the number of the card.
-        <div className="grid min-w-0 gap-4 min-[1100px]:grid-cols-12">
-          <ul
-            className="m-0 grid list-none gap-4 p-0 min-[640px]:grid-cols-2 min-[1100px]:col-span-8 min-[1100px]:content-start"
-            data-vault-subjects
-          >
-            {subjects.map((s) => (
-              <li key={s.id} className="min-w-0">
-                <a
-                  href={`/kho-kien-thuc?subject=${s.id}`}
-                  className={`flex h-full min-h-44 flex-col justify-between gap-6 rounded-tile p-5 no-underline hover:bg-sunken ${s.cards === 0 ? "bg-sunken text-ink-soft" : "bg-hong-tint text-ink"}`}
-                >
-                  <span className="block text-lead font-semibold [overflow-wrap:anywhere]">
-                    {s.name}
-                  </span>
-                  <span className="flex flex-col">
-                    <span className="flex items-baseline gap-2">
-                      <span
-                        className="font-display text-title tabular-nums"
-                        data-vault-cards
-                      >
-                        {s.cards}
+        <>
+          <Field cards={totalCards} meta={`${totalSessions} buổi học · ${subjects.length} môn`} label="thẻ trong kho" />
+          <Block as="section" tier="sheet" aria-label="Các môn" className="p-2 min-[901px]:p-2" data-vault-subjects>
+            <ul className="m-0 flex list-none flex-col p-0">
+              {subjects.map((s) => (
+                <li key={s.id} className="border-t border-line first:border-t-0">
+                  <a href={`/kho-kien-thuc?subject=${s.id}`} className={ROW}>
+                    <span
+                      aria-hidden="true"
+                      className="grid size-11 place-items-center rounded-control bg-hong-tint font-display text-lead text-hong-text min-[641px]:size-13"
+                    >
+                      {s.name.trim().charAt(0).toUpperCase()}
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="font-display text-lead wrap-anywhere">{s.name}</span>
+                      <span className="text-meta text-ink-soft">
+                        <span data-vault-cards>{s.cards}</span> thẻ · {s.sessions} buổi học
                       </span>
-                      <span className="text-body">thẻ</span>
                     </span>
-                    <span className="text-meta text-ink-soft">
-                      {s.sessions} buổi học
-                    </span>
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
-          <aside
-            aria-label="Đồ thị tri thức"
-            className="flex min-w-0 flex-col justify-between gap-6 rounded-tile bg-hong-tint p-5 min-[1100px]:col-span-4 min-[1100px]:p-6"
-          >
-            <p className="m-0 font-display text-lead">Đồ thị tri thức</p>
-            <p className="m-0 text-read">
-              Xem các thẻ nối với nhau thành một mạng, rồi kéo, phóng to để tìm
-              ý bạn cần.
-            </p>
-            <Button
-              render={<a href="/graph" />}
-              nativeButton={false}
-              className="self-start"
-            >
-              Mở đồ thị
-            </Button>
-          </aside>
-        </div>
+                    <Go label="Mở môn" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Block>
+        </>
       )}
     </div>
   );
