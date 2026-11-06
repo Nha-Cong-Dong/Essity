@@ -6,7 +6,7 @@ import { Mascot, type MascotPose } from "@/components/mascot";
 
 const POSES: MascotPose[] = ["chao", "khen", "nghi", "cho", "rong", "glyph", "vui", "chucmung", "chuanbi"];
 
-describe("Mascot (DESIGN-V4)", () => {
+describe("Mascot (MASCOT-V3, cloud and sun)", () => {
   // Red when: a pose is missing, or the mascot is announced to a screen reader.
   it.each(POSES)("%s is decoration: aria-hidden and a data-mascot mark", (pose) => {
     const markup = renderToStaticMarkup(<Mascot pose={pose} />);
@@ -34,6 +34,34 @@ describe("Mascot (DESIGN-V4)", () => {
     const solid = renderToStaticMarkup(<Mascot pose="rong" tone="solid" />);
     expect(solid).toContain("--mascot-line:#441125");
     expect(solid).toContain("--mascot-teal:#70c8cd");
+  });
+
+  const KINDS = ["cloud", "sun"] as const;
+
+  // Red when: a kind or pose is missing, or the default stops being the cloud (every older call site relies on it).
+  it.each(KINDS)("%s: every pose draws, is marked with its kind and keeps the white die-cut edge", (kind) => {
+    for (const pose of POSES) {
+      const markup = renderToStaticMarkup(<Mascot kind={kind} pose={pose} />);
+      expect(markup).toContain(`data-mascot-kind="${kind}"`);
+      expect(markup).toContain('stroke="#ffffff"');
+    }
+    expect(renderToStaticMarkup(<Mascot pose="chao" />)).toContain('data-mascot-kind="cloud"');
+  });
+
+  // Red when: the two mascots are the same drawing, or a pose of one kind equals its other pose.
+  it("the cloud and the sun are different drawings, pose by pose", () => {
+    const art = (kind: "cloud" | "sun", pose: MascotPose) =>
+      renderToStaticMarkup(<Mascot kind={kind} pose={pose} />).replace(/data-mascot[a-z-]*="[^"]*"/g, "");
+    for (const pose of POSES) expect(art("cloud", pose)).not.toBe(art("sun", pose));
+    expect(art("sun", "chao")).not.toBe(art("sun", "khen"));
+  });
+
+  // Red when: the teal detail leaks into a glyph, or a pose loses it.
+  it("only the glyph has no teal detail", () => {
+    for (const kind of KINDS) {
+      expect(renderToStaticMarkup(<Mascot kind={kind} pose="glyph" />)).not.toContain("--mascot-teal");
+      expect(renderToStaticMarkup(<Mascot kind={kind} pose="chao" />)).toContain("--mascot-teal");
+    }
   });
 
   // Red when: the art carries its own title or label (the mascot would be read out).

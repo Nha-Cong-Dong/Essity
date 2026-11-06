@@ -192,7 +192,7 @@ function PracticeSection({ practice, primary }: { practice: NonNullable<TodayV2[
       </h2>
       {practice.state === "none_ready" ? (
         <div className="mt-3 flex items-center gap-4">
-          <Mascot pose="cho" size="sm" />
+          {/* One mascot per screen: the review block holds it. */}
           <p className="m-0 text-body text-ink-soft">{COPY.practiceNone}</p>
         </div>
       ) : (

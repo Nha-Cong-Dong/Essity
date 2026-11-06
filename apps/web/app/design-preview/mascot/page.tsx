@@ -11,15 +11,19 @@ const POSES: MascotPose[] = ["chao", "khen", "nghi", "cho", "rong", "glyph"];
 export default function MascotFixture() {
   return (
     <main className="flex flex-wrap gap-8 p-8">
-      {POSES.map((pose) => (
-        <figure key={pose} className="m-0 flex flex-col items-center gap-2">
-          <Mascot pose={pose} size="lg" />
-          <div className="rounded-tile bg-field p-3">
-            <Mascot pose={pose} size="md" tone="solid" />
-          </div>
-          <figcaption className="text-meta">{pose}</figcaption>
-        </figure>
-      ))}
+      {(["cloud", "sun"] as const).flatMap((kind) =>
+        POSES.map((pose) => (
+          <figure key={`${kind}-${pose}`} className="m-0 flex flex-col items-center gap-2">
+            <Mascot kind={kind} pose={pose} size="lg" />
+            <div className="rounded-tile bg-field p-3">
+              <Mascot kind={kind} pose={pose} size="md" tone="solid" />
+            </div>
+            <figcaption className="text-meta">
+              {kind} · {pose}
+            </figcaption>
+          </figure>
+        )),
+      )}
     </main>
   );
 }

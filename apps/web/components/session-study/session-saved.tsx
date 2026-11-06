@@ -30,7 +30,7 @@ export function DoneArea({
   return (
     <div data-surface={found ? "rose" : undefined} className={`flex flex-col gap-6 rounded-tile p-6 min-[901px]:p-8 ${found ? "" : "bg-sunken"}`}>
       <div className="flex items-center gap-5">
-        {found && <Mascot pose="chucmung" size="md" className="max-sm:size-24" />}
+        {found && <Mascot kind="sun" pose="khen" size="md" className="max-sm:size-24" />}
         <div className="flex flex-col gap-1 text-body">
           {found ? (
             <>
