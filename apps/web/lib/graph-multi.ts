@@ -5,8 +5,15 @@ import type { GraphCard, GraphData, GraphEdge } from "@/lib/graph";
 // only ever joins two cards of one subject (core-api builds the graph per subject).
 
 /** Colours of the subjects in order; fixed so a subject keeps its colour on every visit. */
-// V4: the brand family. Pink is the first subject; teal stays the assistant's voice and never a subject; no yellow.
-export const SUBJECT_COLORS = ["#d1347a", "#5d55a9", "#891b4c", "#7c6d72"] as const;
+// V4: the brand family. Pink is the first subject; teal stays the assistant's voice and never a
+// subject; no yellow. The graph sits on `--sheet`, white in the light palette and #22151a in the
+// dark one, and one palette must hold for both: every tone clears 3:1 on each (WCAG 1.4.11, the
+// bar for a shape that carries meaning — a node's name has its own plate, so it is not the tone's
+// job to carry 4.5:1), and no two tones sit closer than 25 in CIELAB, because the earlier tones
+// that differed only in lightness merged into one another on the dark canvas. A tone that is dark
+// on white is light on #22151a and the other way round, so no tone may go past either end.
+// Held by tests/graph-multi-contrast.test.ts.
+export const SUBJECT_COLORS = ["#d1347a", "#7b57c4", "#a05a3c", "#7c6d72"] as const;
 
 export type SubjectGraph = { id: string; name: string; data: GraphData };
 export type MultiCard = GraphCard & { subjectId: string };
