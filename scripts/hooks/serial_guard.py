@@ -242,17 +242,28 @@ def blocked_reason(tool: str, tool_input: dict[str, object], cwd: Path, repo: Pa
 
 _TEST_PROGRAMS = {"pytest", "py.test", "vitest", "playwright"}
 _JS_RUNNERS = {"pnpm", "npm", "yarn", "npx", "bun"}
-_JS_TEST_WORD = re.compile(r"^(test|e2e)(:[\w:.-]+)?$")
-_PROSE = READERS - {"pytest"}
+_JS_TEST_WORD = re.compile(r"^(test|e2e|lint|typecheck|build)(:[\w:.-]+)?$")
+_CHECK_PROGRAMS = {"tsc", "eslint", "ruff", "pyright"}  # long checks (retro 03/11)
+_PKG_VERBS = {"add", "install", "i", "remove", "uninstall", "update", "up", "rm"}
+_PROSE = READERS - {"pytest", "ruff", "pyright"}
+_EXE_SUFFIX = re.compile(r"\.(exe|cmd|ps1|bat)$", re.IGNORECASE)
+
+
+def _name(word: str) -> str:
+    return _EXE_SUFFIX.sub("", Path(word).name)
 
 
 def _runs_tests(words: list[str]) -> bool:
     if any(Path(w).name == "with_lock.py" for w in words) and "--" in words:
         words = words[words.index("--") + 1 :] or words
-    program = Path(words[0]).name
+    program = _name(words[0])
     if program in _PROSE:
         return False
-    if any(Path(w).name in _TEST_PROGRAMS for w in words):
+    if program in _JS_RUNNERS and _PKG_VERBS & set(words[1:2]):
+        return False  # `pnpm add eslint` installs, it does not run
+    if any(_name(w) in _TEST_PROGRAMS | _CHECK_PROGRAMS for w in words):
+        return True
+    if any(_name(w) == "next" for w in words) and "build" in words:
         return True
     return program in _JS_RUNNERS and any(_JS_TEST_WORD.match(w) for w in words[1:])
 
@@ -294,7 +305,7 @@ def _is_lane_dir(path: Path) -> bool:
 
 def background_test_reason(tool: str, tool_input: dict[str, object], cwd: Path) -> str | None:
     """Deny a backgrounded test suite aimed at a lane worktree (retro 02/11: lanes idled on it)."""
-    if tool != "Bash" or tool_input.get("run_in_background") is not True:
+    if tool not in ("Bash", "PowerShell") or tool_input.get("run_in_background") is not True:
         return None
     try:
         command = tool_input.get("command")
