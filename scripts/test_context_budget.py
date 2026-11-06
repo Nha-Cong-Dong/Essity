@@ -20,6 +20,10 @@ class Reminder(unittest.TestCase):
     def test_reminds_once_per_50k_band_above_the_threshold(self) -> None:
         text, band = reminder(210_000, 200_000, last_band=0)
         self.assertIn("210k", text or "")
+        # The reminder carries the close-the-books ritual: /clear drops the conversation, so the
+        # session that goes away must have written BOARD + record + sync.sh first.
+        self.assertIn("CHỐT SỔ", text or "")
+        self.assertIn("flow.py record", text or "")
         self.assertEqual(band, 1)
         # Same band again: quiet, so the reminder does not repeat on every call.
         self.assertEqual(reminder(240_000, 200_000, last_band=1), (None, 1))

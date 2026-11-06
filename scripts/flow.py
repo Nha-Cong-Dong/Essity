@@ -467,12 +467,18 @@ def _when(text: str) -> datetime:
     return datetime.fromisoformat(text.strip().replace("Z", "+00:00"))
 
 
+def _int(value: Any) -> int:
+    """A count from a YAML doc; `n/a`, `-` and the like count as 0 (agents write them)."""
+    text = str(value if value is not None else "").strip()
+    return int(text) if text.lstrip("+-").isdigit() else 0
+
+
 def _round(doc: dict[str, Any] | None) -> int:
-    return int((doc or {}).get("round") or 0)
+    return _int((doc or {}).get("round"))
 
 
 def _sum(docs: list[dict[str, Any] | None], key: str) -> int:
-    return sum(int(doc.get(key) or 0) for doc in docs if doc)
+    return sum(_int(doc.get(key)) for doc in docs if doc)
 
 
 def real_tokens(task: str, projects: Path) -> tuple[int, str] | None:

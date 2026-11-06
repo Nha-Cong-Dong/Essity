@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agent_usage import last_context_tokens
 
-THRESHOLD = int(os.environ.get("CONTEXT_BUDGET_TOKENS", "200000"))
+THRESHOLD = int(os.environ.get("CONTEXT_BUDGET_TOKENS", "150000"))
 BAND = 50_000
 TAIL = 2 * 1024 * 1024
 
@@ -34,7 +34,11 @@ def reminder(size: int, threshold: int, last_band: int) -> tuple[str | None, int
         f"Ngữ cảnh phiên chính đang khoảng {size // 1000}k token, quá ngân sách "
         f"{threshold // 1000}k (.claude/agent.md §6). Mỗi lượt sau đọc lại toàn bộ phần này. "
         "Ở điểm dừng an toàn kế tiếp (PR vừa merge, hoặc mọi luồng đã push và BOARD đã cập nhật), "
-        'báo người dùng một dòng: nên /clear rồi gõ "tiếp tục"; phiên mới dựng lại từ BOARD.'
+        'báo người dùng một dòng: nên /clear rồi gõ "tiếp tục"; phiên mới dựng lại từ BOARD. '
+        "CHỐT SỔ TRƯỚC KHI /clear: một dòng .work/BOARD.md (đang ở đâu, việc kế) + "
+        "`python scripts/flow.py record <TASK> --pr <n>` cho mỗi PR vừa merge + "
+        "`python scripts/lane.py gc` + `docs && bash sync.sh`. Chưa chốt sổ thì /clear xoá mất "
+        "trạng thái và phiên sau phải dựng lại từ đầu."
     )
     return text, band
 
