@@ -86,3 +86,19 @@ describe("pieces of a session", () => {
     expect(screen.queryByText(SUBMIT_COPY.mentionPiece)).toBeNull();
   });
 });
+
+describe("C4C session structure (session.html / vault-session.html)", () => {
+  // Red when: the Ghi lại row is sticky again (it laid over the file drop on a phone), or the
+  // "Đã học trong buổi" list loses its count or its piece cards.
+  it("keeps the Ghi lại row in the flow, and lists the pieces with a count", async () => {
+    show(api());
+    await act(async () => undefined);
+    const record = screen.getByRole("button", { name: "Ghi lại" });
+    expect(record.parentElement?.className).not.toMatch(/sticky|fixed/);
+    const list = screen.getByRole("region", { name: "Đã học trong buổi" });
+    expect(list.textContent).toContain("1 lần ghi");
+    expect(list.querySelectorAll("ol > li")).toHaveLength(1);
+    expect(screen.getByText("Bạn đã học gì?")).toBeTruthy();
+    expect(screen.getByText("Đang học")).toBeTruthy();
+  });
+});

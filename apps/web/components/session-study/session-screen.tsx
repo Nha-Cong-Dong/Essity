@@ -467,7 +467,7 @@ export function SessionScreen(props: SessionScreenProps) {
                       else patchRow(id, { state: "done" });
                     }}
                   />
-                  <div className="sticky bottom-0 z-10 flex flex-col items-start gap-2 bg-bg py-3 max-[640px]:[&>button]:w-full min-[641px]:static min-[641px]:bg-transparent min-[641px]:py-0">
+                  <div className="flex flex-col items-start gap-2 max-[640px]:[&>button]:w-full">
                     <Button
                       type="button"
                       className="max-[480px]:w-full"
