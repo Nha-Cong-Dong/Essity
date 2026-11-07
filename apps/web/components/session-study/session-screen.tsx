@@ -521,7 +521,7 @@ export function SessionScreen(props: SessionScreenProps) {
                   <div className="flex flex-col items-stretch gap-2">
                     <div data-testid="composer-foot" className="flex items-center justify-between gap-3">
                       {pieceMode ? (
-                        <Button type="button" variant="quiet" onClick={() => document.getElementById("session-attach-input")?.click()}>
+                        <Button type="button" variant="secondary" onClick={() => document.getElementById("session-attach-input")?.click()}>
                           <Plus size={16} aria-hidden="true" />
                           Đính kèm
                         </Button>

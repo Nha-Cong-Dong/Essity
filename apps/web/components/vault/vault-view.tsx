@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
+import { HeadMascot } from "@/components/head-mascot";
 import { BackLink, Block } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
 import { CardList } from "@/components/vault/card-list";
@@ -139,7 +140,10 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
   const totalSessions = subjects.reduce((n, s) => n + s.sessions, 0);
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <h1 className="m-0 font-display text-title">Kho kiến thức</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="m-0 font-display text-title">Kho kiến thức</h1>
+        <HeadMascot pose="rong" />
+      </div>
       {subjects.length === 0 ? (
         <Block as="section" tier="sheet" aria-label="Chưa có môn">
           <EmptyState

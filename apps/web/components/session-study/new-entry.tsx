@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
+import { HeadMascot } from "@/components/head-mascot";
 
 import { LogSession } from "@/components/log-session";
 import { PageColumn } from "@/components/shells";
@@ -30,9 +31,12 @@ export async function NewSessionEntry({
   const saved = typeof session === "string" && isSubjectId(session) ? session : undefined;
   return (
     <PageColumn width="full">
-      <a href={`/subjects/${subject.id}/documents`} className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-        ← {subject.name}
-      </a>
+      <div className="flex items-center justify-between gap-3">
+        <a href={`/subjects/${subject.id}/documents`} className="inline-flex min-h-11 w-fit items-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
+          ← {subject.name}
+        </a>
+        <HeadMascot pose="chao" />
+      </div>
       <Sheet className="relative mt-3" aria-labelledby="log-title">
         <LogSession subjectId={subject.id} subjectName={subject.name} savedSessionId={saved} />
       </Sheet>

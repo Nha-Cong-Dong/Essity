@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { HeadMascot } from "@/components/head-mascot";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
@@ -180,7 +181,10 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
       onPointerDownCapture={() => (lastKey.current = false)}
     >
       <BackLink href={subjectHref}>Về môn {subjectName}</BackLink>
-      <h1 className="m-0 mt-1 text-title">Đồ thị</h1>
+      <div className="mt-1 flex items-center justify-between gap-3">
+        <h1 className="m-0 text-title">Đồ thị</h1>
+        <HeadMascot pose="nghi" />
+      </div>
 
       <Block as="section" tier="sheet" aria-label="Bộ lọc đồ thị" className="mt-2 flex flex-col gap-2 p-3 min-[641px]:mt-4 min-[641px]:gap-3 min-[641px]:p-4 min-[901px]:p-5">
       <div className="flex flex-col gap-3 min-[768px]:flex-row min-[768px]:items-end">

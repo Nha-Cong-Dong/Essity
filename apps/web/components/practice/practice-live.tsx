@@ -1,6 +1,7 @@
 "use client";
 
 import { NX_CAM, NxChip } from "@/components/ui/nx-list";
+import { HeadMascot } from "@/components/head-mascot";
 import { useEffect, useRef, useState } from "react";
 
 import { Pen } from "@/components/practice/practice-extras";
@@ -252,9 +253,12 @@ export function PracticeLive({
       </a>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-3" data-practice-head>
         <div className="min-w-0 basis-80 flex-1">
-          <h1 className="m-0 font-display text-title">
-            Luyện tập
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="m-0 font-display text-title">
+              Luyện tập
+            </h1>
+            <HeadMascot pose="nghi" />
+          </div>
           <p className="m-0 mt-1 text-read text-ink-soft wrap-anywhere" data-practice-sub>
             {list.total === 0
               ? subjectName
