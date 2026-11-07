@@ -64,6 +64,14 @@ describe("Mascot (MASCOT-V3, cloud and sun)", () => {
     }
   });
 
+  // Red when: the cloud glyph loses the pink patch under the hat brim (D1 B-01): without it the gaps
+  // between the puffs show the hat's white halo as small white wedges inside the cloud.
+  it("cloud glyph fills the gap under the hat brim", () => {
+    const html = renderToStaticMarkup(<Mascot kind="cloud" pose="glyph" />);
+    expect(html).toContain('data-patch="under-brim"');
+    expect(html.indexOf('data-patch="under-brim"')).toBeLessThan(html.indexOf('d="M81 100L79 38H121L119 100Z" style'));
+  });
+
   // Red when: the art carries its own title or label (the mascot would be read out).
   it("has no accessible name of its own", () => {
     for (const pose of POSES) expect(renderToStaticMarkup(<Mascot pose={pose} />)).not.toMatch(/aria-label|<title|role="img"/);

@@ -626,13 +626,20 @@ def _practice(
             override_practice_grade(session, uid, grade.id, overridden)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="python -m core_api.cli_review_account")
     parser.add_argument("--outline", required=True, type=Path, help="outline.json of the textbook")
     parser.add_argument("--pdf", type=Path, help="the textbook PDF, uploaded to storage")
     parser.add_argument("--account-file", type=Path, help="where the login is written")
     parser.add_argument("--email", default=REVIEW_EMAIL)
-    args = parser.parse_args(argv)
+    parser.add_argument(
+        "--username", default=REVIEW_USERNAME, help="needed for a second account (names are unique)"
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = parse_args(argv)
     if get_settings().environment not in DEV_ENVIRONMENTS:
         print("cli_review_account runs only in local and test", file=sys.stderr)
         return 1
@@ -640,7 +647,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     with Session(get_engine()) as session:
         storage = S3Storage.from_settings(get_settings()) if pdf else None
         line, password = seed_account(
-            session, args.outline.read_bytes(), email=args.email, pdf=pdf, storage=storage
+            session,
+            args.outline.read_bytes(),
+            email=args.email,
+            username=args.username,
+            pdf=pdf,
+            storage=storage,
         )
         session.commit()
     print(line)
