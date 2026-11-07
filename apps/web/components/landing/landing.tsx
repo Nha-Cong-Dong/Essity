@@ -513,7 +513,7 @@ Trí nhớ phai theo đường cong. Essity ôn lại đúng lúc sắp quên, n
 <circle key={x} cx={x} cy={CURVE.y1} r={7} />
 ))}
 </g>
-<ellipse cx="57" cy="58" rx="26" ry="22" className="rev-ring" />
+<circle cx={CURVE.trough.x} cy={CURVE.trough.y} r={17} className="rev-ring" />
 </svg>
 <div className="curve-lab">
 <span>

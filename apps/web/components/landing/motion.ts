@@ -5,8 +5,10 @@
 // - the pause button (WCAG 2.2.2) stops every repeating motion and is remembered;
 // - startLanding returns a cleanup that stops timers, observers and listeners and puts touched nodes back, so it is safe
 //   under React strict mode (effect runs twice in dev).
+import { fsrsCurve } from "./fsrs-curve";
 import { GRAPH_CARDS, GRAPH_HUBS, GRAPH_RELATIONS } from "./graph-data";
 
+const TROUGH = fsrsCurve().trough;
 const SVGNS = "http://www.w3.org/2000/svg";
 export const PAUSE_KEY = "essity-motion-paused";
 
@@ -191,8 +193,8 @@ export function startLanding(root: El): () => void {
     const place = () => {
       const d = demoFsrs.getBoundingClientRect();
       const c = curve.getBoundingClientRect();
-      fhand.style.left = c.left - d.left + (435 / 900) * c.width + 8 + "px";
-      fhand.style.top = c.top - d.top + (30 / 300) * c.height + 100 + "px";
+      fhand.style.left = c.left - d.left + (TROUGH.x / 900) * c.width + 30 + "px";
+      fhand.style.top = c.top - d.top + (TROUGH.y / 300) * c.height - 14 + "px";
       fhand.style.rotate = "-3deg";
     };
     place();
