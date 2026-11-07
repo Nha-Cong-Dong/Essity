@@ -37,6 +37,10 @@ describe("tint", () => {
     expect(tint("#d1347a", "#ffffff", 1)).toBe("#d1347a");
     expect(tint("#000000", "#ffffff", 0.5)).toBe("#808080");
   });
+  it("accepts the short #fff the sheet token is written in", () => {
+    expect(tint("#d1347a", "#fff", 0)).toBe("#ffffff");
+    expect(tint("#d1347a", "#fff", 0.3)).toBe(tint("#d1347a", "#ffffff", 0.3));
+  });
   it("a light tint of a topic stays lighter than its ring on a light sheet", () => {
     const [r] = [tint("#7b57c4", "#ffffff", 0.3)].map((h) => parseInt(h.slice(1, 3), 16));
     expect(r).toBeGreaterThan(0x7b);

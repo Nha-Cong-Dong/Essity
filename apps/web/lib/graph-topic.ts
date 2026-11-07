@@ -34,6 +34,9 @@ export function nodeSize(degree: number, hub: boolean): number {
 
 /** `amount` of `colour` over `background` (both #rrggbb): the pale ring-node fill of the landing graph. */
 export function tint(colour: string, background: string, amount: number): string {
+  // the sheet token can be a short #fff
+  const full = (hex: string) => (hex.length === 4 ? "#" + [...hex.slice(1)].map((c) => c + c).join("") : hex);
+  [colour, background] = [full(colour), full(background)];
   const ch = (hex: string, o: number) => parseInt(hex.slice(o, o + 2), 16);
   const mix = (o: number) => Math.round(ch(background, o) + (ch(colour, o) - ch(background, o)) * amount);
   return "#" + [1, 3, 5].map((o) => mix(o).toString(16).padStart(2, "0")).join("");
