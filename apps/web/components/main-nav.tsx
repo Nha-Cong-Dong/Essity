@@ -1,17 +1,17 @@
 "use client";
 
-import { BookOpen, Library, LineChart, Network, Sun, type LucideIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 
+import { Doodle, type DoodleName } from "@/components/icons/doodle";
 import { cn } from "@/lib/utils";
 
 export const NAV = [
-  { href: "/today", label: "Hôm nay", icon: Sun },
-  { href: "/subjects", label: "Môn học", icon: BookOpen },
-  { href: "/kho-kien-thuc", label: "Kho kiến thức", icon: Library },
-  { href: "/graph", label: "Đồ thị", icon: Network },
-  { href: "/stats", label: "Thống kê", icon: LineChart },
-] as const satisfies readonly { href: string; label: string; icon: LucideIcon }[];
+  { href: "/today", label: "Hôm nay", doodle: "lich" },
+  { href: "/subjects", label: "Môn học", doodle: "sach-mo" },
+  { href: "/kho-kien-thuc", label: "Kho kiến thức", doodle: "the" },
+  { href: "/graph", label: "Đồ thị", doodle: "may" },
+  { href: "/stats", label: "Thống kê", doodle: "do-thi" },
+] as const satisfies readonly { href: string; label: string; doodle: DoodleName }[];
 
 export type NavItem = (typeof NAV)[number]["href"];
 
@@ -39,7 +39,7 @@ export function MainNav({ current }: { current?: NavItem }) {
         "min-[1024px]:static min-[1024px]:mt-8 min-[1024px]:h-auto min-[1024px]:flex-col min-[1024px]:justify-start min-[1024px]:gap-1 min-[1024px]:overflow-visible min-[1024px]:border-t-0 min-[1024px]:bg-transparent min-[1024px]:pb-0",
       )}
     >
-      {NAV.map(({ href, label, icon: Icon }) => (
+      {NAV.map(({ href, label, doodle }) => (
         <a
           key={href}
           href={href}
@@ -54,7 +54,7 @@ export function MainNav({ current }: { current?: NavItem }) {
             "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
           )}
         >
-          <Icon aria-hidden="true" focusable="false" strokeWidth={1.8} className="size-[22px] shrink-0 min-[1024px]:size-5" />
+          <Doodle name={doodle} size={24} className="size-[22px] shrink-0 min-[1024px]:size-5" />
           {label.startsWith("Kho") ? (
             <span>
               Kho<span className="hidden min-[1024px]:inline">{" " + label.slice(4)}</span>

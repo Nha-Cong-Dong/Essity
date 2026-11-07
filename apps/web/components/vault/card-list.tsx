@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 
 import { PdfPage } from "@/components/vault/pdf-page";
 
+import { Doodle } from "@/components/icons/doodle";
 import { Markdown } from "@/components/markdown/markdown";
 import { Block } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
@@ -227,6 +228,7 @@ export function CardList({ cards }: { cards: VaultCard[] }) {
   if (shown.length === 0) {
     return (
       <Block as="section" tier="sheet" aria-label="Chưa có thẻ">
+        <Doodle name="sach-mo" size={48} className="mb-2 text-hong-text" />
         <p className="m-0 text-lead">Buổi này chưa có thẻ nào.</p>
       </Block>
     );
