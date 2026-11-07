@@ -35,6 +35,7 @@ from ai_service.db.models import PipelineRun
 from ai_service.db.session import SessionFactory
 from ai_service.llm.client import AuditUnavailableError, LlmClient, LlmUnavailableError
 from ai_service.llm.quota import QuotaExceededError
+from ai_service.llm.system import render_system
 from ai_service.llm.types import LlmRequest
 from ai_service.tasks.extract_models import (
     MAX_QUESTION_CHARS,
@@ -57,7 +58,6 @@ _log = logging.getLogger(__name__)
 TASK = "extract_session"
 PROMPT_VERSION = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 
 # The whole request, retry included: core cuts at 5 s (T4.12). A second call only when this
 # much is left.
@@ -284,7 +284,7 @@ def build_llm_request(
         pipeline_run_id=run_id,
         prompt_version=prompt.version,
         attempt=attempt,
-        system=prompt.text.replace(_NONCE_PLACEHOLDER, nonce),
+        system=render_system(prompt.text, nonce),
         user="\n\n".join(parts),
         output_schema=OUTPUT_SCHEMA,
         payload={

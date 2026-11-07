@@ -38,6 +38,7 @@ from sqlalchemy import func, update
 from ai_service.db.models import PipelineRun
 from ai_service.db.session import SessionFactory
 from ai_service.llm.client import AuditUnavailableError, LlmClient
+from ai_service.llm.system import render_system
 from ai_service.llm.types import LlmRequest
 from ai_service.pdf import OutlineEntry, PageText
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
@@ -49,7 +50,6 @@ TASK = "syllabus_toc"
 PROMPT_VERSION = "v1"
 CALL_SECONDS = 60.0
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 ATTEMPTS = 2
 CHUNK_PAGES = 10
 MAX_NODES = 2000
@@ -465,7 +465,7 @@ def build_prompt(pages: Sequence[PageText], toc_pages: Sequence[int]) -> Syllabu
     blocks = [
         wrap_untrusted("toc", text, nonce, label=f"T{n}") for n, text in enumerate(texts, start=1)
     ]
-    system = load_prompt().text.replace(_NONCE_PLACEHOLDER, nonce)
+    system = render_system(load_prompt().text, nonce)
     return SyllabusPrompt(system, "\n\n".join(blocks), OUTPUT_SCHEMA, nonce)
 
 

@@ -9,6 +9,7 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
+import httpx2
 import pytest
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -25,7 +26,15 @@ from ai_service.llm.client import (
 from ai_service.llm.fake_adapter import FakeAdapter
 from ai_service.llm.pricing import FAKE_MODEL, UnknownModelPriceError
 from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError, ProviderName
-from tests.llm.helpers import FAKE_KEY, NoQuota, answering, failing, make_request
+from tests.llm.helpers import (
+    FAKE_KEY,
+    FakeAnthropicApi,
+    NoQuota,
+    answering,
+    failing,
+    make_request,
+    message_json,
+)
 
 MODEL = "claude-haiku-5-5"
 
@@ -157,6 +166,44 @@ def test_t210_cost_is_computed_from_the_price_table(
     [row] = rows_of(engine, run)
     assert (row.provider, row.model) == ("anthropic", MODEL)
     assert (row.input_tokens, row.output_tokens, row.cost_usd) == (1000, 200, Decimal("0.0002"))
+
+
+def test_t213_cost_in_the_ledger_includes_cache_tokens(
+    engine: Engine, sessions: sessionmaker[Session], run: PipelineRun
+) -> None:
+    # Red when: cache_read/cache_write are not passed to the cost: the ledger (and the quota)
+    # would count a cached call as cheaper than it was. 1000 in, 200 out: $0.0002 as above;
+    # + 5000 read at 0.1 x $0.10/M = $0.00005; + 2000 write at 1.25 x $0.10/M = $0.00025.
+    adapter = Scripted(
+        AdapterResult(
+            text="{}",
+            input_tokens=1000,
+            output_tokens=200,
+            cache_read_tokens=5000,
+            cache_write_tokens=2000,
+        )
+    )
+    LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=NoQuota()).call(
+        request_for(run), deadline=deadline()
+    )
+    [row] = rows_of(engine, run)
+    assert row.cost_usd == Decimal("0.0005")
+
+
+def test_t213_usage_without_cache_keys_costs_as_plain_input(
+    engine: Engine, sessions: sessionmaker[Session], run: PipelineRun
+) -> None:
+    # Red when: a proxy that leaves cache_* out of `usage` crashes the call or adds cost.
+    body = message_json("{}")
+    del body["usage"]["cache_read_input_tokens"]
+    del body["usage"]["cache_creation_input_tokens"]
+    api = FakeAnthropicApi(lambda _: httpx2.Response(200, json=body))
+    adapter = AnthropicAdapter(api_key=FAKE_KEY, http_client=api.client())
+    LlmClient(adapter, sessions, models={"grade": MODEL}, quota_guard=NoQuota()).call(
+        request_for(run), deadline=deadline()
+    )
+    [row] = rows_of(engine, run)
+    assert row.cost_usd == Decimal("0.0002")
 
 
 def test_t210_failed_call_is_written_too(

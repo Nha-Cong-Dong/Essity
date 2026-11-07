@@ -100,6 +100,11 @@ class AdapterResult:
     input_tokens: int | None
     output_tokens: int | None
     stop_reason: str | None = None
+    # Prompt-cache accounting (T2.13): tokens read from an earlier call's cache, and tokens
+    # written into it. They are *not* included in `input_tokens`, and the provider charges a
+    # different price for each, so a call's cost is wrong without them.
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 @dataclass(frozen=True)

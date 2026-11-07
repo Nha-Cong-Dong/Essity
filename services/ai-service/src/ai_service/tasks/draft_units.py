@@ -36,6 +36,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from ai_service.llm.quota import QuotaExceededError, QuotaUnavailableError
+from ai_service.llm.system import render_system
 from ai_service.llm.types import Task
 from ai_service.messaging.session_result_v2 import draft_key as contract_draft_key
 from ai_service.messaging.session_result_v2 import quote_hash as contract_quote_hash
@@ -59,7 +60,6 @@ from ai_service.tasks.grade import wrap_untrusted
 TASK: Task = "draft_units"
 PROMPT_VERSION = "v3"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 MAX_DESCRIPTION_CHARS = 500
 # Output tokens a draft call may use (FIX-CHUNK). The adapter's default of 800 cut every v2
 # answer of QA-FINAL (about 1,500 characters of Vietnamese JSON, two drafts); 8192 holds about
@@ -214,7 +214,7 @@ def draft_units(request: DraftRequest, ask: Callable[[ChunkPrompt], str]) -> Dra
     description = (request.description or "").strip()[:MAX_DESCRIPTION_CHARS]
 
     def ask_with_draft_prompt(prompt: ChunkPrompt) -> str:
-        system = _system_template().replace(_NONCE_PLACEHOLDER, prompt.nonce)
+        system = render_system(_system_template(), prompt.nonce)
         user = prompt.user
         if description:
             # Escaped by wrap_untrusted, so it cannot close a block whatever it contains.

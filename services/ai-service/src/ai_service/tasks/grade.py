@@ -35,6 +35,7 @@ from ai_service.db.models import PipelineRun
 from ai_service.db.session import SessionFactory
 from ai_service.llm.client import AuditUnavailableError, LlmClient, LlmUnavailableError
 from ai_service.llm.quota import QuotaExceededError
+from ai_service.llm.system import render_system
 from ai_service.llm.types import LlmRequest
 from ai_service.tasks.grade_models import (
     MAX_ANCHORS_PER_UNIT,
@@ -54,7 +55,6 @@ _log = logging.getLogger(__name__)
 PROMPT_VERSION = "v1"
 # services/ai-service/prompts, wherever the process runs from (the image copies it to /app).
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 
 UNIT_LABELS = [f"U{u}" for u in range(1, MAX_UNITS + 1)]
 ANCHOR_LABELS = [f"{unit}.A{a}" for unit in UNIT_LABELS for a in range(1, MAX_ANCHORS_PER_UNIT + 1)]
@@ -198,7 +198,7 @@ def build_llm_request(
         pipeline_run_id=run_id,
         prompt_version=prompt.version,
         attempt=attempt,
-        system=prompt.text.replace(_NONCE_PLACEHOLDER, nonce),
+        system=render_system(prompt.text, nonce),
         user="\n\n".join(parts),
         output_schema=OUTPUT_SCHEMA,
         payload={"answer": request.answer, "units": payload_units},

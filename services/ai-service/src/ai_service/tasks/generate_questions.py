@@ -24,6 +24,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from ai_service.llm.system import render_system
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
 from ai_service.tasks.question_models import (
     MAX_LEVEL3_QUESTIONS,
@@ -45,7 +46,6 @@ _log = logging.getLogger(__name__)
 TASK = "generate_questions"
 PROMPT_VERSION = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 HIGHER_PROMPT_VERSION = "v2"
 ATTEMPTS = 2
 
@@ -132,7 +132,7 @@ def build_prompt(
         blocks.append(wrap_untrusted("unit", f"{unit.title}\n{unit.summary}", nonce, label=label))
         for a, quote in enumerate(unit.quotes, start=1):
             blocks.append(wrap_untrusted("source", quote, nonce, label=f"{label}.A{a}"))
-    system = load_prompt(version).text.replace(_NONCE_PLACEHOLDER, nonce)
+    system = render_system(load_prompt(version).text, nonce)
     return QuestionPrompt(system, "\n\n".join(blocks), output_schema or OUTPUT_SCHEMA, nonce)
 
 

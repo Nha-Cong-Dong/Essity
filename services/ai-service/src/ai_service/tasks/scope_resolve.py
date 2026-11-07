@@ -26,13 +26,13 @@ from typing import Annotated, Any, Final
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from ai_service.llm.system import render_system
 from ai_service.messaging.submission_context import OutlineDocument, OutlineSection
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
 
 TASK: Final = "pick_sections"
 PROMPT_VERSION: Final = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE = "{{NONCE}}"
 MAX_PICKED = 8
 MAX_OUTLINE_LINES = 400
 MAX_NOTE_CHARS = 4000
@@ -191,7 +191,7 @@ def build_pick_prompt(
     return PickPrompt(
         PROMPT_VERSION,
         prompt_sha256(),
-        prompt_text().replace(_NONCE, nonce),
+        render_system(prompt_text(), nonce),
         user,
         labels,
         outline,

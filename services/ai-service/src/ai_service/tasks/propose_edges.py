@@ -24,6 +24,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationErr
 from ai_service.db.session import SessionFactory
 from ai_service.llm.client import LlmClient, LlmUnavailableError
 from ai_service.llm.quota import QuotaExceededError, QuotaUnavailableError
+from ai_service.llm.system import render_system
 from ai_service.llm.types import LlmRequest, LlmResult
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
 from ai_service.tasks.practice_run import (
@@ -39,7 +40,6 @@ _log = logging.getLogger(__name__)
 TASK: Final = "propose_edges"
 PROMPT_VERSION = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 MAX_CANDIDATES = 10
 MAX_EDGES = 5
 MAX_OUTPUT_CHARS = 20_000
@@ -150,7 +150,7 @@ def build_prompt(body: ProposeEdgesBody) -> BuiltPrompt:
         blocks.append(wrap_untrusted("card", f"{unit.title}\n{unit.summary}", nonce, label=label))
         for a, quote in enumerate(unit.quotes, start=1):
             blocks.append(wrap_untrusted("source", quote, nonce, label=f"{label}.A{a}"))
-    system = load_prompt().text.replace(_NONCE_PLACEHOLDER, nonce)
+    system = render_system(load_prompt().text, nonce)
     return BuiltPrompt(system, "\n\n".join(blocks), nonce, labels)
 
 

@@ -43,6 +43,7 @@ from ai_service.db.models import PipelineRun
 from ai_service.db.session import SessionFactory
 from ai_service.llm.client import AuditUnavailableError, LlmClient, LlmUnavailableError
 from ai_service.llm.quota import QuotaExceededError
+from ai_service.llm.system import render_system
 from ai_service.llm.types import LlmRequest
 from ai_service.tasks.grade import Prompt, new_nonce, wrap_untrusted
 
@@ -51,7 +52,6 @@ _log = logging.getLogger(__name__)
 TASK = "parse_command"
 PROMPT_VERSION = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 
 # One short call per command; core cuts at 8 s (the command bar is synchronous, ADR-0030).
 DEADLINE_SECONDS = 6.0
@@ -167,7 +167,7 @@ def build_llm_request(
         pipeline_run_id=run_id,
         prompt_version=prompt.version,
         attempt=attempt,
-        system=prompt.text.replace(_NONCE_PLACEHOLDER, nonce),
+        system=render_system(prompt.text, nonce),
         user="\n\n".join(parts),
         output_schema=OUTPUT_SCHEMA,
         payload={

@@ -27,6 +27,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationErr
 
 from ai_service.llm.client import LlmUnavailableError
 from ai_service.llm.quota import QuotaExceededError, QuotaUnavailableError
+from ai_service.llm.system import render_system
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
 from ai_service.tasks.question_filter import (
     REASON_NEAR_DUPLICATE,
@@ -40,7 +41,6 @@ GENERATE_TASK = "generate_like"
 JUDGE_TASK = "judge_questions"
 PROMPT_VERSION = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 
 MAX_CANDIDATES = 5
 MAX_SAMPLES = 3
@@ -248,7 +248,7 @@ def build_generate_prompt(request: LikeRequest) -> LikePrompt:
     nonce = _nonce_for(_texts(request))
     blocks = _context_blocks(request, nonce)
     blocks.append(wrap_untrusted("count", str(request.count), nonce))
-    system = load_prompt(GENERATE_TASK).text.replace(_NONCE_PLACEHOLDER, nonce)
+    system = render_system(load_prompt(GENERATE_TASK).text, nonce)
     return LikePrompt(GENERATE_TASK, system, "\n\n".join(blocks), GENERATE_SCHEMA, nonce)
 
 
@@ -261,7 +261,7 @@ def build_judge_prompt(request: LikeRequest, candidates: list[LlmCandidate]) -> 
     for n, c in enumerate(candidates, start=1):
         body = f"{c.prompt}\n\nReference answer: {c.reference_answer}\n\nRubric: {c.rubric}"
         blocks.append(wrap_untrusted("candidate", body, nonce, label=f"Q{n}"))
-    system = load_prompt(JUDGE_TASK).text.replace(_NONCE_PLACEHOLDER, nonce)
+    system = render_system(load_prompt(JUDGE_TASK).text, nonce)
     return LikePrompt(JUDGE_TASK, system, "\n\n".join(blocks), JUDGE_SCHEMA, nonce)
 
 

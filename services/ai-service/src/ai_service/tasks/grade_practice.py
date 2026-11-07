@@ -28,6 +28,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationErr
 
 from ai_service.llm.client import LlmUnavailableError
 from ai_service.llm.quota import QuotaExceededError, QuotaUnavailableError
+from ai_service.llm.system import render_system
 from ai_service.tasks.grade import derive_overall, new_nonce, wrap_untrusted
 from ai_service.tasks.grade_models import Verdict
 
@@ -37,7 +38,6 @@ TASK = "grade_practice"
 PROMPT_VERSION = "v1"
 TEMPERATURE = 0.0
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 
 MAX_IDEAS = 8
 MAX_QUESTION_CHARS = 1000
@@ -177,7 +177,7 @@ def build_prompt(request: PracticeGradeRequest) -> PracticePrompt:
     ]
     blocks.append(wrap_untrusted("reference", request.reference_answer, nonce))
     blocks.append(wrap_untrusted("answer", request.answer, nonce))
-    system = load_prompt().text.replace(_NONCE_PLACEHOLDER, nonce)
+    system = render_system(load_prompt().text, nonce)
     return PracticePrompt(TASK, system, "\n\n".join(blocks), _schema_for(request), nonce)
 
 

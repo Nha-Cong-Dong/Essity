@@ -12,6 +12,10 @@ from decimal import ROUND_UP, Decimal
 FAKE_MODEL = "fake-grader-v1"
 _PER_TOKEN = Decimal(1_000_000)
 _MICRO_DOLLAR = Decimal("0.000001")
+# Prompt-cache prices, as multiples of the input price (Anthropic's price page, checked
+# 2026-11-06): writing a cache entry costs a quarter more than plain input, reading it a tenth.
+CACHE_WRITE_MULTIPLIER = Decimal("1.25")
+CACHE_READ_MULTIPLIER = Decimal("0.1")
 
 
 class UnknownModelPriceError(LookupError):
@@ -49,14 +53,34 @@ def price_for(model: str) -> Price:
         raise UnknownModelPriceError(model) from None
 
 
-def cost_usd(price: Price, *, input_tokens: int | None, output_tokens: int | None) -> Decimal:
-    """Cost of one call. Unknown counts (a failed call has no usage) cost nothing."""
+def cost_usd(
+    price: Price,
+    *,
+    input_tokens: int | None,
+    output_tokens: int | None,
+    cache_read_tokens: int = 0,
+    cache_write_tokens: int = 0,
+) -> Decimal:
+    """Cost of one call. Unknown counts (a failed call has no usage) cost nothing.
+
+    Cached tokens are billed apart from `input_tokens` and not at the same price (T2.13): a read
+    costs a tenth of the input price, a write a quarter more. Ignoring them would under-state a
+    cached call and over-charge the first one."""
     tokens_in = input_tokens or 0
     tokens_out = output_tokens or 0
     per_in, per_out = price.input_per_mtok, price.output_per_mtok
+    # The size of the prompt is all of it, cached or not (how the provider applies the threshold).
     long_from = price.long_prompt_from_tokens
-    if long_from is not None and tokens_in >= long_from:
+    if (
+        long_from is not None
+        and tokens_in + (cache_read_tokens or 0) + (cache_write_tokens or 0) >= long_from
+    ):
         per_in = price.long_input_per_mtok or per_in
         per_out = price.long_output_per_mtok or per_out
-    cost = (tokens_in * per_in + tokens_out * per_out) / _PER_TOKEN
+    cost = (
+        tokens_in * per_in
+        + tokens_out * per_out
+        + (cache_read_tokens or 0) * per_in * CACHE_READ_MULTIPLIER
+        + (cache_write_tokens or 0) * per_in * CACHE_WRITE_MULTIPLIER
+    ) / _PER_TOKEN
     return cost.quantize(_MICRO_DOLLAR, rounding=ROUND_UP)

@@ -34,6 +34,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationErr
 
 from ai_service.domain.anchor_check import Span, normalize_with_map, unescape_quote
 from ai_service.llm.quota import QuotaExceededError
+from ai_service.llm.system import render_system
 from ai_service.pdf import PageText
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
 
@@ -41,7 +42,6 @@ _log = logging.getLogger(__name__)
 
 PROMPT_VERSION = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 ATTEMPTS = 2
 MAX_OUTPUT_CHARS = 100_000
 MAX_QUESTIONS = 500
@@ -238,7 +238,7 @@ def _build(
         wrap_untrusted(kind, text, nonce, **({"label": label} if label else {}))
         for kind, text, label in parts
     ]
-    system = load_prompt(name).text.replace(_NONCE_PLACEHOLDER, nonce)
+    system = render_system(load_prompt(name).text, nonce)
     return BankPrompt(system, "\n\n".join(blocks), schema.model_json_schema(), nonce)
 
 

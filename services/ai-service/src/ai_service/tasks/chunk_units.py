@@ -26,6 +26,7 @@ from typing import Annotated, Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ai_service.domain.anchor_check import find_quote, normalize_with_map, unescape_quote
+from ai_service.llm.system import render_system
 from ai_service.tasks.chunk_models import (
     MAX_OUTPUT_CHARS,
     MAX_QUOTE_CHARS,
@@ -48,7 +49,6 @@ _log = logging.getLogger(__name__)
 TASK = "chunk_units"
 PROMPT_VERSION = "v3"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 
 MAX_PAGES = 60
 MAX_PAGE_CHARS = 20_000
@@ -217,7 +217,7 @@ def build_prompt(request: ChunkRequest) -> ChunkPrompt:
     for n, unit in enumerate(request.existing_units, start=1):
         text = f"{unit.title[:PROMPT_TITLE_CHARS]}\n{unit.summary[:PROMPT_SUMMARY_CHARS]}"
         blocks.append(wrap_untrusted("existing_unit", text, nonce, label=f"U{n}"))
-    system = load_prompt().text.replace(_NONCE_PLACEHOLDER, nonce)
+    system = render_system(load_prompt().text, nonce)
     return ChunkPrompt(system, "\n\n".join(blocks), OUTPUT_SCHEMA, nonce)
 
 

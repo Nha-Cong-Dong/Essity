@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ai_service.llm.client import LlmUnavailableError
 from ai_service.llm.quota import QuotaExceededError, QuotaUnavailableError
+from ai_service.llm.system import render_system
 from ai_service.tasks.generate_like import MAX_CARD_CHARS, MAX_CARDS, Filled
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
 from ai_service.tasks.grade_practice import MAX_QUESTION_CHARS
@@ -30,7 +31,6 @@ TASK = "draft_answer"
 PROMPT_VERSION = "v1"
 TEMPERATURE = 0.0
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 
 MAX_ANSWER_CHARS = 1500
 MAX_CITED = 6
@@ -98,7 +98,7 @@ def build_prompt(request: DraftRequest) -> DraftPrompt:
         wrap_untrusted("card", c.text, nonce, label=f"C{n}")
         for n, c in enumerate(request.cards, start=1)
     ]
-    system = _load_prompt().replace(_NONCE_PLACEHOLDER, nonce)
+    system = render_system(_load_prompt(), nonce)
     return DraftPrompt(TASK, system, "\n\n".join(blocks), OUTPUT_SCHEMA, nonce)
 
 
