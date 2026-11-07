@@ -3,27 +3,12 @@
 import { type FormEvent, useEffect, useState } from "react";
 
 import { AuthNote, PasswordField } from "@/components/auth/fields";
+import { AuthBody, AuthState } from "@/components/auth/auth-state";
 import { FieldError, FieldHint } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import { authMessage, PASSWORD_REASONS, postJson, rateLimitMessage } from "@/lib/auth-errors";
 import { consumeLinkToken } from "@/lib/link-token";
 import { afterReset, type ResetState } from "@/lib/reset-state";
-
-/** A ✓ before "Đã đặt mật khẩu mới." */
-function Check() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0 text-correct">
-      <path
-        d="m3 8.5 3.25 3L13 4.75"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 /**
  * T1.14, canvas Auth "reset". The token leaves the URL at once (F8) and stays in memory until
@@ -50,37 +35,42 @@ export function ResetPassword() {
 
   if (state.view === "loading") {
     return (
-      <div aria-busy="true" className="h-40 rounded-control bg-sunken" />
+      <div aria-busy="true" className="flex flex-col gap-4">
+        <div className="h-5 w-1/3 rounded-full bg-sunken" />
+        <div className="h-13 rounded-control bg-sunken" />
+        <div className="h-13 rounded-full bg-sunken" />
+      </div>
     );
   }
   if (state.view === "done") {
     return (
-      <div className="flex flex-col gap-4" role="status">
-        <p className="m-0 flex items-center gap-2 font-semibold">
-          <Check />
-          Đã đặt mật khẩu mới.
-        </p>
-        <p className="m-0 text-ink-soft">Đăng nhập bằng mật khẩu mới.</p>
-        <Button render={<a href="/login" />} nativeButton={false} className="w-full">
-          Đăng nhập
-        </Button>
-      </div>
+      <AuthState
+        mark="ok"
+        role="status"
+        title="Đã đặt mật khẩu mới."
+        actions={
+          <Button render={<a href="/login" />} nativeButton={false} className="w-full">
+            Đăng nhập
+          </Button>
+        }
+      >
+        <AuthBody>Đăng nhập bằng mật khẩu mới.</AuthBody>
+      </AuthState>
     );
   }
   if (state.view === "expired") {
     return (
-      <div className="flex flex-col gap-4">
-        <p className="m-0 font-semibold">Link này đã hết hạn hoặc đã được dùng.</p>
-        <p className="m-0 text-ink-soft">Mỗi link chỉ dùng được một lần. Gửi link mới tới email của bạn.</p>
-        <Button
-          render={<a href="/forgot-password" />}
-          nativeButton={false}
-          variant="secondary"
-          className="w-full"
-        >
-          Gửi link mới
-        </Button>
-      </div>
+      <AuthState
+        mark="expired"
+        title="Link này đã hết hạn hoặc đã được dùng."
+        actions={
+          <Button render={<a href="/forgot-password" />} nativeButton={false} variant="secondary" className="w-full">
+            Gửi link mới
+          </Button>
+        }
+      >
+        <AuthBody>Mỗi link chỉ dùng được một lần. Gửi link mới tới email của bạn.</AuthBody>
+      </AuthState>
     );
   }
   const { token, error, retryAfter } = state;

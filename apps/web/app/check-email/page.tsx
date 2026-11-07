@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Kiểm tra email · Essity" };
 
 export default function CheckEmailPage() {
   return (
-    <AuthLayout title={CHECK_EMAIL_TITLE}>
+    <AuthLayout title={CHECK_EMAIL_TITLE} greeting={<><span>Mở hộp thư</span> <span>nhé</span></>} bubble="Thư tới rồi">
       <Suspense
         fallback={<div className="h-40 rounded-control bg-sunken" />}
       >

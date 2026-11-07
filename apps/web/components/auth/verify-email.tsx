@@ -2,6 +2,7 @@
 
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 
+import { AuthBody, AuthState } from "@/components/auth/auth-state";
 import { Button } from "@/components/ui/button";
 import { type AuthResult, postJson } from "@/lib/auth-errors";
 import { clearAllDrafts } from "@/lib/draft";
@@ -15,15 +16,6 @@ type State =
   | { view: "ok"; signedIn: boolean; next?: string }
   | { view: "expired"; signedIn: boolean }
   | { view: "failed"; token: string };
-
-/** A ✓ before "Đã xác minh email." */
-function Check() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0 text-correct">
-      <path d="m3 8.5 3.25 3L13 4.75" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function show(token: string, result: AuthResult<VerifyResult>): State {
   if (result.data) return { view: "ok", signedIn: result.data.signedIn, next: result.data.next };
@@ -91,24 +83,21 @@ export function VerifyEmail() {
   if (state.view === "checking") {
     return (
       <div className="flex flex-col gap-4" aria-busy="true">
-        <p className="m-0">Đang kiểm tra link…</p>
-        <div className="h-5 w-3/4 rounded-control bg-sunken" />
-        <div className="h-13 rounded-control bg-sunken" />
+        <p className="m-0 font-display text-lead font-semibold">Đang kiểm tra link…</p>
+        <div className="h-5 w-3/4 rounded-full bg-sunken" />
+        <div className="h-13 rounded-full bg-sunken" />
       </div>
     );
   }
   if (state.view === "ok") {
     return (
-      <div className="flex flex-col gap-4" role="status">
-        <p className="m-0 flex items-center gap-2 font-semibold">
-          <Check />
-          Đã xác minh email.
-        </p>
-        {state.signedIn ? (
-          <>
-            {/* "ok" exists only after the effect, so reading matchMedia here cannot split hydration. */}
-            {!prefersLessMotion() && <p className="m-0 text-ink-soft">Đang chuyển tiếp…</p>}
-            {dest === "/subjects/new" ? (
+      <AuthState
+        mark="ok"
+        role="status"
+        title="Đã xác minh email."
+        actions={
+          state.signedIn ? (
+            dest === "/subjects/new" ? (
               <Button render={<a href="/subjects/new" />} nativeButton={false} onClick={goNow} className="w-full">
                 Tạo môn đầu tiên
               </Button>
@@ -116,39 +105,51 @@ export function VerifyEmail() {
               <Button render={<a href="/today" />} nativeButton={false} onClick={goNow} className="w-full">
                 Vào hôm nay
               </Button>
-            )}
-          </>
-        ) : (
-          <Button render={<a href="/login" />} nativeButton={false} className="w-full">
-            Đăng nhập
-          </Button>
-        )}
-      </div>
+            )
+          ) : (
+            <Button render={<a href="/login" />} nativeButton={false} className="w-full">
+              Đăng nhập
+            </Button>
+          )
+        }
+      >
+        {/* "ok" exists only after the effect, so reading matchMedia here cannot split hydration. */}
+        {state.signedIn && !prefersLessMotion() && <AuthBody>Đang chuyển tiếp…</AuthBody>}
+      </AuthState>
     );
   }
   if (state.view === "expired") {
     // F5: a new link needs an address: the session's (/check-email), or sign in first.
     return (
-      <div className="flex flex-col gap-4">
-        <p className="m-0 font-semibold">Link này đã hết hạn hoặc đã được dùng.</p>
-        <p className="m-0 text-ink-soft">Mỗi link chỉ dùng được một lần. Gửi link mới tới email của bạn.</p>
-        <Button
-          render={<a href={state.signedIn ? "/check-email" : "/login"} />}
-          nativeButton={false}
-          variant="secondary"
-          className="w-full"
-        >
-          Gửi link mới
-        </Button>
-      </div>
+      <AuthState
+        mark="expired"
+        title="Link này đã hết hạn hoặc đã được dùng."
+        actions={
+          <Button
+            render={<a href={state.signedIn ? "/check-email" : "/login"} />}
+            nativeButton={false}
+            variant="secondary"
+            className="w-full"
+          >
+            Gửi link mới
+          </Button>
+        }
+      >
+        <AuthBody>Mỗi link chỉ dùng được một lần. Gửi link mới tới email của bạn.</AuthBody>
+      </AuthState>
     );
   }
   return (
-    <div className="flex flex-col gap-4">
-      <p className="m-0">Chưa kiểm tra được link. Kiểm tra kết nối rồi thử lại.</p>
-      <Button variant="secondary" onClick={() => retry(state.token)} className="w-full">
-        Thử lại
-      </Button>
-    </div>
+    <AuthState
+      mark="warn"
+      title="Chưa kiểm tra được link."
+      actions={
+        <Button variant="secondary" onClick={() => retry(state.token)} className="w-full">
+          Thử lại
+        </Button>
+      }
+    >
+      <AuthBody>Kiểm tra kết nối rồi thử lại.</AuthBody>
+    </AuthState>
   );
 }

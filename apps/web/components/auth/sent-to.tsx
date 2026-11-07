@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
+import { AuthBody, AuthState } from "@/components/auth/auth-state";
 import { CheckEmailActions } from "@/components/auth/check-email-actions";
 import { RESEND_COOLDOWN_SECONDS } from "@/lib/auth-errors";
 import { landingFor } from "@/lib/landing";
@@ -18,12 +19,9 @@ export async function SentTo() {
   if (email === null) redirect("/register");
   return (
     <>
-      <p className="m-0 text-body">
-        Đã gửi link tới <span className="font-medium text-hong-text">{maskEmail(email)}</span>
-      </p>
-      <p className="m-0 text-ink-soft">
-        Mở email và bấm vào link để tiếp tục. Nếu không thấy, xem cả mục thư rác.
-      </p>
+      <AuthState mark="mail" title={<>Đã gửi link tới <span className="text-hong-text">{maskEmail(email)}</span></>}>
+        <AuthBody>Mở email và bấm vào link để tiếp tục. Nếu không thấy, xem cả mục thư rác.</AuthBody>
+      </AuthState>
       <CheckEmailActions initialWait={me ? 0 : RESEND_COOLDOWN_SECONDS} />
     </>
   );

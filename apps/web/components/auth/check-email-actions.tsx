@@ -50,18 +50,22 @@ export function CheckEmailActions({ initialWait }: { initialWait: number }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Button variant="secondary" onClick={resend} pending={busy} disabled={left > 0} className="w-full">
-        {left > 0 ? `Gửi lại (${clock(left)})` : "Gửi lại"}
-      </Button>
-      <p className="m-0 min-h-6 text-small text-ink-soft" aria-live="polite">
-        {resent ? "Đã gửi lại." : ""}
-      </p>
-      {error && <FieldError id="check-email-error">{authMessage(error)}</FieldError>}
-      <p className="m-0 text-body">Sai email? Đăng xuất để đăng ký bằng email khác.</p>
-      <button type="button" onClick={wrongEmail} className={AUTH_PILL}>
-        Đăng xuất
-      </button>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <Button variant="secondary" onClick={resend} pending={busy} disabled={left > 0} className="w-full">
+          {left > 0 ? `Gửi lại (${clock(left)})` : "Gửi lại"}
+        </Button>
+        <p className="m-0 min-h-6 text-center text-small text-ink-soft" aria-live="polite">
+          {resent ? "Đã gửi lại." : ""}
+        </p>
+        {error && <FieldError id="check-email-error">{authMessage(error)}</FieldError>}
+      </div>
+      <div className="flex flex-col items-start gap-3 rounded-control bg-sunken px-4 py-4">
+        <p className="m-0 text-body">Sai email? Đăng xuất để đăng ký bằng email khác.</p>
+        <button type="button" onClick={wrongEmail} className={AUTH_PILL}>
+          Đăng xuất
+        </button>
+      </div>
     </div>
   );
 }
