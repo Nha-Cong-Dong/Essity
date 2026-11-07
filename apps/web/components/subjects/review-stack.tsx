@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { StartButton } from "@/components/today/start-button";
+import { Button } from "@/components/ui/button";
 
 // D6, V18: this subject's cards due today, stacked. Each card shows the question and its answer.
 // Click the top card: it moves to the bottom and the next shows. Viewing only: no remember/forgot
@@ -18,15 +19,15 @@ export function ReviewStack({ subjectId, cards }: { subjectId: string; cards: St
         <h2 id={`rv-${subjectId}`} className="m-0 font-display text-tile">
           Ôn tập hôm nay
         </h2>
-        {/* mascot placeholder */}
-        <div aria-hidden="true" data-mascot className="flex size-20 items-center justify-center rounded-full bg-sunken text-3xl">
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" focusable="false">
-            <circle cx="18" cy="18" r="14" />
-            <path d="M12 21 C 14 25, 22 25, 24 21" />
-            <path d="M13 14 v1 M23 14 v1" />
-          </svg>
-        </div>
-        <p className="m-0 text-read">Tuyệt vời, không có kiến thức nào cần ôn hôm nay</p>
+        {/* mockups subject-detail.html: the number block, then one line and the outlined CTA */}
+        <p className="m-0 flex items-baseline gap-2" data-due-count>
+          <span className="font-display text-verdict leading-none font-semibold tracking-[-0.03em] tabular-nums">0</span>
+          <span className="text-lead font-semibold">thẻ đến hạn</span>
+        </p>
+        <p className="m-0 text-body text-ink-soft">Tuyệt vời, không có kiến thức nào cần ôn hôm nay</p>
+        <Button variant="quiet" render={<a href="/kho-kien-thuc" />} nativeButton={false}>
+          Mở Kho
+        </Button>
       </section>
     );
   }

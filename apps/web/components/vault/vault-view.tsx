@@ -1,7 +1,6 @@
 import { ArrowRight } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
-import { HeadMascot } from "@/components/head-mascot";
 import { BackLink, Block } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
 import { CardList } from "@/components/vault/card-list";
@@ -15,7 +14,10 @@ import type { VaultCard, VaultSession, VaultSubject } from "@/lib/vault-api";
 export type VaultViewData =
   | { level: "cards"; title: string; cards: VaultCard[]; subjectName?: string }
   | { level: "sessions"; sessions: VaultSession[]; subjectName?: string }
-  | { level: "subjects"; subjects: VaultSubject[] };
+  | { level: "subjects"; subjects: VaultViewSubject[] };
+
+/** A vault subject with its newest sessions (the page loads them; absent when they did not load). */
+export type VaultViewSubject = VaultSubject & { recent?: { title: string; studied_on: string | null }[] };
 
 /** "04/11/2026" or "2026-11-04" -> { day: "04", month: "11" }; anything else is shown as it is. */
 function dayParts(value: string | null): { day: string; month: string } | null {
@@ -36,6 +38,54 @@ function Go({ label }: { label: string }) {
       {label}
       <ArrowRight className="size-5" />
     </span>
+  );
+}
+
+function shortDate(value: string | null): string | null {
+  const d = dayParts(value);
+  return d ? `${d.day}/${d.month.padStart(2, "0")}` : null;
+}
+
+/** The plum field of the subjects level (mockups vault.html): the number left, "Mới thêm" right. */
+function SubjectsField({ cards, meta, subjects }: { cards: number; meta: string; subjects: VaultViewSubject[] }) {
+  const recent = subjects
+    .flatMap((s) => (s.recent ?? []).map((r) => ({ ...r, subject: s.name })))
+    .filter((r) => r.title)
+    .sort((a, b) => (b.studied_on ?? "").localeCompare(a.studied_on ?? ""))
+    .slice(0, 3);
+  return (
+    <Block
+      as="section"
+      tier="field"
+      aria-label="Tóm tắt"
+      data-vault-sub
+      className={recent.length > 0 ? "grid gap-6 min-[901px]:grid-cols-2 min-[901px]:gap-10" : "flex flex-col gap-1"}
+    >
+      <div className="flex flex-col justify-center gap-1">
+        <p className="m-0 flex items-baseline gap-3">
+          <span className="font-display text-display tabular-nums" data-vault-total>
+            {cards}
+          </span>
+          <span className="text-lead font-semibold">thẻ trong kho</span>
+        </p>
+        <p className="m-0 text-body text-on-plum-soft">{meta}</p>
+      </div>
+      {recent.length > 0 && (
+        <div className="flex min-w-0 flex-col gap-1 min-[901px]:border-l min-[901px]:border-on-plum-soft/30 min-[901px]:pl-10">
+          <p className="m-0 text-meta font-semibold text-on-plum-soft">Mới thêm</p>
+          <ul className="m-0 flex list-none flex-col p-0">
+            {recent.map((r, i) => (
+              <li key={`${r.title}-${i}`} className="flex flex-wrap items-baseline justify-between gap-x-4 border-t border-on-plum-soft/20 py-3 first:border-t-0">
+                <span className="font-display text-lead wrap-anywhere">{r.title}</span>
+                <span className="text-meta text-on-plum-soft">
+                  {[r.subject, shortDate(r.studied_on)].filter(Boolean).join(" · ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Block>
   );
 }
 
@@ -135,10 +185,7 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
   const totalSessions = subjects.reduce((n, s) => n + s.sessions, 0);
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="m-0 font-display text-title">Kho kiến thức</h1>
-        <HeadMascot pose="rong" />
-      </div>
+      <h1 className="m-0 font-display text-title">Kho kiến thức</h1>
       {subjects.length === 0 ? (
         <Block as="section" tier="sheet" aria-label="Chưa có môn">
           <EmptyState
@@ -154,7 +201,7 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
         </Block>
       ) : (
         <>
-          <Field cards={totalCards} meta={`${totalSessions} buổi học · ${subjects.length} môn`} label="thẻ trong kho" />
+          <SubjectsField cards={totalCards} meta={`${totalSessions} buổi học · ${subjects.length} môn`} subjects={subjects} />
           <Block as="section" tier="sheet" aria-label="Các môn" className="p-2 min-[901px]:p-2" data-vault-subjects>
             <ul className="m-0 flex list-none flex-col p-0">
               {subjects.map((s) => (
@@ -171,6 +218,17 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
                       <span className="text-meta text-ink-soft">
                         <span data-vault-cards>{s.cards}</span> thẻ · {s.sessions} buổi học
                       </span>
+                      {s.recent && s.recent.some((r) => r.title) ? (
+                        <span className="mt-2 flex flex-wrap gap-2">
+                          {s.recent
+                            .filter((r) => r.title)
+                            .map((r, i) => (
+                              <span key={`${r.title}-${i}`} className="rounded-full bg-hong-tint px-3 py-1 text-meta font-medium text-ink">
+                                {r.title}
+                              </span>
+                            ))}
+                        </span>
+                      ) : null}
                     </span>
                     <Go label="Mở môn" />
                   </a>

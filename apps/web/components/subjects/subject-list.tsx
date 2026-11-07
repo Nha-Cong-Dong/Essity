@@ -36,6 +36,8 @@ export type ListedSubject = {
   exam_date: string;
   days_until_exam: number;
   has_history: boolean;
+  /** Syllabus parts studied of all (from /v1/stats); absent when the stats did not answer. */
+  progress?: { studied: number; leaves: number };
 };
 
 /** PATCH through web's route (postJson only POSTs). */
@@ -70,6 +72,29 @@ async function deleteSubject(
   if (response.status === 204 || response.status === 404) return "deleted";
   if (response.status === 401) return "signed_out";
   return "unavailable";
+}
+
+/** mockups subjects.html: a thin bar and "x/y phần" under the date line; no syllabus says so. */
+function RowProgress({ studied, leaves }: { studied: number; leaves: number }) {
+  if (leaves <= 0) return <span className="mt-2 text-meta text-ink-soft">Chưa có đề cương</span>;
+  const done = Math.min(Math.max(studied, 0), leaves);
+  return (
+    <span className="mt-2 flex items-center gap-3">
+      <span
+        role="progressbar"
+        aria-label="Tiến độ đề cương"
+        aria-valuemin={0}
+        aria-valuemax={leaves}
+        aria-valuenow={done}
+        className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-block"
+      >
+        <span className="block h-full rounded-full bg-hong" style={{ width: `${(done / leaves) * 100}%` }} />
+      </span>
+      <span className="whitespace-nowrap text-meta text-ink-soft tabular-nums">
+        {done}/{leaves} phần
+      </span>
+    </span>
+  );
 }
 
 type RowProps = {
@@ -246,6 +271,7 @@ function SubjectRow({ initial, example, onOpen, onDeleted, onBusy, onChanged }: 
               {daysLeftText(subject.days_until_exam)}
             </span>
           </span>
+          {subject.progress ? <RowProgress {...subject.progress} /> : null}
         </div>
         {!editing && !confirming ? (
           <SubjectMenu

@@ -199,28 +199,24 @@ export function ActivityGrid({
         {announce}
       </p>
 
-      <div className="mt-4 flex flex-col gap-2 text-meta text-ink-soft" data-legend>
-        <div className={styles.legend}>
-          <span>Ít</span>
-          {[0, 1, 2, 3, 4].map((level) => (
-            <span key={level} aria-hidden="true" className={styles.swatch} data-level={level} />
-          ))}
-          <span>Nhiều</span>
-          <span>· {levelLegend()}</span>
-        </div>
-        <div className={styles.legend}>
-          <span aria-hidden="true" className={styles.swatch} data-today="true" />
-          <span>viền đậm: hôm nay</span>
-          {hasExam && (
-            <>
-              <span aria-hidden="true" className={styles.swatch} data-exam="true" />
-              <span>ngày thi</span>
-            </>
-          )}
-        </div>
+      <div className={`mt-4 text-meta text-ink-soft ${styles.legend}`} data-legend>
+        <span>Ít</span>
+        {[0, 1, 2, 3, 4].map((level) => (
+          <span key={level} aria-hidden="true" className={styles.swatch} data-level={level} />
+        ))}
+        <span>Nhiều</span>
+        <span>· {levelLegend()}</span>
+        <span aria-hidden="true" className={styles.swatch} data-today="true" />
+        <span>viền đậm: hôm nay</span>
+        {hasExam && (
+          <>
+            <span aria-hidden="true" className={styles.swatch} data-exam="true" />
+            <span>ngày thi</span>
+          </>
+        )}
       </div>
 
-      <Sheet variant="sunken" className="mt-4 min-h-36" data-day-detail>
+      <Sheet variant="sunken" className="mt-4" data-day-detail>
         <p className="m-0 text-read font-semibold">
           {dayLabel(cell.day)}
           {cell.day === today ? " · hôm nay" : ""}

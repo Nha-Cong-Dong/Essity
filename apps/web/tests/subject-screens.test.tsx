@@ -152,6 +152,14 @@ describe("NewSubjectForm calendar (plan K10, where showPicker exists)", () => {
     delete (HTMLInputElement.prototype as { showPicker?: unknown }).showPicker;
   });
 
+  // Red when: the date field keeps the separate pill, or the inputs are not 56px (mockups subject-new.html).
+  it("SCREENS-V4-B: inputs are 56px and the calendar button sits inside the date box", () => {
+    expect(date().className).toContain("h-14");
+    const button = screen.getByRole("button", { name: "Chọn ngày trên lịch" });
+    expect(button.parentElement?.contains(date())).toBe(true);
+    expect(button.textContent).toBe("");
+  });
+
   it("the button opens the calendar of a hidden, unnamed date input", async () => {
     fireEvent.click(screen.getByRole("button", { name: "Chọn ngày trên lịch" }));
 

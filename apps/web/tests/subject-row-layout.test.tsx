@@ -59,3 +59,25 @@ describe("subject row link (T7.13 review F1)", () => {
     expect(link.getAttribute("href")).toBe(`/subjects/${MMT.id}`);
   });
 });
+
+describe("subject row progress (SCREENS-V4-B)", () => {
+  // Red when: a subject with a syllabus shows no bar or no "x/y phần" (mockups subjects.html).
+  it("shows a progress bar and 'x/y phần' when the syllabus has parts", () => {
+    render(<SubjectList subjects={[{ ...MMT, progress: { studied: 3, leaves: 10 } }]} example="15/12/2031" />);
+    const row = within(screen.getByRole("list")).getByText("Mạng máy tính").closest("li") as HTMLElement;
+    expect(within(row).getByText("3/10 phần")).toBeTruthy();
+    const bar = within(row).getByRole("progressbar");
+    expect(bar.getAttribute("aria-valuenow")).toBe("3");
+    expect(bar.getAttribute("aria-valuemax")).toBe("10");
+  });
+
+  // Red when: a subject with no syllabus pretends to have progress.
+  it("says 'Chưa có đề cương' without parts, and nothing without progress data", () => {
+    render(<SubjectList subjects={[{ ...MMT, progress: { studied: 0, leaves: 0 } }]} example="15/12/2031" />);
+    expect(screen.getByText("Chưa có đề cương")).toBeTruthy();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    cleanup();
+    render(<SubjectList subjects={[MMT]} example="15/12/2031" />);
+    expect(screen.queryByText("Chưa có đề cương")).toBeNull();
+  });
+});

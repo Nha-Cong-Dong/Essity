@@ -5,6 +5,7 @@ import { SubjectsFrame } from "@/components/subjects/subjects-frame";
 import { Button } from "@/components/ui/button";
 import { CoreStatusError, findSubject, listSubjects, type Subject } from "@/lib/subjects";
 import { errorName, logError } from "@/lib/log";
+import { getStats } from "@/lib/stats-api";
 
 /** A session that ended between the page's check and core-api's answer is a sign-in, not a failure. */
 function redirectIfSignedOut(error: unknown): void {
@@ -56,12 +57,23 @@ export async function Subjects({ example }: { example: string }) {
       </SubjectsFrame>
     );
   }
+  // The syllabus progress of each row comes from /v1/stats; a failing stats call only hides the bars.
+  const progress = new Map<string, { studied: number; leaves: number }>();
+  try {
+    for (const s of (await getStats()).view.subjects) progress.set(s.id, s.syllabus);
+  } catch {
+    // no progress line
+  }
   const listed = subjects.map(({ id, name, exam_date, days_until_exam, has_history }) => ({
     id,
     name,
     exam_date,
     days_until_exam,
     has_history,
+    progress: progress.get(id) && {
+      studied: progress.get(id)!.studied,
+      leaves: progress.get(id)!.leaves,
+    },
   }));
   // "Tạo môn" lives in SubjectList: it moves to the empty state when the last subject is deleted.
   return <SubjectList subjects={listed} example={example} />;
