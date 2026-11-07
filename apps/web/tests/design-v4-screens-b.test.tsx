@@ -71,6 +71,11 @@ describe("session screen (mockup session)", () => {
     expect(column).not.toBeNull();
     expect(column?.textContent).toContain("Kết thúc buổi học");
     expect(column?.textContent).toContain("Đã ghi lại 1 lần");
+    // C4D: the plum strip says when the session began; the composer row is "Đính kèm" + "Ghi lại".
+    expect(column?.textContent).toMatch(/Bắt đầu lúc \d{2}:\d{2}/);
+    const foot = screen.getByTestId("composer-foot");
+    expect(foot.textContent).toContain("Đính kèm");
+    expect(foot.textContent).toContain("Ghi lại");
     expect(screen.getByText("Bạn đã học gì?").closest("section")?.className).toContain("bg-sheet");
   });
 });

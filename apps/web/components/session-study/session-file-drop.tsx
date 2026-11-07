@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Image as ImageIcon } from "lucide-react";
+import { FileText, Image as ImageIcon, Paperclip } from "lucide-react";
 import { useId, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,10 @@ export function FileDrop({
   onRemove,
   onRetry,
   tooManyPages,
+  chips,
 }: {
+  /** C4D (mockup session.html): files are chips and the picker is the "Đính kèm" button of the composer row. */
+  chips?: boolean;
   rows: FileRow[];
   onAdd: (files: File[]) => void;
   onRemove: (id: string) => void;
@@ -37,6 +40,8 @@ export function FileDrop({
 }) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
+  const chipRows = chips ? rows.filter((row) => row.state === "done") : [];
+  const listRows = chips ? rows.filter((row) => row.state !== "done") : rows;
   return (
     <div className="flex flex-col gap-3">
       <div
@@ -45,11 +50,15 @@ export function FileDrop({
           event.preventDefault();
           onAdd(Array.from(event.dataTransfer.files));
         }}
-        className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-control border-[1.5px] border-dashed border-line-strong bg-sunken p-4 text-center"
+        className={
+          chips
+            ? "contents"
+            : "flex min-h-28 flex-col items-center justify-center gap-2 rounded-control border-[1.5px] border-dashed border-line-strong bg-sunken p-4 text-center"
+        }
       >
         <input
           ref={input}
-          id={`${id}-input`}
+          id={chips ? "session-attach-input" : `${id}-input`}
           type="file"
           multiple
           accept={ACCEPT}
@@ -61,11 +70,35 @@ export function FileDrop({
             event.target.value = "";
           }}
         />
-        <Button type="button" variant="secondary" onClick={() => input.current?.click()}>
-          Chọn file
-        </Button>
-        <p className="m-0 text-meta text-ink-soft">Ảnh vở, PDF, DOCX hoặc PPTX. Có thể thả file vào đây.</p>
+        {!chips && (
+          <>
+            <Button type="button" variant="secondary" onClick={() => input.current?.click()}>
+              Chọn file
+            </Button>
+            <p className="m-0 text-meta text-ink-soft">Ảnh vở, PDF, DOCX hoặc PPTX. Có thể thả file vào đây.</p>
+          </>
+        )}
       </div>
+      {chipRows.length > 0 && (
+        <ul data-testid="attach-chips" className="m-0 flex list-none flex-wrap gap-2 p-0" aria-label="File đã chọn">
+          {chipRows.map((row) => (
+            <li key={row.id} className="inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full bg-sunken pl-3.5 pr-1 text-meta font-medium text-ink">
+              <Paperclip size={16} aria-hidden="true" className="shrink-0" />
+              <span className="min-w-0">
+                <MidTruncate text={row.name} />
+              </span>
+              <button
+                type="button"
+                aria-label={`Gỡ ${row.name}`}
+                onClick={() => onRemove(row.id)}
+                className="grid size-8 shrink-0 place-items-center rounded-full text-ink-soft hover:bg-line"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {tooManyPages && (
         <Notice role="status">
           <p className="m-0">
@@ -73,9 +106,9 @@ export function FileDrop({
           </p>
         </Notice>
       )}
-      {rows.length > 0 && (
+      {listRows.length > 0 && (
         <ul className="m-0 flex list-none flex-col p-0" aria-live="polite" aria-label="File đã chọn">
-          {rows.map((row) => (
+          {listRows.map((row) => (
             <li key={row.id} className="flex min-h-14 items-center gap-3 border-t border-line py-2 first:border-t-0">
               <span className="grid size-10 shrink-0 place-items-center rounded-control bg-sunken text-ink-soft" aria-hidden="true">
                 {row.kind === "image" ? <ImageIcon size={18} /> : <FileText size={18} />}
