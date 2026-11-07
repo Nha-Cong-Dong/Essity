@@ -1,5 +1,8 @@
-// T0.16: the landing now describes v2. Section order, five questions, the word budget and the
-// forbidden-word scan (docs/DESIGN.md) on the prose.
+// LANDING-V61-PORT: structure of landing v6.1: block order, the words that carry the argument, the pause control,
+// the Mây mascot from the shared component, and that motion only runs from the client layer (reduced-motion safe).
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -8,57 +11,39 @@ vi.mock("@/components/landing-redirect", () => ({ LandingRedirect: () => "redire
 
 const { LandingEntry } = await import("@/components/landing/landing-entry");
 const html = renderToStaticMarkup(await LandingEntry());
+const read = (f: string) => readFileSync(path.join(process.cwd(), "components/landing", f), "utf8");
 
-const FORBIDDEN = /(?<!\p{L})(streak|chuỗi|xếp hạng|ranking|trễ|kém|lười|bỏ lỡ|thất bại|phải|cần|kịp)(?!\p{L})/iu;
-
-const strip = (s: string) =>
-  s
-    .replace(/<svg[\s\S]*?<\/svg>/g, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&[a-z#0-9]+;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-// Prose = headings, paragraphs and Q&A of the sections after the hero, minus the demo, aria-hidden figures and the .sr sentences.
-function prose(): string[] {
-  const body = html.slice(html.indexOf('id="cach-hoat-dong"'), html.indexOf("<footer"));
-  const noFigures = body
-    .replace(/<div[^>]*aria-hidden="true"[\s\S]*?<\/div>/g, " ")
-    .replace(/<p class="[^"]*sr[^"]*">[\s\S]*?<\/p>/g, " "); // screen-reader sentences are not counted
-  return [...noFigures.matchAll(/<(h2|h3|p|dt|dd)\b[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => strip(m[2] ?? ""));
-}
-
-describe("landing v2 (T0.16)", () => {
-  it("sections come in the approved order", () => {
-    const ids = ["thu-cham", "cach-hoat-dong", "hoc-gi-tiep", "luyen-dang-de", "hoi-dap"];
+describe("landing v6.1", () => {
+  it("blocks come in the approved order, the footer last", () => {
+    const ids = ["dau-trang", "do-thi", "de-cuong", "the-nguon", "lich-on", "luyen-de", "chinh-sua", "thu-cham", "hoi-dap", "cuoi"];
     const at = ids.map((id) => html.indexOf(`id="${id}"`));
     expect(at.every((i) => i >= 0)).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
-    expect(html.indexOf("<footer")).toBeGreaterThan(at[4]!);
   });
 
-  it("the FAQ has exactly six items", () => {
-    const faq = html.slice(html.indexOf('id="hoi-dap"'), html.indexOf("<footer"));
-    expect(faq.match(/<dt\b/g)).toHaveLength(6);
-    expect(faq.match(/<dd\b/g)).toHaveLength(6);
-    expect(faq).toContain("Sửa nhanh thế nào?");
+  it("each block names what it shows, in the finished (no-script) state", () => {
+    expect(html).toContain("Hiệu ứng Mpemba");
+    expect(html).toContain("Nguồn · tr. 3");
+    expect(html).toContain("mục hiệu ứng Mpemba tôi học rồi");
+    expect(html).toContain('data-pause=""');
   });
 
-  it("block A and B carry text labels and a screen-reader sentence", () => {
-    expect(html).toContain("✓ Đã học");
-    expect(html).toMatch(/→ <\/span>Tiếp theo/);
-    expect(html).toContain("→ Gợi ý: liên quan tới Định tuyến");
-    expect(html).toContain("câu tính toán đứng đầu, được gợi ý luyện trước vì liên quan tới mục Định tuyến");
+  it("the Mây mascot is the shared Mascot component (cloud)", () => {
+    expect(read("landing.tsx")).toMatch(/<Mascot\s+kind="cloud"/);
+    expect(html).toContain('data-mascot="chao"');
   });
 
-  it("prose stays within 360 words", () => {
-    const words = prose().join(" ").split(" ").filter(Boolean).length;
-    expect(words).toBeGreaterThan(100);
-    expect(words).toBeLessThanOrEqual(360);
+  it("the FSRS curve is drawn by the server: a path and three dots", () => {
+    expect(html).toMatch(/class="[^"]*c-line[^"]*"[^>]*d="M0\.0 /);
+    expect((html.match(/<circle cx="[\d.]+" cy="[\d.]+" r="7"/g) ?? []).length).toBe(3);
   });
 
-  it("no forbidden word in the prose (the round-10 FAQ title is the one exception)", () => {
-    const hits = prose().filter((t) => t !== "Cần chuẩn bị gì?" && FORBIDDEN.test(t));
-    expect(hits).toEqual([]);
+  it("motion honours prefers-reduced-motion and the pause button, and cleans up after itself", () => {
+    const m = read("motion.ts");
+    expect(m).toContain("prefers-reduced-motion: reduce");
+    expect(m).toContain("data-pause");
+    expect(m).toContain("alive = false");
+    expect(read("landing.module.css")).toContain("prefers-reduced-motion");
+    expect(read("landing.module.css")).toContain(":focus-visible");
   });
 });

@@ -23,9 +23,9 @@ describe("/ (T0.15)", () => {
 
   it("anonymous: the landing, with the approved words verbatim and the two ways in", async () => {
     const out = await html();
-    expect(out).toContain("Tối nay ôn gì,");
-    expect(out).toContain("đã có app lo");
-    expect(out).toContain("Trợ lí học tập thông minh. Quản lí lịch ôn tập hiệu quả với thuật toán FSRS.");
+    expect(out).toContain("Hôm nay ôn gì,");
+    expect(out).toContain("tôi lo!");
+    expect(out).toContain("Trợ lí học tập tiên tiến. Quản lí lịch ôn luyện hiệu quả với thuật toán FSRS và đồ thị tri thức.");
     expect(out).toContain('href="/register"');
     expect(out).toContain('href="/login"');
     expect(out).not.toContain("redirecting");
@@ -35,6 +35,6 @@ describe("/ (T0.15)", () => {
     cookieNames = [SESSION_COOKIE];
     const out = await html();
     expect(out).toContain("redirecting");
-    expect(out).not.toContain("Tối nay ôn gì");
+    expect(out).not.toContain("Hôm nay ôn gì");
   });
 });
