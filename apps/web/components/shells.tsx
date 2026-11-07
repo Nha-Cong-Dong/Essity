@@ -14,7 +14,7 @@ export type { NavItem } from "@/components/main-nav";
 
 function Logo({ className }: { className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-2 font-display text-logo tracking-[-0.02em] text-(--logo-ink)", className)}>
+    <span className={cn("inline-flex items-center gap-2 font-display text-logo tracking-[-0.02em] text-(color:--logo-ink)", className)}>
       <BrandMark size={28} />
       Essity
     </span>
