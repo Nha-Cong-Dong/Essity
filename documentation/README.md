@@ -2,10 +2,10 @@
 
 | Document | Contents |
 |---|---|
-| [PRODUCT.md](PRODUCT.md) | What Essity is, who it is for, which features exist in the code |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Services, data stores, messaging, data flows |
-| [AI.md](AI.md) | LLM tasks, models, cost quotas, evals |
-| [DEVELOPMENT.md](DEVELOPMENT.md) | Run locally, tests, CI, AI-assisted workflow |
-| [DEPLOY.md](DEPLOY.md) | Deployment |
+| [PRODUCT.md](PRODUCT.md) | What Essity is, users, features and their routes, what is not built |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Services, processes, data stores, messaging, flows, security |
+| [AI.md](AI.md) | Provider, tasks, models, cost quotas, quality checks |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Run locally, tests, API client, migrations, CI, conventions |
+| [DEPLOY.md](DEPLOY.md) | VPS with Caddy; Cloudflare quick tunnel |
 
-Everything here is derived from the code in this repository. When code and documentation disagree, the code is right; fix the document.
+Start with the root [README](../README.md). Everything here is derived from the code in this repository; when code and documentation disagree, the code is right.
