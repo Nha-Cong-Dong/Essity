@@ -1,9 +1,9 @@
 /* LANDING-V61-PORT: generated from the approved mockup (DESIGN-V5/versions/v6.1/landing-v6.css) by .work/LANDING-V61-PORT/tools/css.py.
-   The mockup palette (muted hong) lives in local variables on .lp, not in global tokens: mark yellow for C5. */
-.lp{--bg:#f8f1f3;--sheet:#ffffff;--raised:#ffffff;--sunken:#f1e6e9;--line:#e7dedb;--line-strong:#8c6a78;--ink:#2a2120;--ink-soft:#6b5f5c;
---hong:#a8255f;--hong-press:#8e1e50;--on-hong:#ffffff;--hong-text:#a8255f;--hong-tint:#f6e7ed;
+   Variables whose value equals the global token (--sheet, --raised, --on-hong, --on-plum) are inherited from globals; the muted-hong values below differ from the global palette, so promoting them needs the tokens owner (card not_touch: tokens). */
+.lp{--bg:#f8f1f3;--sunken:#f1e6e9;--line:#e7dedb;--line-strong:#8c6a78;--ink:#2a2120;--ink-soft:#6b5f5c;
+--hong:#a8255f;--hong-press:#8e1e50;--hong-text:#a8255f;--hong-tint:#f6e7ed;
 --rose-100:#f9e4ec;--rose-200:#f5cfdd;--rose-300:#eaafc7;--rose-400:#d97aa3;--rose-900:#661738;--rose-950:#441125;
---plum:#6b1840;--on-plum:#fff;--on-plum-soft:#f5cfdd;--on-plum-action-bg:#f5cfdd;--on-plum-action-fg:#6b1840;
+--plum:#6b1840;--on-plum-soft:#f5cfdd;--on-plum-action-bg:#f5cfdd;--on-plum-action-fg:#6b1840;
 --mark:#ffc2da;--hl:#ff9ec6;
 --poster:#a8255f;--glow-a:#c2286c;--glow-b:#8e1e50;--glow-c:rgb(255 158 198/.30);--poster-dots:rgb(255 255 255/.10);
 --elev-tile:0 1px 2px rgb(42 33 32/.06),0 16px 40px -16px rgb(107 24 64/.22);--elev-2:0 0 0 1px rgb(42 33 32/.06),0 24px 56px -20px rgb(107 24 64/.4)}
@@ -520,7 +520,7 @@
 .lp :global(.gsvg .n.acc-teal circle.dot){fill:var(--accent-bright);stroke:var(--accent);stroke-width:1.6}
 .lp :global(.gsvg .n.acc-gold circle.dot){fill:#f4d58d;stroke:#b98a22;stroke-width:1.6}
 .lp :global(.gsvg .n.acc-rose circle.dot){fill:var(--rose-400);stroke:var(--hong-text);stroke-width:1.6}
-.lp :global(.gsvg .n .lb){font:500 10.5px var(--font-sans);fill:var(--ink-soft);opacity:calc(var(--lo,1)*.9);pointer-events:none;stroke:none;paint-order:normal;transition:opacity .15s}
+.lp :global(.gsvg .n .lb){--lo:1;font:500 10.5px var(--font-sans);fill:var(--ink-soft);opacity:calc(var(--lo,1)*.9);pointer-events:none;stroke:none;paint-order:normal;transition:opacity .15s}
 .lp :global(.gsvg .n.hub .lb){font:650 13px var(--font-display);fill:var(--ink)}
 .lp :global(.gsvg .n.hub .lb),.lp :global(.gsvg .n.big .lb){opacity:var(--lo,1)}
 .lp :global(.gsvg.focus .n:not(.lit) .lb){opacity:.12}

@@ -89,7 +89,10 @@ export function graphLayout(nodes: GraphNode[]): Array<{ x: number; y: number }>
       let x = hubPos[h].x + Math.cos(ang) * rad;
       let y = hubPos[h].y + Math.sin(ang) * rad;
       const d = Math.hypot(x, y);
-      if (d > 0.97) (x = (x / d) * 0.97), (y = (y / d) * 0.97);
+      if (d > 0.97) {
+        x = (x / d) * 0.97;
+        y = (y / d) * 0.97;
+      }
       out[i] = { x, y };
     });
   }

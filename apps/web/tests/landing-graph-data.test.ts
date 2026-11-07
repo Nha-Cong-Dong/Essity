@@ -36,7 +36,10 @@ describe("landing graph model", () => {
     });
     const seen = new Set([0]);
     const stack = [0];
-    while (stack.length) for (const m of adj[stack.pop() as number]) if (!seen.has(m)) (seen.add(m), stack.push(m));
+    while (stack.length) for (const m of adj[stack.pop() as number]) if (!seen.has(m)) {
+        seen.add(m);
+        stack.push(m);
+      }
     expect(seen.size).toBe(nodes.length);
   });
 

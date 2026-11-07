@@ -258,6 +258,13 @@ export function startLanding(root: El): () => void {
   const stage = $1("[data-graph]");
   if (stage) startGraph(stage);
 
+  /** Label text in at most two lines (split at the space nearest the middle), never cut with an ellipsis. */
+  function labelLines(name: string): string[] {
+    if (name.length <= 12 || !name.includes(" ")) return [name];
+    let best = -1;
+    for (let i = 0; i < name.length; i++) if (name[i] === " " && (best < 0 || Math.abs(i - name.length / 2) < Math.abs(best - name.length / 2))) best = i;
+    return [name.slice(0, best), name.slice(best + 1)];
+  }
   function startGraph(stageEl: El) {
     const svg = $1(".gsvg", stageEl) as unknown as Svg;
     const tip = $1(".gtip", stageEl) as El;
@@ -282,7 +289,11 @@ export function startLanding(root: El): () => void {
       mk("circle", { class: "hit", r: Math.max(14, n.r + 6) }, g);
       dots.push(mk("circle", { class: "dot", r: 0 }, g));
       const lab = mk("text", { class: "lb", y: n.r + 11, "text-anchor": "middle" }, g);
-      lab.textContent = n.name.length > 15 ? n.name.slice(0, 14) + "…" : n.name;
+      const ls = labelLines(n.name);
+      ls.forEach((t, li) => {
+        const sp = mk("tspan", { x: 0, dy: li ? 11 : 0 }, lab);
+        sp.textContent = t;
+      });
       labs.push(lab);
       n.g = g;
     });
@@ -415,7 +426,11 @@ export function startLanding(root: El): () => void {
       if (grow < 1) grow = Math.min(1, (t - t0) / 1800);
       alpha = Math.max(0.05, alpha * 0.992);
       if (drag) alpha = Math.max(alpha, 0.5);
-      tick(t);
+      if (drag || grow < 1) tick(t);
+      if (grow >= 1 && !declutterDone) {
+        declutterDone = true;
+        declutter(); /* the bloom ends on a map whose labels never overlap */
+      }
       draw();
       const want = active && (running() || drag);
       if (want || grow < 1) raf = requestAnimationFrame(frame);
@@ -426,15 +441,52 @@ export function startLanding(root: El): () => void {
     undo.push(() => raf && cancelAnimationFrame(raf));
     const layout = graphLayout(nodes);
     const homes = () => {
-      const R = Math.min(W, H) * 0.45;
-      const rx = Math.min(W * 0.4, R * 2.1);
+      const R = Math.min(W, H) * 0.5;
+      const rx = R; /* round, not stretched: the cluster is a disc */
       nodes.forEach((n, i) => {
         n.hx = W / 2 + layout[i].x * rx;
-        n.hy = H / 2 + H * 0.04 + layout[i].y * R;
+        n.hy = H / 2 + layout[i].y * R;
         n.x = n.hx;
         n.y = n.hy;
         n.vx = n.vy = 0;
       });
+    };
+    let declutterDone = false;
+    const declutter = () => {
+      /* deterministic label pass: push apart nodes whose label boxes (or dots) would overlap */
+      const box = (n: Node) => {
+        const ls = labelLines(n.name);
+        const w = Math.max(...ls.map((t) => t.length)) * 5.8 + 10;
+        return { l: n.x - Math.max(w / 2, n.r), r: n.x + Math.max(w / 2, n.r), t: n.y - n.r, b: n.y + n.r + 4 + ls.length * 11 };
+      };
+      for (let it = 0; it < 500; it++) {
+        let moved = false;
+        for (let i = 0; i < nodes.length; i++)
+          for (let j = i + 1; j < nodes.length; j++) {
+            const A = box(nodes[i]);
+            const B = box(nodes[j]);
+            const ox = Math.min(A.r, B.r) - Math.max(A.l, B.l);
+            const oy = Math.min(A.b, B.b) - Math.max(A.t, B.t);
+            if (ox <= 0 || oy <= 0) continue;
+            moved = true;
+            const a = nodes[i];
+            const b = nodes[j];
+            if (oy < ox) {
+              const s = a.y <= b.y ? 1 : -1;
+              a.y -= (s * (oy + 1)) / 2;
+              b.y += (s * (oy + 1)) / 2;
+            } else {
+              const s = a.x <= b.x ? 1 : -1;
+              a.x -= (s * (ox + 1)) / 2;
+              b.x += (s * (ox + 1)) / 2;
+            }
+          }
+        nodes.forEach((n) => {
+          n.x = Math.max(40, Math.min(W - 40, n.x));
+          n.y = Math.max(24, Math.min(H - 34, n.y));
+        });
+        if (!moved) break;
+      }
     };
     const settle = () => {
       homes();
@@ -442,8 +494,10 @@ export function startLanding(root: El): () => void {
         alpha = 0.4;
         tick(i * 16);
       }
+      declutter();
       alpha = 0.05;
       grow = 1;
+      declutterDone = true;
       nodes.forEach((n) => {
         n.hx = n.x;
         n.hy = n.y;
@@ -461,6 +515,7 @@ export function startLanding(root: El): () => void {
     const bloom = () => {
       if (bloomed || reduce || !scrolled) return;
       bloomed = true;
+      declutterDone = false;
       place(0.06);
       alpha = 1;
       grow = 0;
