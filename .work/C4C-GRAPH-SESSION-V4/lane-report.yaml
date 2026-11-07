@@ -1,7 +1,7 @@
 task: C4C-GRAPH-SESSION-V4
 lane: L3
 status: done
-head_sha: 2561890d
+head_sha: 014fa674
 step: graph v4 nodes + Mo trong Kho + fit-lock; session end ghost button, field border; shots+inspect
 tests: {cmd: "vitest run (web) + playwright graph/session spec", passed: 2087, failed: 0}
 blockers: []
