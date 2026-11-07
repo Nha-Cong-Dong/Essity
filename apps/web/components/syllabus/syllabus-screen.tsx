@@ -2,7 +2,9 @@
 
 import { type ReactNode, useRef, useState } from "react";
 
+import { EmptyState } from "@/components/empty-state";
 import { PencilNote } from "@/components/notebook";
+import { Block, BackLink } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
 import {
   FIXTURES,
@@ -54,13 +56,13 @@ export function Skeleton() {
 /** The tile of the landing's "Học gì tiếp" list: the subject on the left, "Gợi ý, bạn chọn" on the right, the tree below. */
 export function SyllabusTile({ name, children }: { name: string; children: ReactNode }) {
   return (
-    <section data-nx className="min-w-0 rounded-tile bg-hong-tint p-4 max-sm:p-3 min-[901px]:p-6">
+    <Block as="section" tier="sheet" data-nx className="p-4 max-sm:p-3 min-[901px]:p-6">
       <div className="flex items-baseline justify-between gap-3 pb-3.5">
         <h2 className="m-0 min-w-0 font-display text-lead wrap-anywhere max-[640px]:text-body max-[640px]:font-semibold">{name}</h2>
         <span className="shrink-0 text-meta italic text-ink-soft">Gợi ý, bạn chọn</span>
       </div>
       {children}
-    </section>
+    </Block>
   );
 }
 
@@ -69,19 +71,19 @@ export function Totals({ nodes, unit }: { nodes: SyllabusNode[]; unit: SyllabusF
   const word = unit === "slide" ? "slide" : unit === "est_page" ? "trang ước tính" : "trang";
   const pct = p.pagesTotal === 0 ? 0 : Math.round((p.pagesDone / p.pagesTotal) * 100);
   return (
-    <div className="mt-6">
-      <p className="m-0 text-body" data-totals>
+    <Block tier="field" className="mt-3 p-3 min-[641px]:mt-6 min-[641px]:p-5 min-[901px]:p-6" data-totals-block>
+      <p className="m-0 text-body min-[641px]:text-lead" data-totals>
         đã học {p.done}/{p.total} phần · {p.pagesDone}/{p.pagesTotal} {word}
       </p>
-      <div aria-hidden="true" className="mt-2 h-1 w-full overflow-hidden rounded-full bg-sunken">
-        <div className="h-full rounded-full bg-hong" style={{ width: `${pct}%` }} />
+      <div aria-hidden="true" className="mt-2 h-1.5 w-full max-[640px]:hidden overflow-hidden rounded-full bg-on-plum/20 min-[641px]:mt-3 min-[641px]:h-2">
+        <div className="h-full rounded-full bg-on-plum-action" style={{ width: `${pct}%` }} />
       </div>
       {p.excluded > 0 && (
-        <p className="m-0 mt-2 text-meta text-ink-soft">
+        <p className="m-0 mt-2 text-meta text-on-plum-soft">
           {p.excluded} phần không thi, không tính vào đây.
         </p>
       )}
-    </div>
+    </Block>
   );
 }
 
@@ -95,9 +97,7 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
 
   const header = (
     <>
-      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta wrap-anywhere rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-        ‹ {SUBJECT.name}
-      </a>
+      <BackLink href={subjectHref}>{SUBJECT.name}</BackLink>
       <div className="flex items-center justify-between gap-3">
         <h1 className="m-0 font-display text-title">
           {COPY.heading}
@@ -136,18 +136,23 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
     return (
       <div data-state={state}>
         {header}
-        <div ref={alertRef} role="alert" tabIndex={-1} className="mt-6 rounded-sheet bg-sunken p-6 outline-none focus-visible:outline-2 focus-visible:outline-focus">
-          <p className="m-0 text-body">{COPY.error}</p>
-          <div className="mt-4">
-            <Button
-              onClick={() => {
-                setLive(COPY.stillError);
-                alertRef.current?.focus();
-              }}
-            >
-              {COPY.retry}
-            </Button>
-          </div>
+        <div ref={alertRef} role="alert" tabIndex={-1} className="mt-6 rounded-tile outline-none focus-visible:outline-2 focus-visible:outline-focus">
+          <Block tier="sheet">
+            <EmptyState
+              mascot="nghi"
+              title={COPY.error}
+              action={
+                <Button
+                  onClick={() => {
+                    setLive(COPY.stillError);
+                    alertRef.current?.focus();
+                  }}
+                >
+                  {COPY.retry}
+                </Button>
+              }
+            />
+          </Block>
         </div>
         {live_}
       </div>
@@ -158,12 +163,13 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
     return (
       <div data-state={state}>
         {header}
-        <div className="mt-6 rounded-sheet bg-rose-50 p-6">
-          <p className="m-0 text-body">{COPY.empty}</p>
-          <div className="mt-4">
-            <Button render={<a href={`${subjectHref}/upload`} />} nativeButton={false}>{COPY.upload}</Button>
-          </div>
-        </div>
+        <Block tier="sheet" className="mt-6">
+          <EmptyState
+            mascot="rong"
+            title={COPY.empty}
+            action={<Button render={<a href={`${subjectHref}/upload`} />} nativeButton={false}>{COPY.upload}</Button>}
+          />
+        </Block>
       </div>
     );
   }
@@ -189,12 +195,12 @@ export function SyllabusScreen({ state }: { state: SyllabusState }) {
         {sourceNote(fixture.source, anyEdited(nodes)) && <PencilNote>{sourceNote(fixture.source, anyEdited(nodes))}</PencilNote>}
       </p>
       {note && (
-        <div className="mt-4 rounded-sheet bg-sunken p-4 text-body" data-notice={fixture.notice}>
+        <Block tier="tint" className="mt-4 p-4 text-body min-[901px]:p-4" data-notice={fixture.notice}>
           <p className="m-0">
             <span className="sm:hidden">{note.short}</span>
             <span className="max-sm:hidden">{note.long}</span>
           </p>
-        </div>
+        </Block>
       )}
       <Totals nodes={nodes} unit={fixture.unit} />
       <div className="mt-4">

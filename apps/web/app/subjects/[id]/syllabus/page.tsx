@@ -4,6 +4,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
+import { EmptyState } from "@/components/empty-state";
+import { Block } from "@/components/screen-kit";
 import { AppShell, PageColumn } from "@/components/shells";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { SyllabusLive } from "@/components/syllabus/syllabus-live";
@@ -28,13 +30,18 @@ async function Syllabus({ params }: { params: Promise<{ id: string }> }) {
   }
   if (outline === null) {
     return (
-      <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
-        <p className="m-0 font-semibold">Không tải được đề cương.</p>
-        <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
-        <a href={`/subjects/${subject.id}/syllabus`} className="mt-3 inline-flex min-h-11 items-center font-semibold rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-          Thử lại
-        </a>
-      </div>
+      <Block role="alert" tier="sheet">
+        <EmptyState
+          mascot="nghi"
+          title="Không tải được đề cương."
+          hint="Kiểm tra kết nối rồi thử lại."
+          action={
+            <a href={`/subjects/${subject.id}/syllabus`} className="inline-flex min-h-11 items-center rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
+              Thử lại
+            </a>
+          }
+        />
+      </Block>
     );
   }
   return <SyllabusLive subjectId={subject.id} subjectName={subject.name} initial={outline} />;
@@ -45,19 +52,21 @@ export default function SyllabusPage({ params }: { params: Promise<{ id: string 
     <AppShell current="/subjects" account={<AccountSlot />}>
       {/* UI-A: one centred ~960 column (the list screens' width); the chat box sits under the outline. */}
       <PageColumn width="wide" className="flex min-w-0 flex-col gap-8">
-        <Suspense fallback={<div aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
+        <Suspense fallback={<div aria-busy="true" className="h-80 rounded-tile bg-sunken" />}>
           <Syllabus params={params} />
         </Suspense>
-        <aside
+        <Block
+          as="aside"
+          tier="sheet"
           aria-label="Chỉnh đề cương bằng lời"
-          className="flex min-w-0 flex-col gap-2 rounded-sheet border border-line bg-sheet p-5 has-[[data-command-slot-bottom]:empty]:hidden"
+          className="flex flex-col gap-2 p-5 has-[[data-command-slot-bottom]:empty]:hidden"
         >
           <h2 className="m-0 text-body font-semibold">Chưa hài lòng với cách chia đề cương?</h2>
           <p className="m-0 text-meta text-ink-soft">
             Gõ điều bạn muốn sửa bằng lời của bạn, ví dụ “bỏ chương 5” hoặc “gộp phần 2.1 và 2.2”. Khung này chỉ dùng để chỉnh đề cương.
           </p>
           <div data-command-slot-bottom className="empty:hidden" />
-        </aside>
+        </Block>
       </PageColumn>
     </AppShell>
   );

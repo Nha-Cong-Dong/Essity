@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { EmptyState } from "@/components/empty-state";
+import { Block, BackLink } from "@/components/screen-kit";
 import { PencilNote } from "@/components/notebook";
 import { Button } from "@/components/ui/button";
 import {
@@ -126,9 +128,7 @@ export function SyllabusLive({
 
   const header = (
     <>
-      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta wrap-anywhere rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-        ‹ {subjectName}
-      </a>
+      <BackLink href={subjectHref}>{subjectName}</BackLink>
       <div className="flex items-center justify-between gap-3">
         <h1 className="m-0 font-display text-title">
           {COPY.heading}
@@ -155,12 +155,13 @@ export function SyllabusLive({
     return (
       <div data-state={view.reason === "no_textbook" ? "empty-no-main" : "no-outline"}>
         {header}
-        <div className="mt-6 rounded-sheet bg-rose-50 p-6">
-          <p className="m-0 text-body">{view.reason === "no_textbook" ? COPY.empty : COPY.noOutline}</p>
-          <div className="mt-4">
-            <Button render={<a href={`${subjectHref}/upload`} />}>{COPY.upload}</Button>
-          </div>
-        </div>
+        <Block tier="sheet" className="mt-6">
+          <EmptyState
+            mascot="rong"
+            title={view.reason === "no_textbook" ? COPY.empty : COPY.noOutline}
+            action={<Button render={<a href={`${subjectHref}/upload`} />}>{COPY.upload}</Button>}
+          />
+        </Block>
       </div>
     );
   }
@@ -199,12 +200,12 @@ export function SyllabusLive({
         {sourceNote(view.source, anyEdited(nodes)) && <PencilNote>{sourceNote(view.source, anyEdited(nodes))}</PencilNote>}
       </p>
       {note && (
-        <div className="mt-4 rounded-sheet bg-sunken p-4 text-body" data-notice="chunk10">
+        <Block tier="tint" className="mt-4 p-4 text-body min-[901px]:p-4" data-notice="chunk10">
           <p className="m-0">
             <span className="sm:hidden">{note.short}</span>
             <span className="max-sm:hidden">{note.long}</span>
           </p>
-        </div>
+        </Block>
       )}
       {outline.reread === "pending" && (
         <p role="status" className="m-0 mt-4 text-body text-ink-soft" data-rereading>
@@ -236,7 +237,7 @@ export function SyllabusLive({
           </div>
         )}
         {!removing && rereading !== null && documentId !== null && (
-          <div className="rounded-sheet bg-sunken p-4" data-reread-confirm>
+          <Block tier="sheet" className="p-4 min-[901px]:p-4" data-reread-confirm>
             <p className="m-0 text-body">{REREAD.ask}</p>
             <div className="mt-3 flex flex-wrap gap-3">
               <Button disabled={rereading === "busy"} onClick={() => void reread(documentId)}>
@@ -246,7 +247,7 @@ export function SyllabusLive({
                 {REREAD.cancel}
               </Button>
             </div>
-          </div>
+          </Block>
         )}
         {removing ? (
           <ExcludeEditor nodes={nodes} onExclude={exclude} onCancel={() => setRemoving(false)} />
