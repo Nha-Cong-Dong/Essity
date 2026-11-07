@@ -129,6 +129,9 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
       fit: true,
       padding: 24,
       nodeDimensionsIncludeLabels: true,
+      nodeRepulsion: 12000,
+      idealEdgeLength: 120,
+      packComponents: true,
       quality: "default",
     } as cytoscape.LayoutOptions).run();
 
@@ -170,7 +173,8 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
         ref={host}
         aria-hidden="true"
         data-graph-canvas
-        className="h-[calc(100dvh-200px)] min-h-70 w-full touch-none overflow-hidden rounded-tile border border-line bg-hong-tint"
+        data-foreign-dom
+        className="h-[clamp(18rem,calc(100dvh-240px),34rem)] w-full touch-none overflow-hidden rounded-tile border border-line bg-hong-tint"
       />
       <div className="absolute right-2 bottom-2 flex gap-2">
         <button type="button" aria-label="Phóng to" className={ZOOM_BUTTON + " w-11"} onClick={() => zoomBy(1.3)}>
