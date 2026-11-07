@@ -52,7 +52,19 @@ async function load(
       const [sessions, subjectName] = await Promise.all([vaultSessions(subjectId), nameOf(subjectId)]);
       return { level: "sessions", sessions, subjectName };
     }
-    return { level: "subjects", subjects: await vaultSubjects() };
+    const subjects = await vaultSubjects();
+    // The newest sessions of each subject feed the hero's "Mới thêm" and the row chips; a failing call only drops them.
+    const withRecent = await Promise.all(
+      subjects.map(async (s) => {
+        try {
+          const sessions = await vaultSessions(s.id);
+          return { ...s, recent: sessions.slice(0, 3).map(({ title, studied_on }) => ({ title, studied_on })) };
+        } catch {
+          return s;
+        }
+      }),
+    );
+    return { level: "subjects", subjects: withRecent };
   } catch {
     return null;
   }
@@ -84,7 +96,7 @@ export default function VaultPage(props: { searchParams: Promise<Search> }) {
         </Suspense>
       }
     >
-      <PageColumn width="wide" className="flex flex-col gap-4">
+      <PageColumn width="full" className="flex flex-col gap-4">
         <Suspense fallback={null}>
           <Vault {...props} />
         </Suspense>

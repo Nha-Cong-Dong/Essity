@@ -19,6 +19,38 @@ describe("VaultView subjects", () => {
   });
 });
 
+describe("VaultView subjects hero (SCREENS-V4-B)", () => {
+  const recent = (title: string, studied_on: string) => ({ title, studied_on });
+  const subjects = [
+    { ...s("a", "Xác suất", 2, 31), recent: [recent("Hoán vị", "2026-11-07"), recent("Quy tắc cộng", "2026-11-03")] },
+    { ...s("b", "Mạng", 1, 16), recent: [recent("ARP", "2026-11-05")] },
+  ];
+
+  // Red when: the hero has no "Mới thêm" list, or it is not newest-first across subjects, or the header mascot stays.
+  it("lists the newest sessions in the hero, newest first, and draws no header mascot", () => {
+    const html = renderToStaticMarkup(<VaultView view={{ level: "subjects", subjects }} />);
+    expect(html).toContain("Mới thêm");
+    const hero = html.slice(html.indexOf('data-tier="field"'), html.indexOf("data-vault-subjects"));
+    expect(hero.indexOf("Hoán vị")).toBeGreaterThan(-1);
+    expect(hero.indexOf("Hoán vị")).toBeLessThan(hero.indexOf("ARP"));
+    expect(hero.indexOf("ARP")).toBeLessThan(hero.indexOf("Quy tắc cộng"));
+    expect(html).not.toContain("data-mascot");
+  });
+
+  // Red when: a subject row lacks the chips of its sessions.
+  it("a subject row carries chips of its recent sessions", () => {
+    const html = renderToStaticMarkup(<VaultView view={{ level: "subjects", subjects }} />);
+    const rows = html.slice(html.indexOf("data-vault-subjects"));
+    expect(rows).toContain("Quy tắc cộng");
+  });
+
+  // Red when: a vault without recent data still draws an empty "Mới thêm".
+  it("no recent data: no 'Mới thêm'", () => {
+    const html = renderToStaticMarkup(<VaultView view={{ level: "subjects", subjects: [s("a", "X", 1, 2)] }} />);
+    expect(html).not.toContain("Mới thêm");
+  });
+});
+
 describe("VaultView headings", () => {
   it("each level has exactly one h1", () => {
     const sessions = renderToStaticMarkup(<VaultView view={{ level: "sessions", sessions: [] }} subjectId="a" />);
