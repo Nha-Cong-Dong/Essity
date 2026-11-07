@@ -506,3 +506,26 @@
 
 /* LANDING-V62-FIX: a light film grain over the hero (static, so reduced motion needs nothing); text keeps its contrast because the grain is a faint overlay below the content layer */
 .lp :global(.hero)::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.5;mix-blend-mode:soft-light;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1.4 -.15'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E")}
+
+/* LANDING-V62-FIX: the knowledge graph in the palette's pale tones (no deep plum, no dark rose): a light section, a white
+   stage, ring nodes sized by centrality, thin faint edges, a tiny label under each node, three accent nodes. */
+.lp :global(.f-graph){background:var(--hong-tint);color:var(--ink)}
+.lp :global(.f-graph .doodle){stroke:var(--hong-text)}
+.lp :global(.f-graph .f-head p){color:var(--ink-soft)}
+.lp :global(.graph-stage){background:var(--sheet);border:1px solid var(--line);height:max(480px,calc(var(--u)*640))}
+.lp :global(.gsvg .e){stroke:var(--line-strong);stroke-opacity:.34;stroke-width:.9}
+.lp :global(.gsvg .e.hot){stroke:var(--hong-text);stroke-opacity:.85;stroke-width:1.6}
+.lp :global(.gsvg .n circle.dot){fill:var(--rose-200);stroke:var(--rose-400);stroke-width:1.5}
+.lp :global(.gsvg .n.hub circle.dot){fill:var(--rose-300);stroke:var(--hong-text);stroke-width:2.2}
+.lp :global(.gsvg .n.acc-teal circle.dot){fill:var(--accent-bright);stroke:var(--accent);stroke-width:1.6}
+.lp :global(.gsvg .n.acc-gold circle.dot){fill:#f4d58d;stroke:#b98a22;stroke-width:1.6}
+.lp :global(.gsvg .n.acc-rose circle.dot){fill:var(--rose-400);stroke:var(--hong-text);stroke-width:1.6}
+.lp :global(.gsvg .n .lb){font:500 10.5px var(--font-sans);fill:var(--ink-soft);opacity:calc(var(--lo,1)*.9);pointer-events:none;stroke:none;paint-order:normal;transition:opacity .15s}
+.lp :global(.gsvg .n.hub .lb){font:650 13px var(--font-display);fill:var(--ink)}
+.lp :global(.gsvg .n.hub .lb),.lp :global(.gsvg .n.big .lb){opacity:var(--lo,1)}
+.lp :global(.gsvg.focus .n:not(.lit) .lb){opacity:.12}
+.lp :global(.gsvg .n:focus-visible circle.dot){stroke:var(--ink);stroke-width:2.4}
+@media (max-width:700px){
+.lp :global(.graph-stage){height:500px}
+.lp :global(.gsvg .n:not(.big) .lb){display:none}
+}

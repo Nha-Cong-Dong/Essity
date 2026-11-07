@@ -6,7 +6,7 @@
 // - startLanding returns a cleanup that stops timers, observers and listeners and puts touched nodes back, so it is safe
 //   under React strict mode (effect runs twice in dev).
 import { fsrsCurve } from "./fsrs-curve";
-import { GRAPH_CARDS, GRAPH_HUBS, GRAPH_RELATIONS } from "./graph-data";
+import { graphLayout, graphModel } from "./graph-data";
 
 const TROUGH = fsrsCurve().trough;
 const SVGNS = "http://www.w3.org/2000/svg";
@@ -262,27 +262,28 @@ export function startLanding(root: El): () => void {
     const svg = $1(".gsvg", stageEl) as unknown as Svg;
     const tip = $1(".gtip", stageEl) as El;
     type Node = {
-      id: string; name: string; tip?: string; hub: boolean; r: number; next?: boolean; hubOf?: number;
+      id: string; name: string; tip?: string; hub: boolean; r: number; accent: string; degree: number; hubOf?: number;
       x: number; y: number; vx: number; vy: number; fx: number; fy: number; hx?: number; hy?: number; g: Svg;
     };
     const base = (n: Omit<Node, "x" | "y" | "vx" | "vy" | "fx" | "fy" | "g">) => ({ ...n, x: 0, y: 0, vx: 0, vy: 0, fx: 0, fy: 0, g: null as unknown as Svg });
-    const nodes: Node[] = GRAPH_HUBS.map((name, i) => base({ id: "h" + i, name, hub: true, r: 6.5 })).concat(
-      GRAPH_CARDS.map((c, i) => base({ id: "c" + i, name: c[1], tip: c[2], hub: false, r: i === 0 ? 5 : 3.8, next: i === 0, hubOf: c[0] })),
-    );
-    const links = GRAPH_CARDS.map((c, i) => ({ a: 3 + i, b: c[0], own: true })).concat(
-      GRAPH_RELATIONS.map(([a, b]) => ({ a: 3 + a, b: 3 + b, own: false })),
-    );
+    const model = graphModel();
+    const nodes: Node[] = model.nodes.map((n) => base(n));
+    const links = model.links;
     let W = 0;
     let H = 0;
     const lines: Svg[] = [];
     const dots: Svg[] = [];
+    const labs: Svg[] = [];
     const gl = mk("g", {}, svg);
     const gn = mk("g", {}, svg);
     links.forEach(() => lines.push(mk("line", { class: "e" }, gl)));
     nodes.forEach((n) => {
-      const g = mk("g", { class: "n" + (n.hub ? " hub" : "") + (n.next ? " next" : ""), tabindex: "0", role: "button", "aria-label": n.name + (n.tip ? ". " + n.tip : "") }, gn);
-      mk("circle", { class: "hit", r: 16 }, g);
+      const g = mk("g", { class: "n" + (n.hub ? " hub" : "") + (n.accent ? " acc-" + n.accent : "") + (n.hub || n.degree >= 5 ? " big" : ""), tabindex: "0", role: "button", "aria-label": n.name + (n.tip ? ". " + n.tip : "") }, gn);
+      mk("circle", { class: "hit", r: Math.max(14, n.r + 6) }, g);
       dots.push(mk("circle", { class: "dot", r: 0 }, g));
+      const lab = mk("text", { class: "lb", y: n.r + 11, "text-anchor": "middle" }, g);
+      lab.textContent = n.name.length > 15 ? n.name.slice(0, 14) + "…" : n.name;
+      labs.push(lab);
       n.g = g;
     });
     undo.push(() => {
@@ -317,15 +318,15 @@ export function startLanding(root: El): () => void {
       });
     const tick = (t: number) => {
       const S = Math.min(W, H);
-      const k = 90 * (S / 600);
-      const L = S * 0.2;
+      const k = 24 * (S / 600);
+      const L = S * 0.095;
       for (let i = 0; i < nodes.length; i++) {
         const a = nodes[i];
-        a.fx = (W / 2 - a.x) * 0.004;
-        a.fy = (H / 2 - a.y) * 0.016;
+        a.fx = (W / 2 - a.x) * 0.002;
+        a.fy = (H / 2 - a.y) * 0.002;
         if (a.hx !== undefined && a.hy !== undefined) {
-          a.fx += (a.hx - a.x) * 0.05;
-          a.fy += (a.hy - a.y) * 0.05;
+          a.fx += (a.hx - a.x) * 0.06;
+          a.fy += (a.hy - a.y) * 0.06;
         }
         for (let j = i + 1; j < nodes.length; j++) {
           const b = nodes[j];
@@ -337,7 +338,7 @@ export function startLanding(root: El): () => void {
           a.fy += dy * f;
           b.fx -= dx * f;
           b.fy -= dy * f;
-          const minD = 46;
+          const minD = S * 0.05 + a.r + b.r;
           if (d < minD) {
             const push = ((minD - d) * 0.06) / d;
             a.fx += dx * push;
@@ -354,7 +355,7 @@ export function startLanding(root: El): () => void {
         const dy = b.y - a.y;
         const d = Math.sqrt(dx * dx + dy * dy) + 0.01;
         const rest = l.own ? L : L * 1.5;
-        const f = (d - rest) * (l.own ? 0.035 : 0.012);
+        const f = (d - rest) * (l.own ? 0.0012 : 0.0003);
         a.fx += (dx / d) * f;
         a.fy += (dy / d) * f;
         b.fx -= (dx / d) * f;
@@ -403,6 +404,7 @@ export function startLanding(root: El): () => void {
         const sc = e * (1 + 0.15 * Math.sin(gr * Math.PI));
         n.g.setAttribute("transform", `translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})`);
         dots[i].setAttribute("r", (n.r * sc).toFixed(2));
+        labs[i].style.setProperty("--lo", String(Math.max(0, (gr - 0.4) / 0.6).toFixed(2)));
       });
       if (hover) placeTip(hover);
     };
@@ -422,9 +424,21 @@ export function startLanding(root: El): () => void {
       if (!raf && alive) raf = requestAnimationFrame(frame);
     };
     undo.push(() => raf && cancelAnimationFrame(raf));
+    const layout = graphLayout(nodes);
+    const homes = () => {
+      const R = Math.min(W, H) * 0.45;
+      const rx = Math.min(W * 0.4, R * 2.1);
+      nodes.forEach((n, i) => {
+        n.hx = W / 2 + layout[i].x * rx;
+        n.hy = H / 2 + H * 0.04 + layout[i].y * R;
+        n.x = n.hx;
+        n.y = n.hy;
+        n.vx = n.vy = 0;
+      });
+    };
     const settle = () => {
-      place(1);
-      for (let i = 0; i < 520; i++) {
+      homes();
+      for (let i = 0; i < 160; i++) {
         alpha = 0.4;
         tick(i * 16);
       }
