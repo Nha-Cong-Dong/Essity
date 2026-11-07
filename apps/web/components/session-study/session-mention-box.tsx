@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import { FieldError } from "@/components/field-error";
@@ -27,7 +29,7 @@ export type MentionBoxProps = {
   /** Document whose part after @ the backend refused (shown on its chip). */
   rejectedDoc: string | null;
   /** A problem with the whole form ("Thêm ít nhất một file hoặc vài dòng mô tả."). */
-  problem: string | null;
+  problem: ReactNode;
 };
 
 const PLACEHOLDER = "Tối nay mình học @Giáo trình phần 3.2 và xem lại @slide chương 3.";

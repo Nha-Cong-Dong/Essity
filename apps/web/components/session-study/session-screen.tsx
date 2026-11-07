@@ -5,7 +5,6 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
 
 import { FieldHint } from "@/components/field-error";
-import { go } from "@/lib/navigate";
 import { Block } from "@/components/screen-kit";
 import { FocusShell } from "@/components/shells";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -77,7 +76,7 @@ export const SUBMIT_COPY = {
   mentionPiece: "Có một chỗ @ không khớp tài liệu nào. Bỏ phần có chỗ @ đó (hoặc ghi lại phần mới) rồi bấm Kết thúc buổi học.",
   closed: "Buổi này đã được gửi đi rồi.",
   other: "Chưa hoàn thành được. Thử lại sau ít phút.",
-  expired: "Phiên đăng nhập đã hết hạn. Đang đưa bạn về trang đăng nhập.",
+  expired: "Phiên đăng nhập đã hết hạn.",
 } as const;
 
 /** E-01: a 401 (cookie expired or cleared) is a signed-out learner, not a flaky network. */
@@ -186,10 +185,9 @@ export function SessionScreen(props: SessionScreenProps) {
     });
   }, [api, pieceMode]);
 
-  /** E-01: show the problem; a signed-out learner is taken to the login page (the note is lost with the session). */
-  function failed(status: number, error: string, message: string) {
+  /** E-01: show the problem. A signed-out learner gets a "Đăng nhập lại" link; no redirect, so the typed note stays to copy. */
+  function failed(_status: number, _error: string, message: string) {
     setProblem(message);
-    if (isSignedOut(status, error)) setTimeout(() => go("/login"), 1500);
   }
 
   /** Keep what is typed as one piece. True when a piece was kept; "empty" when there was nothing to keep. */
@@ -490,7 +488,18 @@ export function SessionScreen(props: SessionScreenProps) {
                     docs={docs}
                     say={say}
                     rejectedDoc={round.rejectedDoc}
-                    problem={problem}
+                    problem={
+                      problem === SUBMIT_COPY.expired ? (
+                        <>
+                          {problem}{" "}
+                          <Link href="/login" className={buttonVariants({ variant: "quiet" })}>
+                            Đăng nhập lại
+                          </Link>
+                        </>
+                      ) : (
+                        problem
+                      )
+                    }
                     onChange={(value, next) => {
                       setText(value);
                       setMentions(next);

@@ -51,18 +51,20 @@ describe("E-01 signed-out note", () => {
     expect(noteProblem(0, "network")).toBe(SUBMIT_COPY.network);
   });
 
-  it("E-01 Ghi lại with an expired cookie says so and goes to /login", async () => {
-    const fake = show({ addPiece: vi.fn(() => fail(401, "signed_out")) }, "ghi chú");
+  it("E-01 Ghi lại with an expired cookie says so, offers a login link, keeps the note and does not redirect", async () => {
+    const fake = show({ addPiece: vi.fn(() => fail(401, "signed_out")) }, "ghi chú dài cần giữ");
     await act(async () => undefined);
     fireEvent.click(screen.getByRole("button", { name: "Ghi lại" }));
     await act(async () => undefined);
     expect(fake.addPiece).toHaveBeenCalled();
-    expect(screen.getAllByText(SUBMIT_COPY.expired).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(SUBMIT_COPY.expired, { exact: false }).length).toBeGreaterThan(0);
     expect(screen.queryByText(SUBMIT_COPY.network)).toBeNull();
+    expect(screen.getByRole("link", { name: "Đăng nhập lại" }).getAttribute("href")).toBe("/login");
     await act(async () => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(5000);
     });
-    expect(go).toHaveBeenCalledWith("/login");
+    expect(go).not.toHaveBeenCalled();
+    expect((screen.getByRole("combobox") as HTMLTextAreaElement).value).toBe("ghi chú dài cần giữ");
   });
 });
 
