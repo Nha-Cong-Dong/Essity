@@ -8,6 +8,7 @@ import { Doodle } from "@/components/icons/doodle";
 import { Markdown } from "@/components/markdown/markdown";
 import { Block } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
+import { go } from "@/lib/navigate";
 import { Carousel } from "@/components/ui/carousel";
 import type { VaultCard } from "@/lib/vault-api";
 
@@ -121,6 +122,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
       body: JSON.stringify(draft),
     }).catch(() => null);
     setBusy(false);
+    if (r?.status === 401) return go("/login"); // E-01: expired session
     if (!r?.ok) return setError("Chưa lưu được. Thử lại.");
     setSaved(draft);
     setDraft(null);
@@ -130,6 +132,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
     setBusy(true);
     const r = await fetch(`/api/vault/cards/${card.id}`, { method: "DELETE" }).catch(() => null);
     setBusy(false);
+    if (r?.status === 401) return go("/login"); // E-01: expired session
     if (!r?.ok) return setError("Chưa xóa được. Thử lại.");
     onGone(card.id);
   }
