@@ -69,4 +69,13 @@ describe("MainNav (T2.3c, R46)", () => {
     expect(nav.className).toMatch(/overflow-x-auto/);
     expect(nav.className).toMatch(/fixed/);
   });
+
+  // SHELL-ART: red when the collapsed-rail tooltip puts the label into the link text twice (e2e
+  // layout smoke and stats nav read the link text).
+  it("each link's text is its label once (tooltip text comes from CSS)", () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    render(<MainNav current="/stats" />);
+    const texts = screen.getAllByRole("link").map((a) => a.textContent);
+    expect(texts).toEqual(["Hôm nay", "Môn học", "Kho kiến thức", "Đồ thị", "Thống kê"]);
+  });
 });

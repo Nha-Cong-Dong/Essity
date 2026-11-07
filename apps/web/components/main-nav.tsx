@@ -63,12 +63,12 @@ export function MainNav({ current }: { current?: NavItem }) {
             <span className="min-[1024px]:rail-collapsed:sr-only">{label}</span>
           )}
           {/* Collapsed rail: the name as a tooltip on hover and keyboard focus. */}
+          {/* The text comes from data-tip via CSS so it is not part of the link's accessible text. */}
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-full z-(--z-menu) ml-2 hidden -translate-y-1/2 rounded-control bg-ink px-2.5 py-1 text-meta whitespace-nowrap text-bg shadow-over group-focus-visible:rail-collapsed:min-[1024px]:block group-hover:rail-collapsed:min-[1024px]:block"
-          >
-            {label}
-          </span>
+            data-tip={label}
+            className="pointer-events-none absolute top-1/2 left-full z-(--z-menu) ml-2 hidden -translate-y-1/2 rounded-control bg-ink px-2.5 py-1 text-meta whitespace-nowrap text-bg shadow-over before:content-[attr(data-tip)] group-focus-visible:rail-collapsed:min-[1024px]:block group-hover:rail-collapsed:min-[1024px]:block"
+          />
           <span
             aria-hidden="true"
             className="absolute bottom-0.5 hidden size-1 rounded-full bg-hong group-aria-[current=page]:block min-[1024px]:group-aria-[current=page]:hidden"
