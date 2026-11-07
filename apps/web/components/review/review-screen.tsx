@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { AnswerBox, clock, type SaveState } from "@/components/review/answer-box";
+import { AnswerBox, clock, EchoedAnswer, type SaveState } from "@/components/review/answer-box";
 import { GradeResult } from "@/components/review/grade-result";
 import { ResultActions } from "@/components/review/result-actions";
 import { PracticeAnswer } from "@/components/practice/practice-answer";
 import { EmptyState } from "@/components/empty-state";
+import { Markdown } from "@/components/markdown/markdown";
 import { QuestionReason } from "@/components/question-reason";
 import { Block } from "@/components/screen-kit";
 import { Summary } from "@/components/review/summary";
@@ -405,7 +406,7 @@ export function ReviewScreen({
       <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7" aria-labelledby="question">
         <p className="m-0 text-meta text-ink-soft wrap-anywhere">{step.question.subject.name}</p>
         <h1 id="question" className="m-0 mt-3.5 font-display text-question wrap-anywhere">
-          {step.question.prompt}
+          <Markdown text={step.question.prompt} />
         </h1>
         <QuestionReason reason={step.question.reason} />
         {sent ? (
@@ -461,11 +462,11 @@ function Written({ sent }: { sent: Sent }) {
       {sent.dontRemember ? (
         <p className="m-0 mt-5 font-hand text-read text-ink-soft">Bạn chọn Không nhớ.</p>
       ) : (
-        <p className="m-0 mt-5 text-read whitespace-pre-wrap text-hong-text wrap-anywhere">{sent.text}</p>
+        <EchoedAnswer text={sent.text} />
       )}
       {at !== null && (
         <p className="m-0 mt-3 border-t border-line pt-3 text-meta text-ink-soft">
-          <span data-copy="tam">Câu trả lời của bạn · đã lưu {clock(at)}</span>
+          <span data-copy="tam">Câu trả lời của bạn · đã lưu lúc {clock(at)}</span>
         </p>
       )}
     </>
@@ -525,15 +526,18 @@ function Rail({
   }
   if (view === null || (view.grading === "in_progress" && !sent.late)) {
     return (
-      <div aria-busy="true">
-        <div aria-hidden="true" className="flex flex-col gap-3.5">
-          <span className="h-7.5 w-38 rounded-full bg-sunken" />
-          <span className="h-3.5 w-2/5 rounded-full bg-sunken" />
-          <span className="h-3.5 w-[85%] rounded-full bg-sunken" />
-          <span className="h-3.5 w-[70%] rounded-full bg-sunken" />
-          <span className="h-21 rounded-control bg-sunken" />
+      <div aria-busy="true" data-grading-wait className="rounded-tile border border-line-strong bg-sheet p-5">
+        <p role="status" className="m-0 flex items-center gap-3 text-ink-soft">
+          <span aria-hidden="true" className="inline-block size-4 shrink-0 rounded-full border-2 border-line-strong border-t-transparent motion-safe:animate-spin" />
+          Đang chấm dựa trên tài liệu của bạn…
+        </p>
+        <div aria-hidden="true" className="mt-5 flex flex-col gap-3.5">
+          <span className="h-7.5 w-38 rounded-full bg-line motion-safe:animate-pulse" />
+          <span className="h-3.5 w-2/5 rounded-full bg-line motion-safe:animate-pulse" />
+          <span className="h-3.5 w-[85%] rounded-full bg-line motion-safe:animate-pulse" />
+          <span className="h-3.5 w-[70%] rounded-full bg-line motion-safe:animate-pulse" />
+          <span className="h-21 rounded-control bg-line motion-safe:animate-pulse" />
         </div>
-        <p className="m-0 mt-4.5 text-ink-soft">Đang chấm dựa trên tài liệu của bạn…</p>
       </div>
     );
   }

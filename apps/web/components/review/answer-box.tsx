@@ -26,6 +26,22 @@ export type AnswerBoxProps = {
 /** Shown from here on, so the limit never comes as a surprise. */
 const COUNT_FROM = 3500;
 
+/** E-17: the answer echoed after sending: a few lines, "Xem đầy đủ" for a long one. */
+export function EchoedAnswer({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const long = text.length > 400 || text.split(/\n/).length > 6;
+  return (
+    <div className="mt-5">
+      <p className={`m-0 text-read whitespace-pre-wrap text-hong-text wrap-anywhere ${long && !open ? "line-clamp-5" : ""}`}>{text}</p>
+      {long && (
+        <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="mt-2 cursor-pointer border-0 bg-transparent p-0 text-meta font-semibold text-ink-soft underline">
+          {open ? "Thu gọn" : "Xem đầy đủ"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 const number = new Intl.NumberFormat("vi-VN");
 
 /** "21:42" in the user's own clock. */
@@ -79,7 +95,7 @@ export function AnswerBox({ id, value, onChange, onSubmit, onForgot, save, pendi
             send();
           }
         }}
-        className="mt-5 block field-sizing-content max-h-112 min-h-40 w-full resize-none rounded-tile bg-sunken p-4 scroll-mb-24 text-answer text-hong-text outline-none placeholder:text-ink-soft focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus aria-invalid:rounded-control aria-invalid:outline-2 aria-invalid:outline-offset-8 aria-invalid:outline-partial aria-invalid:outline-dashed"
+        className="mt-5 block field-sizing-content max-h-112 min-h-40 w-full resize-none rounded-tile border border-line-strong bg-sheet [background-attachment:local] [background-origin:content-box] p-4 [background-image:linear-gradient(to_bottom,transparent_31px,var(--line)_31px)] [background-size:100%_32px] scroll-mb-24 text-answer text-hong-text outline-none placeholder:text-ink-soft focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus aria-invalid:rounded-control aria-invalid:outline-2 aria-invalid:outline-offset-8 aria-invalid:outline-partial aria-invalid:outline-dashed"
       />
       <p className="m-0 mt-2.5 flex justify-between gap-3 text-meta text-ink-soft" aria-live="polite">
         <SaveLine save={save} />
@@ -103,7 +119,7 @@ export function AnswerBox({ id, value, onChange, onSubmit, onForgot, save, pendi
           </FieldError>
         </div>
       )}
-      <div className="sticky bottom-0 z-10 mt-6 flex flex-wrap items-center gap-3 bg-bg py-3 min-[641px]:static min-[641px]:bg-transparent min-[641px]:py-0">
+      <div className="sticky bottom-0 z-10 mt-6 flex flex-wrap items-center gap-3 border-t border-line bg-sheet py-3 min-[641px]:static min-[641px]:border-t-0 min-[641px]:bg-transparent min-[641px]:py-0">
         <Button type="button" className="min-w-28" pending={pending === "submit"} disabled={busy && pending !== "submit"} onClick={send}>
           Gửi
         </Button>

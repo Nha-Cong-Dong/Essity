@@ -115,6 +115,13 @@ describe("ReviewScreen (T2.15)", () => {
     expect(screen.getByRole("button", { name: "Không nhớ" })).toBeTruthy();
   });
 
+  // E-13. Red when: a formula in the question shows as raw text instead of going through the Markdown + KaTeX renderer.
+  it("E-13: renders math in the question", async () => {
+    const c = current();
+    await show(fakeApi({ current: vi.fn(async () => ok({ ...c, question: { ...c.question, prompt: "Có $n!$ hoán vị" } })) }));
+    await waitFor(() => expect(document.querySelector("#question .katex")).toBeTruthy(), { timeout: 8000 });
+  });
+
   // KNOWN-FIX B-03. Red when: while the first question loads the screen shows only the sr-only status (an empty frame).
   it("B-03: shows a visible skeleton while the first question loads", async () => {
     let release: (r: Reply<Current>) => void = () => {};

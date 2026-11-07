@@ -16,7 +16,10 @@ import { uploadMessage } from "@/lib/upload-copy";
 // (stored, waiting for ai-service: T4.7), or the reason it was refused. Files go one after the
 // other, so a long list does not eat the 30-asks-an-hour limit all at once.
 
-type Row = { key: number; name: string; state: UploadState; role?: Role; roleConflict?: boolean };
+const ROLE_RETRIES = 40;
+const ROLE_RETRY_MS = 2000;
+
+type Row = { key: number; name: string; state: UploadState; role?: Role; roleConflict?: boolean; roleFailed?: boolean };
 
 const STATUS = "text-small font-semibold text-ink-soft";
 
@@ -125,11 +128,17 @@ export function Uploader({
   function sendRole(key: number, documentId: string) {
     const apiRole = fixedRole === "main" ? "textbook" : fixedRole === "bank" ? "question_bank" : null;
     if (!apiRole) return;
-    void patchDocument(documentId, { role: apiRole }).then((sent) => {
-      if (!sent.ok && sent.code === "textbook_exists") {
-        setRows((all) => all.map((row) => (row.key === key ? { ...row, roleConflict: true } : row)));
+    void (async () => {
+      // core-api answers 409 document_not_ready until the file is read (E-11): wait and try again.
+      let sent = await patchDocument(documentId, { role: apiRole });
+      for (let i = 0; i < ROLE_RETRIES && !sent.ok && sent.code === "document_not_ready"; i++) {
+        await new Promise((resolve) => setTimeout(resolve, ROLE_RETRY_MS));
+        sent = await patchDocument(documentId, { role: apiRole });
       }
-    });
+      if (sent.ok) return;
+      const flag = sent.code === "textbook_exists" ? { roleConflict: true } : { roleFailed: true };
+      setRows((all) => all.map((row) => (row.key === key ? { ...row, ...flag } : row)));
+    })();
   }
 
   function update(key: number, state: UploadState) {
@@ -215,6 +224,10 @@ export function Uploader({
               {row.state.kind === "done" && fixedRole && row.roleConflict ? (
                 <p role="alert" className="m-0 text-small text-pencil">
                   Môn này đã có giáo trình chính, nên file này đang là tài liệu phụ. Đổi giáo trình chính ở trang Đề cương.
+                </p>
+              ) : row.state.kind === "done" && fixedRole && row.roleFailed ? (
+                <p role="alert" className="m-0 text-small text-pencil">
+                  Chưa lưu được loại tài liệu cho file này. Đổi loại ở trang Đề cương hoặc tải lại file.
                 </p>
               ) : row.state.kind === "done" && fixedRole ? (
                 <span className="w-fit rounded-control bg-rose-100 px-2 py-1 text-small font-semibold">{ROLE_TAG[fixedRole]}</span>

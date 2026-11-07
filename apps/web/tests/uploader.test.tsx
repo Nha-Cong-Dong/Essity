@@ -151,3 +151,42 @@ describe("Uploader (US-01 AC7)", () => {
     }
   });
 });
+
+describe("E-11: role waits for the file to be read", () => {
+  it("retries the role PATCH after 409 document_not_ready", async () => {
+    vi.useFakeTimers();
+    const calls: string[] = [];
+    let n = 0;
+    vi.stubGlobal("fetch", async (url: string) => {
+      calls.push(url);
+      n += 1;
+      return n === 1
+        ? new Response(JSON.stringify({ error: "document_not_ready" }), { status: 409 })
+        : new Response(JSON.stringify({ id: "d1" }), { status: 200 });
+    });
+    upload.mockImplementation(async (_s, _f, cb) => cb({ kind: "done", documentId: "d1" } as UploadState));
+    render(<Uploader subjectId={SUBJECT} fixedRole="bank" />);
+    await act(async () => choose(new File(["%PDF"], "q.pdf", { type: "application/pdf" })));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+    expect(calls.length).toBe(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("shows an error when it never gets ready", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ error: "document_not_ready" }), { status: 409 }));
+    upload.mockImplementation(async (_s, _f, cb) => cb({ kind: "done", documentId: "d2" } as UploadState));
+    render(<Uploader subjectId={SUBJECT} fixedRole="bank" />);
+    await act(async () => choose(new File(["%PDF"], "q.pdf", { type: "application/pdf" })));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100000);
+    });
+    expect(screen.getByRole("alert").textContent).toContain("Chưa lưu được");
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+});

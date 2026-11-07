@@ -1,10 +1,11 @@
 "use client";
 
+import { Markdown } from "@/components/markdown/markdown";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PrereqBox } from "@/components/practice/prereq-box";
 import { Pen, PracticeResultExtras } from "@/components/practice/practice-extras";
-import { AnswerBox, clock, type SaveState } from "@/components/review/answer-box";
+import { AnswerBox, clock, EchoedAnswer, type SaveState } from "@/components/review/answer-box";
 import { GradeResult } from "@/components/review/grade-result";
 import { Block } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
@@ -300,7 +301,7 @@ export function PracticeAnswer({
         <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7">
           <p className="m-0 text-meta text-ink-soft">Luyện tập</p>
           <h1 data-user className="m-0 mt-3.5 font-display text-question wrap-anywhere">
-            {promptPreview}
+            <Markdown text={promptPreview} />
           </h1>
           <div aria-hidden="true" className="mt-6 h-32 animate-pulse rounded-control bg-sunken" />
           <p role="status" className="sr-only">
@@ -346,7 +347,7 @@ export function PracticeAnswer({
       <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7">
         <p className="m-0 text-meta text-ink-soft">Luyện tập</p>
         <h1 data-user className="m-0 mt-3.5 font-display text-question wrap-anywhere">
-          {prompt}
+          <Markdown text={prompt} />
         </h1>
         {phase.kind === "writing" ? (
           <>
@@ -370,11 +371,11 @@ export function PracticeAnswer({
             {phase.dontRemember ? (
               <p className="m-0 mt-5 font-hand text-read text-ink-soft">Bạn chọn Không nhớ.</p>
             ) : (
-              <p className="m-0 mt-5 text-read whitespace-pre-wrap text-hong-text wrap-anywhere">{phase.text}</p>
+              <EchoedAnswer text={phase.text} />
             )}
             {view?.submitted_at && (
               <p className="m-0 mt-3 border-t border-line pt-3 text-meta text-ink-soft">
-                Câu trả lời của bạn · đã lưu {clock(Date.parse(view.submitted_at))}
+                Câu trả lời của bạn · đã lưu lúc {clock(Date.parse(view.submitted_at))}
               </p>
             )}
           </>
@@ -391,9 +392,9 @@ export function PracticeAnswer({
               </p>
               <p className="m-0 mt-1 text-meta text-ink-soft">Đang đối chiếu với tài liệu của bạn, thường mất vài giây.</p>
               <div aria-hidden="true" className="mt-5 flex flex-col gap-3">
-                <div className="h-6 w-1/3 rounded-control bg-sunken motion-safe:animate-pulse" />
-                <div className="h-4 w-full rounded-control bg-sunken motion-safe:animate-pulse" />
-                <div className="h-4 w-4/5 rounded-control bg-sunken motion-safe:animate-pulse" />
+                <div className="h-6 w-1/3 rounded-control bg-line motion-safe:animate-pulse" />
+                <div className="h-4 w-full rounded-control bg-line motion-safe:animate-pulse" />
+                <div className="h-4 w-4/5 rounded-control bg-line motion-safe:animate-pulse" />
               </div>
             </div>
           ) : result && view ? (
