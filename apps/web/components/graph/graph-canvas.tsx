@@ -196,17 +196,22 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
     };
     const detach = fitLock.attach(host.current);
     cy.on("dragpan", fitLock.lock);
+    let separated = false;
     cy.on("layoutstop", () => {
       stretchToFrame(cy);
       fit();
       // Still two labels on one another (a narrow frame): push each such pair apart up and down.
-      for (let i = 0; i < 12 && !fitLock.touched && separateLabels(cy); i++) fit();
+      // Once per layout (perf): it measures every label pair.
+      if (!separated) {
+        separated = true;
+        for (let i = 0; i < 12 && !fitLock.touched && separateLabels(cy); i++) fit();
+      }
     });
     cy.layout({
       name: "fcose",
       animate: !reducedMotion,
       animationDuration: 300,
-      randomize: false, // fcose then starts from its deterministic spectral layout: same cards, same picture
+      randomize: false, // start from the fixed spiral positions given in elements(): same cards, same picture
       fit: true,
       padding: 24,
       nodeDimensionsIncludeLabels: true,

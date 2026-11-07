@@ -8,6 +8,7 @@ import Link from "next/link";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { shortLabel } from "@/lib/graph";
+import { settleLabels } from "@/lib/graph-labels";
 import { multiStylesheet } from "@/lib/graph-multi-style";
 import { optionsFor, seededRandom, type SimEdge, type SimNode, spiralStart, stepSim } from "@/lib/graph-sim";
 import { type MultiCard, type SubjectGraph, v4Highlights } from "@/lib/graph-multi";
@@ -19,6 +20,7 @@ import { buildTopicGraph, tint } from "@/lib/graph-topic";
 
 let registered = false;
 const MAX_FIT_ZOOM = 1.5;
+const SETTLE_STEPS = 220; // fixed, not time-based (E-10)
 const ZOOM =
   "inline-flex h-11 items-center justify-center rounded-full bg-sheet px-3 text-caption text-ink inset-ring-[1.5px] inset-ring-line-strong hover:bg-sunken";
 
@@ -178,7 +180,6 @@ export function KnowledgeGraph({
     // the edges, repulsion, a pull to the middle). A dragged node is pinned under the pointer and the
     // rest follow. Reduced motion: no drift; nodes can still be dragged.
     let frame = 0;
-    let fitTimer = 0;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const startSim = () => {
       if (reduced) return;
@@ -235,38 +236,30 @@ export function KnowledgeGraph({
         });
         frame = requestAnimationFrame(tick);
       };
-      running = true;
-      frame = requestAnimationFrame(tick);
-      cy.on("grab mouseover", "node", wake);
-      // Once the cloud has opened up, frame it again, unless the reader already took hold of the view.
-      let touched = false;
-      const touch = () => {
-        touched = true;
-      };
-      host.current?.addEventListener("pointerdown", touch, { once: true });
-      host.current?.addEventListener("wheel", touch, { once: true, passive: true });
-      fitTimer = window.setTimeout(() => {
-        if (touched) return;
-        cy.animate(
-          { fit: { eles: cy.nodes(), padding: 48 } },
-          {
-            duration: 400,
-            complete: () => {
-              if (cy.zoom() > MAX_FIT_ZOOM) {
-                cy.zoom(MAX_FIT_ZOOM);
-                cy.center();
-              }
-            },
-          },
-        );
-      }, 2500);
+      // E-10: the picture must not depend on when it is looked at. Settle a fixed number of steps now
+      // (seeded noise, so the same cards give the same positions), push overlapping labels apart once,
+      // and frame it. The loop only wakes when the reader grabs a node.
+      for (let s = 0; s < SETTLE_STEPS; s++) stepSim(sim, links, Math.max(0.1, 0.5 * 0.995 ** s), noise, opts);
+      cy.batch(() => {
+        list.forEach((n, i) => n.position({ x: sim[i].x, y: sim[i].y }));
+      });
+      settleLabels(cy);
+      list.forEach((n, i) => {
+        sim[i].x = n.position("x");
+        sim[i].y = n.position("y");
+      });
+      cy.fit(cy.nodes(), 48);
+      if (cy.zoom() > MAX_FIT_ZOOM) {
+        cy.zoom(MAX_FIT_ZOOM);
+        cy.center();
+      }
+      cy.on("grab", "node", wake);
     };
     startSim(); // the layout is synchronous (animate: false), so the nodes are already placed
     const resize = new ResizeObserver(() => cy.resize());
     resize.observe(host.current);
     return () => {
       cancelAnimationFrame(frame);
-      window.clearTimeout(fitTimer);
       resize.disconnect();
       cy.destroy();
       cyRef.current = null;
