@@ -65,9 +65,9 @@ export default function GraphPage({ searchParams }: { searchParams: Promise<{ su
         </Suspense>
       }
     >
-      <PageColumn width="full" className="flex flex-col gap-4">
-        <h1 className="m-0 font-display text-title">Đồ thị tri thức</h1>
-        <Suspense fallback={<div aria-busy="true" className="h-80 w-full rounded-tile bg-sunken motion-safe:animate-pulse" />}>
+      <PageColumn width="full" className="flex flex-col">
+        <h1 className="sr-only">Đồ thị tri thức</h1>
+        <Suspense fallback={<div aria-busy="true" aria-label="Đang tải đồ thị" className="-mx-(--page-gutter) -mt-6 h-[60dvh] bg-sunken motion-safe:animate-pulse min-[1024px]:-mt-10" />}>
           <Graphs search={searchParams} />
         </Suspense>
       </PageColumn>

@@ -21,8 +21,8 @@ export default function GraphAllPreview() {
   };
   return (
     <AppShell current="/graph" account={<AccountMenu email="xem-thu@example.com" />}>
-      <PageColumn width="full" className="flex flex-col gap-4">
-        <h1 className="m-0 font-display text-title">Đồ thị tri thức</h1>
+      <PageColumn width="full" className="flex flex-col">
+        <h1 className="sr-only">Đồ thị tri thức</h1>
         <KnowledgeGraph
           graphs={[
             { id: "s1", name: "Mạng máy tính", data },
