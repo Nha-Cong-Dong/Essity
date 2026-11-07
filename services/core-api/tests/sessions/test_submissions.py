@@ -37,7 +37,6 @@ pytestmark = pytest.mark.usefixtures("fake_storage")
 
 @pytest.fixture
 def enabled(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    monkeypatch.setenv("CORE_SUBMISSIONS_ENABLED", "true")
     get_settings.cache_clear()
     yield
     monkeypatch.undo()
@@ -117,17 +116,6 @@ def nothing_written(world: World) -> None:
 
 
 # --- Off, and on --------------------------------------------------------------------------------
-
-
-def test_flag_off_404_and_nothing_published(client: TestClient, world: World) -> None:
-    # Red when: the route is reachable (or publishes) before ai-service can handle the event.
-    response = submit(client, world, files=[world.pdf()])
-    assert response.status_code == 404
-    nothing_written(world)
-    drafts = client.post(
-        f"/v1/subjects/{world.subject.id}/submission-drafts", headers=world.headers
-    )
-    assert drafts.status_code == 404
 
 
 @pytest.mark.usefixtures("enabled")
@@ -515,15 +503,6 @@ def test_draft_route_other_users_subject_404(client: TestClient, world: World) -
     foreign = subject_of(world.db, other)
     response = client.post(f"/v1/subjects/{foreign.id}/submission-drafts", headers=world.headers)
     assert response.status_code == 404
-
-
-def test_upload_url_refuses_docx_while_the_flag_is_off(client: TestClient, world: World) -> None:
-    response = client.post(
-        f"/v1/sessions/{world.draft.id}/notes/upload-url",
-        json={"sha256": "ab" * 32, "mime": DOCX, "size_bytes": 10},
-        headers=world.headers,
-    )
-    assert response.status_code == 422
 
 
 @pytest.mark.usefixtures("enabled")
