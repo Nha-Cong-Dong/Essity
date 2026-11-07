@@ -139,6 +139,7 @@ def test_early_stop_leaves_whole_runs() -> None:
     adapter = ScriptedAdapter(
         lambda n, r: output(["correct"]), tokens=(10_000, 0), fixed_model=None
     )
+    adapter.params = {"max_tokens": 800}  # pinned: the worst case above assumes 800
     result = run_eval(cs, adapter, model=PRODUCTION_MODEL, runs=3, max_cost_usd=Decimal("0.004"))
     assert result.stopped_early
     assert len(adapter.calls) == 4

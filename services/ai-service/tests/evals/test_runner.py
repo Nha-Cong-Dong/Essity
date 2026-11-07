@@ -271,6 +271,7 @@ def test_cost_ceiling_stops_before_next_call() -> None:
     adapter = ScriptedAdapter(
         lambda n, r: output(["correct"]), tokens=(1000, 500), fixed_model=None
     )
+    adapter.params = {"max_tokens": 800}  # pinned: the ceiling maths must not follow the default
     ceiling = Decimal("0.001")
     result = run_eval(cases(*data), adapter, model=PRODUCTION_MODEL, runs=3, max_cost_usd=ceiling)
     assert result.stopped_early
