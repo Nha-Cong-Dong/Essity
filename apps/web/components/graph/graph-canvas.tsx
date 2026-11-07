@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 
 import { neighbourhood, type GraphSection, type GraphView } from "@/lib/graph";
 import { createFitLock } from "@/lib/graph-fit-lock";
+import { spiralStart } from "@/lib/graph-sim";
 import { graphStylesheet, type Palette } from "@/lib/graph-style";
 
 // T9.10a (DESIGN §6.15, .work/T9.10a/design-decisions.md): the Cytoscape.js frame. Loaded only by
@@ -39,9 +40,10 @@ function elements(view: GraphView, sections: GraphSection[]): ElementDefinition[
   const out: ElementDefinition[] = sections
     .filter((s) => used.has(s.id))
     .map((s) => ({ data: { id: `s:${s.id}`, label: s.title, isSection: true }, selectable: false, grabbable: false }));
-  for (const c of view.cards) {
+  // E-10: a fixed start (the spiral) and randomize:false in the layout: the same cards give the same picture.
+  for (const [i, c] of view.cards.entries()) {
     const parent = sections.some((s) => s.id === c.sectionId) ? { parent: `s:${c.sectionId}` } : {};
-    out.push({ data: { id: c.id, ...parent, label: c.title, title: c.title }, classes: "card" });
+    out.push({ data: { id: c.id, ...parent, label: c.title, title: c.title }, position: spiralStart(i), classes: "card" });
   }
   for (const e of view.edges) {
     out.push({ data: { id: e.id, source: e.from, target: e.to, kind: e.kind }, classes: e.kind });
@@ -141,7 +143,6 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
       elements: elements(view, sections),
       minZoom: 0.2,
       maxZoom: 3,
-      wheelSensitivity: 0.3,
       boxSelectionEnabled: false,
       autoungrabify: true,
     });
@@ -199,13 +200,13 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
       stretchToFrame(cy);
       fit();
       // Still two labels on one another (a narrow frame): push each such pair apart up and down.
-      for (let i = 0; i < 12 && cy.width() < 480 && !fitLock.touched && separateLabels(cy); i++) fit();
+      for (let i = 0; i < 12 && !fitLock.touched && separateLabels(cy); i++) fit();
     });
     cy.layout({
       name: "fcose",
       animate: !reducedMotion,
       animationDuration: 300,
-      randomize: true,
+      randomize: false, // fcose then starts from its deterministic spectral layout: same cards, same picture
       fit: true,
       padding: 24,
       nodeDimensionsIncludeLabels: true,

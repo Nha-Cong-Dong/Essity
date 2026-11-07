@@ -236,7 +236,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
       </div>
       </Block>
 
-      <div className="mt-4 grid items-start gap-4 min-[1024px]:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] items-start gap-4 min-[1024px]:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-3" ref={frame}>
           {view.hidden > 0 && <Notice>{COPY.truncated}</Notice>}
           {noLinks ? (

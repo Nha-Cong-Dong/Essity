@@ -47,7 +47,7 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
   return (
     <CreateFrame current={2} subject={name}>
       <section aria-label="Tải tài liệu" className="flex flex-col gap-4">
-        <div role="tablist" aria-label="Loại tài liệu" className="flex gap-1 overflow-x-auto rounded-full bg-block p-1">
+        <div role="tablist" aria-label="Loại tài liệu" className="grid grid-cols-3 gap-1 rounded-full bg-block p-1">
           {TABS.map((t) => (
             <button
               key={t.role}
@@ -57,7 +57,7 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
               aria-selected={tab === t.role}
               aria-controls={`panel-${t.role}`}
               onClick={() => setTab(t.role)}
-              className={`min-h-11 shrink-0 rounded-full px-4 text-body whitespace-nowrap ${
+              className={`min-h-11 min-w-0 rounded-full px-2 text-center text-small leading-tight break-words max-[1023px]:text-meta min-[1024px]:px-4 min-[1024px]:text-body ${
                 tab === t.role ? "bg-sheet font-semibold text-ink inset-ring-1 inset-ring-line" : "font-medium text-ink-soft"
               }`}
             >

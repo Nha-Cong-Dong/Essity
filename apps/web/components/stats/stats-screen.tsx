@@ -151,7 +151,7 @@ export function StatsScreen({
   const hasDays = cells.some((c) => c.cardsSaved + c.questionsAnswered > 0);
   return (
     <>
-      <div className="grid gap-x-4 gap-y-3 min-[901px]:grid-cols-12 min-[901px]:items-end">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-4 gap-y-3 min-[901px]:grid-cols-12 min-[901px]:items-end">
         <div className="min-[901px]:col-span-8">
           <h1 className="m-0 text-title text-balance">Thống kê</h1>
           <p className="m-0 mt-2 text-body text-ink-soft">Tổng quan việc học của bạn, mọi môn cộng lại.</p>
@@ -169,7 +169,7 @@ export function StatsScreen({
 
       <section
         aria-label="Tổng quan"
-        className="relative mt-7 grid rounded-tile bg-field text-on-plum min-[901px]:grid-cols-3"
+        className="relative mt-7 grid grid-cols-[minmax(0,1fr)] rounded-tile bg-field text-on-plum min-[901px]:grid-cols-3"
         data-totals
       >
         <svg
@@ -189,7 +189,7 @@ export function StatsScreen({
         <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
       </section>
 
-      <div className="mt-5 grid gap-x-5 gap-y-8 min-[901px]:grid-cols-12">
+      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-x-5 gap-y-8 min-[901px]:grid-cols-12">
         <div className="min-w-0 min-[901px]:col-span-7 [&>*]:h-full">
           <Trend cells={cells} />
         </div>
