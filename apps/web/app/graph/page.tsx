@@ -3,8 +3,10 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountMenu } from "@/components/account-menu";
+import { Block } from "@/components/screen-kit";
 import { EmptyState } from "@/components/empty-state";
 import { KnowledgeGraph } from "@/components/graph/knowledge-graph";
+import { Button } from "@/components/ui/button";
 import { AppShell, PageColumn } from "@/components/shells";
 import type { SubjectGraph } from "@/lib/graph-multi";
 import { loadAllGraphs } from "@/lib/graph-multi-load";
@@ -29,19 +31,25 @@ async function Graphs({ search }: { search: Promise<{ subject?: string }> }) {
   } catch {
     graphs = null;
   }
-  if (graphs === null) return <EmptyState title="Chưa mở được đồ thị." hint="Tải lại trang sau ít phút." />;
+  if (graphs === null) return (
+      <Block tier="sheet" role="alert">
+        <EmptyState title="Chưa mở được đồ thị." hint="Tải lại trang sau ít phút." />
+      </Block>
+    );
   if (graphs.length === 0) {
     return (
-      <EmptyState
-        mascot="vui"
-        title="Chưa có môn nào."
-        hint="Tạo môn và ghi buổi học đầu tiên, các thẻ sẽ hiện thành đồ thị ở đây."
-        action={
-          <a href="/subjects/new" className="text-body font-semibold">
-            Tạo môn
-          </a>
-        }
-      />
+      <Block tier="sheet">
+        <EmptyState
+          mascot="vui"
+          title="Chưa có môn nào."
+          hint="Tạo môn và ghi buổi học đầu tiên, các thẻ sẽ hiện thành đồ thị ở đây."
+          action={
+            <Button render={<a href="/subjects/new" />} nativeButton={false}>
+              Tạo môn
+            </Button>
+          }
+        />
+      </Block>
     );
   }
   return <KnowledgeGraph graphs={graphs} focusSubject={subject} />;
@@ -59,7 +67,7 @@ export default function GraphPage({ searchParams }: { searchParams: Promise<{ su
     >
       <PageColumn width="full" className="flex flex-col gap-4">
         <h1 className="m-0 font-display text-title">Đồ thị tri thức</h1>
-        <Suspense fallback={<div aria-busy="true" className="h-80 w-full rounded-sheet bg-sunken" />}>
+        <Suspense fallback={<div aria-busy="true" className="h-80 w-full rounded-tile bg-sunken motion-safe:animate-pulse" />}>
           <Graphs search={searchParams} />
         </Suspense>
       </PageColumn>

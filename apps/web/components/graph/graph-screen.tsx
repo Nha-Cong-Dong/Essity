@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { Doodle } from "@/components/icons/doodle";
+import { BackLink, Block } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
 import { FilterChip } from "@/components/ui/filter-chip";
 import { Select } from "@/components/ui/select";
@@ -23,7 +24,7 @@ import { Legend } from "./legend";
 
 const Canvas = dynamic(() => import("./graph-canvas"), {
   ssr: false,
-  loading: () => <div aria-hidden="true" className="h-[50vh] min-h-70 rounded-sheet bg-sunken motion-safe:animate-pulse" />,
+  loading: () => <div aria-hidden="true" className="h-[50vh] min-h-70 rounded-tile bg-sunken motion-safe:animate-pulse" />,
 });
 
 const ALL = "";
@@ -37,15 +38,15 @@ const reducedNow = () => (typeof window.matchMedia === "function" ? window.match
 
 function Skeleton() {
   return (
-    <div aria-busy="true" aria-label="Đang tải đồ thị" className="mt-6 flex flex-col gap-4">
-      <div aria-hidden="true" className="h-[50vh] min-h-70 rounded-sheet bg-sunken motion-safe:animate-pulse" />
+    <div aria-busy="true" aria-label="Đang tải đồ thị" className="flex flex-col gap-4">
+      <div aria-hidden="true" className="h-[50vh] min-h-70 rounded-tile bg-sunken motion-safe:animate-pulse" />
     </div>
   );
 }
 
 function Notice({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div role="status" className="flex flex-col items-start gap-2 rounded-control border border-line bg-sheet p-3 text-caption">
+    <div role="status" className="flex flex-col items-start gap-2 rounded-tile border border-line bg-sheet p-4 text-meta">
       <p className="m-0">{children}</p>
       {action}
     </div>
@@ -144,27 +145,23 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
 
   if (fixture.status === "loading") {
     return (
-      <>
-        <h1 className="m-0 text-title">
-          Đồ thị
-        </h1>
+      <div className="flex flex-col gap-4">
+        <h1 className="m-0 text-title">Đồ thị</h1>
         <Skeleton />
-      </>
+      </div>
     );
   }
   if (fixture.status === "error" || !data || !view || !everyKind) {
     return (
-      <>
-        <h1 className="m-0 text-title">
-          Đồ thị
-        </h1>
-        <div role="alert" className="mt-8 flex flex-col items-start gap-4">
+      <div className="flex flex-col gap-4">
+        <h1 className="m-0 text-title">Đồ thị</h1>
+        <Block tier="sheet" role="alert" className="flex flex-col items-start gap-4">
           <p className="m-0 text-read">{COPY.error}</p>
           <Button type="button" onClick={() => setRetried(true)}>
             Thử lại
           </Button>
-        </div>
-      </>
+        </Block>
+      </div>
     );
   }
 
@@ -178,14 +175,11 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
       onKeyDownCapture={() => (lastKey.current = true)}
       onPointerDownCapture={() => (lastKey.current = false)}
     >
-      <a href={subjectHref} className="inline-flex min-h-11 items-center text-meta rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-        Về môn {subjectName}
-      </a>
-      <h1 className="m-0 text-title">
-        Đồ thị
-      </h1>
+      <BackLink href={subjectHref}>Về môn {subjectName}</BackLink>
+      <h1 className="m-0 mt-1 text-title">Đồ thị</h1>
 
-      <div className="mt-4 flex flex-col gap-3 min-[768px]:flex-row min-[768px]:items-end">
+      <Block as="section" tier="sheet" aria-label="Bộ lọc đồ thị" className="mt-2 flex flex-col gap-2 p-3 min-[641px]:mt-4 min-[641px]:gap-3 min-[641px]:p-4 min-[901px]:p-5">
+      <div className="flex flex-col gap-3 min-[768px]:flex-row min-[768px]:items-end">
         <div className="flex min-w-0 flex-1 flex-col gap-1 min-[768px]:max-w-sm">
           <label htmlFor="graph-section" className="text-meta text-ink-soft">
             Phần
@@ -216,7 +210,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
         </Switch>
       </div>
 
-      <div role="group" aria-label="Loại liên kết" data-kind-filter className="mt-2 flex flex-wrap items-center gap-2">
+      <div role="group" aria-label="Loại liên kết" data-kind-filter className="flex flex-wrap items-center gap-2">
         <span className="text-meta text-ink-soft">
           Loại liên kết{kindsOff ? ` (${kinds.size}/${EDGE_KINDS.length})` : ""}
         </span>
@@ -236,12 +230,13 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
           </FilterChip>
         ))}
       </div>
+      </Block>
 
-      <div className="mt-3 grid items-start gap-4 min-[1024px]:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-4 grid items-start gap-4 min-[1024px]:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-3" ref={frame}>
           {view.hidden > 0 && <Notice>{COPY.truncated}</Notice>}
           {noLinks ? (
-            <div className="rounded-tile bg-hong-tint p-6" data-empty>
+            <Block tier="tint" data-empty>
               <Doodle name="do-thi" size={48} className="mb-2 text-hong-text" />
               <p className="m-0 text-read">{COPY.empty}</p>
               {view.cards.length === 0 && live && (
@@ -255,7 +250,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
               <a href={subjectHref} className="mt-3 inline-flex min-h-11 items-center text-meta rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
                 Về môn
               </a>
-            </div>
+            </Block>
           ) : (
             <>
               {noneOfKind && (

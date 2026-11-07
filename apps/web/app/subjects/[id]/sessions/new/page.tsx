@@ -25,7 +25,7 @@ export default function NewSessionPage({
 }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
+      <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-tile bg-sunken motion-safe:animate-pulse" />}>
         <Guarded params={params} searchParams={searchParams} />
       </Suspense>
     </AppShell>
