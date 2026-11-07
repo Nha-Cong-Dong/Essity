@@ -37,3 +37,15 @@ describe("vault card delete", () => {
     expect(screen.getByLabelText("Tiêu đề thẻ")).toBeTruthy();
   });
 });
+
+describe("E-12: header count follows a delete", () => {
+  it("drops from 2 to 1 thẻ at once", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })));
+    render(<CardList cards={[CARD, { ...CARD, id: "c2", title: "UDP" }]} subjectName="Mạng" />);
+    expect(screen.getByText("Mạng · 2 thẻ")).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "Sửa thẻ" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Xóa thẻ" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Xóa hẳn thẻ" })));
+    expect(screen.getByText("Mạng · 1 thẻ")).toBeTruthy();
+  });
+});

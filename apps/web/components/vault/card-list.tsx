@@ -236,18 +236,26 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
 const STAGE_BUTTONS =
   "[&_[data-slot=carousel-track]>div]:w-[min(380px,calc(100vw-96px))] [&_[data-slot=carousel-meta]]:text-on-plum [&_button[aria-label^=Th]]:bg-on-plum-action [&_button[aria-label^=Th]]:text-on-plum-action-fg [&_button[aria-label^=Th]]:inset-ring-0 [&_button[aria-label^=Th]:hover]:bg-on-plum-action [&_button[aria-label^=Th]:disabled]:bg-on-plum/15 [&_button[aria-label^=Th]:disabled]:text-on-plum-soft";
 
-export function CardList({ cards }: { cards: VaultCard[] }) {
+export function CardList({ cards, subjectName }: { cards: VaultCard[]; subjectName?: string }) {
   const [gone, setGone] = useState<string[]>([]);
   const shown = cards.filter((c) => !gone.includes(c.id));
+  // E-12: the count lives here so deleting a card updates it (and the carousel's "1 / n") at once.
+  const subtitle = [subjectName, shown.length > 0 ? `${shown.length} thẻ` : null].filter(Boolean).join(" · ");
+  const subline = subtitle ? <p className="m-0 -mt-3 text-read text-ink-soft">{subtitle}</p> : null;
   if (shown.length === 0) {
     return (
+      <>
+      {subline}
       <Block as="section" tier="sheet" aria-label="Chưa có thẻ">
         <Doodle name="sach-mo" size={48} className="mb-2 text-hong-text" />
         <p className="m-0 text-lead">Buổi này chưa có thẻ nào.</p>
       </Block>
+      </>
     );
   }
   return (
+    <>
+    {subline}
     <Block tier="field" className="p-4 min-[901px]:p-6" data-vault-stage>
       <Carousel label="Thẻ của buổi học" className={STAGE_BUTTONS}>
         {shown.map((c) => (
@@ -255,5 +263,6 @@ export function CardList({ cards }: { cards: VaultCard[] }) {
         ))}
       </Carousel>
     </Block>
+    </>
   );
 }

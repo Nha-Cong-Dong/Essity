@@ -108,3 +108,24 @@ describe("AnswerBox (T2.15)", () => {
     expect(document.activeElement).toBe(screen.getByLabelText("Câu trả lời của bạn"));
   });
 });
+
+describe("QA-FIX-C: the box is visible", () => {
+  it("has a border and ruled lines", () => {
+    box();
+    const area = screen.getByLabelText("Câu trả lời của bạn");
+    expect(area.className).toContain("border-line-strong");
+    expect(area.className).toContain("linear-gradient");
+  });
+});
+
+describe("E-17: echoed long answer", () => {
+  it("is clamped with a toggle", async () => {
+    const { EchoedAnswer } = await import("@/components/review/answer-box");
+    render(<EchoedAnswer text={"x ".repeat(600)} />);
+    const toggle = screen.getByRole("button", { name: "Xem đầy đủ" });
+    expect(document.querySelector(".line-clamp-5")).toBeTruthy();
+    fireEvent.click(toggle);
+    expect(document.querySelector(".line-clamp-5")).toBeNull();
+    expect(screen.getByRole("button", { name: "Thu gọn" })).toBeTruthy();
+  });
+});

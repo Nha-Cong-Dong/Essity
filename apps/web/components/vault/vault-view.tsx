@@ -60,13 +60,8 @@ export function VaultView({ view, subjectId }: { view: VaultViewData; subjectId?
         <BackLink href={subjectId ? `/kho-kien-thuc?subject=${subjectId}` : "/kho-kien-thuc"}>Quay lại</BackLink>
         <div className="max-w-160">
           <h1 className="m-0 text-title wrap-anywhere">{view.title || "Buổi học"}</h1>
-          {view.subjectName || view.cards.length > 0 ? (
-            <p className="m-0 mt-1 text-read text-ink-soft">
-              {[view.subjectName, view.cards.length > 0 ? `${view.cards.length} thẻ` : null].filter(Boolean).join(" · ")}
-            </p>
-          ) : null}
         </div>
-        <CardList cards={view.cards} />
+        <CardList cards={view.cards} subjectName={view.subjectName} />
       </div>
     );
   }

@@ -24,7 +24,7 @@ const PENDING_COPY: [file: string, text: string][] = [
   ["components/today/start-button.tsx", "Chưa mở được phiên. Thử lại sau giây lát."],
   ["components/review/answer-box.tsx", "Câu trả lời dài hơn 4.000 ký tự. Rút gọn bớt rồi gửi."],
   ["components/review/review-screen.tsx", "kết quả hiện ở đây sau khi gửi"],
-  ["components/review/review-screen.tsx", "Câu trả lời của bạn · đã lưu {clock(at)}"],
+  ["components/review/review-screen.tsx", "Câu trả lời của bạn · đã lưu lúc {clock(at)}"],
   ["components/review/review-screen.tsx", "Chưa gửi được. Câu trả lời vẫn ở đây, bạn gửi lại nhé."],
   ["components/review/review-screen.tsx", "Chưa chấm được. Câu trả lời của bạn đã được lưu."],
   ["components/review/review-screen.tsx", "Chấm bài đang tạm tắt. Câu trả lời của bạn đã được lưu."],
