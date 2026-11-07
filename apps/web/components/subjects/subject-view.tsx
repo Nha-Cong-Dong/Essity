@@ -15,7 +15,6 @@ import { dayLabel } from "@/lib/today-copy";
 // V22: the one-subject screen as a value, so the page and the design preview draw the same thing.
 export function SubjectView({
   subject,
-  prog,
   state,
   nothingDue,
   dueCards,
@@ -25,7 +24,6 @@ export function SubjectView({
   nodes,
 }: {
   subject: { id: string; name: string; exam_date: string; days_until_exam: number };
-  prog: { done: number; total: number } | null;
   state: SuggestionState;
   nothingDue: boolean;
   dueCards: StackCard[];

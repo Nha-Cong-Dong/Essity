@@ -31,7 +31,6 @@ async function Fixture() {
     <AppShell current="/subjects" account={<AccountMenu email="xem-thu@example.com" />}>
       <SubjectView
         subject={{ ...SUBJECT_FIXTURE, exam_date: "2026-12-15", days_until_exam: 46 }}
-        prog={{ done: 3, total: 93 }}
         state={SUBJECT_STATES.suggested}
         nothingDue={false}
         dueCards={[

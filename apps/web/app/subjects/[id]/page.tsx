@@ -15,7 +15,6 @@ import { loadOutline } from "@/lib/outline";
 import { loadQuestionList } from "@/lib/question-list";
 import { getStats } from "@/lib/stats-api";
 import { outlineView } from "@/lib/syllabus/api";
-import { progress } from "@/lib/syllabus/tree";
 import { entryRow } from "@/lib/subject-entries";
 import { getSuggestions, getToday } from "@/lib/today";
 import { suggestionState } from "@/lib/today-adapt";
@@ -56,7 +55,6 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
     .then((r) => r.view.subjects.find((x) => x.id === subject.id) ?? null)
     .catch(() => null);
   const view = outline === null ? null : outlineView(outline);
-  const prog = view?.kind === "ready" ? progress(view.nodes) : null;
   const entries = entryRow(subject.id, {
     outline,
     questions: questions && { ready: questions.ready, total: questions.total },
@@ -66,7 +64,6 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
   return (
     <SubjectView
       subject={subject}
-      prog={prog}
       state={state}
       nothingDue={nothingDue}
       dueCards={dueCards}

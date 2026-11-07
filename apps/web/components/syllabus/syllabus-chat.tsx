@@ -35,7 +35,7 @@ export function OutlineChat({ subjectId, onChanged }: { subjectId: string; onCha
         body: JSON.stringify({ text: words }),
       });
       if (response.status === 401) {
-        window.location.assign("/login");
+        window.location.assign(new URL("/login", window.location.origin).href);
         return;
       }
       const data = (await response.json().catch(() => null)) as {
@@ -71,7 +71,7 @@ export function OutlineChat({ subjectId, onChanged }: { subjectId: string; onCha
     try {
       const response = await fetch(`/api/commands/${id}/undo`, { method: "POST" });
       if (response.status === 401) {
-        window.location.assign("/login");
+        window.location.assign(new URL("/login", window.location.origin).href);
         return;
       }
       if (response.ok) {

@@ -15,6 +15,8 @@ import remarkMath from "remark-math";
 const KATEX = { strict: "ignore", trust: false, throwOnError: false, output: "htmlAndMathml" } as const;
 
 const components: ComponentProps<typeof ReactMarkdown>["components"] = {
+  // `node` is react-markdown's AST handle; it must not reach the DOM.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer nofollow" />,
 };
 
