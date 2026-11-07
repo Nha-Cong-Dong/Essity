@@ -6,7 +6,7 @@ const STAR = "M50 3 L59 29 L86 19 L71 43 L97 58 L68 63 L72 95 L50 74 L28 95 L32 
 
 /** The sticker chain of the mockup: one star shape, shrinking and turning toward the form. */
 const CHAIN = [
-  { cls: "left-[35%] top-[34px] w-16 rotate-[8deg] fill-white stroke-white", sw: 2 },
+  { cls: "left-[35%] top-[34px] w-16 rotate-[8deg] fill-on-plum stroke-on-plum", sw: 2 },
   { cls: "left-[43.5%] top-[88px] w-11 rotate-[26deg] fill-accent-bright stroke-accent-bright", sw: 2 },
   { cls: "left-[51.5%] top-14 w-[30px] rotate-[44deg] fill-rose-300 stroke-rose-900", sw: 4 },
   { cls: "left-[58%] top-7 w-5 rotate-[62deg] fill-rose-300 stroke-rose-900", sw: 5 },
