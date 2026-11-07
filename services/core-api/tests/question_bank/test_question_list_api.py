@@ -3,6 +3,7 @@ their readiness. Rows are written through the models; readiness is computed on e
 card saved later flips the question with no extra step."""
 
 import uuid
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -266,7 +267,9 @@ def test_waiting_line_uses_the_number_printed_in_the_title(bench: Bench) -> None
 def test_ready_question_lists_prerequisite_cards_first_card_per_section(bench: Bench) -> None:
     tcp, udp = bench.section("TCP"), bench.section("UDP")
     first = bench.card(tcp)
-    bench.card(tcp)  # a later card of the same section is not listed
+    later = bench.card(tcp)  # a later card of the same section is not listed
+    first.created_at = later.created_at - timedelta(minutes=1)  # one transaction: same now()
+    bench.session.flush()
     second = bench.card(udp)
     ready = bench.question(tcp, udp)
     waiting = bench.question(tcp, bench.section("IP", studied=False))
