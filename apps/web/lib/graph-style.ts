@@ -43,8 +43,8 @@ export function graphStylesheet(p: Palette, zoom: number): StylesheetJson {
         "background-width": dot,
         "background-height": dot,
         "background-clip": "none",
-        label: (n: cytoscape.NodeSingular) =>
-          zoom >= 1 || n.hasClass("near") || n.hasClass("picked") ? String(n.data("label")) : "",
+        // Every card carries its label at any zoom; a long one wraps (never "…").
+        label: "data(label)",
         color: p.ink,
         "font-size": 13 / zoom,
         "font-weight": 600,
@@ -52,8 +52,8 @@ export function graphStylesheet(p: Palette, zoom: number): StylesheetJson {
         "text-outline-width": 3 / zoom,
         "text-valign": "bottom",
         "text-margin-y": 2 / zoom,
-        "text-wrap": "ellipsis",
-        "text-max-width": `${130 / zoom}px`,
+        "text-wrap": "wrap",
+        "text-max-width": `${150 / zoom}px`,
       },
     },
     {

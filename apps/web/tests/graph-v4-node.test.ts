@@ -11,6 +11,16 @@ const p: Palette = { ink: "#2e1720", line: "#8f6676", sheet: "#ffffff", focus: "
 const svg = (selected: boolean) => decodeURIComponent(dotImage(p, selected).split(",").slice(1).join(","));
 
 describe("graph node style", () => {
+  // Red when: a card loses its label at some zoom, or a long label is cut with an ellipsis again.
+  it("every card shows its full label at any zoom, wrapped and never cut with an ellipsis", () => {
+    for (const zoom of [0.4, 0.8, 1, 2]) {
+      const rule = (graphStylesheet(p, zoom).find((r) => r.selector === "node.card") as unknown as { style: Record<string, unknown> }).style;
+      expect(rule.label).toBe("data(label)");
+      expect(rule["text-wrap"]).toBe("wrap");
+      expect(rule["text-max-width"]).toBeTruthy();
+    }
+    expect(JSON.stringify(graphStylesheet(p, 1))).not.toContain("ellipsis");
+  });
   it("a card dot is filled with --hong and rimmed with the ground", () => {
     const s = svg(false);
     expect(s).toContain(`fill='${p.hong}'`);

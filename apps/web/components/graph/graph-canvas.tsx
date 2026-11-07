@@ -4,7 +4,7 @@ import cytoscape, { type Core, type ElementDefinition } from "cytoscape";
 import fcose from "cytoscape-fcose";
 import { useEffect, useRef } from "react";
 
-import { neighbourhood, shortLabel, type GraphSection, type GraphView } from "@/lib/graph";
+import { neighbourhood, type GraphSection, type GraphView } from "@/lib/graph";
 import { createFitLock } from "@/lib/graph-fit-lock";
 import { graphStylesheet, type Palette } from "@/lib/graph-style";
 
@@ -41,7 +41,7 @@ function elements(view: GraphView, sections: GraphSection[]): ElementDefinition[
     .map((s) => ({ data: { id: `s:${s.id}`, label: s.title, isSection: true }, selectable: false, grabbable: false }));
   for (const c of view.cards) {
     const parent = sections.some((s) => s.id === c.sectionId) ? { parent: `s:${c.sectionId}` } : {};
-    out.push({ data: { id: c.id, ...parent, label: shortLabel(c.title), title: c.title }, classes: "card" });
+    out.push({ data: { id: c.id, ...parent, label: c.title, title: c.title }, classes: "card" });
   }
   for (const e of view.edges) {
     out.push({ data: { id: e.id, source: e.from, target: e.to, kind: e.kind }, classes: e.kind });
