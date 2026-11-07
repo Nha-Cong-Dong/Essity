@@ -295,7 +295,9 @@ export function PracticeAnswer({
   if (phase.kind === "failed" || phase.kind === "gone") {
     return (
       <div className={wrap} role="alert">
-        <p className="m-0">{phase.kind === "gone" ? "Câu này không còn trong luyện tập." : "Không tải được câu hỏi."}</p>
+        <p className="m-0">
+          {phase.kind === "gone" ? "Câu này không còn trong luyện tập." : "Không tải được câu hỏi."}
+        </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {phase.kind === "failed" && (
             <Button variant="secondary" onClick={() => void load()}>
@@ -315,126 +317,126 @@ export function PracticeAnswer({
   return (
     <div className={`${wrap} flex flex-col gap-5`} data-practice-answer>
       <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7">
-      <p className="m-0 text-meta text-ink-soft">Luyện tập</p>
-      <h1 data-user className="m-0 mt-3.5 font-display text-question wrap-anywhere">
-        {prompt}
-      </h1>
-      {phase.kind === "writing" ? (
-        <>
-          <AnswerBox
-            id="practice-answer"
-            value={text}
-            onChange={change}
-            onSubmit={() => void submit(false)}
-            onForgot={() => void submit(true)}
-            save={save}
-            pending={null}
-          />
-          {sendFailed && (
-            <p role="alert" className="m-0 mt-4 text-meta">
-              Chưa gửi được. Câu trả lời vẫn ở đây, bạn gửi lại nhé.
-            </p>
-          )}
-        </>
-      ) : (
-        <>
-          {phase.dontRemember ? (
-            <p className="m-0 mt-5 font-hand text-read text-ink-soft">Bạn chọn Không nhớ.</p>
-          ) : (
-            <p className="m-0 mt-5 text-read whitespace-pre-wrap text-hong-text wrap-anywhere">{phase.text}</p>
-          )}
-          {view?.submitted_at && (
-            <p className="m-0 mt-3 border-t border-line pt-3 text-meta text-ink-soft">
-              Câu trả lời của bạn · đã lưu {clock(Date.parse(view.submitted_at))}
-            </p>
-          )}
-      </>
-      )}
+        <p className="m-0 text-meta text-ink-soft">Luyện tập</p>
+        <h1 data-user className="m-0 mt-3.5 font-display text-question wrap-anywhere">
+          {prompt}
+        </h1>
+        {phase.kind === "writing" ? (
+          <>
+            <AnswerBox
+              id="practice-answer"
+              value={text}
+              onChange={change}
+              onSubmit={() => void submit(false)}
+              onForgot={() => void submit(true)}
+              save={save}
+              pending={null}
+            />
+            {sendFailed && (
+              <p role="alert" className="m-0 mt-4 text-meta">
+                Chưa gửi được. Câu trả lời vẫn ở đây, bạn gửi lại nhé.
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            {phase.dontRemember ? (
+              <p className="m-0 mt-5 font-hand text-read text-ink-soft">Bạn chọn Không nhớ.</p>
+            ) : (
+              <p className="m-0 mt-5 text-read whitespace-pre-wrap text-hong-text wrap-anywhere">{phase.text}</p>
+            )}
+            {view?.submitted_at && (
+              <p className="m-0 mt-3 border-t border-line pt-3 text-meta text-ink-soft">
+                Câu trả lời của bạn · đã lưu {clock(Date.parse(view.submitted_at))}
+              </p>
+            )}
+          </>
+        )}
       </Block>
       {phase.kind !== "writing" && (
-          <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7" aria-live="polite">
-            {view === null || (waiting && !late) ? (
-              <div aria-busy="true">
-                <p className="m-0 text-ink-soft">Đang chấm dựa trên tài liệu của bạn…</p>
-              </div>
-            ) : result && view ? (
-              <>
-                <GradeResult result={result} />
-                <PracticeResultExtras
-                  answerSource={view.result?.answer_origin === "ai" ? "ai" : "bank"}
-                  differsFromCard={view.result?.differs_from_card_id ? true : undefined}
-                />
-                {overrideMode === "updated" && (
-                  <p role="status" className="m-0 mt-6 rounded-control bg-sunken px-4 py-3 text-meta">
-                    Đã cập nhật kết quả và lịch ôn.
-                  </p>
-                )}
-                {overrideFailed && (
-                  <p role="alert" className="m-0 mt-4 text-meta">
-                    Chưa gửi được. Bạn bấm lại nhé.
-                  </p>
-                )}
-                <div className="mt-8 flex flex-wrap items-center gap-2">
-                  <Button ref={nextButton} onClick={onNext} className="max-sm:w-full">
-                    {nextLabel}
-                  </Button>
-                  <Button variant="secondary" onClick={redo}>
-                    Làm lại câu này
-                  </Button>
-                  {overrideMode === "choosing" ? (
-                    <>
-                      <Button variant="secondary" pending={busy} onClick={() => void override("correct")}>
-                        Thực ra tôi đúng
-                      </Button>
-                      <Button variant="secondary" pending={busy} onClick={() => void override("incorrect")}>
-                        Thực ra tôi sai
-                      </Button>
-                    </>
-                  ) : (
-                    <Button variant="quiet" onClick={() => setOverrideMode("choosing")}>
-                      Chấm sai
-                    </Button>
-                  )}
-                  {removed ? (
-                    <>
-                      <Pen>Đã gỡ khỏi luyện tập.</Pen>
-                      <Button variant="quiet" onClick={() => void undoRemove()}>
-                        Hoàn tác
-                      </Button>
-                    </>
-                  ) : (
-                    <Button variant="quiet" onClick={() => void remove()}>
-                      Gỡ khỏi luyện tập
-                    </Button>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="m-0">
-                  {view.grading === "failed"
-                    ? "Chưa chấm được. Câu trả lời của bạn đã được lưu."
-                    : "Câu trả lời đã được lưu. Đang chấm, bạn cứ làm câu tiếp theo."}
+        <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7" aria-live="polite">
+          {view === null || (waiting && !late) ? (
+            <div aria-busy="true">
+              <p className="m-0 text-ink-soft">Đang chấm dựa trên tài liệu của bạn…</p>
+            </div>
+          ) : result && view ? (
+            <>
+              <GradeResult result={result} />
+              <PracticeResultExtras
+                answerSource={view.result?.answer_origin === "ai" ? "ai" : "bank"}
+                differsFromCard={view.result?.differs_from_card_id ? true : undefined}
+              />
+              {overrideMode === "updated" && (
+                <p role="status" className="m-0 mt-6 rounded-control bg-sunken px-4 py-3 text-meta">
+                  Đã cập nhật kết quả và lịch ôn.
                 </p>
-                <div className="mt-6 flex flex-wrap items-center gap-2">
-                  {view.grading === "failed" ? (
-                    <>
-                      <Button pending={busy} onClick={() => void regrade()}>
-                        Chấm lại
-                      </Button>
-                      <Button ref={nextButton} variant="quiet" onClick={onNext}>
-                        {nextLabel}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button ref={nextButton} onClick={onNext}>
+              )}
+              {overrideFailed && (
+                <p role="alert" className="m-0 mt-4 text-meta">
+                  Chưa gửi được. Bạn bấm lại nhé.
+                </p>
+              )}
+              <div className="mt-8 flex flex-wrap items-center gap-2">
+                <Button ref={nextButton} onClick={onNext} className="max-sm:w-full">
+                  {nextLabel}
+                </Button>
+                <Button variant="secondary" onClick={redo}>
+                  Làm lại câu này
+                </Button>
+                {overrideMode === "choosing" ? (
+                  <>
+                    <Button variant="secondary" pending={busy} onClick={() => void override("correct")}>
+                      Thực ra tôi đúng
+                    </Button>
+                    <Button variant="secondary" pending={busy} onClick={() => void override("incorrect")}>
+                      Thực ra tôi sai
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="quiet" onClick={() => setOverrideMode("choosing")}>
+                    Chấm sai
+                  </Button>
+                )}
+                {removed ? (
+                  <>
+                    <Pen>Đã gỡ khỏi luyện tập.</Pen>
+                    <Button variant="quiet" onClick={() => void undoRemove()}>
+                      Hoàn tác
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="quiet" onClick={() => void remove()}>
+                    Gỡ khỏi luyện tập
+                  </Button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="m-0">
+                {view.grading === "failed"
+                  ? "Chưa chấm được. Câu trả lời của bạn đã được lưu."
+                  : "Câu trả lời đã được lưu. Đang chấm, bạn cứ làm câu tiếp theo."}
+              </p>
+              <div className="mt-6 flex flex-wrap items-center gap-2">
+                {view.grading === "failed" ? (
+                  <>
+                    <Button pending={busy} onClick={() => void regrade()}>
+                      Chấm lại
+                    </Button>
+                    <Button ref={nextButton} variant="quiet" onClick={onNext}>
                       {nextLabel}
                     </Button>
-                  )}
-                </div>
-              </>
-            )}
-          </Block>
+                  </>
+                ) : (
+                  <Button ref={nextButton} onClick={onNext}>
+                    {nextLabel}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </Block>
       )}
     </div>
   );
