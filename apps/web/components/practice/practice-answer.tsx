@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pen, PracticeResultExtras } from "@/components/practice/practice-extras";
 import { AnswerBox, clock, type SaveState } from "@/components/review/answer-box";
 import { GradeResult } from "@/components/review/grade-result";
+import { Block } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
 import { clearDraft, pickDraft, readDraft, writeDraft } from "@/lib/draft";
 import { type PracticeApi, practiceApi, type PracticeView } from "@/lib/practice-client";
@@ -312,7 +313,8 @@ export function PracticeAnswer({
   const prompt = phase.kind === "writing" ? phase.view.question.prompt : phase.prompt;
   const result = view ? toResult(view) : null;
   return (
-    <div className={wrap} data-practice-answer>
+    <div className={`${wrap} flex flex-col gap-5`} data-practice-answer>
+      <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7">
       <p className="m-0 text-meta text-ink-soft">Luyện tập</p>
       <h1 data-user className="m-0 mt-3.5 font-display text-question wrap-anywhere">
         {prompt}
@@ -346,7 +348,11 @@ export function PracticeAnswer({
               Câu trả lời của bạn · đã lưu {clock(Date.parse(view.submitted_at))}
             </p>
           )}
-          <div className="mt-8" aria-live="polite">
+      </>
+      )}
+      </Block>
+      {phase.kind !== "writing" && (
+          <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7" aria-live="polite">
             {view === null || (waiting && !late) ? (
               <div aria-busy="true">
                 <p className="m-0 text-ink-soft">Đang chấm dựa trên tài liệu của bạn…</p>
@@ -428,8 +434,7 @@ export function PracticeAnswer({
                 </div>
               </>
             )}
-          </div>
-        </>
+          </Block>
       )}
     </div>
   );

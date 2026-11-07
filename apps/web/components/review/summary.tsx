@@ -1,3 +1,5 @@
+import { Mascot } from "@/components/mascot";
+import { Block } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
 import { dayLabel } from "@/lib/today-copy";
 
@@ -39,23 +41,26 @@ export function Summary({
           {total - answered} câu còn lại sẽ quay về lần ôn sau.
         </p>
       )}
-      <div className="grid w-full grid-cols-2 gap-4">
-        <div className="rounded-tile bg-hong p-8">
-          <p className="m-0 font-display text-mega" data-testid="answered">
-            {answered}
-          </p>
-          <p data-copy="tam" className="m-0 mt-2 text-lead">
-            câu đã làm
-          </p>
-        </div>
-        <div className="rounded-tile border border-line p-8">
+      <div className="grid w-full gap-4 min-[641px]:grid-cols-2">
+        <Block tier="field" className="relative flex flex-col justify-between gap-2 overflow-hidden p-6 min-[641px]:p-8">
+          <div>
+            <p className="m-0 font-display text-mega" data-testid="answered">
+              {answered}
+            </p>
+            <p data-copy="tam" className="m-0 mt-2 text-lead text-on-plum-soft">
+              câu đã làm
+            </p>
+          </div>
+          <Mascot pose="khen" size="sm" tone="solid" className="absolute right-3 bottom-0" />
+        </Block>
+        <Block tier="sheet" className="p-6 min-[641px]:p-8">
           <p className="m-0 font-display text-mega" data-testid="correct">
             {correct}
           </p>
           <p data-copy="tam" className="m-0 mt-2 text-lead text-ink-soft">
             câu đúng
           </p>
-        </div>
+        </Block>
       </div>
       {nextDay && (
         <p data-copy="tam" className="m-0 text-read">
