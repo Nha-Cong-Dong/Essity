@@ -103,3 +103,15 @@ describe("M1/M2: mascot art and roles", () => {
     expect(c2.querySelector("[data-mascot-kind=cloud]")).not.toBeNull();
   });
 });
+
+describe("C5 M2: mascot by role (structure)", () => {
+  it("auth is the sun (chao), landing is the cloud (chao)", () => {
+    expect(src("components/auth/auth-layout.tsx")).toMatch(/kind="sun" pose="chao"/);
+    expect(src("components/landing/landing.tsx")).toMatch(/kind="cloud" pose="chao"/);
+  });
+  it("screens with hint/wait/empty poses leave the kind default (cloud)", () => {
+    for (const f of ["components/vault/vault-view.tsx", "components/practice/practice-live.tsx", "components/stats/stats-screen.tsx"]) {
+      expect(src(f)).not.toMatch(/kind="sun"/);
+    }
+  });
+});
