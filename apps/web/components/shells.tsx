@@ -1,9 +1,11 @@
 import { CommandSlot } from "@/components/command-slot";
 import type { ReactNode } from "react";
 
+import { ArtBackdrop } from "@/components/art-backdrop";
 import { BrandMark } from "@/components/brand-mark";
 import { MainNav, type NavItem } from "@/components/main-nav";
 import { Mascot } from "@/components/mascot";
+import { RailToggle } from "@/components/rail-toggle";
 import { cn } from "@/lib/utils";
 
 // The three frames of design system v3.1 §5. Header and content share one container, so the
@@ -17,7 +19,7 @@ function Logo({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2 font-display text-logo tracking-[-0.02em] text-(color:--logo-ink)", className)}>
       <BrandMark size={28} />
-      Essity
+      <span>Essity</span>
     </span>
   );
 }
@@ -64,7 +66,8 @@ export function AppShell({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-bg min-[1024px]:flex-row">
+    <div className="relative isolate flex min-h-full flex-1 flex-col bg-bg min-[1024px]:flex-row">
+      <ArtBackdrop />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-(--z-header) focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-full focus:bg-sheet focus:px-4 focus:font-medium focus:text-ink focus:inset-ring-2 focus:inset-ring-focus"
@@ -72,18 +75,21 @@ export function AppShell({
         Bỏ qua tới nội dung
       </a>
       <header
+        id="app-rail"
         className={cn(
           "sticky top-0 z-(--z-header) flex h-12 items-center gap-4 border-b border-line bg-bg px-4 sm:h-14",
-          "lg:h-dvh lg:w-58 lg:shrink-0 lg:flex-col lg:items-stretch lg:gap-0 lg:self-start lg:border-r-0 lg:border-b-0 lg:px-4 lg:pt-8 lg:pb-6",
+          "lg:h-dvh lg:w-(--rail-w) lg:shrink-0 lg:flex-col lg:items-stretch lg:gap-0 lg:self-start lg:border-r lg:border-b-0 lg:border-line lg:bg-rail lg:px-4 lg:pt-8 lg:pb-6",
+          "lg:transition-[width] lg:duration-150 motion-reduce:transition-none lg:rail-collapsed:px-2",
         )}
       >
-        <div className="flex items-center gap-2 min-[1024px]:px-3">
-          <Logo />
-          <Mascot pose="glyph" size="sm" className="hidden size-6 min-[1024px]:block" />
+        <div className="flex items-center gap-2 min-[1024px]:px-3 min-[1024px]:rail-collapsed:justify-center min-[1024px]:rail-collapsed:px-0">
+          <Logo className="min-[1024px]:rail-collapsed:[&>span]:sr-only min-[1024px]:rail-collapsed:gap-0" />
+          <Mascot pose="glyph" size="sm" className="hidden size-6 min-[1024px]:block min-[1024px]:rail-collapsed:hidden" />
         </div>
         <MainNav current={current} />
-        <div className="ml-auto flex min-w-10 justify-end min-[1024px]:mt-auto min-[1024px]:ml-0 min-[1024px]:justify-start">
-          {account}
+        <div className="ml-auto flex min-w-10 items-center justify-end min-[1024px]:mt-auto min-[1024px]:ml-0 min-[1024px]:flex-col min-[1024px]:items-stretch min-[1024px]:justify-start min-[1024px]:gap-2">
+          <RailToggle />
+          <div className="min-[1024px]:rail-collapsed:self-center">{account}</div>
         </div>
       </header>
       <main id="main" tabIndex={-1} className={cn(CONTAINER, "outline-none flex min-w-0 flex-1 flex-col pt-6 pb-[calc(56px+env(safe-area-inset-bottom)+16px)] min-[1024px]:pt-10 min-[1024px]:pb-24")}>

@@ -30,6 +30,13 @@
   }
 }
 
+/* SHELL-ART: the left rail is collapsed to icons when <html data-rail="collapsed"> (components/rail-toggle.tsx). */
+@custom-variant rail-collapsed (html[data-rail="collapsed"] &);
+
+html[data-rail="collapsed"] {
+  --rail-w: 64px;
+}
+
 @theme inline {
   --font-sans: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
@@ -56,6 +63,8 @@
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-line: var(--line);
+  --color-rail: var(--rail);
+  --color-art: var(--art);
   --color-line-strong: var(--line-strong);
   --color-hong: var(--hong);
   --color-on-hong: var(--on-hong);
@@ -217,6 +226,7 @@
   --col-focus: 1040px; /* the answer and result screen, two columns (final §5, plan D-13) */
   --col-session: 720px; /* the study session: one column (T7.12a C6) */
   --header-h: 64px;
+  --rail-w: 232px; /* SHELL-ART: left rail, 64px when collapsed (html[data-rail="collapsed"]) */
   --header-focus-h: 56px;
   --space-group: 24px;
   --space-section: 64px;
@@ -250,6 +260,9 @@
   --ink: #2e1720;
   --ink-soft: #6d4e59;
   --line: #e3c9d2; /* decoration */
+  --rail: #f1c4d2; /* SHELL-ART: the left rail, one step deeper than --bg (ink-soft on it 4.6) */
+  --art: rgb(174 35 99 / 0.1); /* SHELL-ART: dots and contour lines behind the page, decoration only */
+  --art-grid: rgb(174 35 99 / 0.06);
   --line-strong: #8f6676; /* input borders reach 3:1 */
   --hong: #d1347a; /* brand fill: buttons and blocks. Never body text on a light surface (3.83): use --hong-text */
   --on-hong: #ffffff;
@@ -340,6 +353,9 @@
     --ink: #f6ebef;
     --ink-soft: #c8abb5;
     --line: #4e353e;
+  --rail: #1d1115; /* SHELL-ART: lighter than --bg so the rail reads as its own surface */
+  --art: rgb(252 123 173 / 0.1);
+  --art-grid: rgb(252 123 173 / 0.05);
     --line-strong: #9d7d8c; /* v4 spec #8a6b7a is 2.69 on --raised */
     --hong: #fc7bad;
     --on-hong: #1c0c12;
@@ -432,6 +448,9 @@
   --ink: #f6ebef;
   --ink-soft: #c8abb5;
   --line: #4e353e;
+  --rail: #1d1115; /* SHELL-ART: lighter than --bg so the rail reads as its own surface */
+  --art: rgb(252 123 173 / 0.1);
+  --art-grid: rgb(252 123 173 / 0.05);
   --line-strong: #9d7d8c; /* v4 spec #8a6b7a is 2.69 on --raised */
   --hong: #fc7bad;
   --on-hong: #1c0c12;

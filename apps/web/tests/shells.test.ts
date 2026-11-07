@@ -44,9 +44,13 @@ describe("frames share one container (§5)", () => {
   it("AppShell (V22): a neutral page, a sticky full-height rail from 1024px, a top bar below, five nav items", () => {
     const markup = renderToStaticMarkup(h(AppShell, { current: "/today", children: "x" }));
     expect(markup).toMatch(/bg-bg/);
-    expect(markup).not.toMatch(/ground-dots|bg-ground|bg-rail/);
+    // SHELL-ART (user, 08/11): the rail has its own ground (--rail) and the page a static art backdrop.
+    expect(markup).not.toMatch(/ground-dots|bg-ground/);
+    expect(markup).toMatch(/lg:bg-rail/);
+    expect(markup).toMatch(/data-art="backdrop"/);
+    expect(markup).toMatch(/aria-controls="app-rail"|id="app-rail"/);
     expect(markup).toMatch(/lg:h-dvh/);
-    expect(markup).toMatch(/lg:w-58/);
+    expect(markup).toMatch(/lg:w-\(--rail-w\)/);
     expect(markup).toMatch(/sticky top-0/);
     expect(markup).toMatch(/aria-current="page"/);
     expect(markup).toMatch(/text-logo/);
