@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { ArtBackdrop } from "@/components/art-backdrop";
 import { BrandMark } from "@/components/brand-mark";
 import { MainNav, type NavItem } from "@/components/main-nav";
-import { Mascot } from "@/components/mascot";
 import { RailToggle } from "@/components/rail-toggle";
 import { cn } from "@/lib/utils";
 
@@ -82,13 +81,13 @@ export function AppShell({
           "lg:transition-[width] lg:duration-150 motion-reduce:transition-none lg:rail-collapsed:px-2",
         )}
       >
-        <div className="flex items-center gap-2 min-[1024px]:px-3 min-[1024px]:rail-collapsed:justify-center min-[1024px]:rail-collapsed:px-0">
+        {/* UI-NITS-0811: "Essity" and the collapse button share the top row; the button sits flush on the rail's outer right edge (rail padding cancelled). Collapsed: mark above button. */}
+        <div className="flex items-center gap-2 min-[1024px]:-mr-4 min-[1024px]:justify-between min-[1024px]:pl-3 min-[1024px]:rail-collapsed:mr-0 min-[1024px]:rail-collapsed:flex-col min-[1024px]:rail-collapsed:justify-center min-[1024px]:rail-collapsed:gap-2 min-[1024px]:rail-collapsed:pl-0">
           <Logo className="min-[1024px]:rail-collapsed:[&>span]:sr-only min-[1024px]:rail-collapsed:gap-0" />
-          <Mascot pose="glyph" size="sm" className="hidden size-6 min-[1024px]:block min-[1024px]:rail-collapsed:hidden" />
+          <RailToggle />
         </div>
         <MainNav current={current} />
         <div className="ml-auto flex min-w-10 items-center justify-end min-[1024px]:mt-auto min-[1024px]:ml-0 min-[1024px]:flex-col min-[1024px]:items-stretch min-[1024px]:justify-start min-[1024px]:gap-2">
-          <RailToggle />
           <div className="min-[1024px]:rail-collapsed:self-center">{account}</div>
         </div>
       </header>

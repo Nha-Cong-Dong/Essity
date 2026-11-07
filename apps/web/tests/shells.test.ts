@@ -100,3 +100,19 @@ describe("frames share one container (§5)", () => {
     expect(source).toMatch(/size-10[^"]*rounded-full[^"]*bg-sunken/);
   });
 });
+
+describe("UI-NITS-0811: sidebar", () => {
+  const markup = renderToStaticMarkup(h(AppShell, { current: "/today", children: "x" }));
+  it("UI-NITS-0811: no cloud mascot beside the wordmark", () => {
+    expect(markup).not.toMatch(/mascot|glyph/i);
+  });
+  it("UI-NITS-0811: the collapse button is in the wordmark row, above the nav", () => {
+    const toggle = markup.indexOf('aria-controls="app-rail"');
+    expect(toggle).toBeGreaterThan(-1);
+    expect(toggle).toBeLessThan(markup.indexOf("<nav"));
+  });
+  it("UI-NITS-0811: the account name is hidden when the rail is collapsed", () => {
+    const src = readFileSync(path.join(__dirname, "../components/account-menu.tsx"), "utf8");
+    expect(src).toMatch(/rail-collapsed:hidden[^"]*">\{email\.split/);
+  });
+});

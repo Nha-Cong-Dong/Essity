@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { shortLabel } from "@/lib/graph";
 import { settleLabels } from "@/lib/graph-labels";
-import { multiStylesheet } from "@/lib/graph-multi-style";
+import { INITIAL_ZOOM_STEP, multiStylesheet } from "@/lib/graph-multi-style";
 import { optionsFor, seededRandom, type SimEdge, type SimNode, spiralStart, stepSim } from "@/lib/graph-sim";
 import { type MultiCard, type SubjectGraph, v4Highlights } from "@/lib/graph-multi";
 import { buildTopicGraph, tint } from "@/lib/graph-topic";
@@ -84,7 +84,7 @@ export function KnowledgeGraph({
         }),
         ...model.edges.map((e) => ({ data: { id: e.id, source: e.from, target: e.to } })),
       ],
-      style: [...multiStylesheet(ink, line, sheet, soft, display), ...v4Highlights(ink, hong, now)],
+      style: [...multiStylesheet(ink, line, sheet, soft, display, css.getPropertyValue("--bg").trim() || sheet), ...v4Highlights(ink, hong, now)],
       minZoom: 0.2,
       maxZoom: 3,
       boxSelectionEnabled: false,
@@ -210,6 +210,8 @@ export function KnowledgeGraph({
         cy.zoom(MAX_FIT_ZOOM);
         cy.center();
       }
+      // UI-NITS-0811: the first view opens one zoom step further out (the Fit button still fits).
+      cy.zoom({ level: cy.zoom() / INITIAL_ZOOM_STEP, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
       cy.on("grab", "node", wake);
     };
     startSim(); // the layout is synchronous (animate: false), so the nodes are already placed

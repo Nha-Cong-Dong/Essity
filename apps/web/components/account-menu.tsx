@@ -87,7 +87,7 @@ export function AccountMenu({ email }: { email: string }) {
       </Menu.Portal>
     </Menu.Root>
     {/* The rail's account row (V22): the name beside the button, from 1024px. */}
-    <span className="hidden min-w-0 truncate text-meta text-ink-soft min-[1024px]:block">{email.split("@")[0]}</span>
+    <span className="hidden min-w-0 truncate text-meta text-ink-soft min-[1024px]:block min-[1024px]:rail-collapsed:hidden">{email.split("@")[0]}</span>
     </div>
   );
 }

@@ -92,3 +92,25 @@ describe("overall stats (I1, I2)", () => {
     for (const d of ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]) expect(text).toContain(d);
   });
 });
+
+describe("UI-NITS-0811: charts always render", () => {
+  const noData = { today: "2026-10-30", subjects: [], cells: [], totals: undefined } as never;
+  it("UI-NITS-0811: no subjects and no cells still draws the trend and the year chart, each with Chưa có số liệu", () => {
+    const { container } = render(<Screen view={noData} mode="ready" />);
+    expect(container.querySelector("[data-trend]")).not.toBeNull();
+    const empties = container.querySelectorAll("[data-empty-chart]");
+    expect(empties.length).toBe(2);
+    for (const e of empties) expect(e.textContent).toContain("Chưa có số liệu");
+    expect(container.querySelector("#activity")).not.toBeNull();
+    expect(container.querySelectorAll(PRIMARY).length).toBe(1);
+  });
+  it("UI-NITS-0811: a state with subjects but no days marks the charts as empty too", () => {
+    const { container } = render(<StatsScreen state="empty" />);
+    expect(container.querySelector("[data-trend]")).not.toBeNull();
+    expect(container.querySelectorAll("[data-empty-chart]").length).toBeGreaterThan(0);
+  });
+  it("UI-NITS-0811: a full year has no empty-chart notes", () => {
+    const { container } = render(<StatsScreen state="full-year" />);
+    expect(container.querySelectorAll("[data-empty-chart]").length).toBe(0);
+  });
+});
