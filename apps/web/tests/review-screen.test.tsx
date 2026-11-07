@@ -115,6 +115,21 @@ describe("ReviewScreen (T2.15)", () => {
     expect(screen.getByRole("button", { name: "Không nhớ" })).toBeTruthy();
   });
 
+  // KNOWN-FIX B-03. Red when: while the first question loads the screen shows only the sr-only status (an empty frame).
+  it("B-03: shows a visible skeleton while the first question loads", async () => {
+    let release: (r: Reply<Current>) => void = () => {};
+    const api = fakeApi({ current: vi.fn(() => new Promise<Reply<Current>>((r) => (release = r))) });
+    await show(api);
+    const wait = document.querySelector("[data-question-loading]");
+    expect(wait).toBeTruthy();
+    expect(wait?.getAttribute("aria-busy")).toBe("true");
+    expect(wait?.querySelector(".animate-pulse")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe("Đang tải câu hỏi.");
+    await act(async () => release(ok(current())));
+    expect(document.querySelector("[data-question-loading]")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Vì sao có ngày và đêm?" })).toBeTruthy();
+  });
+
   it("opens the draft when the question has none yet", async () => {
     const api = await show(fakeApi({ current: vi.fn(async () => ok(current({ attempt: null }))) }));
     expect(api.open).toHaveBeenCalledWith(SESSION);
