@@ -1,3 +1,4 @@
+import { Check } from "lucide-react"
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
@@ -27,7 +28,7 @@ function FilterChip({ className, children, checked, onCheckedChange, ...props }:
         {...props}
       />
       <span aria-hidden="true" className="w-3 shrink-0 text-center font-semibold">
-        {checked ? "✓" : ""}
+        {checked ? <Check className="mx-auto size-3.5" strokeWidth={3} /> : null}
       </span>
       <span className="min-w-0 wrap-anywhere">{children}</span>
     </label>

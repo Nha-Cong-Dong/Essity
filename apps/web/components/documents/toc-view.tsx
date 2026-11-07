@@ -1,3 +1,4 @@
+import { Block } from "@/components/screen-kit";
 import { unreadableText } from "@/components/documents/document-list";
 import type { TocNode } from "@/lib/toc";
 
@@ -14,8 +15,8 @@ function Branch({ nodes, depth }: { nodes: TocNode[]; depth: number }) {
       {nodes.map((node, i) => (
         <li key={`${i}-${node.title}`}>
           <div className="flex items-baseline justify-between gap-3 py-2">
-            <span className="min-w-0 text-body wrap-anywhere">{node.title}</span>
-            {range(node) && <span className="shrink-0 text-small text-ink-soft">{range(node)}</span>}
+            <span className={`min-w-0 wrap-anywhere ${depth === 0 ? "font-display text-lead" : "text-body"}`}>{node.title}</span>
+            {range(node) && <span className="shrink-0 text-meta text-ink-soft">{range(node)}</span>}
           </div>
           {node.children.length > 0 && <Branch nodes={node.children} depth={depth + 1} />}
         </li>
@@ -27,19 +28,25 @@ function Branch({ nodes, depth }: { nodes: TocNode[]; depth: number }) {
 export function TocTree({ nodes }: { nodes: TocNode[] }) {
   if (nodes.length === 0) {
     return (
-      <p className="m-0 text-body text-ink-soft" data-copy="tam">
-        Tài liệu này không có mục lục.
-      </p>
+      <Block as="section" tier="sheet">
+        <p className="m-0 text-body text-ink-soft" data-copy="tam">
+          Tài liệu này không có mục lục.
+        </p>
+      </Block>
     );
   }
-  return <Branch nodes={nodes} depth={0} />;
+  return (
+    <Block as="section" tier="sheet" aria-label="Mục lục" className="p-4 min-[901px]:px-8 min-[901px]:py-6">
+      <Branch nodes={nodes} depth={0} />
+    </Block>
+  );
 }
 
 /** Pages the reader could not get text from: shown above the tree, with words and a shape. */
 export function UnreadableNotice({ pages }: { pages: number[] }) {
   if (pages.length === 0) return null;
   return (
-    <p role="status" className="m-0 mb-6 flex items-center gap-2 text-small font-semibold">
+    <p role="status" className="m-0 flex items-center gap-2 rounded-control bg-hong-tint px-4 py-3 text-meta font-semibold">
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
         <path d="M8 1.75 14.5 13.5h-13z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
         <path d="M8 6.5v3.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -50,7 +57,7 @@ export function UnreadableNotice({ pages }: { pages: number[] }) {
   );
 }
 
-const BOX = "m-0 rounded-sheet bg-sunken p-6 text-body";
+const BOX = "m-0 rounded-tile border border-line bg-sheet p-6 text-body";
 
 export function TocUnreadable() {
   return (

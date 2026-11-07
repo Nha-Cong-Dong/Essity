@@ -20,13 +20,13 @@ async function Fixture({ searchParams }: { searchParams: Promise<{ state?: strin
   const data = graphFixture("few").data;
   if (live === "1" && data) {
     return (
-      <AppShell current="/today" account={<AccountMenu email="xem-thu@example.com" />}>
+      <AppShell current="/graph" account={<AccountMenu email="xem-thu@example.com" />}>
         <GraphScreen live={{ subjectId: "c3d4e5f6-7a8b-4c9d-8e1f-2a3b4c5d6e7f", subjectName: "Mạng máy tính", data }} />
       </AppShell>
     );
   }
   return (
-    <AppShell current="/today" account={<AccountMenu email="xem-thu@example.com" />}>
+    <AppShell current="/graph" account={<AccountMenu email="xem-thu@example.com" />}>
       <GraphScreen key={known} state={known} />
     </AppShell>
   );

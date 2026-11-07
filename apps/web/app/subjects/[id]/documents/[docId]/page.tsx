@@ -41,7 +41,7 @@ async function Toc({ params }: { params: Promise<{ id: string; docId: string }> 
   if (doc.subject_id.toLowerCase() !== id.toLowerCase()) notFound();
   return (
     <DocumentsFrame name={doc.short_name}>
-      <p className="m-0 mb-4 text-ink-soft">Mục lục{doc.page_count !== null ? ` · ${doc.page_count} trang` : ""}</p>
+      <p className="m-0 text-read text-ink-soft">Mục lục{doc.page_count !== null ? ` · ${doc.page_count} trang` : ""}</p>
       {toc.kind === "ok" && (
         <>
           <UnreadableNotice pages={doc.unreadable_pages} />
@@ -57,7 +57,7 @@ async function Toc({ params }: { params: Promise<{ id: string; docId: string }> 
 export default function TocPage({ params }: { params: Promise<{ id: string; docId: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
+      <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-tile bg-sunken motion-safe:animate-pulse" />}>
         <Toc params={params} />
       </Suspense>
     </AppShell>

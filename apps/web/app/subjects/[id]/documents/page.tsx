@@ -4,7 +4,9 @@ import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
 import { DocumentList, DocumentsFrame } from "@/components/documents/document-list";
+import { Block } from "@/components/screen-kit";
 import { AppShell, PageColumn } from "@/components/shells";
+import { Button } from "@/components/ui/button";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { type Document, listDocuments } from "@/lib/documents";
 import { CoreStatusError } from "@/lib/subjects";
@@ -32,25 +34,23 @@ async function Documents({ params }: { params: Promise<{ id: string }> }) {
       </DocumentsFrame>
     );
   }
-  {
-    return (
-      <DocumentsFrame name={subject.name}>
-        <div role="alert" className="flex flex-col items-start gap-2 rounded-sheet bg-sunken p-6">
-          <p className="m-0 font-semibold">Không tải được môn này.</p>
-          <p className="m-0 text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
-          <a href={`/subjects/${subject.id}/documents`} className="mt-3 font-semibold inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-            Thử lại
-          </a>
-        </div>
-      </DocumentsFrame>
-    );
-  }
+  return (
+    <DocumentsFrame name={subject.name}>
+      <Block as="section" tier="sheet" role="alert" className="flex flex-col items-start gap-2">
+        <p className="m-0 text-lead">Không tải được môn này.</p>
+        <p className="m-0 text-body text-ink-soft">Kiểm tra kết nối rồi thử lại.</p>
+        <Button render={<a href={`/subjects/${subject.id}/documents`} />} nativeButton={false} variant="quiet" className="mt-3">
+          Thử lại
+        </Button>
+      </Block>
+    </DocumentsFrame>
+  );
 }
 
 export default function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-sheet bg-sunken" />}>
+      <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-tile bg-sunken motion-safe:animate-pulse" />}>
         <Documents params={params} />
       </Suspense>
     </AppShell>

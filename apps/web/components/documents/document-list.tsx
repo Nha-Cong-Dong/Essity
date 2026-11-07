@@ -1,7 +1,11 @@
-import { EmptyState } from "@/components/empty-state";
-import { PageColumn } from "@/components/shells";
+import { ArrowRight } from "lucide-react";
 
-// T4.9 (US-01): a subject's documents with their processing state (screens-html/screens/subject.html,
+import { EmptyState } from "@/components/empty-state";
+import { BackLink, Block } from "@/components/screen-kit";
+import { PageColumn } from "@/components/shells";
+import { Button } from "@/components/ui/button";
+
+// C4 (v4): one white sheet of rows, a plum field only when something needs the reader. T4.9 (US-01): a subject's documents with their processing state (screens-html/screens/subject.html,
 // ".docs"). Sentences from the mockup are final; the failure ones are placeholders (risk register R09).
 export type ListedDocument = {
   id: string;
@@ -33,74 +37,86 @@ export function unreadableText(pages: number[]): string {
 }
 
 function Status({ doc }: { doc: ListedDocument }) {
-  if (doc.status === "pending") return <span className="text-ink-soft">Đang đọc tài liệu…</span>;
+  if (doc.status === "pending") return <span>Đang đọc tài liệu…</span>;
   if (doc.status === "indexed" && doc.unreadable_pages.length === 0) return <span>Sẵn sàng</span>;
   if (doc.status === "indexed") return <span>{unreadableText(doc.unreadable_pages)}</span>;
   return <span data-copy="tam">{failureText(doc.failure_reason)}</span>;
 }
 
+const ROW = "flex items-center gap-4 rounded-row p-3 min-[641px]:px-5 min-[641px]:py-4";
+
+function Cells({ doc, linked }: { doc: ListedDocument; linked: boolean }) {
+  return (
+    <>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="font-display text-lead wrap-anywhere">{doc.short_name}</span>
+        <span className="text-meta text-ink-soft">
+          <Status doc={doc} />
+          {doc.page_count !== null ? ` · ${doc.page_count} trang` : ""}
+        </span>
+      </span>
+      {linked ? <ArrowRight aria-hidden="true" className="size-5 shrink-0 text-ink-soft" /> : null}
+    </>
+  );
+}
+
 export function DocumentList({ subjectId, docs }: { subjectId: string; docs: ListedDocument[] }) {
+  const upload = (
+    <Button render={<a href={`/subjects/${subjectId}/upload`} />} nativeButton={false}>
+      Tải tài liệu lên
+    </Button>
+  );
   if (docs.length === 0) {
     return (
-      <EmptyState
-        className="rounded-sheet bg-sunken p-6"
-        mascot="cho"
-        title="Chưa có tài liệu."
-        hint="Tải giáo trình, slide hoặc ảnh vở để app biết bạn học từ đâu."
-        action={
-          <a href={`/subjects/${subjectId}/upload`} className="font-semibold inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-            Tải tài liệu lên
-          </a>
-        }
-      />
+      <Block as="section" tier="sheet" aria-label="Chưa có tài liệu">
+        <EmptyState
+          mascot="cho"
+          title="Chưa có tài liệu."
+          hint="Tải giáo trình, slide hoặc ảnh vở để app biết bạn học từ đâu."
+          action={upload}
+        />
+      </Block>
     );
   }
   return (
-    <>
-      <ul className="m-0 flex list-none flex-col gap-3 p-0" aria-label="Tài liệu">
-        {docs.map((doc) => (
-          <li key={doc.id} className="flex flex-col gap-1 rounded-sheet bg-sunken p-4">
-            <span className="min-w-0 text-section font-semibold wrap-anywhere">
-              {doc.status === "indexed" ? (
-                <a
-                  href={
-                    doc.role === "textbook"
-                      ? `/subjects/${subjectId}/syllabus`
-                      : `/subjects/${subjectId}/documents/${doc.id}`
-                  }
-                  className="underline"
-                >
-                  {doc.short_name}
-                </a>
-              ) : (
-                doc.short_name
-              )}
-            </span>
-            <span className="text-small">
-              <Status doc={doc} />
-            </span>
-            {doc.page_count !== null && <span className="text-small text-ink-soft">{doc.page_count} trang</span>}
-          </li>
-        ))}
-      </ul>
-      <p className="mt-4 mb-0">
-        <a href={`/subjects/${subjectId}/upload`} className="font-semibold inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-          Tải tài liệu lên
-        </a>
-      </p>
-    </>
+    <div className="flex flex-col items-start gap-5">
+      <Block as="section" tier="sheet" aria-label="Tài liệu" className="w-full p-2 min-[901px]:p-2">
+        <ul className="m-0 flex list-none flex-col p-0">
+          {docs.map((doc) => {
+            const href =
+              doc.status !== "indexed"
+                ? null
+                : doc.role === "textbook"
+                  ? `/subjects/${subjectId}/syllabus`
+                  : `/subjects/${subjectId}/documents/${doc.id}`;
+            return (
+              <li key={doc.id} className="border-t border-line first:border-t-0">
+                {href ? (
+                  <a href={href} className={`${ROW} text-ink no-underline hover:bg-sunken`}>
+                    <Cells doc={doc} linked />
+                  </a>
+                ) : (
+                  <div className={ROW}>
+                    <Cells doc={doc} linked={false} />
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </Block>
+      {upload}
+    </div>
   );
 }
 
 export function DocumentsFrame({ name, children }: { name: string; children: React.ReactNode }) {
   return (
-    <PageColumn width="full" className="flex flex-col">
-      <a href="/subjects" className="mb-4 self-start text-small inline-flex items-center justify-center min-h-11 rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-        Môn học
-      </a>
-      <h1 className="m-0 mb-8 font-display text-title wrap-anywhere">
-        {name}
-      </h1>
+    <PageColumn width="full" className="flex flex-col gap-5">
+      <header className="flex flex-col gap-2">
+        <BackLink href="/subjects">Môn học</BackLink>
+        <h1 className="m-0 text-title wrap-anywhere">{name}</h1>
+      </header>
       {children}
     </PageColumn>
   );
