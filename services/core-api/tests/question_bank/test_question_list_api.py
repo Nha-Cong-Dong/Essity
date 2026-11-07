@@ -261,3 +261,42 @@ def test_waiting_line_uses_the_number_printed_in_the_title(bench: Bench) -> None
     bench.card(head)
     q = bench.question(leaf)
     assert bench.by_id()[str(q.id)]["line"] == "Chờ học: mục 1.1.1"
+
+
+def test_ready_question_lists_prerequisite_cards_first_card_per_section(bench: Bench) -> None:
+    tcp, udp = bench.section("TCP"), bench.section("UDP")
+    first = bench.card(tcp)
+    bench.card(tcp)  # a later card of the same section is not listed
+    second = bench.card(udp)
+    ready = bench.question(tcp, udp)
+    waiting = bench.question(tcp, bench.section("IP", studied=False))
+    rows = bench.by_id()
+    cards = rows[str(ready.id)]["prerequisite_cards"]
+    assert [c["id"] for c in cards] == [str(first.id), str(second.id)]
+    assert cards[0]["title"] == first.title and cards[0]["summary"] == first.summary
+    assert rows[str(waiting.id)]["prerequisite_cards"] == []
+
+
+def test_prerequisite_cards_are_capped_at_eight(bench: Bench) -> None:
+    sections = [bench.section(f"S{i}") for i in range(10)]
+    for s in sections:
+        bench.card(s)
+    q = bench.question(*sections)
+    assert len(bench.by_id()[str(q.id)]["prerequisite_cards"]) == 8
+
+
+def test_prerequisite_cards_skip_retired_and_never_show_other_users_cards(
+    bench: Bench, db_session: Session
+) -> None:
+    tcp = bench.section("TCP")
+    mine = bench.card(tcp)
+    bench.card(tcp, status="retired")
+    other, _ = signed_in(db_session)
+    their_subject = make_subject(db_session, other)
+    theirs = make_unit(db_session, other, their_subject, title="Của người khác")
+    # Their card hangs on MY section id only in a forged row: the composite keys forbid it, so the
+    # check is that the list never names it.
+    q = bench.question(tcp)
+    cards = bench.by_id()[str(q.id)]["prerequisite_cards"]
+    assert [c["id"] for c in cards] == [str(mine.id)]
+    assert str(theirs.id) not in str(cards)

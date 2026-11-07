@@ -99,6 +99,12 @@ class WaitingSectionOut(BaseModel):
     title: str
 
 
+class PrerequisiteCardOut(BaseModel):
+    id: uuid.UUID
+    title: str
+    summary: str
+
+
 class BankQuestionOut(BaseModel):
     id: uuid.UUID
     number: int | None  # place in the bank: "Câu 7"
@@ -111,6 +117,9 @@ class BankQuestionOut(BaseModel):
     waiting_sections: list[WaitingSectionOut]
     unlocked_at: datetime | None = None  # ready only: when it became practisable
     due: bool = False  # ready and due for practice today
+    prerequisite_cards: list[
+        PrerequisiteCardOut
+    ] = []  # ready only, at most 8 (the "Kiến thức nền")
 
 
 class TypeCountOut(BaseModel):
@@ -164,6 +173,10 @@ def list_questions(
                 waiting_sections=waiting,
                 unlocked_at=q.unlocked_at,
                 due=q.due,
+                prerequisite_cards=[
+                    PrerequisiteCardOut(id=c.id, title=c.title, summary=c.summary)
+                    for c in q.prerequisite_cards
+                ],
             )
         )
     return QuestionListOut(
