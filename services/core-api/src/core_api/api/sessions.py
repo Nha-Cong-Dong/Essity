@@ -28,7 +28,7 @@ from core_api.clients.ai_client import AiServiceClient, NotExtracted
 from core_api.clients.extract_contract import Clarify, NoteOnly, Proposed
 from core_api.clients.storage import ObjectStorage, StorageUnavailableError
 from core_api.config import get_settings
-from core_api.db.models import Document
+from core_api.db.models import DocSection, Document
 from core_api.db.models.study_session import DESCRIPTION_MAX
 from core_api.db.session import DbSession
 from core_api.domain.learning_day import learning_day
@@ -38,6 +38,7 @@ from core_api.domain.study_session import (
     page_range_ok,
     studied_on_ok,
 )
+from core_api.repositories.doc_section import DocSectionRepository
 from core_api.repositories.document import DocumentRepository
 from core_api.repositories.study_session import StudySessionRepository
 from core_api.repositories.subject import SubjectNotFoundError
@@ -158,6 +159,26 @@ def _toc_entries(file: object, page_count: int) -> list[dict[str, Any]]:
     return out
 
 
+def _section_entries(sections: list[DocSection], page_count: int) -> list[dict[str, Any]]:
+    """E-20: the outline's headings (tree order) as toc entries, for a document whose toc.json
+    is empty: "mục 1.4" then resolves to the pages of that section."""
+    depth: dict[uuid.UUID, int] = {}
+    out: list[dict[str, Any]] = []
+    for section in sections[:MAX_TOC_ENTRIES]:
+        level = 0 if section.parent_id is None else depth.get(section.parent_id, 0) + 1
+        depth[section.id] = level
+        page = section.first_page
+        usable = page is not None and 1 <= page <= page_count
+        out.append(
+            {
+                "title": section.title[:500],
+                "level": min(level, 16),
+                "page": page if usable else None,
+            }
+        )
+    return out
+
+
 def _labels(file: object, page_count: int) -> list[str] | None:
     labels = _field(file, "labels")
     if labels is None or len(labels) != page_count:
@@ -173,6 +194,7 @@ def _documents_payload(
     last_end: dict[uuid.UUID, int],
     *,
     remaining: Callable[[], float],
+    sections_of: Callable[[uuid.UUID], list[DocSection]],
 ) -> list[dict[str, Any]]:
     """The documents for ai-service, read one after another while budget is left. A document
     whose files cannot be read is left out: the learner can still pick it on the manual form."""
@@ -185,9 +207,13 @@ def _documents_payload(
             break
         count = document.page_count
         toc = _read_json(storage, document.toc_key)
-        if count is None or toc is None:
+        if count is None:
             continue
-        entries = _toc_entries(toc, count)
+        entries = _toc_entries(toc, count) if toc is not None else []
+        if not entries:
+            entries = _section_entries(sections_of(document.id), count)
+        if toc is None and not entries:
+            continue
         if toc_total + len(entries) > MAX_TOC_TOTAL:
             continue
         toc_total += len(entries)
@@ -316,7 +342,11 @@ def create_session(
     if not choices:
         return manual("no_documents", None)
     sent = _documents_payload(
-        documents, storage, drafts.last_end_pages(subject_id), remaining=remaining
+        documents,
+        storage,
+        drafts.last_end_pages(subject_id),
+        remaining=remaining,
+        sections_of=DocSectionRepository(session, user.id).of_document,
     )
     timeout = ai_timeout(remaining())
     if not sent or timeout is None:
