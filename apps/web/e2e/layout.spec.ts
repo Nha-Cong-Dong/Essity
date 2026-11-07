@@ -184,6 +184,7 @@ test("preconditions: blocking .woff2 leaves no web font loaded", async ({ page }
   // Recorded in the plan: Arial metrics on Windows (Arial) and Linux (Liberation Sans), within ~1.5px.
   const widths = await nav(page).getByRole("link").evaluateAll((links) => links.map((a) => a.getBoundingClientRect().width));
   const spare = (await box(account(page))).x - right(await box(nav(page)));
+  // Diagnostic only (visible in the Playwright report); e2e files are outside lib/log.ts rule R12.
   console.log(`fallback widths ${JSON.stringify(widths)} spare ${spare}`);
 });
 
@@ -338,6 +339,7 @@ const titleRowSpare = async (page: Page, label: string) => {
   expect(title.y).toBeLessThan(bottom(create));
   const gap = parseFloat(await rowEl.evaluate((el) => getComputedStyle(el).columnGap));
   const spare = row.width - title.width - create.width - gap;
+  // Diagnostic only (see above): spare space per viewport, read when a layout assertion fails.
   console.log(`title row spare ${label} ${spare}`);
   return spare;
 };

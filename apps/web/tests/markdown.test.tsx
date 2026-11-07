@@ -1,11 +1,17 @@
 // @vitest-environment jsdom
 // CARD-MD: a card's Markdown shows maths and stays safe.
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { Markdown } from "@/components/markdown/markdown";
 
 afterEach(cleanup);
+
+// Flaky fix (A2): the Markdown chunk (react-markdown + KaTeX) loads lazily; on a busy machine the
+// first test paid for that import inside its own timeout. Load it once, up front, with a long limit.
+beforeAll(async () => {
+  await import("@/components/markdown/markdown-inner");
+}, 60_000);
 
 async function drawn(text: string) {
   const { container } = render(<Markdown text={text} />);
