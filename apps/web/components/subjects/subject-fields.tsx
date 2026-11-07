@@ -63,6 +63,7 @@ export function SubjectFields({
         id={ids.name}
         name="name"
         label="Môn"
+        className="h-14"
         autoComplete="off"
         value={name}
         onChange={(event) => onName(event.target.value)}
@@ -76,6 +77,7 @@ export function SubjectFields({
         id={ids.date}
         name="exam_date"
         label="Ngày thi"
+        className="h-14"
         inputMode="numeric"
         autoComplete="off"
         placeholder={example}
@@ -84,36 +86,37 @@ export function SubjectFields({
         onChange={(event) => onExamDate(event.target.value)}
         invalid={errors.examDate !== undefined}
         describedBy={errors.examDate ? `${ids.date}-error` : undefined}
+        adornment={
+          pickable ? (
+            <>
+              <button
+                type="button"
+                onClick={openCalendar}
+                aria-label="Chọn ngày trên lịch"
+                className="absolute inset-y-0 right-1 my-auto inline-flex size-11 items-center justify-center rounded-full text-ink-soft hover:text-ink"
+              >
+                <CalendarDays className="size-5" aria-hidden="true" />
+              </button>
+              {/* Rendered (showPicker ignores a hidden input) but invisible, under the button so the
+                  calendar opens there. No name: the text field is the only value sent, and no min:
+                  the learning day, not the clock, says what "after today" means. */}
+              <input
+                ref={picker}
+                type="date"
+                aria-hidden="true"
+                tabIndex={-1}
+                value={"value" in typed ? typed.value : ""}
+                onChange={(event) => {
+                  if (!event.target.value) return;
+                  onExamDate(formatExamDate(event.target.value));
+                  dateInput.current?.focus();
+                }}
+                className="pointer-events-none absolute bottom-0 right-0 size-px opacity-0"
+              />
+            </>
+          ) : undefined
+        }
       >
-        {pickable && (
-          <div className="relative w-fit">
-            <button
-              type="button"
-              onClick={openCalendar}
-              className="inline-flex min-h-11 items-center gap-2 text-body font-medium text-ink rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken"
-            >
-              <CalendarDays className="size-5" aria-hidden="true" />
-              Chọn ngày trên lịch
-            </button>
-            {/* Rendered (showPicker ignores a hidden input) but invisible, under the button so the
-                calendar opens there. No name: the text field is the only value sent, and no min:
-                the learning day, not the clock, says what "after today" means. */}
-            <input
-              ref={picker}
-              type="date"
-              aria-hidden="true"
-              tabIndex={-1}
-              value={"value" in typed ? typed.value : ""}
-              onChange={(event) => {
-                if (!event.target.value) return;
-                onExamDate(formatExamDate(event.target.value));
-                dateInput.current?.focus();
-              }}
-              className="pointer-events-none absolute bottom-0 left-0 size-px opacity-0"
-            />
-          </div>
-        )}
-       
         {errors.examDate && <Message id={`${ids.date}-error`} code={errors.examDate} example={example} />}
       </AuthField>
     </>

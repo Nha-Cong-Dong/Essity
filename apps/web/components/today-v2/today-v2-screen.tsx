@@ -178,7 +178,7 @@ function LearnSection({ today, primary }: { today: TodayV2; primary: boolean }) 
         </div>
       )}
       <div>
-        <LearnActions items={items} primary={primary && first >= 0} />
+        <LearnActions items={items} primary={false} />
       </div>
     </section>
   );

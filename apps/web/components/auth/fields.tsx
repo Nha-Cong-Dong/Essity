@@ -17,21 +17,36 @@ type FieldProps = Omit<ComponentProps<"input">, "id"> & {
   describedBy?: string;
   invalid?: boolean;
   children?: ReactNode;
+  /** A control drawn inside the box, at its right edge (the calendar button of a date field). */
+  adornment?: ReactNode;
 };
 
-export function AuthField({ id, label, describedBy, invalid, className, children, ...props }: FieldProps) {
+export function AuthField({ id, label, describedBy, invalid, className, children, adornment, ...props }: FieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-meta font-semibold">
         {label}
       </label>
-      <Input
-        id={id}
-        aria-describedby={describedBy}
-        aria-invalid={invalid || undefined}
-        className={className}
-        {...props}
-      />
+      {adornment ? (
+        <div className="relative">
+          <Input
+            id={id}
+            aria-describedby={describedBy}
+            aria-invalid={invalid || undefined}
+            className={cn("pr-13", className)}
+            {...props}
+          />
+          {adornment}
+        </div>
+      ) : (
+        <Input
+          id={id}
+          aria-describedby={describedBy}
+          aria-invalid={invalid || undefined}
+          className={className}
+          {...props}
+        />
+      )}
       {children}
     </div>
   );

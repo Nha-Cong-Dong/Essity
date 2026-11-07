@@ -17,7 +17,7 @@ describe("Hôm nay v2 states", () => {
   const expected: Record<string, number> = {
     busy: 1,
     review: 1,
-    learn: 1,
+    learn: 0, // SCREENS-V4-B: "Xem tất cả" is outlined as in mockups today.html
     finished: 0,
     "none-exams": 0,
     "none-textbook": 0,
