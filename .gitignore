@@ -5,6 +5,7 @@
 .env
 .env.*
 !.env.example
+!.env.prod.example
 
 # --- Dữ liệu cá nhân (seed, eval, ảnh vở) ---
 /data/seed/*
