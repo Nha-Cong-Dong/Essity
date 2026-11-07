@@ -76,11 +76,26 @@ export const SUBMIT_COPY = {
   mentionPiece: "Có một chỗ @ không khớp tài liệu nào. Bỏ phần có chỗ @ đó (hoặc ghi lại phần mới) rồi bấm Kết thúc buổi học.",
   closed: "Buổi này đã được gửi đi rồi.",
   other: "Chưa hoàn thành được. Thử lại sau ít phút.",
+  expired: "Phiên đăng nhập đã hết hạn.",
 } as const;
+
+/** E-01: a 401 (cookie expired or cleared) is a signed-out learner, not a flaky network. */
+export const isSignedOut = (status: number, error: string): boolean => status === 401 || error === "signed_out";
+
+/** E-02: what to tell the learner when a note was refused. core-api answers an over-long note with a
+ * validation error (400/422, not the `text_too_long` code); that is "too long", never "network". */
+export function noteProblem(status: number, error: string): string {
+  if (isSignedOut(status, error)) return SUBMIT_COPY.expired;
+  if (status === 0) return SUBMIT_COPY.network;
+  if (error === "text_too_long" || error === "invalid_request" || status === 400 || status === 422) return SUBMIT_COPY.tooLong;
+  if (error === "nothing_submitted") return SUBMIT_COPY.nothing;
+  return SUBMIT_COPY.network;
+}
 
 /** What to tell the learner when handing a session in (or dropping a piece) fails: by the code,
  * not "network" for everything (only a dropped connection, status 0, is the network). */
 export function completeProblem(status: number, error: string): string {
+  if (isSignedOut(status, error)) return SUBMIT_COPY.expired;
   if (status === 0) return SUBMIT_COPY.network;
   if (error.startsWith("mention_") || error.startsWith("scope_") || error === "document_not_found") return SUBMIT_COPY.mentionPiece;
   if (error === "nothing_submitted") return SUBMIT_COPY.nothing;
@@ -170,6 +185,11 @@ export function SessionScreen(props: SessionScreenProps) {
     });
   }, [api, pieceMode]);
 
+  /** E-01: show the problem. A signed-out learner gets a "Đăng nhập lại" link; no redirect, so the typed note stays to copy. */
+  function failed(_status: number, _error: string, message: string) {
+    setProblem(message);
+  }
+
   /** Keep what is typed as one piece. True when a piece was kept; "empty" when there was nothing to keep. */
   async function keepPiece(): Promise<boolean | "empty"> {
     if (!api) return false;
@@ -181,7 +201,7 @@ export function SessionScreen(props: SessionScreenProps) {
     }
     const result = await api.addPiece(text, mentions, [...handed.values()]);
     if (!result.ok) {
-      setProblem(result.error === "text_too_long" ? SUBMIT_COPY.tooLong : SUBMIT_COPY.network);
+      failed(result.status, result.error, noteProblem(result.status, result.error));
       return false;
     }
     setPieces((rows) => [...rows, result.data]);
@@ -214,7 +234,7 @@ export function SessionScreen(props: SessionScreenProps) {
       setProblem(null);
       say("Đã bỏ một phần.");
     } else {
-      setProblem(completeProblem(result.status, result.error));
+      failed(result.status, result.error, completeProblem(result.status, result.error));
     }
   }
 
@@ -238,7 +258,7 @@ export function SessionScreen(props: SessionScreenProps) {
     const result = await api.complete();
     if (!result.ok) {
       setCompleting(false);
-      setProblem(completeProblem(result.status, result.error));
+      failed(result.status, result.error, completeProblem(result.status, result.error));
       return;
     }
     if (!subjectId || props.stayOnComplete) {
@@ -360,9 +380,7 @@ export function SessionScreen(props: SessionScreenProps) {
       return;
     }
     send({ type: "back" });
-    setProblem(
-      result.error === "text_too_long" ? SUBMIT_COPY.tooLong : result.error === "nothing_submitted" ? SUBMIT_COPY.nothing : SUBMIT_COPY.network,
-    );
+    failed(result.status, result.error, noteProblem(result.status, result.error));
   }
 
   function submit() {
@@ -470,7 +488,18 @@ export function SessionScreen(props: SessionScreenProps) {
                     docs={docs}
                     say={say}
                     rejectedDoc={round.rejectedDoc}
-                    problem={problem}
+                    problem={
+                      problem === SUBMIT_COPY.expired ? (
+                        <>
+                          {problem}{" "}
+                          <Link href="/login" className={buttonVariants({ variant: "quiet" })}>
+                            Đăng nhập lại
+                          </Link>
+                        </>
+                      ) : (
+                        problem
+                      )
+                    }
                     onChange={(value, next) => {
                       setText(value);
                       setMentions(next);

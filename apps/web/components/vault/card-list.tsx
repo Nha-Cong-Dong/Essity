@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useState } from "react";
 
 import { PdfPage } from "@/components/vault/pdf-page";
@@ -7,7 +8,7 @@ import { PdfPage } from "@/components/vault/pdf-page";
 import { Doodle } from "@/components/icons/doodle";
 import { Markdown } from "@/components/markdown/markdown";
 import { Block } from "@/components/screen-kit";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Carousel } from "@/components/ui/carousel";
 import type { VaultCard } from "@/lib/vault-api";
 
@@ -108,6 +109,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
   const [showSource, setShowSource] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [expired, setExpired] = useState(false);
   // Q14 (QA 05/11): deleting asks first, in the page.
   const [confirming, setConfirming] = useState(false);
 
@@ -115,12 +117,14 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
     if (!draft) return;
     setBusy(true);
     setError("");
+    setExpired(false);
     const r = await fetch(`/api/vault/cards/${card.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(draft),
     }).catch(() => null);
     setBusy(false);
+    if (r?.status === 401) return setExpired(true); // E-01: keep the form, offer a sign-in link
     if (!r?.ok) return setError("Chưa lưu được. Thử lại.");
     setSaved(draft);
     setDraft(null);
@@ -128,8 +132,10 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
 
   async function remove() {
     setBusy(true);
+    setExpired(false);
     const r = await fetch(`/api/vault/cards/${card.id}`, { method: "DELETE" }).catch(() => null);
     setBusy(false);
+    if (r?.status === 401) return setExpired(true);
     if (!r?.ok) return setError("Chưa xóa được. Thử lại.");
     onGone(card.id);
   }
@@ -210,6 +216,14 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
       {error ? (
         <p role="alert" className="m-0 text-body text-ink-soft">
           {error}
+        </p>
+      ) : null}
+      {expired ? (
+        <p role="alert" className="m-0 text-body text-ink-soft">
+          Phiên đăng nhập đã hết hạn.{" "}
+          <Link href="/login" className={buttonVariants({ variant: "quiet" })}>
+            Đăng nhập lại
+          </Link>
         </p>
       ) : null}
       {showSource && !draft ? <SourcePanel cardId={card.id} /> : null}

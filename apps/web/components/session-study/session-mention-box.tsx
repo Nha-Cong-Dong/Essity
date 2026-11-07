@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import { FieldError } from "@/components/field-error";
@@ -27,10 +29,14 @@ export type MentionBoxProps = {
   /** Document whose part after @ the backend refused (shown on its chip). */
   rejectedDoc: string | null;
   /** A problem with the whole form ("Thêm ít nhất một file hoặc vài dòng mô tả."). */
-  problem: string | null;
+  problem: ReactNode;
 };
 
 const PLACEHOLDER = "Tối nay mình học @Giáo trình phần 3.2 và xem lại @slide chương 3.";
+
+/** E-02: core-api's DESCRIPTION_MAX (db/models/study_session.py); the counter shows from NOTE_WARN on. */
+export const NOTE_MAX = 2000;
+export const NOTE_WARN = 1800;
 
 export function MentionBox({ value, mentions, docs, onChange, say, rejectedDoc, problem }: MentionBoxProps) {
   const id = useId();
@@ -129,6 +135,7 @@ export function MentionBox({ value, mentions, docs, onChange, say, rejectedDoc, 
           ref={fieldRef}
           id={`${id}-field`}
           value={value}
+          maxLength={NOTE_MAX}
           placeholder={PLACEHOLDER}
           role="combobox"
           aria-expanded={open}
@@ -178,6 +185,11 @@ export function MentionBox({ value, mentions, docs, onChange, say, rejectedDoc, 
           </ul>
         )}
       </div>
+      {value.length >= NOTE_WARN && (
+        <p className={`m-0 text-meta ${value.length >= NOTE_MAX ? "text-partial" : "text-ink-soft"}`} data-testid="note-counter">
+          {value.length}/{NOTE_MAX} ký tự{value.length >= NOTE_MAX ? ". Đã hết chỗ, rút gọn bớt nếu cần thêm." : ""}
+        </p>
+      )}
       <p className="sr-only" role="status" aria-live="polite">
         {message}
       </p>

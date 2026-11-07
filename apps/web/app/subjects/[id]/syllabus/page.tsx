@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
+import { CommandSlot } from "@/components/command-slot";
 import { EmptyState } from "@/components/empty-state";
 import { Block } from "@/components/screen-kit";
 import { AppShell, PageColumn } from "@/components/shells";
@@ -65,7 +66,7 @@ export default function SyllabusPage({ params }: { params: Promise<{ id: string 
           <p className="m-0 text-meta text-ink-soft">
             Gõ điều bạn muốn sửa bằng lời của bạn, ví dụ “bỏ chương 5” hoặc “gộp phần 2.1 và 2.2”. Khung này chỉ dùng để chỉnh đề cương.
           </p>
-          <div data-command-slot-bottom className="empty:hidden" />
+          <CommandSlot bottom className="empty:hidden" />
         </Block>
       </PageColumn>
     </AppShell>

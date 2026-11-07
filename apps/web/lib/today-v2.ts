@@ -111,5 +111,6 @@ export const TODAY_V2_COPY = {
   retry: "Thử lại",
 } as const;
 
-export const practiceLine = (row: PracticeRow) => `${row.name}: ${row.ready} câu sẵn sàng · ${row.kinds} dạng`;
+// E-08: Today counts ready questions never attempted (core-api ready_questions); the practice page counts every ready one.
+export const practiceLine = (row: PracticeRow) => `${row.name}: ${row.ready} câu mới chưa làm · ${row.kinds} dạng`;
 export const reviewProgress = (position: number, total: number) => `Phiên ôn đang dở · câu ${position}/${total}`;

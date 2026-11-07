@@ -1,3 +1,4 @@
+import { CommandSlot } from "@/components/command-slot";
 import type { ReactNode } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
@@ -87,7 +88,7 @@ export function AppShell({
       </header>
       <main id="main" tabIndex={-1} className={cn(CONTAINER, "outline-none flex min-w-0 flex-1 flex-col pt-6 pb-[calc(56px+env(safe-area-inset-bottom)+16px)] min-[1024px]:pt-10 min-[1024px]:pb-24")}>
         {/* T9.3: the subject's command bar is drawn here (components/command-live.tsx). */}
-        <div data-command-slot className="empty:hidden" />
+        <CommandSlot className="empty:hidden" />
         {children}
       </main>
     </div>
