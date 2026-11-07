@@ -8,5 +8,6 @@ export const GRAPH_CARDS: Array<[number, string, string]> = [
       [1, "Tim cá voi xanh", "Nặng cỡ một chiếc xe nhỏ."], [1, "Chuối là quả mọng", "Về thực vật học, dâu tây thì không."],
       [1, "Mắt bạch tuộc", "Không có điểm mù như mắt người."],
       [2, "Mật ong không bao giờ hỏng", "Ít nước, độ axit cao: vi khuẩn không sống nổi."], [2, "Muối làm tan băng", "Muối hạ điểm đóng băng của nước."],
+      [2, "Kim tự tháp Giza", "Xây cách đây khoảng 4.500 năm."], [2, "Cà phê và đàn dê", "Truyền thuyết người chăn dê ở Ethiopia."], [2, "Vân tay lưỡi", "Mỗi người một khác."],
 ];
 export const GRAPH_RELATIONS: Array<[number, number]> = [[0, 4], [1, 12], [2, 3], [0, 5], [6, 8], [6, 10], [7, 9], [11, 12], [13, 15], [14, 9], [1, 11], [3, 5], [8, 7]];

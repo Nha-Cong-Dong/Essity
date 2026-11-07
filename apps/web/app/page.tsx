@@ -6,7 +6,7 @@ import { LandingEntry } from "@/components/landing/landing-entry";
 export const metadata: Metadata = {
   title: "Essity",
   description:
-    "Tối nay ôn gì, đã có app lo. Trợ lí học tập thông minh. Quản lí lịch ôn tập hiệu quả với thuật toán FSRS.",
+    "Hôm nay ôn gì, đã có tôi lo! Trợ lí học tập tiên tiến. Quản lí lịch ôn luyện hiệu quả với thuật toán FSRS và đồ thị tri thức.",
 };
 
 // T0.15: "/" is the only public page of the app (proxy.ts lets it through); see LandingEntry.
