@@ -46,4 +46,15 @@ describe("landing v6.1", () => {
     expect(read("landing.module.css")).toContain("prefers-reduced-motion");
     expect(read("landing.module.css")).toContain(":focus-visible");
   });
+
+  it("LANDING-V62-FIX copy: hero chip, card section and edit section carry the user's words", () => {
+    const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    expect(text).toContain("Mây Mây – trợ lí học tập của bạn");
+    expect(text).toContain("Chia thẻ kiến thức thông minh");
+    expect(text).toContain("AI tự động chia kiến thức thành các thẻ ghi nhớ, sẵn sàng cho việc recall. Người dùng có thể chỉnh sửa thẻ bằng markdown.");
+    expect(text).toContain("Chỉnh sửa đơn giản");
+    expect(text).toContain("Tất cả thao tác chỉnh sửa chỉ cần viết ra yêu cầu và trợ lí AI sẽ hỗ trợ hoàn thành.");
+    expect(text).not.toContain("Chỉnh bằng một câu");
+    expect(text).not.toContain("Học gì tiếp");
+  });
 });
