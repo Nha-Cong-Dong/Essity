@@ -13,5 +13,7 @@ export function fsrsCurve() {
     const to = i < reviews.length - 1 ? reviews[i + 1] : WIDTH;
     for (let x = from; x <= to; x += 4) d += `${d ? "L" : "M"}${x.toFixed(1)} ${y(Math.exp(-(x - from) / STABILITY[i])).toFixed(1)}`;
   }
-  return { d, dots: reviews.slice(1).map((x) => Number(x.toFixed(2))), y1: y(1), width: WIDTH };
+  // the deepest point right before the third review: the "review just as it is about to fade" moment the demo circles
+  const trough = { x: Number(reviews[3].toFixed(2)), y: Number(y(Math.exp(-(reviews[3] - reviews[2]) / STABILITY[2])).toFixed(2)) };
+  return { d, trough, dots: reviews.slice(1).map((x) => Number(x.toFixed(2))), y1: y(1), width: WIDTH };
 }

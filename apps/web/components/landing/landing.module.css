@@ -1,9 +1,9 @@
 /* LANDING-V61-PORT: generated from the approved mockup (DESIGN-V5/versions/v6.1/landing-v6.css) by .work/LANDING-V61-PORT/tools/css.py.
-   The mockup palette (muted hong) lives in local variables on .lp, not in global tokens: mark yellow for C5. */
-.lp{--bg:#f8f1f3;--sheet:#ffffff;--raised:#ffffff;--sunken:#f1e6e9;--line:#e7dedb;--line-strong:#8c6a78;--ink:#2a2120;--ink-soft:#6b5f5c;
---hong:#a8255f;--hong-press:#8e1e50;--on-hong:#ffffff;--hong-text:#a8255f;--hong-tint:#f6e7ed;
+   Variables whose value equals the global token (--sheet, --raised, --on-hong, --on-plum) are inherited from globals; the muted-hong values below differ from the global palette, so promoting them needs the tokens owner (card not_touch: tokens). */
+.lp{--bg:#f8f1f3;--sunken:#f1e6e9;--line:#e7dedb;--line-strong:#8c6a78;--ink:#2a2120;--ink-soft:#6b5f5c;
+--hong:#a8255f;--hong-press:#8e1e50;--hong-text:#a8255f;--hong-tint:#f6e7ed;
 --rose-100:#f9e4ec;--rose-200:#f5cfdd;--rose-300:#eaafc7;--rose-400:#d97aa3;--rose-900:#661738;--rose-950:#441125;
---plum:#6b1840;--on-plum:#fff;--on-plum-soft:#f5cfdd;--on-plum-action-bg:#f5cfdd;--on-plum-action-fg:#6b1840;
+--plum:#6b1840;--on-plum-soft:#f5cfdd;--on-plum-action-bg:#f5cfdd;--on-plum-action-fg:#6b1840;
 --mark:#ffc2da;--hl:#ff9ec6;
 --poster:#a8255f;--glow-a:#c2286c;--glow-b:#8e1e50;--glow-c:rgb(255 158 198/.30);--poster-dots:rgb(255 255 255/.10);
 --elev-tile:0 1px 2px rgb(42 33 32/.06),0 16px 40px -16px rgb(107 24 64/.22);--elev-2:0 0 0 1px rgb(42 33 32/.06),0 24px 56px -20px rgb(107 24 64/.4)}
@@ -171,7 +171,7 @@
 .lp :global(.src-pop mark){background:var(--mark);color:var(--ink);padding:0 3px;border-radius:3px}
 .lp :global(.rcard>*.h){opacity:.16;transform:translateY(6px)}
 .lp :global(.rcard>*){transition:opacity .45s var(--ease-pow2),transform .45s var(--ease-pow2)}
-.lp :global(.fsrs-demo){margin-top:calc(var(--u)*36);padding:calc(var(--u)*32);min-height:calc(var(--u)*440);display:grid;grid-template-rows:1fr auto auto;gap:14px}
+.lp :global(.fsrs-demo){margin-top:calc(var(--u)*36);padding:calc(var(--u)*32);min-height:calc(var(--u)*500);display:grid;grid-template-rows:1fr auto auto;gap:14px}
 .lp :global(.curve){width:100%;height:calc(var(--u)*300);overflow:visible}
 .lp :global(.curve .grid path){stroke:var(--line);stroke-width:1.2;stroke-dasharray:5 6;fill:none}
 .lp :global(.curve .c-line){fill:none;stroke:var(--hong);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
@@ -464,8 +464,8 @@
 .lp :global(.gsvg .n:focus-visible .dot){stroke:#fff;stroke-width:2}
 .lp :global(.gtip){padding:10px 14px;border-radius:12px;font-size:13px}
 .lp :global(.gtip b){font-size:15px}
-.lp :global(.fsrs-demo .curve){margin-top:28px}
-.lp :global(.curve-lab){top:calc(var(--u)*40 + 28px)}
+.lp :global(.fsrs-demo .curve){margin-top:76px}
+.lp :global(.curve-lab){top:calc(var(--u)*40 + 76px)}
 .lp :global(.faq){padding-block:calc(var(--u)*90 + 40px) calc(var(--u)*90)}
 .lp :global(.qmark){top:calc(var(--u)*118 + 40px)}
 .lp :global(.faq dl>div:first-child){border-top:0}
@@ -474,7 +474,6 @@
 .lp :global(.curve-lab){display:none}
 }
 .lp :global(.bubble){max-width:62%;text-wrap:balance}
-.lp :global(.bubble::after){content:"";position:absolute;left:34%;bottom:-9px;width:18px;height:18px;background:#fff;border-radius:0 0 6px 0;transform:rotate(45deg) skew(8deg,8deg)}
 .lp :global(.gsvg .n circle.hit),.lp :global(.gsvg .n.hub circle.hit),.lp :global(.gsvg .n.next circle.hit){fill:transparent;stroke:none}
 .lp :global(.gsvg .n circle.dot){fill:#f5cfdd;stroke:none}
 .lp :global(.gsvg .n.hub circle.dot){fill:#fff}
@@ -495,3 +494,38 @@
 
 /* defaults for the per-element stagger/delay set inline (design-rules: every var is declared) */
 .lp{--i:0;--d:0s}
+
+/* LANDING-V62-FIX: the bubble tail touches the mascot (a real triangle, not a floating notch) */
+.lp :global(.bubble::after){content:"";position:absolute;right:calc(var(--u)*34);bottom:calc(var(--u)*-26);width:calc(var(--u)*30);height:calc(var(--u)*28);background:#fff;clip-path:polygon(0 0,100% 0,100% 100%);-webkit-clip-path:polygon(0 0,100% 0,100% 100%)}
+@media (min-width:1001px){
+.lp :global(.bubble){left:2%;top:11%;max-width:46%}
+}
+@media (max-width:1000px){
+.lp :global(.bubble::after){right:auto;left:50%;bottom:-18px;width:26px;height:20px;clip-path:polygon(0 0,100% 0,50% 100%);-webkit-clip-path:polygon(0 0,100% 0,50% 100%)}
+}
+
+/* LANDING-V62-FIX: a light film grain over the hero (static, so reduced motion needs nothing); text keeps its contrast because the grain is a faint overlay below the content layer */
+.lp :global(.hero)::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.5;mix-blend-mode:soft-light;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1.4 -.15'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E")}
+
+/* LANDING-V62-FIX: the knowledge graph in the palette's pale tones (no deep plum, no dark rose): a light section, a white
+   stage, ring nodes sized by centrality, thin faint edges, a tiny label under each node, three accent nodes. */
+.lp :global(.f-graph){background:var(--hong-tint);color:var(--ink)}
+.lp :global(.f-graph .doodle){stroke:var(--hong-text)}
+.lp :global(.f-graph .f-head p){color:var(--ink-soft)}
+.lp :global(.graph-stage){background:var(--sheet);border:1px solid var(--line);height:max(480px,calc(var(--u)*640))}
+.lp :global(.gsvg .e){stroke:var(--line-strong);stroke-opacity:.34;stroke-width:.9}
+.lp :global(.gsvg .e.hot){stroke:var(--hong-text);stroke-opacity:.85;stroke-width:1.6}
+.lp :global(.gsvg .n circle.dot){fill:var(--rose-200);stroke:var(--rose-400);stroke-width:1.5}
+.lp :global(.gsvg .n.hub circle.dot){fill:var(--rose-300);stroke:var(--hong-text);stroke-width:2.2}
+.lp :global(.gsvg .n.acc-teal circle.dot){fill:var(--accent-bright);stroke:var(--accent);stroke-width:1.6}
+.lp :global(.gsvg .n.acc-gold circle.dot){fill:#f4d58d;stroke:#b98a22;stroke-width:1.6}
+.lp :global(.gsvg .n.acc-rose circle.dot){fill:var(--rose-400);stroke:var(--hong-text);stroke-width:1.6}
+.lp :global(.gsvg .n .lb){--lo:1;font:500 10.5px var(--font-sans);fill:var(--ink-soft);opacity:calc(var(--lo,1)*.9);pointer-events:none;stroke:none;paint-order:normal;transition:opacity .15s}
+.lp :global(.gsvg .n.hub .lb){font:650 13px var(--font-display);fill:var(--ink)}
+.lp :global(.gsvg .n.hub .lb),.lp :global(.gsvg .n.big .lb){opacity:var(--lo,1)}
+.lp :global(.gsvg.focus .n:not(.lit) .lb){opacity:.12}
+.lp :global(.gsvg .n:focus-visible circle.dot){stroke:var(--ink);stroke-width:2.4}
+@media (max-width:700px){
+.lp :global(.graph-stage){height:500px}
+.lp :global(.gsvg .n:not(.big) .lb){display:none}
+}

@@ -180,7 +180,7 @@ Xin chào, rất vui được gặp bạn
 </div>
 <div className="note-chip" data-ui="1">
 <b>
-Học gì tiếp
+Mây Mây – trợ lí học tập của bạn
 </b>
 <span>
 Vì sao bầu trời màu xanh?
@@ -410,17 +410,17 @@ chuyển mục 2.2 lên chương 1
 <use href="#d-the" />
 </svg>
 <h2 id="h-card">
-Thẻ có
+Chia thẻ kiến thức
 {" "}
 <span className="uw">
-nguồn
+thông minh
 <svg className="h-ul" viewBox="0 0 200 14" preserveAspectRatio="none" aria-hidden="true">
 <path d="M3 8 C 40 2, 80 12, 120 6 S 180 4, 197 8" pathLength="1" />
 </svg>
 </span>
 </h2>
 <p>
-Viết bằng Markdown, công thức hiển thị đẹp, mỗi ý trỏ về đúng trang giáo trình.
+AI tự động chia kiến thức thành các thẻ ghi nhớ, sẵn sàng cho việc recall. Người dùng có thể chỉnh sửa thẻ bằng markdown.
 </p>
 </div>
 <div className="panel card-demo" data-card="" aria-hidden="true">
@@ -513,7 +513,7 @@ Trí nhớ phai theo đường cong. Essity ôn lại đúng lúc sắp quên, n
 <circle key={x} cx={x} cy={CURVE.y1} r={7} />
 ))}
 </g>
-<ellipse cx="57" cy="58" rx="26" ry="22" className="rev-ring" />
+<circle cx={CURVE.trough.x} cy={CURVE.trough.y} r={17} className="rev-ring" />
 </svg>
 <div className="curve-lab">
 <span>
@@ -667,17 +667,17 @@ chấm từng ý
 <use href="#d-dua-phep" />
 </svg>
 <h2 id="h-nl">
-Chỉnh bằng
+Chỉnh sửa
 {" "}
 <span className="uw">
-một câu
+đơn giản
 <svg className="h-ul" viewBox="0 0 200 14" preserveAspectRatio="none" aria-hidden="true">
 <path d="M3 8 C 40 2, 80 12, 120 6 S 180 4, 197 8" pathLength="1" />
 </svg>
 </span>
 </h2>
 <p>
-Gõ điều bạn muốn thay đổi, hệ thống tự sửa và cho bạn xem trước. Không ưng thì hoàn tác.
+Tất cả thao tác chỉnh sửa chỉ cần viết ra yêu cầu và trợ lí AI sẽ hỗ trợ hoàn thành.
 </p>
 </div>
 <div className="panel nl-demo" data-nl="">
