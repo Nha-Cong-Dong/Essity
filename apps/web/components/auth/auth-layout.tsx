@@ -7,8 +7,6 @@ import { Mascot } from "@/components/mascot";
 // Login: sun mascot "Thật vui khi được gặp bạn" + bubble "Vào ôn thôi!"
 // Register: sun mascot "Chào mừng bạn mới!" + bubble "Bắt đầu nhé"
 
-const STAR_PATH = "M50 3 L59 29 L86 19 L71 43 L97 58 L68 63 L72 95 L50 74 L28 95 L32 63 L3 58 L29 43 L14 19 L41 29 Z";
-
 /** One account screen: plum field with mascot, form card on the right/bottom. */
 export function AuthLayout({
   title,
@@ -25,20 +23,6 @@ export function AuthLayout({
 }) {
   return (
     <div className="relative grid min-h-dvh grid-cols-1 bg-bg text-ink min-[1024px]:grid-cols-[1fr_1.1fr]">
-      {/* Sticker chain */}
-      <svg className="pointer-events-none absolute left-[35%] top-[34px] z-[3] hidden h-16 w-16 rotate-[8deg] min-[1024px]:block" viewBox="0 0 100 100" aria-hidden="true">
-        <path d={STAR_PATH} fill="#fff" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
-      </svg>
-      <svg className="pointer-events-none absolute left-[43.5%] top-[88px] z-[3] hidden h-11 w-11 rotate-[26deg] min-[1024px]:block" viewBox="0 0 100 100" aria-hidden="true">
-        <path d={STAR_PATH} fill="var(--accent-bright)" stroke="var(--accent-bright)" strokeWidth="2" strokeLinejoin="round" />
-      </svg>
-      <svg className="pointer-events-none absolute left-[51.5%] top-[56px] z-[3] hidden h-[30px] w-[30px] rotate-[44deg] min-[1024px]:block" viewBox="0 0 100 100" aria-hidden="true">
-        <path d={STAR_PATH} fill="var(--rose-300)" stroke="var(--rose-900)" strokeWidth="4" strokeLinejoin="round" />
-      </svg>
-      <svg className="pointer-events-none absolute left-[58%] top-[28px] z-[3] hidden h-5 w-5 rotate-[62deg] min-[1024px]:block" viewBox="0 0 100 100" aria-hidden="true">
-        <path d={STAR_PATH} fill="var(--rose-300)" stroke="var(--rose-900)" strokeWidth="5" strokeLinejoin="round" />
-      </svg>
-
       {/* Left/top: plum field */}
       <aside
         className="relative flex min-h-[214px] flex-col gap-5.5 bg-plum px-4.5 py-4 text-on-plum min-[1024px]:min-h-0 min-[1024px]:items-start min-[1024px]:justify-start min-[1024px]:px-10 min-[1024px]:py-10"
@@ -64,24 +48,26 @@ export function AuthLayout({
           </p>
         )}
 
-        {/* Mascot stage */}
-        <div className="pointer-events-none absolute inset-0 z-[1] hidden min-[1024px]:block" aria-hidden="true">
-          <div className="relative mx-auto h-full w-[340px]">
-            <div className="absolute left-1/2 top-[26px] -ml-[170px] w-[340px] origin-[50%_90%]">
-              <Mascot kind="sun" pose="chao" size="lg" className="drop-shadow-[0_10px_18px_rgba(0,0,0,0.3)]" />
-            </div>
+        {/* Desktop: mascot centred in the field, the bubble sits against its shoulder */}
+        <div className="pointer-events-none absolute inset-0 z-[1] hidden items-center justify-center min-[1024px]:flex" aria-hidden="true">
+          <div className="relative">
+            <Mascot kind="sun" pose="chao" size="lg" className="size-60 drop-shadow-[0_10px_18px_rgba(0,0,0,0.3)]" />
             {bubble && (
-              <div className="absolute left-[calc(50%+112px)] top-5 z-[2] origin-[0_100%] whitespace-nowrap rounded-[18px_18px_18px_4px] bg-white px-4.5 py-3 font-display text-[17px] font-semibold leading-[1.2] text-rose-900 shadow-md">
+              <div className="absolute -top-2 left-[calc(100%-36px)] z-[2] whitespace-nowrap rounded-[18px_18px_18px_4px] bg-white px-4.5 py-3 font-display text-[17px] font-semibold leading-[1.2] text-rose-900 shadow-md">
                 {bubble}
-                <span className="absolute -left-[9px] bottom-0 h-4.5 w-4.5 bg-white [clip-path:polygon(100%_0,100%_100%,0_100%)]" />
               </div>
             )}
           </div>
         </div>
 
-        {/* Mobile: mascot peeking from bottom right */}
+        {/* Mobile: mascot at the bottom right of the field, the bubble right beside it */}
         <div className="pointer-events-none absolute inset-0 z-[1] min-[1024px]:hidden" aria-hidden="true">
-          <div className="absolute -bottom-[30px] right-1.5 w-[150px]">
+          <div className="absolute -bottom-[30px] right-2 flex items-end">
+            {bubble && (
+              <div className="mb-14 -mr-5 whitespace-nowrap rounded-[16px_16px_4px_16px] bg-white px-3.5 py-2 font-display text-[15px] font-semibold leading-[1.2] text-rose-900 shadow-md">
+                {bubble}
+              </div>
+            )}
             <Mascot kind="sun" pose="chao" size="md" />
           </div>
         </div>
