@@ -168,9 +168,20 @@ class StatsRepository(UserScopedRepository[MemoryState]):
     def bank(self, now: datetime) -> dict[uuid.UUID, list[BankQuestion]]:
         """The practice bank of each subject: active, quality-checked questions that are not
         pipeline review questions."""
-        sections = {
-            s.id: Section(s.id, s.title, self._studied(s), s.excluded) for s in self._sections()
-        }
+        rows = self._sections()
+        by_id = {s.id: s for s in rows}
+
+        def excluded(row: DocSection) -> bool:  # it or an ancestor, as the question list reads it
+            seen: set[uuid.UUID] = set()
+            node: DocSection | None = row
+            while node is not None and node.id not in seen:
+                if node.excluded:
+                    return True
+                seen.add(node.id)
+                node = by_id.get(node.parent_id) if node.parent_id else None
+            return False
+
+        sections = {s.id: Section(s.id, s.title, self._studied(s), excluded(s)) for s in rows}
         links: dict[uuid.UUID, list[uuid.UUID]] = {}
         for qid, sid in self.session.execute(
             select(QuestionSection.question_id, QuestionSection.section_id).where(
