@@ -22,6 +22,7 @@ from typing import Any, cast
 import anthropic
 import httpx2
 
+from ai_service.llm.system import split_system
 from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError, ProviderName
 
 _log = logging.getLogger(__name__)
@@ -71,11 +72,18 @@ def _error_type(error: anthropic.APIStatusError) -> str | None:
 def _system(text: str) -> Any:
     """The instructions, marked as a cache breakpoint (T2.13).
 
-    Every call of a task sends the same `system` prompt byte for byte: chunk_units 5.2 KB,
-    draft_units 2.7 KB, grade 1.2 KB. Unmarked, each call pays the write price for them again;
-    marked, the calls after the first read them at a tenth. One breakpoint only: the user message
-    changes on every call, so there is nothing stable behind it to cache."""
-    return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
+    The stable instructions of a task (chunk_units 5.2 KB, draft_units 2.7 KB, grade 1.2 KB) come
+    first and carry the breakpoint; unmarked, each call pays the write price for them again,
+    marked, the calls after the first read them at a tenth. The per-request tail (the nonce, see
+    `llm.system`) comes after it, uncached, so it cannot break the match. One breakpoint only:
+    the user message changes on every call, so there is nothing stable behind it to cache."""
+    head, tail = split_system(text)
+    blocks: list[dict[str, Any]] = [
+        {"type": "text", "text": head, "cache_control": {"type": "ephemeral"}}
+    ]
+    if tail:
+        blocks.append({"type": "text", "text": tail})
+    return blocks
 
 
 def _content(request: LlmRequest) -> Any:

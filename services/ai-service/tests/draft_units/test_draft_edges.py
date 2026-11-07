@@ -7,6 +7,7 @@ import pytest
 
 from ai_service.domain.anchor_check import MIN_QUOTE_CHARS
 from ai_service.llm.quota import QuotaExceededError
+from ai_service.llm.system import render_system
 from ai_service.tasks.chunk_models import MAX_UNITS_OUT
 from ai_service.tasks.chunk_units import ChunkInputError
 from ai_service.tasks.draft_units import (
@@ -196,7 +197,7 @@ def test_system_is_draft_prompt_with_nonce() -> None:
     draft_units(request(), ask)
     prompt = ask.prompts[0]
     assert "{{NONCE}}" not in prompt.system
-    assert prompt.system == _DRAFT_PROMPT.replace("{{NONCE}}", prompt.nonce)
+    assert prompt.system == render_system(_DRAFT_PROMPT, prompt.nonce)
 
 
 # Red when: the retry after a broken first answer is sent without the draft prompt/description.

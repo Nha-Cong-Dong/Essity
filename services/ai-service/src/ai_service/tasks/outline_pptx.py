@@ -28,6 +28,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationErr
 
 from ai_service.db.session import SessionFactory
 from ai_service.llm.client import LlmClient
+from ai_service.llm.system import render_system
 from ai_service.llm.types import LlmRequest
 from ai_service.pptx import PptxContent, read_pptx
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
@@ -40,7 +41,6 @@ _log = logging.getLogger(__name__)
 TASK = "syllabus_toc"
 PROMPT_VERSION = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE_PLACEHOLDER = "{{NONCE}}"
 MAX_TITLES = 500
 MAX_GROUPS = 100
 MAX_GROUP_TITLE_CHARS = 200
@@ -140,9 +140,7 @@ def build_titles_prompt(content: PptxContent) -> TitlesPrompt | None:
     while nonce in body:
         nonce = new_nonce()
     user = wrap_untrusted("slide_titles", body, nonce)
-    return TitlesPrompt(
-        system_template().replace(_NONCE_PLACEHOLDER, nonce), user, OUTPUT_SCHEMA, nonce
-    )
+    return TitlesPrompt(render_system(system_template(), nonce), user, OUTPUT_SCHEMA, nonce)
 
 
 def _grouped(content: PptxContent, groups: list[_Group]) -> list[OutlineNode] | None:

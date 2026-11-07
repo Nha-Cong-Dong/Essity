@@ -70,3 +70,12 @@ def test_t213_cached_tokens_are_priced_apart_from_fresh_input() -> None:
     fresh = cost_usd(price, input_tokens=5200, output_tokens=0)
     cached = cost_usd(price, input_tokens=0, output_tokens=0, cache_read_tokens=5200)
     assert cached * 10 == fresh
+
+
+def test_t213_long_prompt_threshold_counts_cached_tokens_too() -> None:
+    # Red when: the threshold looks at fresh input only: a 150k prompt that is mostly cached would
+    # be billed at the short price, under-stating the cost. 1k fresh + 150k read + 0 write.
+    price = price_for("claude-haiku-5-5")
+    cost = cost_usd(price, input_tokens=1_000, output_tokens=0, cache_read_tokens=150_000)
+    # long price $0.50/M: 1000 * 0.50 + 150000 * 0.50 * 0.1 = 8000 -> $0.008
+    assert cost == Decimal("0.008000")

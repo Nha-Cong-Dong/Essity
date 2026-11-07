@@ -69,8 +69,12 @@ def cost_usd(
     tokens_in = input_tokens or 0
     tokens_out = output_tokens or 0
     per_in, per_out = price.input_per_mtok, price.output_per_mtok
+    # The size of the prompt is all of it, cached or not (how the provider applies the threshold).
     long_from = price.long_prompt_from_tokens
-    if long_from is not None and tokens_in >= long_from:
+    if (
+        long_from is not None
+        and tokens_in + (cache_read_tokens or 0) + (cache_write_tokens or 0) >= long_from
+    ):
         per_in = price.long_input_per_mtok or per_in
         per_out = price.long_output_per_mtok or per_out
     cost = (

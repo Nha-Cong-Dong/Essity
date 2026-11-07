@@ -14,6 +14,7 @@ from ai_service.config import Settings
 from ai_service.llm.anthropic_adapter import MAX_TOKENS, AnthropicAdapter
 from ai_service.llm.fake_adapter import FakeAdapter
 from ai_service.llm.pricing import FAKE_MODEL
+from ai_service.llm.system import render_system
 from ai_service.llm.types import LlmRequest, ProviderError
 from ai_service.logging import configure_logging
 from tests.llm.helpers import FAKE_KEY, SCHEMA, FakeAnthropicApi, answering, failing, make_request
@@ -45,6 +46,26 @@ def test_t210_anthropic_sends_instructions_as_system_and_data_as_the_user_messag
     ]
     assert body["messages"] == [{"role": "user", "content": request.user}]
     assert body["output_config"]["format"] == {"type": "json_schema", "schema": SCHEMA}
+
+
+def test_t213_system_cache_block_is_identical_across_requests_only_the_nonce_tail_differs() -> None:
+    # Red when: the nonce goes back into the cached part (the cache never matches again), or the
+    # nonce leaves `system` (the untrusted-data instruction would lose its delimiter).
+    api = answering()
+    adapter = adapter_on(api)
+    template = "Data sits in <data-{{NONCE}} ...>. Grade it."
+    for nonce in ("aaaa1111aaaa1111", "bbbb2222bbbb2222"):
+        adapter.complete(
+            make_request(system=render_system(template, nonce)), model=MODEL, timeout=5.0
+        )
+    first, second = api.body(0)["system"], api.body(1)["system"]
+    assert first[0] == second[0]
+    assert json.dumps(first[0]).encode() == json.dumps(second[0]).encode()
+    assert first[0]["cache_control"] == {"type": "ephemeral"}
+    assert "aaaa1111aaaa1111" not in first[0]["text"]
+    assert "cache_control" not in first[1]
+    assert "aaaa1111aaaa1111" in first[1]["text"] and "bbbb2222bbbb2222" in second[1]["text"]
+    assert first[1] != second[1]
 
 
 def test_g6_anthropic_caps_the_output_tokens() -> None:

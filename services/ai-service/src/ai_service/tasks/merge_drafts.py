@@ -31,6 +31,7 @@ from typing import Annotated, Any, Final
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from ai_service.llm.system import render_system
 from ai_service.messaging.session_result_v2 import draft_key_for_set, quote_hash
 from ai_service.tasks.draft_units import Draft, anchor_order
 from ai_service.tasks.grade import new_nonce, wrap_untrusted
@@ -38,7 +39,6 @@ from ai_service.tasks.grade import new_nonce, wrap_untrusted
 TASK: Final = "merge_drafts"
 PROMPT_VERSION: Final = "v1"
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
-_NONCE = "{{NONCE}}"
 MAX_CANDIDATES = 60
 MAX_GROUP = 8
 MAX_SUMMARY_CHARS = 600
@@ -96,7 +96,7 @@ def build_prompt(drafts: Sequence[Draft]) -> MergePrompt | None:
     return MergePrompt(
         PROMPT_VERSION,
         prompt_sha256(),
-        prompt_text().replace(_NONCE, nonce),
+        render_system(prompt_text(), nonce),
         user,
         {label: n for n, (label, _, _) in enumerate(candidates)},
         candidates,
