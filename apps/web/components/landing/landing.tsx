@@ -159,15 +159,11 @@ Trợ lí học tập tiên tiến. Quản lí lịch ôn luyện hiệu quả v
 <Link className="cta" href="/register">
 Đăng ký
 </Link>
+</div>
+</div>
 <svg className="m-sticker" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
 <path d="M50 3 L59 29 L86 19 L71 43 L97 58 L68 63 L72 95 L50 74 L28 95 L32 63 L3 58 L29 43 L14 19 L41 29 Z" />
 </svg>
-<svg className="m-arrow" viewBox="0 0 152 60" aria-hidden="true" focusable="false">
-<path pathLength="1" d="M6 52 C 34 10, 96 2, 146 30" />
-<path pathLength="1" d="M130 14 L147 31 L126 40" />
-</svg>
-</div>
-</div>
 <div className="hero-pic" aria-hidden="true">
 <svg className="m-star" viewBox="0 0 62 62" focusable="false">
 <path pathLength="1" d="M31 4 L38.5 23 L58 24.5 L42.5 37 L48 56.5 L31 45.5 L13.5 57 L19.5 37.5 L3.5 25.5 L23.5 23.5 Z" />
@@ -183,14 +179,8 @@ Xin chào, rất vui được gặp bạn
 Mây Mây – trợ lí học tập của bạn
 </b>
 <span>
-Vì sao bầu trời màu xanh?
+Học tập thật dễ và vui!
 </span>
-<i className="chip teal">
-<svg viewBox="0 0 16 16">
-<path d="M3 8h9M9 4l4 4-4 4" />
-</svg>
-Tiếp theo
-</i>
 </div>
 </div>
 </div>
@@ -520,7 +510,7 @@ Trí nhớ phai theo đường cong. Essity ôn lại đúng lúc sắp quên, n
 Nhớ rõ
 </span>
 <span>
-Sắp quên
+Quên
 </span>
 </div>
 <div className="days">
