@@ -128,7 +128,6 @@ export function KnowledgeGraph({
       style: [...multiStylesheet(ink, line, sheet, soft, display), ...v4Highlights(ink, hong, now)],
       minZoom: 0.2,
       maxZoom: 3,
-      wheelSensitivity: 0.3,
       boxSelectionEnabled: false,
     });
     cyRef.current = cy;
