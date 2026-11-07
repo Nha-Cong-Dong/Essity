@@ -416,7 +416,7 @@
 .lp :global(.qt.fin){background:var(--sunken)}
 .lp :global(.out-demo .hand:nth-of-type(1)){display:none}
 @media (max-width:700px){
-.lp :global(.fsrs-demo .hand){left:auto!important;right:10px;top:auto!important;bottom:calc(100% - 120px)}
+.lp :global(.fsrs-demo .hand){left:auto!important;right:10px;bottom:auto;max-width:150px}
 .lp :global(.hand){white-space:normal;max-width:70vw}
 }
 .lp :global(.rc-fwrap .ring){top:-10%;height:120%;left:-4%;width:108%}
@@ -525,6 +525,7 @@
 @media (min-width:1001px){
 .lp :global(.bubble){left:auto;right:calc(100% - var(--u)*84);top:70%;width:max-content;max-width:calc(var(--u)*250);border-radius:calc(var(--u)*22) calc(var(--u)*6) calc(var(--u)*6) calc(var(--u)*22);box-shadow:none}
 .lp :global(.bubble::after){display:none}
+.lp :global(.note-chip){bottom:calc(var(--u)*-92)}
 .lp :global(.m-sticker){position:absolute;left:40%;top:80%;translate:-50% -50%;z-index:2}
 }
 @media (max-width:1000px){
@@ -532,6 +533,3 @@
 }
 .lp :global(.fsrs-demo .curve){margin-top:95px}
 .lp :global(.curve-lab){top:calc(var(--u)*40 + 95px)}
-@media (max-width:700px){
-.lp :global(.fsrs-demo .hand){bottom:calc(100% - 139px)}
-}
