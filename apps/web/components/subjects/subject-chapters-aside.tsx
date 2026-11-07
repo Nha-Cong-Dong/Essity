@@ -68,7 +68,7 @@ export function SubjectOutlineAside({ nodes, subjectId, nextId = null }: { nodes
         // A list that scrolls must take the keyboard; one that fits is not a tab stop.
         tabIndex={overflows ? 0 : undefined}
         aria-label="Các phần của đề cương"
-        className="m-0 flex max-h-[60vh] list-none flex-col overflow-y-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className="relative m-0 flex max-h-[60vh] list-none flex-col overflow-y-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         {nodes.map((n) => (
           <Row key={n.id} node={n} depth={0} nextId={nextId} />
