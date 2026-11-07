@@ -50,6 +50,30 @@ export function weeklyTrend(cells: GridCell[], weeks = 12): number[] {
   return out;
 }
 
+/** UI-NITS-0811: a chart with nothing to draw keeps its axes and says so. */
+function EmptyNote() {
+  return (
+    <p data-empty-chart className="absolute top-1/3 left-1/2 z-10 m-0 -translate-x-1/2 rounded-full bg-sheet px-3 py-1 text-center text-meta whitespace-nowrap text-ink-soft">
+      Chưa có số liệu
+    </p>
+  );
+}
+
+function EmptyYear() {
+  return (
+    <div data-activity-grid data-empty-year className="relative mb-4 flex gap-1 overflow-hidden rounded-control py-2" role="img" aria-label="Hoạt động cả năm: chưa có số liệu">
+      <span data-empty-chart className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sheet px-3 py-1 text-meta whitespace-nowrap text-ink-soft">Chưa có số liệu</span>
+      {Array.from({ length: 40 }, (_, c) => (
+        <div key={c} aria-hidden="true" className="flex flex-col gap-1">
+          {Array.from({ length: 7 }, (_, r) => (
+            <span key={r} className="size-3 rounded-control bg-sunken" />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Trend({ cells }: { cells: GridCell[] }) {
   const weeks = weeklyTrend(cells);
   const top = Math.max(...weeks, 1);
@@ -59,7 +83,8 @@ function Trend({ cells }: { cells: GridCell[] }) {
         12 tuần gần đây
       </h2>
       <p className="m-0 mb-3 text-meta text-ink-soft">Thẻ đã lưu và câu đã làm theo từng tuần.</p>
-      <div className="flex min-h-28 flex-1 items-end gap-2 min-[901px]:gap-3.5" data-trend>
+      <div className="relative flex min-h-28 flex-1 items-end gap-2 border-b border-line-strong min-[901px]:gap-3.5" data-trend>
+        {weeks.every((n) => n === 0) && <EmptyNote />}
         {weeks.map((n, i) => (
           <div key={i} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${n}`}>
             <div
@@ -129,24 +154,8 @@ export function StatsScreen({
       </>
     );
   }
-  if (subjects.length === 0) {
-    return (
-      <div>
-        <h1 className="m-0 text-title">Thống kê</h1>
-        <div className="mt-8 flex flex-col items-start gap-4">
-          <Mascot pose="cho" size="lg" className="size-18" />
-          <p className="m-0 max-w-xl text-read">
-            Thống kê hiện sau tuần học đầu tiên. Tạo một môn rồi nộp bài ở buổi học đầu tiên để bắt đầu.
-          </p>
-          <Button render={<a href="/subjects/new" />} nativeButton={false}>
-            Tạo môn
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   const hasDays = cells.some((c) => c.cardsSaved + c.questionsAnswered > 0);
+  const noSubjects = subjects.length === 0;
   return (
     <>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-x-4 gap-y-3 min-[901px]:grid-cols-12 min-[901px]:items-end">
@@ -164,6 +173,18 @@ export function StatsScreen({
           </a>
         </div>
       </div>
+
+      {noSubjects && (
+        <div className="mt-7 flex flex-col items-start gap-4">
+          <Mascot pose="cho" size="lg" className="size-18" />
+          <p className="m-0 max-w-xl text-read">
+            Thống kê hiện sau tuần học đầu tiên. Tạo một môn rồi nộp bài ở buổi học đầu tiên để bắt đầu.
+          </p>
+          <Button render={<a href="/subjects/new" />} nativeButton={false}>
+            Tạo môn
+          </Button>
+        </div>
+      )}
 
       <section
         aria-label="Tổng quan"
@@ -194,7 +215,7 @@ export function StatsScreen({
         <h2 id="activity-h" className="m-0 mb-4 text-read font-semibold">
           Hoạt động cả năm
         </h2>
-        {hasDays ? null : (
+        {hasDays || noSubjects ? null : (
           <div className="mb-4 flex flex-col items-start gap-3" data-empty-doodle>
               <Doodle name="dong-ho-cat" size={48} className="text-hong-text" />
             <p className="m-0">Chưa có ngày nào học. Ô sẽ đậm lên khi bạn lưu thẻ hoặc làm câu hỏi.</p>
@@ -203,6 +224,7 @@ export function StatsScreen({
             </Button>
           </div>
         )}
+        {cells.length === 0 && <EmptyYear />}
         <ActivityGrid
           cells={cells}
           today={view.today}

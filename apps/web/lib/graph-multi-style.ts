@@ -2,7 +2,10 @@ import type { StylesheetJson } from "cytoscape";
 
 // V16/V17: the Cytoscape stylesheet of the knowledge graph. A node takes its colour from its own
 // data (the subject's colour); edges are one ink line.
-export function multiStylesheet(ink: string, line: string, surface = "#ffffff", soft = ink, display = "sans-serif"): StylesheetJson {
+/** One zoom step (the zoom buttons' factor): the first view opens this much further out than the fit. */
+export const INITIAL_ZOOM_STEP = 1.3;
+
+export function multiStylesheet(ink: string, line: string, surface = "#ffffff", soft = ink, display = "sans-serif", halo = surface): StylesheetJson {
   return [
     {
       selector: "node",
@@ -20,11 +23,9 @@ export function multiStylesheet(ink: string, line: string, surface = "#ffffff", 
         "text-margin-y": 3,
         "text-wrap": "ellipsis",
         "text-max-width": "110px",
-        // UI-A: a label never sits bare on an edge: a soft plate under the words.
-        "text-background-color": surface,
-        "text-background-opacity": 0.85,
-        "text-background-padding": "2px",
-        "text-background-shape": "roundrectangle",
+        // UI-NITS-0811: no plate behind a label; a halo in the canvas colour keeps it readable over an edge.
+        "text-outline-color": halo,
+        "text-outline-width": 3,
         "border-width": 1.5,
         "border-color": "data(color)",
       },

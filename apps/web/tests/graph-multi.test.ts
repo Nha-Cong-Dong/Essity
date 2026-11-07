@@ -38,3 +38,20 @@ describe("hiddenExcept", () => {
     expect(hiddenExcept(subs, "zzz").size).toBe(0);
   });
 });
+
+describe("UI-NITS-0811: graph labels and first zoom", () => {
+  it("UI-NITS-0811: a node label has no plate behind it, only a text halo in the canvas colour", async () => {
+    const { multiStylesheet } = await import("@/lib/graph-multi-style");
+    const node = (multiStylesheet("#111", "#ccc", "#f5f5f5").find((r) => (r as { selector?: string }).selector === "node") as unknown as { style: Record<string, unknown> }).style;
+    expect(Object.keys(node).filter((k) => k.startsWith("text-background"))).toEqual([]);
+    expect(node["text-outline-color"]).toBe("#f5f5f5");
+    expect(Number(node["text-outline-width"])).toBeGreaterThan(0);
+  });
+  it("UI-NITS-0811: the first view is one zoom step (1.3x) smaller than the fitted one", async () => {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const src = readFileSync(path.join(__dirname, "../components/graph/knowledge-graph.tsx"), "utf8");
+    expect((await import("@/lib/graph-multi-style")).INITIAL_ZOOM_STEP).toBe(1.3);
+    expect(src).toMatch(/cy\.zoom\(\{ level: cy\.zoom\(\) \/ INITIAL_ZOOM_STEP/);
+  });
+});
