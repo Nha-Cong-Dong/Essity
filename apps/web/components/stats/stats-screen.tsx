@@ -3,12 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-import { Doodle } from "@/components/icons/doodle";
 import { Button } from "@/components/ui/button";
 import { Mascot } from "@/components/mascot";
-import { NxList } from "@/components/ui/nx-list";
 import { Sheet } from "@/components/ui/sheet";
-import { formatExamDate } from "@/lib/exam-date";
 import type { GridCell } from "@/lib/stats";
 import { NO_TOTALS, type StatsView } from "@/lib/stats-view";
 
@@ -31,11 +28,11 @@ function Skeleton() {
 }
 
 /** V4: the three totals sit on the field block (tier 1, one per screen); the lead one is the screen's answer. */
-function Kpi({ label, value, note, lead = false }: { label: string; value: string; note?: string; lead?: boolean }) {
+function Kpi({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div data-kpi className="min-w-0 px-6 py-5 max-[900px]:px-4 max-[900px]:py-4 min-[901px]:[&:not(:first-of-type)]:border-l min-[901px]:[&:not(:first-of-type)]:border-on-plum-soft/20 max-[900px]:[&:not(:first-of-type)]:border-t max-[900px]:[&:not(:first-of-type)]:border-on-plum-soft/20">
       <p className="m-0 text-meta text-on-plum-soft">{label}</p>
-      <p className={`m-0 my-1.5 font-display tabular-nums text-on-plum ${lead ? "text-display" : "text-title"}`}>{value}</p>
+      <p className={`m-0 my-1.5 font-display tabular-nums text-on-plum text-title`}>{value}</p>
       {note && <p className="m-0 text-meta text-on-plum-soft">{note}</p>}
     </div>
   );
@@ -180,7 +177,6 @@ export function StatsScreen({
           <path d="M50 3 L59 29 L86 19 L71 43 L97 58 L68 63 L72 95 L50 74 L28 95 L32 63 L3 58 L29 43 L14 19 L41 29 Z" />
         </svg>
         <Kpi
-          lead
           label="Nội dung đã học"
           value={`${t.unitsLearned}`}
           note={`/ ${t.unitsTotal} phần · ${t.sessions} buổi học`}
@@ -189,20 +185,8 @@ export function StatsScreen({
         <Kpi label="Câu luyện tập đã làm" value={`${t.practiceDone}`} />
       </section>
 
-      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-x-5 gap-y-8 min-[901px]:grid-cols-12">
-        <div className="min-w-0 min-[901px]:col-span-7 [&>*]:h-full">
-          <Trend cells={cells} />
-        </div>
-        <NxList title="Môn đang học" className="min-[901px]:col-span-5">
-          {subjects.map((s) => (
-            <li key={s.id} className="min-h-12 rounded-row bg-bg px-3.5 py-2.5">
-              <span className="block font-semibold [overflow-wrap:anywhere]">{s.name}</span>
-              <span className="block text-meta text-ink-soft">
-                {s.examOn ? `Thi ${formatExamDate(s.examOn)}` : "Chưa có ngày thi"}
-              </span>
-            </li>
-          ))}
-        </NxList>
+      <div className="mt-5 min-w-0 [&>*]:h-full">
+        <Trend cells={cells} />
       </div>
 
       <Sheet id="activity" className="mt-5 min-w-0" aria-labelledby="activity-h" role="region">
@@ -211,7 +195,6 @@ export function StatsScreen({
         </h2>
         {hasDays ? null : (
           <div className="mb-4 flex flex-col items-start gap-3" data-empty-doodle>
-            <Doodle name="dong-ho-cat" size={48} className="text-hong-text" />
             <p className="m-0">Chưa có ngày nào học. Ô sẽ đậm lên khi bạn lưu thẻ hoặc làm câu hỏi.</p>
             <Button render={<a href="/today" />} nativeButton={false}>
               Vào buổi học
