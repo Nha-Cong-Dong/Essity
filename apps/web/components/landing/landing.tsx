@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandMark } from "@/components/brand-mark";
 import { Mascot } from "@/components/mascot";
 
 import { fsrsCurve } from "./fsrs-curve";
@@ -114,7 +115,8 @@ export function Landing() {
 <div className="hero-in">
 <nav className="bar" aria-label="Chính">
 <a className="wm" href="#dau-trang">
-Essity
+<BrandMark size={34} />
+<span>Essity</span>
 </a>
 <div className="bar-r">
 <button className="pause" type="button" aria-pressed="false" aria-label="Tạm dừng chuyển động" title="Tạm dừng chuyển động" data-pause="">

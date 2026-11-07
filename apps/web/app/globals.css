@@ -801,3 +801,10 @@
   60% { transform: translate(132px, 46px) scale(0.7); opacity: 1; }
   80%, 100% { transform: translate(132px, 56px) scale(0.6); opacity: 0; }
 }
+
+/* LOGO-E: layered-E mark colours (ink + accent), light and dark. */
+:root { --logo-ink: #661738; --logo-accent: #d1347a; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --logo-ink: #ffe5ed; --logo-accent: #fc7bad; }
+}
+:root[data-theme="dark"], [data-tone="dark"] { --logo-ink: #ffe5ed; --logo-accent: #fc7bad; }

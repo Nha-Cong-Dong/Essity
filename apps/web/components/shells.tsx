@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { BrandMark } from "@/components/brand-mark";
 import { MainNav, type NavItem } from "@/components/main-nav";
 import { Mascot } from "@/components/mascot";
 import { cn } from "@/lib/utils";
@@ -13,7 +14,8 @@ export type { NavItem } from "@/components/main-nav";
 
 function Logo({ className }: { className?: string }) {
   return (
-    <span className={cn("font-display text-logo text-hong-text", className)}>
+    <span className={cn("inline-flex items-center gap-2 font-display text-logo tracking-[-0.02em] text-(color:--logo-ink)", className)}>
+      <BrandMark size={28} />
       Essity
     </span>
   );
