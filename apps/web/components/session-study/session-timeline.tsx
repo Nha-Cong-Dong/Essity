@@ -34,7 +34,7 @@ export function PieceTimeline({ pieces, onDrop, busy }: { pieces: Piece[]; onDro
             const rest = p.text.trim().slice(title.length).replace(/^[.!?…\s]+/, "");
             return (
               <li key={p.id} className="grid grid-cols-[44px_minmax(0,1fr)] gap-2.5 min-[641px]:grid-cols-[52px_minmax(0,1fr)] min-[641px]:gap-3.5">
-                <time className="pt-4.5 text-endtext-meta text-ink-soft tabular-nums">{hhmm(p.createdAt)}</time>
+                <time className="pt-4.5 text-end text-meta text-ink-soft tabular-nums">{hhmm(p.createdAt)}</time>
                 <div className="flex min-w-0 flex-col gap-1.5 rounded-tile border border-line bg-sheet px-5 py-4 wrap-anywhere">
                   <b className="font-semibold">{title || (p.fileCount > 0 ? `${p.fileCount} file` : "Một phần")}</b>
                   {rest && <span className="line-clamp-3 whitespace-pre-line text-body text-ink-soft">{rest}</span>}
