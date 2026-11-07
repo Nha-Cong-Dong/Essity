@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Xác minh email · Essity" };
 // nothing from a third party, so the token in the URL goes nowhere.
 export default function VerifyEmailPage() {
   return (
-    <AuthLayout title="Xác minh email">
+    <AuthLayout title="Xác minh email" greeting={<><span>Một bước</span> <span>nhỏ thôi</span></>} bubble="Mình ở đây">
       <VerifyEmail />
     </AuthLayout>
   );

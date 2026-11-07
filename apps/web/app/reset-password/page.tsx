@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Đặt mật khẩu mới · Essity"
 // a third party, so the token in the URL goes nowhere.
 export default function ResetPasswordPage() {
   return (
-    <AuthLayout title="Đặt lại mật khẩu">
+    <AuthLayout title="Đặt lại mật khẩu" greeting={<><span>Đặt mật khẩu</span> <span>mới nào</span></>} bubble="Mình giúp bạn">
       <ResetPassword />
     </AuthLayout>
   );
