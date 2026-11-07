@@ -58,6 +58,67 @@ export type GraphCanvasProps = {
   onSelectEdge: (id: string) => void;
 };
 
+/**
+ * A phone frame is tall and narrow but fcose lays out roughly square: stretch the cards
+ * vertically (up to 3x) so the cluster uses the height and its labels do not share a row.
+ */
+export function stretchToFrame(cy: Core, padX = 48, padY = 48): void {
+  const cards = cy.nodes(".card");
+  if (cards.length < 2 || cy.width() >= 480) return;
+  const box = cards.boundingBox({ includeLabels: false, includeOverlays: false });
+  const w = Math.max(box.w, 1);
+  const h = Math.max(box.h, 1);
+  const k = Math.min(3, Math.max(1, ((cy.height() - 2 * padY) / (cy.width() - 2 * padX)) * (w / h)));
+  if (k <= 1.05) return;
+  cards.forEach((n) => {
+    const { x, y } = n.position();
+    n.position({ x, y: box.y1 + (y - box.y1) * k });
+  });
+}
+
+/** Moves apart (up and down) every pair of card labels that cover each other; false if none did. */
+export function separateLabels(cy: Core): boolean {
+  const cards = cy.nodes(".card").toArray();
+  const box = (n: (typeof cards)[number]) => n.renderedBoundingBox({ includeNodes: false, includeLabels: true, includeEdges: false, includeOverlays: false });
+  const zoom = cy.zoom();
+  let moved = false;
+  for (let i = 0; i < cards.length; i++) {
+    for (let j = i + 1; j < cards.length; j++) {
+      const a = box(cards[i]);
+      const b = box(cards[j]);
+      if (!(a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2)) continue;
+      const need = (Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1) + 8) / zoom;
+      const [up, down] = a.y1 + a.y2 <= b.y1 + b.y2 ? [cards[i], cards[j]] : [cards[j], cards[i]];
+      up.position({ x: up.position("x"), y: up.position("y") - need / 2 });
+      down.position({ x: down.position("x"), y: down.position("y") + need / 2 });
+      moved = true;
+    }
+  }
+  return moved;
+}
+
+/** Zoom and pan so the card centres fill the frame, with `padX`/`padY` px kept clear for labels. */
+export function fitView(cy: Core, padX = cy.width() < 480 ? 52 : 84, padY = 48): void {
+  const cards = cy.nodes(".card");
+  if (cards.empty()) return;
+  let x1 = Infinity;
+  let y1 = Infinity;
+  let x2 = -Infinity;
+  let y2 = -Infinity;
+  cards.forEach((n) => {
+    const { x, y } = n.position();
+    x1 = Math.min(x1, x);
+    y1 = Math.min(y1, y);
+    x2 = Math.max(x2, x);
+    y2 = Math.max(y2, y);
+  });
+  const w = Math.max(x2 - x1, 1);
+  const h = Math.max(y2 - y1, 1);
+  const zoom = Math.min(1.5, Math.max(cy.minZoom(), Math.min((cy.width() - 2 * padX) / w, (cy.height() - 2 * padY) / h)));
+  cy.zoom(zoom);
+  cy.pan({ x: cy.width() / 2 - (zoom * (x1 + x2)) / 2, y: cy.height() / 2 - (zoom * (y1 + y2)) / 2 });
+}
+
 export default function GraphCanvas({ view, sections, selectedId, reducedMotion, onSelectCard, onSelectEdge }: GraphCanvasProps) {
   const host = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
@@ -93,7 +154,7 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
     // Everything that depends on zoom or on the palette lives here, so a resize of the box or a
     // switch of theme restyles without rebuilding the graph.
     const restyle = () => {
-      cy.style(graphStylesheet(readPalette(), cy.zoom()));
+      cy.style(graphStylesheet(readPalette(), cy.zoom(), cy.width() < 480));
     };
     const mark = () => {
       cy.elements().removeClass("picked near far");
@@ -126,11 +187,20 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
     const fitLock = lockRef.current;
     fitLock.reset();
     const fit = () => {
-      if (!fitLock.touched && !cy.destroyed()) cy.fit(undefined, 24);
+      if (fitLock.touched || cy.destroyed()) return;
+      // cy.fit() would fit the boxes of nodes and labels, but those are pixels / zoom in model
+      // units, so fitting them zooms out, which makes them bigger, down to the minimum zoom.
+      // Fit the card centres instead and leave room in pixels for a label either side.
+      fitView(cy);
     };
     const detach = fitLock.attach(host.current);
     cy.on("dragpan", fitLock.lock);
-    cy.on("layoutstop", fit);
+    cy.on("layoutstop", () => {
+      stretchToFrame(cy);
+      fit();
+      // Still two labels on one another (a narrow frame): push each such pair apart up and down.
+      for (let i = 0; i < 12 && cy.width() < 480 && !fitLock.touched && separateLabels(cy); i++) fit();
+    });
     cy.layout({
       name: "fcose",
       animate: !reducedMotion,
@@ -197,7 +267,7 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
         </button>
         <button type="button" aria-label="Đặt lại khung nhìn" className={ZOOM_BUTTON + " px-3"} onClick={() => {
             lockRef.current.reset();
-            cyRef.current?.fit(undefined, 24);
+            if (cyRef.current) fitView(cyRef.current);
           }}>
           Đặt lại
         </button>
