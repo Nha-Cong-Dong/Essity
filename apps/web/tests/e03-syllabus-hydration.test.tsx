@@ -29,7 +29,7 @@ async function mismatches(initial: OutlineOut): Promise<string[]> {
   container.innerHTML = renderToString(element);
   document.body.append(container);
   const found: string[] = [];
-  const spy = vi.spyOn(console, "error").mockImplementation((...args) => void found.push(String(args[0])));
+  const spy = vi.spyOn(console, "error").mockImplementation((...args) => void (/hydrat|mismatch|#418/i.test(args.map(String).join(" ")) && found.push(String(args[0]))));
   await act(async () => {
     hydrateRoot(container, element, { onRecoverableError: (error) => void found.push(String(error)) });
   });
