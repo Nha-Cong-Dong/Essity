@@ -1,5 +1,4 @@
 import { EmptyState } from "@/components/empty-state";
-import { Marker } from "@/components/notebook";
 import { PageColumn } from "@/components/shells";
 
 // T4.9 (US-01): a subject's documents with their processing state (screens-html/screens/subject.html,

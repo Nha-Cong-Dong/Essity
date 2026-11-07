@@ -92,7 +92,7 @@ describe("session end", () => {
     show(api());
     await end();
     fireEvent.click(await screen.findByRole("button", { name: END_COPY.home }));
-    expect(assign).toHaveBeenCalledWith("/today");
+    expect(assign).toHaveBeenCalledWith(`${window.location.origin}/today`);
   });
 
   // Red when: "Học tiếp môn này" does not start a new session of the same subject (free study).
@@ -100,7 +100,7 @@ describe("session end", () => {
     show(api());
     await end();
     fireEvent.click(await screen.findByRole("button", { name: END_COPY.more }));
-    expect(assign).toHaveBeenCalledWith("/subjects/SUBJ/sessions/study");
+    expect(assign).toHaveBeenCalledWith(`${window.location.origin}/subjects/SUBJ/sessions/study`);
   });
 
   // Red when: Escape leaves the learner on a finished session with no way on.
@@ -109,7 +109,7 @@ describe("session end", () => {
     await end();
     await screen.findByRole("dialog");
     fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
-    expect(assign).toHaveBeenCalledWith("/today");
+    expect(assign).toHaveBeenCalledWith(`${window.location.origin}/today`);
   });
 
   // Red when: focus is not moved into the pop-up (keyboard users stay behind the modal).

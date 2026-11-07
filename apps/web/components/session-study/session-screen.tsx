@@ -562,8 +562,8 @@ export function SessionScreen(props: SessionScreenProps) {
           open={ended}
           empty={emptyEnd}
           recorded={pieces.length}
-          onHome={() => window.location.assign("/today")}
-          onMore={() => window.location.assign(`/subjects/${subjectId}/sessions/study`)}
+          onHome={() => window.location.assign(new URL("/today", window.location.origin).href)}
+          onMore={() => window.location.assign(new URL(`/subjects/${subjectId}/sessions/study`, window.location.origin).href)}
         />
       )}
     </FocusShell>

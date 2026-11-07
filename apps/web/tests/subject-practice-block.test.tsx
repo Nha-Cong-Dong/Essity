@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // V19: the practice tile of the subject screen.
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 
 import { SubjectPracticeBlock } from "@/components/subjects/subject-practice-block";

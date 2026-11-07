@@ -3,7 +3,7 @@
 // from app/globals.css, never copied from the spec (plan V6, V15).
 import { describe, expect, it } from "vitest";
 
-import { contrast, contrastOn, osDarkPalette, palette, stops, type Mode } from "./css-tokens";
+import { contrast, contrastOn, osDarkPalette, palette, type Mode } from "./css-tokens";
 
 type Pair = [fg: string, bg: string, base?: string];
 

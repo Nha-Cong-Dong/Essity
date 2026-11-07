@@ -24,9 +24,9 @@ const OUT = path.join(web, ".verify");
 const PORT = 3101;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 
-// `expectUrl` differs from `path` where the app redirects on purpose (no session: / -> /login).
+// `expectUrl` differs from `path` where the app redirects on purpose (e.g. /check-email without the email).
 const SCREENS = [
-  { path: "/", expectUrl: "/login" },
+  { path: "/" }, // guest: the landing page
   { path: "/login" },
   { path: "/register" },
   // Without the email the page sends the visitor back to the form on purpose.

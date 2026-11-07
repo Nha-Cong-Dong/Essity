@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { Moon, Paperclip, PenLine, Sparkle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -39,16 +38,16 @@ export function Sticker({
 // V22: one motif (the `hl-word` highlighter under an h1 phrase, globals.css) and one mascot. The V21
 // decorations below draw nothing; groups 1-3 remove their call sites, then they are deleted.
 /** @deprecated V22 draws no stickers. */
-export function NoteSticker(_props: { children?: ReactNode; className?: string }) {
+export function NoteSticker() {
   return null;
 }
 
 /** @deprecated V22 draws no notebook margin. */
-export function MarginRule(_props: { className?: string }) {
+export function MarginRule() {
   return null;
 }
 
 /** @deprecated V22 draws no watermark. */
-export function Watermark(_props: { className?: string }) {
+export function Watermark() {
   return null;
 }
