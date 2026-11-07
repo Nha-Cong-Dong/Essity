@@ -1,0 +1,11 @@
+understanding: "Sửa auth v4 + mascot v3: mascot sạch vệt, dải teal ngắn, không đè ô, bubble sát mascot, đúng kind từng màn; rebase lên main sau #268."
+task: AUTH-V4
+lane: L5
+status: done
+head_sha: b6e89b3d
+step: rebased on origin/main (draft mascot commits dropped: main #267 already has kind/art), fixes + tests pushed
+tests: {cmd: "vitest tests/mascot* session-end empty-state stats", passed: 96, failed: 0}
+verify: "login/register 390+1440 light/dark screenshots in .work/AUTH-V4/shots; eslint 0 errors; tsc no output; pnpm broken NVM4306 -> node direct; full vitest + verify-screens.mjs not confirmed (see report)"
+blockers: []
+decisions: ["Vệt nâu ở kính = khe giữa các khối mây -> vá tròn #ffe5ed (Coder)", "bỏ chuỗi sao sticker ở auth, mascot giữa field, bubble cạnh vai (Coder)"]
+next: "orchestrator mở PR"
