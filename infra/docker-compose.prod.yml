@@ -1,0 +1,99 @@
+# Single-VPS deploy override (DEPLOY-PREP). Always used together with the base file:
+#   docker compose --env-file .env.prod -f infra/docker-compose.yml -f infra/docker-compose.prod.yml ...
+# Differences from local dev: Caddy is the only thing listening on the network (80/443); no
+# DB/Redis/storage/app ports are published; dev-only tools (Mailpit, Jaeger, OTel) are off;
+# services run in production mode and restart on failure. See infra/DEPLOY.md.
+
+x-core-prod: &core-prod
+  CORE_ENVIRONMENT: production
+  CORE_WEB_BASE_URL: https://${DOMAIN:?set in .env.prod}
+  CORE_SMTP_USERNAME: ${SMTP_USERNAME:?set in .env.prod}
+  CORE_SMTP_PASSWORD: ${SMTP_PASSWORD:?set in .env.prod}
+  CORE_SMTP_STARTTLS: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: ""
+
+x-ai-prod: &ai-prod
+  AI_ENVIRONMENT: production
+  OTEL_EXPORTER_OTLP_ENDPOINT: ""
+
+services:
+  # Dev-only tools: kept in the base file, never started here.
+  mailpit:
+    profiles: ["dev-only"]
+  jaeger:
+    profiles: ["dev-only"]
+  otel-collector:
+    profiles: ["dev-only"]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?set in .env.prod}
+      ACME_EMAIL: ${ACME_EMAIL:?set in .env.prod}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      default:
+        # Containers reach storage with the same https URL the browser uses (core-api refuses
+        # plain http storage in production), so the name resolves to Caddy inside the network.
+        aliases:
+          - s3.${DOMAIN}
+    depends_on:
+      - web
+      - storage
+
+  postgres:
+    restart: unless-stopped
+    ports: !reset []
+
+  redis:
+    restart: unless-stopped
+    ports: !reset []
+
+  storage:
+    restart: unless-stopped
+    ports: !reset []
+
+  # aws-cli has no https rule: talk to storage directly so bucket setup does not wait for Caddy.
+  storage-init:
+    environment:
+      S3_ENDPOINT: http://storage:9000
+
+  core-api:
+    restart: unless-stopped
+    ports: !reset []
+    environment: *core-prod
+
+  core-worker:
+    restart: unless-stopped
+    environment: *core-prod
+
+  core-relay:
+    environment: *core-prod
+
+  core-consumer:
+    environment: *core-prod
+
+  ai-service:
+    restart: unless-stopped
+    ports: !reset []
+    environment: *ai-prod
+
+  ai-consumer:
+    environment: *ai-prod
+
+  web:
+    restart: unless-stopped
+    ports: !reset []
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: ""
+
+volumes:
+  caddy-data:
+  caddy-config:

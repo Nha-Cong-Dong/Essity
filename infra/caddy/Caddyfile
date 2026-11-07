@@ -1,0 +1,17 @@
+# Automatic HTTPS (Let's Encrypt). DOMAIN and ACME_EMAIL come from .env.prod via the caddy service.
+# Default DOMAIN is <server-ip>.sslip.io: sslip.io resolves any name containing an IP to that IP,
+# so no DNS setup is needed. Ports 80 and 443 must be reachable from the internet.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+# Object storage for browser uploads/downloads (presigned URLs, ADR-0012). Needs its own host
+# because the signature covers the Host header. Resolves to the same IP under sslip.io.
+s3.{$DOMAIN} {
+	reverse_proxy storage:9000
+}
