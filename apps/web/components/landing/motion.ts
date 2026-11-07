@@ -763,7 +763,7 @@ export function startLanding(root: El): () => void {
         await sleep(900);
         for (const q of qcs) {
           q.style.opacity = "1";
-          q.animate([{ transform: "translate(-40px,26px) scale(.85)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 650, easing: "cubic-bezier(.3,1.35,.5,1)" });
+          q.animate([{ transform: "translate(-40px,0)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 650, easing: "cubic-bezier(.3,1.35,.5,1)" });
           await sleep(220);
         }
         await a.finished.catch(() => {});
