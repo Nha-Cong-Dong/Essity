@@ -13,21 +13,8 @@ from core_api.api.ping import get_ai_client
 from core_api.clients.ai_client import AiServiceClient
 from core_api.config import get_settings
 from core_api.main import app
+from fake_ai_service import FakeAi
 from fake_storage import FakeStorage
-
-
-class FakeAi:
-    """What ai-service will answer, and the requests it got (bodies as sent)."""
-
-    def __init__(self) -> None:
-        self.answer: httpx2.Response | Exception = httpx2.Response(503, json={"code": "x"})
-        self.requests: list[httpx2.Request] = []
-
-    def handle(self, request: httpx2.Request) -> httpx2.Response:
-        self.requests.append(request)
-        if isinstance(self.answer, Exception):
-            raise self.answer
-        return self.answer
 
 
 @pytest.fixture(autouse=True)
