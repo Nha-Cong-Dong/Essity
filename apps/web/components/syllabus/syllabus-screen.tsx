@@ -71,11 +71,11 @@ export function Totals({ nodes, unit }: { nodes: SyllabusNode[]; unit: SyllabusF
   const word = unit === "slide" ? "slide" : unit === "est_page" ? "trang ước tính" : "trang";
   const pct = p.pagesTotal === 0 ? 0 : Math.round((p.pagesDone / p.pagesTotal) * 100);
   return (
-    <Block tier="field" className="mt-6 p-5 min-[901px]:p-6" data-totals-block>
-      <p className="m-0 text-lead" data-totals>
+    <Block tier="field" className="mt-3 p-3 min-[641px]:mt-6 min-[641px]:p-5 min-[901px]:p-6" data-totals-block>
+      <p className="m-0 text-body min-[641px]:text-lead" data-totals>
         đã học {p.done}/{p.total} phần · {p.pagesDone}/{p.pagesTotal} {word}
       </p>
-      <div aria-hidden="true" className="mt-3 h-2 w-full overflow-hidden rounded-full bg-on-plum/20">
+      <div aria-hidden="true" className="mt-2 h-1.5 w-full max-[640px]:hidden overflow-hidden rounded-full bg-on-plum/20 min-[641px]:mt-3 min-[641px]:h-2">
         <div className="h-full rounded-full bg-on-plum-action" style={{ width: `${pct}%` }} />
       </div>
       {p.excluded > 0 && (
