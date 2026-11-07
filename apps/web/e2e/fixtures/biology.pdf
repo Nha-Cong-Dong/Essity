@@ -1,0 +1,71 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 9 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 387 >>
+stream
+BT /F1 12 Tf 50 740 Td 18 TL
+(Chapter 1: Photosynthesis) '
+(Photosynthesis converts light energy into chemical energy in chloroplasts.) '
+(Section 1.1 Light reactions: chlorophyll absorbs light, water is split, oxygen is released,) '
+(ATP and NADPH are produced in the thylakoid membranes.) '
+(Section 1.2 Calvin cycle: carbon dioxide is fixed by RuBisCO into sugars in the stroma.) '
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 9 0 R >> >> >>
+endobj
+6 0 obj
+<< /Length 357 >>
+stream
+BT /F1 12 Tf 50 740 Td 18 TL
+(Chapter 2: Cellular respiration) '
+(Cells break down glucose to make ATP.) '
+(Section 2.1 Glycolysis: glucose is split into two pyruvate in the cytoplasm, net 2 ATP.) '
+(Section 2.2 Krebs cycle and electron transport chain: mitochondria produce about 30 ATP,) '
+(oxygen is the final electron acceptor and water is formed.) '
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 8 0 R /Resources << /Font << /F1 9 0 R >> >> >>
+endobj
+8 0 obj
+<< /Length 300 >>
+stream
+BT /F1 12 Tf 50 740 Td 18 TL
+(Chapter 3: Cell division) '
+(Section 3.1 Mitosis: prophase, metaphase, anaphase, telophase produce two identical cells.) '
+(Section 3.2 Meiosis: two divisions produce four haploid gametes with genetic variation) '
+(through crossing over and independent assortment.) '
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000253 00000 n 
+0000000691 00000 n 
+0000000817 00000 n 
+0000001225 00000 n 
+0000001351 00000 n 
+0000001702 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+1772
+%%EOF
