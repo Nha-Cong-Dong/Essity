@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 
-import core_api.jobs.registry  # noqa: F401  # pyright: ignore[reportUnusedImport]  # registers kinds
+import core_api.jobs.registry  # noqa: F401    # registers kinds
 from core_api.db.models import Outbox
 from core_api.jobs.app import app
 from core_api.jobs.job_health import job_health, report_job_health

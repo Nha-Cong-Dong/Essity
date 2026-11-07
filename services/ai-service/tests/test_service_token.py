@@ -13,7 +13,7 @@ def client() -> TestClient:
     app: FastAPI = create_app()
 
     @app.get("/v1/probe")
-    def probe() -> dict[str, str]:  # pyright: ignore[reportUnusedFunction]
+    def probe() -> dict[str, str]:
         return {"status": "ok"}
 
     return TestClient(app)

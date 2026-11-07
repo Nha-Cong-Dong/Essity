@@ -235,7 +235,7 @@ def test_b3_audit_write_failure_is_an_error_even_after_a_good_answer(
     # Red when: a grade is returned whose llm_call was never written (B3: fail closed).
     def broken() -> Session:
         session = sessions()
-        session.commit = _raise  # type: ignore[method-assign]
+        session.commit = _raise
         return session
 
     with pytest.raises(AuditUnavailableError):

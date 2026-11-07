@@ -210,7 +210,7 @@ def test_failed_request_is_logged_with_type_and_without_message(
     failing.middleware("http")(log_requests)
 
     @failing.get("/boom")
-    def boom() -> None:  # pyright: ignore[reportUnusedFunction]
+    def boom() -> None:
         raise RuntimeError(SECRETS["answer_text"])
 
     response = TestClient(failing, raise_server_exceptions=False).get("/boom")

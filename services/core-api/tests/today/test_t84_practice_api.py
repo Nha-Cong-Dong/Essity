@@ -64,7 +64,7 @@ class FakeAi:
             if set(got) == {"incorrect"}
             else "partial"
         )
-        return PracticeGradeReply(status="ok", overall=overall, ideas=ideas, **base)  # type: ignore[arg-type]
+        return PracticeGradeReply(status="ok", overall=overall, ideas=ideas, **base)
 
     def draft_answer(self, payload: dict[str, object]) -> DraftAnswerReply | NotGraded:
         self.drafted.append(payload)

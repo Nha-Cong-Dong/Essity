@@ -13,7 +13,7 @@ HAVANA = ZoneInfo("America/Havana")  # DST starts at midnight: 00:00 does not ex
 
 
 def local(tz: ZoneInfo, *args: int) -> datetime:
-    return datetime(*args, tzinfo=tz)  # pyright: ignore[reportArgumentType]
+    return datetime(*args, tzinfo=tz)
 
 
 def test_before_day_start_belongs_to_previous_day() -> None:

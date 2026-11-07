@@ -35,9 +35,9 @@ class PracticeRemovalRepository(UserScopedRepository[PracticeRemovalLog]):  # py
     """Scoped like every repository (the structural rule). The model is not `UserOwned` (its key
     is a counter), but it has `id` and `user_id`, which is all `_select()` needs."""
 
-    model = PracticeRemovalLog  # pyright: ignore[reportAssignmentType]
+    model = PracticeRemovalLog
 
-    def delete(self, id: uuid.UUID) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def delete(self, id: uuid.UUID) -> bool:
         raise NotImplementedError("a removal event is kept for good")
 
     def append(

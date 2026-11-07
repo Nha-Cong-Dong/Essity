@@ -467,7 +467,7 @@ def test_the_parse_leg_holds_no_transaction_open(
         seen.append(db_session.in_transaction() and bool(db_session.new or db_session.dirty))
         return original(payload)
 
-    ai.parse_command = spy  # type: ignore[method-assign]
+    ai.parse_command = spy
     post(client, h, {"text": "x", "subject_id": str(cw.subject.id)})
     assert seen == [False]
 

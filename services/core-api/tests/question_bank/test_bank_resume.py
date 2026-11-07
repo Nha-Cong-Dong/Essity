@@ -133,9 +133,9 @@ def test_no_turn_queues_the_import_once_and_stores_nothing(world: World, ai: Fak
 
 def test_an_ai_outage_is_queued_but_a_bad_file_is_not(world: World, ai: FakeBank) -> None:
     # US-14 AC9. Red when: an unusable file is retried for days, or an outage is dropped.
-    ai.script = NotGraded("invalid", "server_error")  # type: ignore[arg-type]
+    ai.script = NotGraded("invalid", "server_error")
     assert world.post().json()["status"] == "failed" and jobs(world.session) == []
-    ai.script = NotGraded("unavailable", "server_error")  # type: ignore[arg-type]
+    ai.script = NotGraded("unavailable", "server_error")
     assert world.post().json()["status"] == "pending_ai" and len(jobs(world.session)) == 1
 
 

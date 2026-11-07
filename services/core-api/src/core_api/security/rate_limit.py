@@ -109,7 +109,7 @@ class RateLimiter:
         if not hit.redis_key:
             return
         try:
-            self.redis.eval(_REFUND, 1, hit.redis_key)  # pyright: ignore[reportUnknownMemberType]
+            self.redis.eval(_REFUND, 1, hit.redis_key)
         except RedisError as exc:
             raise RateLimiterUnavailableError from exc
 
@@ -120,7 +120,7 @@ class RateLimiter:
             raw = self.redis.get(redis_key)
         except RedisError as exc:
             raise RateLimiterUnavailableError from exc
-        count = int(raw) if raw is not None else 0  # pyright: ignore[reportArgumentType]
+        count = int(raw) if raw is not None else 0
         return RateLimitResult(allowed=count < rule.limit, retry_after_seconds=remaining)
 
     def enforce_cooldown(self, rule: Cooldown, key: str) -> None:
@@ -135,7 +135,7 @@ class RateLimiter:
         try:
             if self.redis.set(redis_key, 1, nx=True, ex=int(rule.period.total_seconds())):
                 return
-            remaining = int(self.redis.ttl(redis_key))  # pyright: ignore[reportArgumentType]
+            remaining = int(self.redis.ttl(redis_key))
         except RedisError as exc:
             raise RateLimiterUnavailableError from exc
         raise RateLimitedError(max(remaining, 1))

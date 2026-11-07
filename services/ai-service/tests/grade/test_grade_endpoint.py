@@ -342,7 +342,7 @@ def test_d_audit_down_is_503_before_any_money_is_spent(
     # 🟡d: pipeline_run is written before the model is called; if it cannot be, no call.
     def broken() -> Session:
         session = sessions()
-        session.commit = _database_down  # type: ignore[method-assign]
+        session.commit = _database_down
         return session
 
     adapter = Scripted(GOOD)
@@ -371,7 +371,7 @@ def test_b3_llm_call_write_failure_is_503(app: FastAPI, sessions: sessionmaker[S
                 raise OSError("database is down")
             real_commit()
 
-        session.commit = commit  # type: ignore[method-assign]
+        session.commit = commit
         return session
 
     llm = LlmClient(

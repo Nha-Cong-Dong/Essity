@@ -12,7 +12,7 @@ import pytest
 from sqlalchemy import Engine, select, text
 from sqlalchemy.orm import Session
 
-import core_api.jobs.registry  # noqa: F401  # pyright: ignore[reportUnusedImport]  # registers kinds
+import core_api.jobs.registry  # noqa: F401    # registers kinds
 from clock import future_exam
 from core_api.config import get_settings
 from core_api.db.models import Document, User

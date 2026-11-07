@@ -119,7 +119,7 @@ def test_t43_list_prints_ids_of_this_stream_and_no_payload(
     assert len(lines) == 2  # the events.ai entry is core-api's
     assert event["event_id"] in lines[0]
     assert DOCUMENT_UPLOADED in lines[0] and "no_handler" in lines[0]
-    assert event["payload"]["object_key"] not in out  # pyright: ignore[reportIndexIssue]
+    assert event["payload"]["object_key"] not in out
     assert event["user_id"] not in out
     assert "x" * 300 not in out
 
@@ -136,7 +136,7 @@ def test_t43_cli_replay_and_purge(
     # The replayed entry is dead again: still no handler.
     assert make_consumer(redis_client, names, session_factory, {}).run_once() == ["dead"]
     assert len(dead_entries(redis_client, names)) == 1
-    assert dead_letter.main([*args, "purge", "--user", event["user_id"]]) == 0  # pyright: ignore[reportArgumentType]
+    assert dead_letter.main([*args, "purge", "--user", event["user_id"]]) == 0
     assert dead_entries(redis_client, names) == []
 
 

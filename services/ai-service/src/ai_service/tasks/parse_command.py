@@ -208,7 +208,7 @@ def _resolve(kind: str, fields: dict[str, Any], labels: Labels) -> dict[str, Any
                 raise OutputViolation("label")
             if len(set(items)) != len(items):
                 raise OutputViolation("targets")  # the same target twice
-            resolved[name] = [known[item] for item in items]  # pyright: ignore[reportUnknownVariableType]
+            resolved[name] = [known[item] for item in items]
         else:
             raise OutputViolation("label")
     return resolved

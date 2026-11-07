@@ -10,7 +10,7 @@ from session_helpers import subject_of
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-import core_api.jobs.registry  # noqa: F401  # pyright: ignore[reportUnusedImport]  # registers kinds
+import core_api.jobs.registry  # noqa: F401    # registers kinds
 from core_api.config import get_settings
 from core_api.db.models import NoteUpload, StudySession, User
 from core_api.domain.study_session import note_key

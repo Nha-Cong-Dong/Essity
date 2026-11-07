@@ -44,7 +44,7 @@ class Stub:
         self.calls.append(payload)
         if self.failure is not None:
             return self.failure
-        units = payload["units"]  # type: ignore[index]
+        units = payload["units"]
         verdicts = [self.verdicts.get(uuid.UUID(u["unit_id"]), "correct") for u in units]  # type: ignore[index]
         overall = (
             "correct"
@@ -63,7 +63,7 @@ class Stub:
                     "understanding": None if overall == "incorrect" else 2,
                     "missing": [] if overall == "correct" else ["ý thiếu"],
                     "units": [
-                        {"unit_id": u["unit_id"], "verdict": v}  # type: ignore[index]
+                        {"unit_id": u["unit_id"], "verdict": v}
                         for u, v in zip(units, verdicts, strict=True)  # type: ignore[arg-type]
                     ],
                     "anchors_used": [units[0]["anchors"][0]["anchor_id"]],  # type: ignore[index]
@@ -135,7 +135,7 @@ def test_t213_graded_in_time_writes_grade_units_log_and_state(desk: Desk) -> Non
     states = MemoryStateRepository(desk.session, desk.user.id)
     assert all(states.state(u) is not None for u in desk.units)
     # US-05 AC8: the request carries every unit's source.
-    sent = stub.calls[0]["units"]  # type: ignore[index]
+    sent = stub.calls[0]["units"]
     quotes: set[str] = {u["anchors"][0]["quote_text"] for u in sent}  # type: ignore[index]
     # G3: each first quote leads with the card text, then the stored quote.
     assert {q.rsplit("[Trích nguồn] ", 1)[1] for q in quotes} == {"nguồn 0", "nguồn 1"}

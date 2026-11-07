@@ -56,7 +56,7 @@ def _label(style: str | None = None, prefix: object | None = None) -> Dictionary
     if style is not None:
         label[NameObject("/S")] = NameObject(style)
     if prefix is not None:
-        label[NameObject("/P")] = prefix  # pyright: ignore[reportArgumentType]
+        label[NameObject("/P")] = prefix
     return label
 
 

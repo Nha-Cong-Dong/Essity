@@ -119,9 +119,7 @@ def _files(session: Session, row: Submission) -> list[SubmissionFile]:
     )
     mimes = {key: mime for key, mime in found}
     return [
-        SubmissionFile(object_key=key, mime=mimes[key])  # pyright: ignore[reportArgumentType]
-        for key in row.file_keys
-        if key in mimes
+        SubmissionFile(object_key=key, mime=mimes[key]) for key in row.file_keys if key in mimes
     ]
 
 

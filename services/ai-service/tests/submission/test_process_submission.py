@@ -182,11 +182,11 @@ def test_us02b_ac10_result_put_deferred_then_retry_makes_no_second_call(
             raise StorageUnavailable
         original_put(key, data, content_type=content_type)
 
-    storage.put = put  # type: ignore[method-assign]
+    storage.put = put
     with pytest.raises(Deferred):
         run(h, event)
     calls = len(model.requests)
-    storage.put = original_put  # type: ignore[method-assign]
+    storage.put = original_put
     run(h, again(event))
     assert len(model.requests) == calls  # batches and the image reading came from the cache
     result(storage, event)

@@ -220,11 +220,11 @@ def test_rerun_after_a_failed_put_makes_no_second_merge_call(
             raise StorageUnavailable
         original(key, data, content_type=content_type)
 
-    storage.put = put  # type: ignore[method-assign]
+    storage.put = put
     with pytest.raises(Deferred):
         run(h, event)
     calls = len(model.requests)
-    storage.put = original  # type: ignore[method-assign]
+    storage.put = original
     run(h, again(event))
     assert len(model.requests) == calls
     assert len(result(storage, event)["drafts"]) == 1

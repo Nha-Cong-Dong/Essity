@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from opentelemetry.instrumentation.redis import (  # pyright: ignore[reportMissingTypeStubs]
+from opentelemetry.instrumentation.redis import (
     RedisInstrumentor,
 )
 from redis import Redis

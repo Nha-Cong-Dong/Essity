@@ -151,7 +151,7 @@ def test_us04_ac5_skip_and_undo_are_idempotent(
     assert units.skip(unit, FROZEN_NOW) is True
     first = db_session.get(KnowledgeUnit, unit).skipped_at  # type: ignore[union-attr]
     assert units.skip(unit, FROZEN_NOW + timedelta(hours=1)) is False  # already skipped
-    db_session.refresh(db_session.get(KnowledgeUnit, unit))  # type: ignore[arg-type]
+    db_session.refresh(db_session.get(KnowledgeUnit, unit))
     assert db_session.get(KnowledgeUnit, unit).skipped_at == first  # type: ignore[union-attr]
     assert units.unskip(unit) is True
     assert db_session.get(KnowledgeUnit, unit).skipped_at is None  # type: ignore[union-attr]
@@ -288,7 +288,7 @@ def _pure_plan(
     *,
     due: list[DueUnit] | None = None,
     **kwargs: object,
-):  # type: ignore[no-untyped-def]
+):
     return compose_today(
         due or [],
         new,

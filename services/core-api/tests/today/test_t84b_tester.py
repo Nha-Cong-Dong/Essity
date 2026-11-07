@@ -345,7 +345,7 @@ def test_a_row_that_keeps_raising_is_given_up_after_a_few_runs(
         calls += 1
         return original(payload)
 
-    boom.grade_practice = counting  # type: ignore[method-assign]
+    boom.grade_practice = counting
     errors: dict[uuid.UUID, int] = {}
     trail: list[object] = []
     for _ in range(MAX_ERRORS + 3):
