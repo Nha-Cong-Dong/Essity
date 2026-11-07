@@ -4,9 +4,6 @@ import cytoscape, { type Core } from "cytoscape";
 import fcose from "cytoscape-fcose";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import Link from "next/link";
-
-import { Button, buttonVariants } from "@/components/ui/button";
 import { shortLabel } from "@/lib/graph";
 import { settleLabels } from "@/lib/graph-labels";
 import { multiStylesheet } from "@/lib/graph-multi-style";
@@ -14,68 +11,28 @@ import { optionsFor, seededRandom, type SimEdge, type SimNode, spiralStart, step
 import { type MultiCard, type SubjectGraph, v4Highlights } from "@/lib/graph-multi";
 import { buildTopicGraph, tint } from "@/lib/graph-topic";
 
+import { DetailCard, GraphEmpty, GraphLegend, ZoomControls } from "./graph-overlays";
+
 // V16/V17: the knowledge graph of one or several subjects. Nodes are cards coloured by subject,
-// edges are the links between cards, a tap on a node opens the card in a popup in the middle of the
-// screen. A legend names each colour.
+// edges are the links between cards. GRAPH-V4-CANVAS: the canvas fills the page beside the rail; a
+// floating legend (top left), zoom buttons (bottom left) and a detail card (right; a bottom sheet on a
+// phone) sit on it, as in .work/DESIGN-V4/mockups/graph.html.
 
 let registered = false;
 const MAX_FIT_ZOOM = 1.5;
 const SETTLE_STEPS = 220; // fixed, not time-based (E-10)
-const ZOOM =
-  "inline-flex h-11 items-center justify-center rounded-full bg-sheet px-3 text-caption text-ink inset-ring-[1.5px] inset-ring-line-strong hover:bg-sunken";
-
-function CardPopup({ card, subject, color, onClose }: { card: MultiCard; subject: string; color: string; onClose: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const d = ref.current;
-    if (d && !d.open) d.showModal?.();
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      onClose={onClose}
-      onClick={(e) => {
-        if (e.target === ref.current) onClose();
-      }}
-      aria-labelledby="graph-card-title"
-      className="m-auto max-h-[80vh] w-[min(92vw,34rem)] overflow-auto rounded-sheet border border-line bg-sheet p-6 text-ink backdrop:bg-ink/40"
-    >
-      <p className="m-0 flex items-center gap-2 text-meta text-ink-soft">
-        <span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: color }} />
-        {subject}
-      </p>
-      <h2 id="graph-card-title" className="mt-2 mb-3 font-display text-lead wrap-anywhere">
-        {card.title}
-      </h2>
-      <p className="m-0 whitespace-pre-wrap text-read wrap-anywhere">{card.body}</p>
-      {card.anchors.length > 0 && (
-        <ul className="m-0 mt-4 flex list-none flex-col gap-2 p-0 text-meta text-ink-soft">
-          {card.anchors.map((a) => (
-            <li key={a.id}>
-              <b>{a.label}</b>
-              {a.quote ? <q className="ml-1 wrap-anywhere">{a.quote}</q> : null}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="mt-5 flex flex-wrap justify-end gap-2">
-        <Link href={`/kho-kien-thuc?subject=${card.subjectId}`} data-open-vault className={buttonVariants({ variant: "primary" })}>
-          Mở trong Kho
-        </Link>
-        <Button type="button" variant="secondary" onClick={onClose}>
-          Đóng
-        </Button>
-      </div>
-    </dialog>
-  );
-}
+// Full-bleed inside AppShell's <main>: negative margins cancel its gutter and padding, and the height
+// is the window minus the phone's top bar (56) and tab bar (56 + safe area).
+const FRAME =
+  "relative -mx-(--page-gutter) -mt-6 -mb-4 h-[calc(100dvh-112px-env(safe-area-inset-bottom))] min-h-80 overflow-hidden bg-bg min-[1024px]:-mt-10 min-[1024px]:-mb-24 min-[1024px]:h-dvh";
 
 export function KnowledgeGraph({
   graphs,
-  height = "max(26rem, calc(100dvh - 15rem))",
+  height,
   focusSubject = null,
 }: {
   graphs: SubjectGraph[];
+  /** Overrides the full-window height (previews). */
   height?: string;
   focusSubject?: string | null;
 }) {
@@ -297,110 +254,83 @@ export function KnowledgeGraph({
     const cy = cyRef.current;
     if (cy) cy.zoom({ level: cy.zoom() * f, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
   };
+  const fit = () => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.fit(undefined, 48);
+    if (cy.zoom() > MAX_FIT_ZOOM) {
+      cy.zoom(MAX_FIT_ZOOM);
+      cy.center();
+    }
+  };
 
   if (merged.cards.length === 0) {
     return (
-      <div className="flex flex-col items-start gap-3 rounded-tile bg-hong-tint p-6" data-empty>
-        <p className="m-0 text-read">Chưa có thẻ kiến thức nào. Ghi một buổi học, các thẻ sẽ hiện thành đồ thị ở đây.</p>
-        {graphs[0] && (
-          <a href={`/subjects/${graphs[0].id}/sessions/new`} className="inline-flex min-h-11 items-center font-semibold rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
-            Ghi buổi học
-          </a>
-        )}
+      <div className={FRAME} style={height ? { height } : undefined}>
+        <div className="h-full p-3 min-[1024px]:p-5">
+          <GraphEmpty href={graphs[0] ? `/subjects/${graphs[0].id}/sessions/new` : null} />
+        </div>
       </div>
     );
   }
-  const topic = picked ? byTopic.get(model.nodes.find((n) => n.id === picked.id)?.topicId ?? "") : undefined;
+  const topicOf = (cardId: string) => byTopic.get(model.nodes.find((n) => n.id === cardId)?.topicId ?? "");
+  const topic = picked ? topicOf(picked.id) : undefined;
+  // The cards linked to the picked one (either end), for the "Liên quan" chips.
+  const related = picked
+    ? [...new Set(model.edges.flatMap((e) => (e.from === picked.id ? [e.to] : e.to === picked.id ? [e.from] : [])))]
+        .flatMap((id) => {
+          const c = merged.cards.find((x) => x.id === id);
+          return c ? [{ id: c.id, title: c.title }] : [];
+        })
+        .slice(0, 8)
+    : [];
   return (
-    <div className="flex flex-col gap-3">
-      {/* One row on top: the card count, then each subject as a colour chip that also hides / shows it. */}
-      <div className="flex items-center gap-2 overflow-x-auto min-[768px]:flex-wrap min-[768px]:overflow-visible">
-        <p className="m-0 mr-2 shrink-0 font-display text-lead">{merged.cards.length} thẻ</p>
-        {model.topics.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            aria-pressed={!hidden.has(s.id)}
-            onClick={() => toggle(s.id)}
-            className="inline-flex h-11 max-w-full shrink-0 items-center gap-2 rounded-full bg-sheet px-4 text-meta font-medium text-ink inset-ring-1 inset-ring-line-strong hover:bg-sunken aria-pressed:inset-ring-[1.5px] aria-pressed:inset-ring-line-strong aria-[pressed=false]:text-ink-soft aria-[pressed=false]:line-through"
-          >
-            <span aria-hidden="true" className="inline-block size-3 shrink-0 rounded-full" style={{ background: s.color }} />
-            <span className="truncate">{s.name}</span>
-            <span className="text-ink-soft">{s.cards}</span>
-          </button>
-        ))}
+    <div className={FRAME} style={height ? { height } : undefined}>
+      <div className="absolute inset-0">
+      <div
+        ref={host}
+        role="img"
+        aria-label={`Đồ thị tri thức, ${merged.cards.length} thẻ. Duyệt bằng bàn phím ở danh sách thẻ trong chú giải.`}
+        data-graph-canvas
+        data-foreign-dom
+        className="size-full cursor-grab touch-none overflow-hidden active:cursor-grabbing"
+      />
       </div>
-      {/* Legend: what colour and size say (same reading as the landing graph). */}
-      <p className="m-0 flex flex-wrap items-center gap-x-3 text-caption text-ink-soft" data-graph-legend>
-        <span>
-          {model.mode === "chapter" ? "Mỗi màu là một chương" : "Mỗi màu là một môn"}; nút lớn là {model.mode === "chapter" ? "chương" : "môn"}, thẻ nào nhiều liên kết thì to hơn.
-        </span>
-        {model.mode === "chapter" && (
-          <Link href="/graph" className="inline-flex min-h-11 items-center font-semibold text-ink no-underline hover:bg-sunken rounded-full px-3">
-            Xem mọi môn
-          </Link>
-        )}
-      </p>
-      <div className="relative">
+      {tip && (
         <div
-          ref={host}
-          role="img"
-          aria-label={`Đồ thị tri thức, ${merged.cards.length} thẻ. Duyệt bằng bàn phím ở danh sách thẻ bên dưới.`}
-          style={{ height }}
-          data-graph-canvas
-          data-foreign-dom
-          className="min-h-70 w-full cursor-grab touch-none overflow-hidden rounded-tile bg-sheet inset-ring-1 inset-ring-line active:cursor-grabbing"
-        />
-        {tip && (
-          <div
-            aria-hidden="true"
-            style={{ left: tip.x, top: tip.y }}
-            className="pointer-events-none absolute z-10 max-w-64 -translate-x-1/2 -translate-y-[calc(100%+14px)] rounded-control bg-ink px-3 py-2 text-meta text-sheet wrap-anywhere"
-          >
-            {tip.title}
-          </div>
-        )}
-        <div className="absolute right-2 bottom-2 flex gap-2">
-          <button type="button" aria-label="Phóng to" className={ZOOM} onClick={() => zoomBy(1.3)}>
-            +
-          </button>
-          <button type="button" aria-label="Thu nhỏ" className={ZOOM} onClick={() => zoomBy(1 / 1.3)}>
-            −
-          </button>
-          <button type="button" className={ZOOM} onClick={() => {
-              const cy = cyRef.current;
-              if (!cy) return;
-              cy.fit(undefined, 48);
-              if (cy.zoom() > MAX_FIT_ZOOM) {
-                cy.zoom(MAX_FIT_ZOOM);
-                cy.center();
-              }
-            }}>
-            Đặt lại
-          </button>
+          aria-hidden="true"
+          style={{ left: tip.x, top: tip.y }}
+          className="pointer-events-none absolute z-10 max-w-64 -translate-x-1/2 -translate-y-[calc(100%+14px)] rounded-control bg-ink px-3 py-2 text-meta text-sheet wrap-anywhere"
+        >
+          {tip.title}
         </div>
-      </div>
-      <details className="rounded-tile bg-sheet p-3 inset-ring-1 inset-ring-line" data-card-list>
-        <summary className="inline-flex min-h-11 cursor-pointer items-center text-meta font-medium">Danh sách thẻ</summary>
-        <ul className="m-0 mt-2 flex list-none flex-col p-0">
-          {model.nodes
-            .filter((n) => n.card && !hidden.has(n.topicId))
-            .map((n) => n.card as MultiCard)
-            .map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  onClick={() => setPickedId(c.id)}
-                  className="flex min-h-11 w-full items-center gap-2 rounded-control px-2 text-left text-meta hover:bg-sunken"
-                >
-                  <span aria-hidden="true" className="inline-block size-3 shrink-0 rounded-full" style={{ background: byTopic.get(model.nodes.find((n) => n.id === c.id)?.topicId ?? "")?.color }} />
-                  <span className="wrap-anywhere">{c.title}</span>
-                </button>
-              </li>
-            ))}
-        </ul>
-      </details>
-      {picked && topic && <CardPopup card={picked} subject={topic.name} color={topic.color} onClose={() => setPickedId(null)} />}
+      )}
+      <GraphLegend
+        topics={model.topics}
+        hidden={hidden}
+        onToggle={toggle}
+        total={merged.cards.length}
+        mode={model.mode}
+        cardList={model.nodes
+          .filter((n) => n.card && !hidden.has(n.topicId))
+          .map((n) => n.card as MultiCard)
+          .map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => setPickedId(c.id)}
+                className="flex min-h-11 w-full items-center gap-2 rounded-control px-1 text-left text-meta hover:bg-sunken"
+              >
+                <span aria-hidden="true" className="inline-block size-3 shrink-0 rounded-full" style={{ background: topicOf(c.id)?.color }} />
+                <span className="wrap-anywhere">{c.title}</span>
+              </button>
+            </li>
+          ))}
+      />
+      <ZoomControls onIn={() => zoomBy(1.3)} onOut={() => zoomBy(1 / 1.3)} onFit={fit} />
+      {picked && topic && (
+        <DetailCard card={picked} subject={topic.name} color={topic.color} related={related} onPick={setPickedId} onClose={() => setPickedId(null)} />
+      )}
     </div>
   );
 }
