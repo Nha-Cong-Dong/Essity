@@ -10,7 +10,7 @@ import type { Topic } from "@/lib/graph-topic";
 // GRAPH-V4-CANVAS (.work/DESIGN-V4/mockups/graph.html): the pieces that float over the full-bleed
 // canvas of /graph: the legend, the zoom buttons, the detail card, and the empty state.
 
-const SHEET = "rounded-[18px] border border-line bg-sheet text-ink";
+const SHEET = "rounded-sheet border border-line bg-sheet text-ink";
 
 /** Legend card, top left. Each topic is a colour toggle with its card count; the card list sits inside (keyboard route). */
 export function GraphLegend({
@@ -123,7 +123,7 @@ export function DetailCard({
     <section
       aria-labelledby="graph-card-title"
       data-graph-detail
-      className="absolute inset-x-3 bottom-3 z-20 flex max-h-[50%] flex-col gap-3 overflow-auto rounded-[24px] border border-line bg-sheet p-5 text-ink min-[900px]:inset-x-auto min-[900px]:top-5 min-[900px]:right-5 min-[900px]:bottom-auto min-[900px]:max-h-[calc(100%-2.5rem)] min-[900px]:w-[340px] min-[900px]:p-6"
+      className="absolute inset-x-3 bottom-3 z-20 flex max-h-[50%] flex-col gap-3 overflow-auto rounded-sheet border border-line bg-sheet p-5 text-ink min-[900px]:inset-x-auto min-[900px]:top-5 min-[900px]:right-5 min-[900px]:bottom-auto min-[900px]:max-h-[calc(100%-2.5rem)] min-[900px]:w-[340px] min-[900px]:p-6"
     >
       <div aria-hidden="true" className="mx-auto -mt-2 h-1.5 w-10 shrink-0 rounded-full bg-line-strong min-[900px]:hidden" />
       <button type="button" aria-label="Đóng" onClick={onClose} className="absolute top-1 right-2 grid size-11 place-items-center rounded-full text-2xl text-ink-soft hover:bg-sunken">
@@ -138,7 +138,7 @@ export function DetailCard({
       </h2>
       <p className="m-0 whitespace-pre-wrap text-body wrap-anywhere">{card.body}</p>
       {quote && (
-        <div className="flex flex-col gap-1.5 rounded-[14px] bg-bg p-3.5 text-meta leading-relaxed max-[899px]:hidden">
+        <div className="flex flex-col gap-1.5 rounded-slip bg-bg p-3.5 text-meta leading-relaxed max-[899px]:hidden">
           <small className="text-caption text-ink-soft">{quote.label}</small>
           <q className="wrap-anywhere">
             <mark className="rounded-sm bg-hl px-0.5 text-ink">{quote.quote}</mark>
