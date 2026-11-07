@@ -1,7 +1,8 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useEffect, useReducer, useRef, useState } from "react";
+import { type ReactNode, useEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
 
 import { FieldHint } from "@/components/field-error";
 import { Block } from "@/components/screen-kit";
@@ -57,6 +58,13 @@ export type SessionScreenProps = {
   /** T7.12d: shown under the areas of the round (the subject's cards by section). */
   footer?: ReactNode;
 };
+
+const subscribeNever = () => () => undefined;
+let opened = "";
+function openedAt() {
+  if (!opened) opened = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return opened;
+}
 
 /** T7.12: how long the reading is asked about while it runs (a retry after a hiccup is the same). */
 const POLL_MS = 2500;
@@ -117,6 +125,9 @@ export function SessionScreen(props: SessionScreenProps) {
   const [docs, setDocs] = useState(props.docs);
   const pieceMode = typeof api?.addPiece === "function";
   const [pieces, setPieces] = useState<Piece[]>([]);
+  // C4D: the plum strip says when this screen first opened in the browser (core-api keeps no start time yet).
+  // Empty during prerender, so the build never sees `new Date()`.
+  const startedAt = useSyncExternalStore(subscribeNever, openedAt, () => "");
   const [recording, setRecording] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [round, send] = useReducer(roundReducer, initial.round);
@@ -309,6 +320,12 @@ export function SessionScreen(props: SessionScreenProps) {
     });
   }
 
+  // Real core-api uploads, or (the preview) rows that are done at once.
+  function attach(added: File[]) {
+    if (api) addFiles(added);
+    else setFiles((rows) => [...rows, ...added.map((file) => ({ id: newId(), name: file.name, kind: kindOf(file.name), state: "done" as const }))]);
+  }
+
   function addFiles(added: File[]) {
     const rows = added.map((file) => ({ id: newId(), file }));
     setFiles((current) => [
@@ -415,6 +432,9 @@ export function SessionScreen(props: SessionScreenProps) {
                   <div className="flex min-w-0 flex-col gap-1.5">
                     <p className="m-0 text-meta text-on-plum-soft">Đang học</p>
                     <p className="m-0 font-display text-lead wrap-anywhere">{subject}</p>
+                    <p className="m-0 text-meta text-on-plum-soft" data-testid="session-started" suppressHydrationWarning>
+                      {startedAt ? `Bắt đầu lúc ${startedAt}` : "Vừa bắt đầu"}
+                    </p>
                     <p className="m-0 text-meta text-on-plum-soft">{pieces.length > 0 ? `Đã ghi lại ${pieces.length} lần` : "Chưa ghi lại lần nào"}</p>
                   </div>
                   <Button
@@ -434,6 +454,15 @@ export function SessionScreen(props: SessionScreenProps) {
                   phase="compose"
                   title="Bạn đã học gì?"
                   className={cn(pieceMode && "rounded-tile border border-line bg-sheet p-5 min-[641px]:p-7")}
+                  onDragOver={pieceMode ? (event) => event.preventDefault() : undefined}
+                  onDrop={
+                    pieceMode
+                      ? (event) => {
+                          event.preventDefault();
+                          attach(Array.from(event.dataTransfer.files));
+                        }
+                      : undefined
+                  }
                 >
                   <MentionBox
                     value={text}
@@ -449,17 +478,10 @@ export function SessionScreen(props: SessionScreenProps) {
                     }}
                   />
                   <FileDrop
+                    chips={pieceMode}
                     rows={files}
                     tooManyPages={initial.tooManyPages}
-                    onAdd={
-                      api
-                        ? addFiles
-                        : (added) =>
-                            setFiles((rows) => [
-                              ...rows,
-                              ...added.map((file) => ({ id: newId(), name: file.name, kind: kindOf(file.name), state: "done" as const })),
-                            ])
-                    }
+                    onAdd={attach}
                     onRemove={removeFile}
                     onRetry={(id) => {
                       const file = blobs.current.get(id);
@@ -467,16 +489,25 @@ export function SessionScreen(props: SessionScreenProps) {
                       else patchRow(id, { state: "done" });
                     }}
                   />
-                  <div className="flex flex-col items-start gap-2 max-[640px]:[&>button]:w-full">
-                    <Button
-                      type="button"
-                      className="max-[480px]:w-full"
-                      aria-disabled={uploading > 0 || undefined}
-                      aria-describedby={uploading > 0 ? "session-send-why" : undefined}
-                      onClick={pieceMode ? () => void record() : submit}
-                    >
-                      {pieceMode ? (recording ? "Đang ghi…" : "Ghi lại") : "Gửi"}
-                    </Button>
+                  <div className="flex flex-col items-stretch gap-2">
+                    <div data-testid="composer-foot" className="flex items-center justify-between gap-3">
+                      {pieceMode ? (
+                        <Button type="button" variant="quiet" onClick={() => document.getElementById("session-attach-input")?.click()}>
+                          <Plus size={16} aria-hidden="true" />
+                          Đính kèm
+                        </Button>
+                      ) : (
+                        <span />
+                      )}
+                      <Button
+                        type="button"
+                        aria-disabled={uploading > 0 || undefined}
+                        aria-describedby={uploading > 0 ? "session-send-why" : undefined}
+                        onClick={pieceMode ? () => void record() : submit}
+                      >
+                        {pieceMode ? (recording ? "Đang ghi…" : "Ghi lại") : "Gửi"}
+                      </Button>
+                    </div>
                     {uploading > 0 && (
                       <span id="session-send-why">
                         <FieldHint id="session-send-hint">Đang tải {uploading} file…</FieldHint>
