@@ -1,9 +1,0 @@
-task: T8.5
-lane: L1
-status: done
-head_sha: 2f6ae0b
-step: tester pass; api-client regenerated; suites green
-tests: {cmd: "pytest tests/today review practice question_bank auth subjects test_api_docs (not timing); ruff; pyright; web typecheck", passed: 943, failed: 0}
-blockers: []
-decisions: ["web fixtures need kind/item_kind (required in generated schema) -> added kind: card to 5 web test/preview fixtures (Coder)"]
-next: "orchestrator final review + PM; no PR opened"
