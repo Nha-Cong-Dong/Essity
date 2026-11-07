@@ -333,6 +333,7 @@ export function KnowledgeGraph({
           aria-label={`Đồ thị tri thức, ${merged.cards.length} thẻ. Duyệt bằng bàn phím ở danh sách thẻ bên dưới.`}
           style={{ height }}
           data-graph-canvas
+          data-foreign-dom
           className="min-h-70 w-full cursor-grab touch-none overflow-hidden rounded-tile bg-sheet inset-ring-1 inset-ring-line active:cursor-grabbing"
         />
         {tip && (

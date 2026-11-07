@@ -67,6 +67,15 @@ describe("states of DESIGN §6.15", () => {
     expect(screen.getByText(COPY.empty)).toBeTruthy();
     expect(document.querySelector("[data-canvas-stub]")).toBeNull();
   });
+  // C4b. Red when: the way back is a hand-made pill instead of the BackLink (arrow icon, 44 px).
+  it.each(["empty", "error", "loading"] as const)("%s keeps the BackLink to the subject", (state) => {
+    show(state);
+    const back = screen.getAllByRole("link", { name: /Về môn/ });
+    expect(back.length).toBeGreaterThan(0);
+    for (const a of back) expect(a.className).toContain("min-h-11");
+    for (const a of back) expect(a.querySelector("svg")).not.toBeNull();
+  });
+
   it("error says the DESIGN line with Thử lại, and Thử lại loads the screen", () => {
     show("error");
     expect(screen.getByText(COPY.error)).toBeTruthy();

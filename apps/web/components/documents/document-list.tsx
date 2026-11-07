@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, TriangleAlert } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { BackLink, Block } from "@/components/screen-kit";
@@ -36,11 +36,34 @@ export function unreadableText(pages: number[]): string {
   return `Không đọc được ${pages.length} trang (tr. ${shown}${more})`;
 }
 
+/** A doc's state as one word for the structure: reading, ready, partly unreadable, or failed. */
+export type DocState = "reading" | "ready" | "partial" | "failed";
+export const docState = (doc: ListedDocument): DocState =>
+  doc.status === "pending" ? "reading" : doc.status !== "indexed" ? "failed" : doc.unreadable_pages.length === 0 ? "ready" : "partial";
+
+// "Đang đọc" has a sign of motion (a ring that turns, still under reduced motion); a failure is a
+// chip in --partial with a mark, so neither reads as plain grey text.
 function Status({ doc }: { doc: ListedDocument }) {
-  if (doc.status === "pending") return <span>Đang đọc tài liệu…</span>;
-  if (doc.status === "indexed" && doc.unreadable_pages.length === 0) return <span>Sẵn sàng</span>;
-  if (doc.status === "indexed") return <span>{unreadableText(doc.unreadable_pages)}</span>;
-  return <span data-copy="tam">{failureText(doc.failure_reason)}</span>;
+  const state = docState(doc);
+  if (state === "reading") {
+    return (
+      <span data-doc-state="reading" className="inline-flex items-center gap-2">
+        <span aria-hidden="true" className="size-3.5 shrink-0 rounded-full border-2 border-line-strong border-t-hong motion-safe:animate-spin" />
+        Đang đọc tài liệu…
+      </span>
+    );
+  }
+  if (state === "ready") return <span data-doc-state="ready">Sẵn sàng</span>;
+  const text = state === "partial" ? unreadableText(doc.unreadable_pages) : failureText(doc.failure_reason);
+  return (
+    <span
+      data-doc-state={state}
+      className="inline-flex items-start gap-1.5 font-medium text-partial"
+    >
+      <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+      {state === "failed" ? <span data-copy="tam">{failureText(doc.failure_reason)}</span> : text}
+    </span>
+  );
 }
 
 const ROW = "flex items-center gap-4 rounded-row p-3 min-[641px]:px-5 min-[641px]:py-4";
