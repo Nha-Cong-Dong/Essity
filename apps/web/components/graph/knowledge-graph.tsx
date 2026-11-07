@@ -344,7 +344,7 @@ export function KnowledgeGraph({
           {model.mode === "chapter" ? "Mỗi màu là một chương" : "Mỗi màu là một môn"}; nút lớn là {model.mode === "chapter" ? "chương" : "môn"}, thẻ nào nhiều liên kết thì to hơn.
         </span>
         {model.mode === "chapter" && (
-          <Link href="/graph" className="font-semibold text-ink underline">
+          <Link href="/graph" className="inline-flex min-h-11 items-center font-semibold text-ink no-underline hover:bg-sunken rounded-full px-3">
             Xem mọi môn
           </Link>
         )}
