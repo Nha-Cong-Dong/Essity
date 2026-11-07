@@ -369,6 +369,7 @@ export function ReviewScreen({
       <PracticeAnswer
         key={step.question.id}
         questionId={step.question.id}
+        promptPreview={step.question.prompt}
         api={practice}
         nextLabel={step.position >= step.total ? "Về trang chính" : "Câu tiếp"}
         onNext={reload}

@@ -55,8 +55,12 @@ export function PracticeAnswer({
   onNext,
   nextLabel = "Câu tiếp",
   api = practiceApi,
+  promptPreview,
 }: {
   questionId: string;
+  /** B-03: the question text the caller already has, drawn while the attempt opens (2-5 s when
+   *  core-api drafts the reference answer first). */
+  promptPreview?: string;
   /** "Câu tiếp": the caller shows what comes next. */
   onNext: () => void;
   nextLabel?: string;
@@ -283,6 +287,22 @@ export function PracticeAnswer({
   }, [settled]);
 
   const wrap = "mx-auto w-full max-w-180";
+  if (phase.kind === "loading" && promptPreview) {
+    return (
+      <div className={`${wrap} flex flex-col gap-5`} aria-busy="true" data-practice-answer>
+        <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7">
+          <p className="m-0 text-meta text-ink-soft">Luyện tập</p>
+          <h1 data-user className="m-0 mt-3.5 font-display text-question wrap-anywhere">
+            {promptPreview}
+          </h1>
+          <div aria-hidden="true" className="mt-6 h-32 animate-pulse rounded-control bg-sunken" />
+          <p role="status" className="sr-only">
+            Đang tải câu hỏi.
+          </p>
+        </Block>
+      </div>
+    );
+  }
   if (phase.kind === "loading") {
     return (
       <div className={wrap} aria-busy="true">
