@@ -32,7 +32,7 @@ type Phase =
   | { kind: "reading" }
   | { kind: "card"; card: Card }
   | { kind: "ask"; card: Card }
-  | { kind: "form"; card: Card; rows: RangeDraft[] }
+  | { kind: "form"; card: Card; rows: RangeDraft[]; edit?: boolean }
   | { kind: "saved"; sessionId: string };
 
 // What a failed save says besides "chưa lưu được": the limit hit, or the file that is wrong.
@@ -157,6 +157,19 @@ function RangeForm({
   );
 }
 
+// E-22: why the form is open decides what it says. A range that was read is only being edited.
+function formLead(card: Card, edit: boolean): { lead: string; line: string } {
+  if (edit) return { lead: "sửa lại khoảng trang", line: "Sửa các trang cho đúng. Câu của bạn vẫn được giữ." };
+  const lead = "chọn giúp app khoảng trang";
+  if (card.manual_reason === "quota")
+    return { lead, line: "Hôm nay đã hết lượt đọc câu, nên bạn chọn trang giúp. Câu của bạn vẫn được giữ." };
+  if (card.manual_reason === "disabled")
+    return { lead, line: "Việc đọc câu đang tắt, nên bạn chọn trang giúp. Câu của bạn vẫn được giữ." };
+  if (card.manual_reason === "failed")
+    return { lead, line: "Chưa đọc được khoảng trang từ câu trên. Câu của bạn vẫn được giữ." };
+  return { lead, line: "Chọn tài liệu và trang bạn đã học. Câu của bạn vẫn được giữ." };
+}
+
 function Ask({ card, onPick }: { card: Card; onPick: (documentId: string) => void }) {
   const candidates = card.candidate_document_ids.length
     ? card.documents.filter((doc) => card.candidate_document_ids.includes(doc.document_id))
@@ -229,6 +242,20 @@ export function LogSession({
     }
     if (result.code === "signed_out") return go("/login");
     setProblem(SAVE_CODES.has(result.code) ? result.code : "save_failed");
+  }
+
+  // E-24: a chosen document is a second reading of the same sentence with the document named;
+  // a failed or still-unsure second pass falls back to the form on that document.
+  async function pickDocument(card: Card, documentId: string) {
+    const name = card.documents.find((doc) => doc.document_id === documentId)?.short_name;
+    const fallback = () =>
+      setPhase({ kind: "form", card, rows: startingRows(card, documentId) });
+    if (!name) return fallback();
+    setPhase({ kind: "reading" });
+    const result = await describeSession(subjectId, `${text} (trong tài liệu ${name})`);
+    if (!result.ok && result.code === "signed_out") return go("/login");
+    if (!result.ok || result.data.card === "clarify") return fallback();
+    enter(result.data);
   }
 
   function editSentence() {
@@ -309,7 +336,9 @@ export function LogSession({
                 hasPhotos={notes.rows.length > 0}
                 onSave={() => void save(phase.card, cardToRanges(phase.card))}
                 onSentence={editSentence}
-                onRanges={() => setPhase({ kind: "form", card: phase.card, rows: startingRows(phase.card) })}
+                onRanges={() =>
+                  setPhase({ kind: "form", card: phase.card, rows: startingRows(phase.card), edit: true })
+                }
               />
               {problem && <Problem code={problem} />}
             </>
@@ -317,13 +346,13 @@ export function LogSession({
           {phase.kind === "ask" && (
             <Ask
               card={phase.card}
-              onPick={(id) => setPhase({ kind: "form", card: phase.card, rows: startingRows(phase.card, id) })}
+              onPick={(id) => void pickDocument(phase.card, id)}
             />
           )}
           {phase.kind === "form" && (
             <section aria-labelledby="form-lead" className="mt-6">
               <p id="form-lead" className="m-0 font-hand text-lead text-pencil">
-                chọn giúp app khoảng trang
+                {formLead(phase.card, phase.edit === true).lead}
               </p>
               {phase.card.documents.length === 0 ? (
                 <p className="m-0 mt-2" data-copy="tam">
@@ -331,14 +360,14 @@ export function LogSession({
                 </p>
               ) : (
                 <>
-                  <p className="m-0 mt-2">Chưa đọc được khoảng trang từ câu trên. Câu của bạn vẫn được giữ.</p>
+                  <p className="m-0 mt-2">{formLead(phase.card, phase.edit === true).line}</p>
                   <RangeForm
                     card={phase.card}
                     rows={phase.rows}
                     saving={saving}
                     waiting={notes.busy}
                     failure={problem}
-                    onRows={(rows) => setPhase({ kind: "form", card: phase.card, rows })}
+                    onRows={(rows) => setPhase({ ...phase, rows })}
                     onSave={() => void save(phase.card, rowsToRanges(phase.rows))}
                   />
                 </>
