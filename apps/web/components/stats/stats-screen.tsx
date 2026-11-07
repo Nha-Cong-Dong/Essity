@@ -83,7 +83,7 @@ function Trend({ cells }: { cells: GridCell[] }) {
         12 tuần gần đây
       </h2>
       <p className="m-0 mb-3 text-meta text-ink-soft">Thẻ đã lưu và câu đã làm theo từng tuần.</p>
-      <div className="relative flex min-h-28 flex-1 items-end gap-2 border-b border-line-strong min-[901px]:gap-3.5" data-trend>
+      <div className="relative flex h-36 items-end gap-2 border-b border-line-strong min-[901px]:gap-3.5" data-trend>
         {weeks.every((n) => n === 0) && <EmptyNote />}
         {weeks.map((n, i) => (
           <div key={i} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${n}`}>
