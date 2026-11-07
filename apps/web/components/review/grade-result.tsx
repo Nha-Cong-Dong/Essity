@@ -80,10 +80,10 @@ export function GradeResult({ result }: { result: Result }) {
           <Pen id="result-units">theo từng ý</Pen>
           <ul
             aria-labelledby="result-units"
-            className="m-0 flex list-none flex-col gap-1.5 rounded-tile bg-hong-tint p-4 min-[641px]:p-5"
+            className="m-0 flex list-none flex-col gap-1.5 rounded-tile bg-sunken p-4 min-[641px]:p-5"
           >
             {result.units.map((unit) => (
-              <li key={unit.unit_id} className="flex min-w-0 items-start gap-3 rounded-row bg-bg px-3.5 py-2.5">
+              <li key={unit.unit_id} className="flex min-w-0 items-start gap-3 rounded-row bg-sheet px-3.5 py-2.5">
                 <span className="mt-1.5">
                   <VerdictMark verdict={unit.verdict} />
                 </span>
@@ -103,7 +103,7 @@ export function GradeResult({ result }: { result: Result }) {
       {result.sources.length > 0 && (
         <Block order={order++}>
           <Pen>nguồn</Pen>
-          <div className="flex flex-col gap-1.5 rounded-tile bg-hong-tint p-4 min-[641px]:p-5">
+          <div className="flex flex-col gap-1.5 rounded-tile bg-sunken p-4 min-[641px]:p-5">
             {result.sources.map((source) => (
               <SourceQuote key={source.anchor_id} source={source} />
             ))}

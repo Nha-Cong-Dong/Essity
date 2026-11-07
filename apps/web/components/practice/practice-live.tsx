@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { Pen } from "@/components/practice/practice-extras";
 import { PracticeAnswer } from "@/components/practice/practice-answer";
-import { CoverageBar } from "@/components/stats/stat-tile";
+import { EmptyState } from "@/components/empty-state";
+import { Block } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
 import { go } from "@/lib/navigate";
 import { type PracticeApi, practiceApi, type PracticeType } from "@/lib/practice-client";
@@ -58,7 +59,7 @@ export function kindChip(name: string): string | null {
   return !/\s/.test(t) && t.length > 24 ? null : t;
 }
 
-const TILE = "min-w-0 rounded-tile bg-hong-tint p-4 min-[901px]:p-6";
+const TILE = "p-4 min-[901px]:p-6";
 
 function Row({
   q,
@@ -103,7 +104,7 @@ function Row({
   return (
     <li
       data-question={q.id}
-      className={`flex flex-col items-start gap-2 rounded-row bg-bg px-4 py-3.5 ${pick ? NX_CAM.pick : ""}`}
+      className={`flex flex-col items-start gap-2 rounded-row bg-sunken px-4 py-3.5 ${pick ? NX_CAM.pick : ""}`}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {kindChip(q.type_name) !== null && (
@@ -263,19 +264,26 @@ export function PracticeLive({
         </p>
       )}
       {list.total === 0 ? (
-        <div data-empty className="mt-6">
-          <p className="m-0">
-            Chưa có bộ câu hỏi. Tải đề cương ôn, đề năm trước hoặc bộ câu hỏi thầy cô cho để luyện đúng dạng đề thi.
-          </p>
-          <Button render={<a href={`/subjects/${subjectId}/documents`} />} nativeButton={false} className={`mt-4 ${FULL}`}>
-            Tải bộ câu hỏi
-          </Button>
-        </div>
+        <Block as="section" tier="sheet" data-empty aria-label="Chưa có bộ câu hỏi" className="mt-6">
+          <EmptyState
+            mascot="cho"
+            title="Chưa có bộ câu hỏi."
+            hint="Tải đề cương ôn, đề năm trước hoặc bộ câu hỏi thầy cô cho để luyện đúng dạng đề thi."
+            action={
+              <Button render={<a href={`/subjects/${subjectId}/documents`} />} nativeButton={false} className={FULL}>
+                Tải bộ câu hỏi
+              </Button>
+            }
+          />
+        </Block>
       ) : (
         <div className="mt-6 grid gap-6 min-[1000px]:grid-cols-12 min-[1000px]:items-start">
           {/* UI-A/B: the answer of the screen (unlocked / total) and the one action sit in a right column. */}
-          <aside
-            className="flex flex-col gap-4 rounded-tile bg-hong-tint p-5 min-[1000px]:sticky min-[1000px]:top-6 min-[1000px]:col-start-9 min-[1000px]:col-end-13 min-[1000px]:row-start-1 min-[1000px]:p-6"
+          <Block
+            as="aside"
+            tier="field"
+            aria-label="Tóm tắt luyện tập"
+            className="flex flex-col gap-4 p-5 min-[1000px]:sticky min-[1000px]:top-6 min-[1000px]:col-start-9 min-[1000px]:col-end-13 min-[1000px]:row-start-1 min-[1000px]:p-6"
             data-practice-today
           >
             <div data-progress>
@@ -287,7 +295,12 @@ export function PracticeLive({
                 Đã mở khóa {readyCount}/{live.length} câu
               </p>
               <div className="mt-3">
-                <CoverageBar percent={live.length === 0 ? 0 : (readyCount / live.length) * 100} />
+                <div aria-hidden="true" data-coverage-bar className="h-2 overflow-hidden rounded-full bg-on-plum/25">
+                  <div
+                    className="h-full rounded-full bg-on-plum"
+                    style={{ width: `${live.length === 0 ? 0 : (readyCount / live.length) * 100}%` }}
+                  />
+                </div>
               </div>
             </div>
             {list.due_today !== undefined && (
@@ -298,20 +311,25 @@ export function PracticeLive({
               </div>
             )}
             {dueNow.length > 0 && (
-              <Button className={FULL} onClick={() => setDoing(dueNow[0].id)}>
+              <Button variant="primary-inverse" className={FULL} onClick={() => setDoing(dueNow[0].id)}>
                 Vào luyện tập ngay
               </Button>
             )}
-          </aside>
+          </Block>
           {firstReady === null && (
-            <>
-              <p className="m-0 mt-3">Chưa có câu hỏi nào sẵn sàng, hãy kết nối thêm kiến thức để mở khóa câu hỏi nhé!</p>
-              <Button render={<a href={`/subjects/${subjectId}/sessions/new`} />} nativeButton={false} className={`mt-4 ${FULL}`}>
-                Vào buổi học
-              </Button>
-            </>
+            <Block as="section" tier="sheet" aria-label="Chưa có câu sẵn sàng" className="min-[1000px]:col-span-8 min-[1000px]:col-start-1 min-[1000px]:row-start-1">
+              <EmptyState
+                mascot="cho"
+                title="Chưa có câu hỏi nào sẵn sàng, hãy kết nối thêm kiến thức để mở khóa câu hỏi nhé!"
+                action={
+                  <Button render={<a href={`/subjects/${subjectId}/sessions/new`} />} nativeButton={false} className={FULL}>
+                    Vào buổi học
+                  </Button>
+                }
+              />
+            </Block>
           )}
-          <section aria-labelledby="practised" className={`${TILE} min-[1000px]:col-span-8 min-[1000px]:col-start-1 min-[1000px]:row-start-1`} data-practised data-nx>
+          <Block as="section" tier="sheet" aria-labelledby="practised" className={`${TILE} min-[1000px]:col-span-8 min-[1000px]:col-start-1 min-[1000px]:row-start-1`} data-practised>
             <div className="flex items-baseline justify-between gap-3">
               <h2 id="practised" className="m-0 font-display text-lead max-[640px]:text-body max-[640px]:font-semibold">
                 Câu đã luyện tập
@@ -343,23 +361,23 @@ export function PracticeLive({
                   ))}
               </details>
             )}
-          </section>
+          </Block>
           {waitingRows.length > 0 && (
-            <section aria-labelledby="waiting" className={`${TILE} min-[1000px]:col-span-8 min-[1000px]:col-start-1`} data-nx>
+            <Block as="section" tier="sheet" aria-labelledby="waiting" className={`${TILE} min-[1000px]:col-span-8 min-[1000px]:col-start-1`}>
               <h2 id="waiting" className="m-0 text-read font-semibold">
                 Chờ mở khóa
               </h2>
               {rows(waitingRows, null)}
-            </section>
+            </Block>
           )}
           {unlinked.length > 0 && (
-            <section aria-labelledby="unlinked" className={`mt-8 ${TILE}`} data-nx>
+            <Block as="section" tier="sheet" aria-labelledby="unlinked" className={`${TILE} min-[1000px]:col-span-8 min-[1000px]:col-start-1`}>
               <h2 id="unlinked" className="m-0 text-read font-semibold">
                 Chưa gắn phần
               </h2>
               <p className="m-0 mt-1 text-meta text-ink-soft">Sửa bằng thanh lệnh.</p>
               {rows(unlinked, null)}
-            </section>
+            </Block>
           )}
         </div>
       )}

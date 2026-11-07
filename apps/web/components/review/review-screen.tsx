@@ -6,7 +6,9 @@ import { AnswerBox, clock, type SaveState } from "@/components/review/answer-box
 import { GradeResult } from "@/components/review/grade-result";
 import { ResultActions } from "@/components/review/result-actions";
 import { PracticeAnswer } from "@/components/practice/practice-answer";
+import { EmptyState } from "@/components/empty-state";
 import { QuestionReason } from "@/components/question-reason";
+import { Block } from "@/components/screen-kit";
 import { Summary } from "@/components/review/summary";
 import { FocusShell } from "@/components/shells";
 import { Button } from "@/components/ui/button";
@@ -393,8 +395,8 @@ export function ReviewScreen({
           Chưa gửi được. Bạn bấm lại nhé.
         </p>
       )}
-    <div className="mx-auto flex w-full max-w-170 flex-col gap-10">
-      <section className="min-w-0" aria-labelledby="question">
+    <div className="mx-auto flex w-full max-w-170 flex-col gap-5">
+      <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7" aria-labelledby="question">
         <p className="m-0 text-meta text-ink-soft wrap-anywhere">{step.question.subject.name}</p>
         <h1 id="question" className="m-0 mt-3.5 font-display text-question wrap-anywhere">
           {step.question.prompt}
@@ -428,8 +430,8 @@ export function ReviewScreen({
             )}
           </>
         )}
-      </section>
-      <section className="min-w-0 border-t border-line pt-8" aria-live="polite">
+      </Block>
+      <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7" aria-live="polite">
         <Rail
           sent={sent}
           busy={busy}
@@ -439,7 +441,7 @@ export function ReviewScreen({
           api={api}
           onOverridden={(next) => setSent((before) => before && { ...before, view: next })}
         />
-      </section>
+      </Block>
     </div>
     </div>,
   );
@@ -615,14 +617,17 @@ function LoadFailed({ onRetry }: { onRetry: () => void }) {
 
 function Ended({ busy, onLeave }: { busy: boolean; onLeave: () => void }) {
   return (
-    <div className="mx-auto flex w-full max-w-170 flex-col items-start gap-4">
-      <p data-copy="tam" className="m-0 text-read">
-        Phiên ôn này đã kết thúc.
-      </p>
-      <Button type="button" pending={busy} onClick={onLeave} data-copy="tam">
-        Về trang chính
-      </Button>
-    </div>
+    <Block as="section" tier="sheet" aria-label="Phiên ôn đã kết thúc" className="mx-auto w-full max-w-170">
+      <EmptyState
+        mascot="khen"
+        title={<span data-copy="tam">Phiên ôn này đã kết thúc.</span>}
+        action={
+          <Button type="button" pending={busy} onClick={onLeave} data-copy="tam">
+            Về trang chính
+          </Button>
+        }
+      />
+    </Block>
   );
 }
 
@@ -639,7 +644,7 @@ function Ungraded({
   onLeave: () => void;
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-170 flex-col items-start gap-6">
+    <Block as="section" tier="sheet" aria-label="Câu chưa chấm" className="mx-auto flex w-full max-w-170 flex-col items-start gap-6">
       <h1 className="m-0 font-display text-lead">
         <span data-copy="tam">Còn {ids.length} câu chưa chấm</span>
       </h1>
@@ -651,7 +656,7 @@ function Ungraded({
       <Button type="button" pending={busy} onClick={onLeave} data-copy="tam">
         Về trang chính
       </Button>
-    </div>
+    </Block>
   );
 }
 
