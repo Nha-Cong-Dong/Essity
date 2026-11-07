@@ -1,6 +1,7 @@
 import { ArrowRight, TriangleAlert } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
+import { HeadMascot } from "@/components/head-mascot";
 import { BackLink, Block } from "@/components/screen-kit";
 import { PageColumn } from "@/components/shells";
 import { Button } from "@/components/ui/button";
@@ -138,7 +139,10 @@ export function DocumentsFrame({ name, children }: { name: string; children: Rea
     <PageColumn width="full" className="flex flex-col gap-5">
       <header className="flex flex-col gap-2">
         <BackLink href="/subjects">Môn học</BackLink>
-        <h1 className="m-0 text-title wrap-anywhere">{name}</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="m-0 min-w-0 text-title wrap-anywhere">{name}</h1>
+          <HeadMascot pose="rong" />
+        </div>
       </header>
       {children}
     </PageColumn>

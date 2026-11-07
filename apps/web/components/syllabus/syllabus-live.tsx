@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { HeadMascot } from "@/components/head-mascot";
 
 import { EmptyState } from "@/components/empty-state";
 import { Block, BackLink } from "@/components/screen-kit";
@@ -130,9 +131,12 @@ export function SyllabusLive({
     <>
       <BackLink href={subjectHref}>{subjectName}</BackLink>
       <div className="flex items-center justify-between gap-3">
-        <h1 className="m-0 font-display text-title">
-          {COPY.heading}
-        </h1>
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="m-0 font-display text-title">
+            {COPY.heading}
+          </h1>
+          <HeadMascot pose="nghi" />
+        </div>
         <Button className="max-sm:px-4" variant="secondary" render={<a href={subjectHref} />} nativeButton={false}>
           Quay lại
         </Button>

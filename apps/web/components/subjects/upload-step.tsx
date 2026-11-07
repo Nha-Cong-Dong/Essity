@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { HeadMascot } from "@/components/head-mascot";
 
 import { CreateFrame } from "@/components/subjects/create-steps";
 import { Uploader } from "@/components/subjects/uploader";
@@ -47,6 +48,9 @@ export function UploadStep({ name, subjectId, hasMain = true }: { name: string; 
   return (
     <CreateFrame current={2} subject={name}>
       <section aria-label="Tải tài liệu" className="flex flex-col gap-4">
+        <div className="flex justify-end">
+          <HeadMascot pose="cho" />
+        </div>
         <div role="tablist" aria-label="Loại tài liệu" className="grid grid-cols-3 gap-1 rounded-full bg-block p-1">
           {TABS.map((t) => (
             <button

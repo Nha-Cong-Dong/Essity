@@ -96,7 +96,7 @@ function Shell({
 }) {
   return (
     <Dialog.Root>
-      <Dialog.Trigger render={<Button variant={primary ? "primary" : "quiet"} />}>{trigger}</Dialog.Trigger>
+      <Dialog.Trigger render={<Button variant={primary ? "primary" : "secondary"} />}>{trigger}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Backdrop className={BACKDROP} />
         <Dialog.Popup className={POPUP}>

@@ -50,7 +50,7 @@ export function NewSubjectForm({ example }: { example: string }) {
       />
       {formError && <FieldError id="new-subject-error">{SUBJECT_MESSAGES.unavailable}</FieldError>}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-        <Button render={<a href="/subjects" />} nativeButton={false} variant="quiet">
+        <Button render={<a href="/subjects" />} nativeButton={false} variant="secondary">
           Hủy
         </Button>
         <Button type="submit" pending={busy} className="max-sm:flex-1">

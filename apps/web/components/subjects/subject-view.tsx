@@ -1,5 +1,6 @@
 import { BackLink } from "@/components/screen-kit";
 import { PageColumn } from "@/components/shells";
+import { HeadMascot } from "@/components/head-mascot";
 import { SubjectOutlineAside } from "@/components/subjects/subject-chapters-aside";
 import { SubjectEntryRow } from "@/components/subjects/subject-entry-row";
 import { SubjectPracticeBlock } from "@/components/subjects/subject-practice-block";
@@ -44,10 +45,13 @@ export function SubjectView({
   const nextId = state.kind === "suggested" ? (state.next.sectionId ?? null) : null;
   return (
     <PageColumn width="full" className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <BackLink href="/subjects">Quay lại</BackLink>
-        <h1 className="m-0 max-w-full font-display text-title break-words text-balance">{subject.name}</h1>
-        <p className="m-0 text-body text-ink-soft">{examLine}</p>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <BackLink href="/subjects">Quay lại</BackLink>
+          <h1 className="m-0 max-w-full font-display text-title break-words text-balance">{subject.name}</h1>
+          <p className="m-0 text-body text-ink-soft">{examLine}</p>
+        </div>
+        <HeadMascot pose="chao" />
       </header>
       {locked ? (
         <div className="flex min-w-0 flex-col gap-5">
