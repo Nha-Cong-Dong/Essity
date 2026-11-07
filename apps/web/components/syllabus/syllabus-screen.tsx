@@ -56,9 +56,10 @@ export function Skeleton() {
 /** The tile of the landing's "Học gì tiếp" list: the subject on the left, "Gợi ý, bạn chọn" on the right, the tree below. */
 export function SyllabusTile({ name, children }: { name: string; children: ReactNode }) {
   return (
-    <Block as="section" tier="sheet" data-nx className="p-4 max-sm:p-3 min-[901px]:p-6">
-      <div className="flex items-baseline justify-between gap-3 pb-3.5">
-        <h2 className="m-0 min-w-0 font-display text-lead wrap-anywhere max-[640px]:text-body max-[640px]:font-semibold">{name}</h2>
+    <Block as="section" tier="sheet" data-nx className="p-4 max-[640px]:border-0 max-[640px]:bg-transparent max-[640px]:p-0 min-[901px]:p-6">
+      {/* 390: the subject is already named by the back link above, and the tile is not a card in a card. */}
+      <div className="flex items-baseline justify-between gap-3 pb-3.5 max-[640px]:justify-end">
+        <h2 className="m-0 min-w-0 font-display text-lead wrap-anywhere max-[640px]:sr-only">{name}</h2>
         <span className="shrink-0 text-meta italic text-ink-soft">Gợi ý, bạn chọn</span>
       </div>
       {children}

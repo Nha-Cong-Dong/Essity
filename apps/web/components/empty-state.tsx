@@ -12,6 +12,7 @@ export function EmptyState({
   hint,
   action,
   mascot,
+  mascotKind,
   className,
 }: {
   title: ReactNode;
@@ -20,6 +21,8 @@ export function EmptyState({
   action?: ReactNode;
   /** Phase B: the mascot beside the words (above them on a phone). Words always stay. */
   mascot?: MascotPose;
+  /** Cloud (default) = the assistant; "sun" = the encourager (praise, done). */
+  mascotKind?: "cloud" | "sun";
   className?: string;
 }) {
   return (
@@ -27,7 +30,7 @@ export function EmptyState({
       data-slot="empty-state"
       className={cn("flex flex-col items-start gap-2", mascot && "gap-4 sm:flex-row sm:items-center sm:gap-6", className)}
     >
-      {mascot ? <Mascot pose={mascot} /> : null}
+      {mascot ? <Mascot kind={mascotKind} pose={mascot} /> : null}
       <div className="flex flex-col items-start gap-2">
         <p className="m-0 text-lead">{title}</p>
         {hint ? <p className="m-0 text-body text-ink-soft">{hint}</p> : null}

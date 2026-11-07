@@ -620,6 +620,7 @@ function Ended({ busy, onLeave }: { busy: boolean; onLeave: () => void }) {
     <Block as="section" tier="sheet" aria-label="Phiên ôn đã kết thúc" className="mx-auto w-full max-w-170">
       <EmptyState
         mascot="khen"
+        mascotKind="sun"
         title={<span data-copy="tam">Phiên ôn này đã kết thúc.</span>}
         action={
           <Button type="button" pending={busy} onClick={onLeave} data-copy="tam">
