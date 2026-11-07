@@ -52,6 +52,7 @@ class PracticeCandidate:
 
 class TodayRepository(UserScopedRepository[MemoryState]):
     model = MemoryState
+    _ready_cache: dict[uuid.UUID, uuid.UUID] | None = None
 
     def _visible_subject(self, subject_id: object) -> object:
         return exists().where(
@@ -279,12 +280,18 @@ class TodayRepository(UserScopedRepository[MemoryState]):
             if not unasked_units.get(id) or any(rev >= newest[u] for u in unasked_units[id])
         ]
 
+    def _ready_ids(self) -> dict[uuid.UUID, uuid.UUID]:
+        """`ready_ids` once per repository, i.e. once per request (not a cross-request cache)."""
+        if self._ready_cache is None:
+            self._ready_cache = QuestionListRepository(self.session, self.user_id).ready_ids()
+        return self._ready_cache
+
     def practice_candidates(self) -> list[PracticeCandidate]:
         """Every ready practice question of a visible subject (T8.5, US-06 AC8): bank and kept
         generated questions that pass `domain.readiness` (as the question list, T8.2), with their
         practice state if any. Not-ready, unlinked and retired questions are not here, so they are
         in neither Ôn hôm nay nor Luyện tập."""
-        ready = QuestionListRepository(self.session, self.user_id).ready_ids()
+        ready = self._ready_ids()
         if not ready:
             return []
         rows = self.session.execute(
@@ -328,7 +335,7 @@ class TodayRepository(UserScopedRepository[MemoryState]):
     def has_practice(self) -> bool:
         """Whether a ready practice question is kept in practice (attempted, not removed): the
         user has material even when none is due today (T8.5 F2)."""
-        ready = QuestionListRepository(self.session, self.user_id).ready_ids()
+        ready = self._ready_ids()
         if not ready:
             return False
         return bool(

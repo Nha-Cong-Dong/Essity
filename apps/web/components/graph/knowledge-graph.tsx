@@ -10,7 +10,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { shortLabel } from "@/lib/graph";
 import { multiStylesheet } from "@/lib/graph-multi-style";
 import { optionsFor, seededRandom, type SimEdge, type SimNode, spiralStart, stepSim } from "@/lib/graph-sim";
-import { hiddenExcept, mergeGraphs, type MultiCard, type SubjectGraph, v4Highlights } from "@/lib/graph-multi";
+import { type MultiCard, type SubjectGraph, v4Highlights } from "@/lib/graph-multi";
+import { buildTopicGraph, tint } from "@/lib/graph-topic";
 
 // V16/V17: the knowledge graph of one or several subjects. Nodes are cards coloured by subject,
 // edges are the links between cards, a tap on a node opens the card in a popup in the middle of the
@@ -76,14 +77,17 @@ export function KnowledgeGraph({
   height?: string;
   focusSubject?: string | null;
 }) {
-  const merged = useMemo(() => mergeGraphs(graphs), [graphs]);
+  // GRAPH-LANDING-STYLE: a hub per topic (a subject; a chapter when one subject is focused), ring nodes tinted by topic.
+  const model = useMemo(() => buildTopicGraph(graphs, focusSubject), [graphs, focusSubject]);
+  const cards = useMemo(() => model.nodes.flatMap((n) => (n.card ? [n.card] : [])), [model]);
+  const merged = useMemo(() => ({ cards, topics: model.topics }), [cards, model]);
   const host = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(null);
-  const [hidden, setHidden] = useState<Set<string>>(() => hiddenExcept(graphs, focusSubject));
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   // Q24: the full title of the node under the pointer; the node's own label is cut at 24 characters.
   const [tip, setTip] = useState<{ title: string; x: number; y: number } | null>(null);
-  const bySubject = useMemo(() => new Map(merged.subjects.map((s) => [s.id, s] as const)), [merged]);
+  const byTopic = useMemo(() => new Map(model.topics.map((t) => [t.id, t] as const)), [model]);
   const picked = merged.cards.find((c) => c.id === pickedId) ?? null;
 
   useEffect(() => {
@@ -92,33 +96,36 @@ export function KnowledgeGraph({
       cytoscape.use(fcose);
       registered = true;
     }
-    const degree = new Map<string, number>();
-    for (const e of merged.edges) {
-      degree.set(e.from, (degree.get(e.from) ?? 0) + 1);
-      degree.set(e.to, (degree.get(e.to) ?? 0) + 1);
-    }
     const css = getComputedStyle(document.documentElement);
     const ink = css.getPropertyValue("--ink").trim() || "#26141d";
     const line = css.getPropertyValue("--line-strong").trim() || "#8f6676";
     const hong = css.getPropertyValue("--hong").trim() || "#d1347a";
     const now = css.getPropertyValue("--now").trim() || "#891b4c";
+    const sheet = css.getPropertyValue("--sheet").trim() || "#ffffff";
+    const soft = css.getPropertyValue("--ink-soft").trim() || ink;
+    const display = css.getPropertyValue("--font-display").trim() || "sans-serif";
     const cy = cytoscape({
       container: host.current,
       elements: [
-        ...merged.cards.map((c, i) => ({
-          position: spiralStart(i),
-          data: {
-            id: c.id,
-            label: shortLabel(c.title),
-            full: c.title,
-            color: bySubject.get(c.subjectId)?.color ?? ink,
-            subject: c.subjectId,
-            size: 18 + 4 * Math.min(degree.get(c.id) ?? 0, 5),
-          },
-        })),
-        ...merged.edges.map((e) => ({ data: { id: e.id, source: e.from, target: e.to } })),
+        ...model.nodes.map((n, i) => {
+          const color = byTopic.get(n.topicId)?.color ?? ink;
+          return {
+            position: spiralStart(i),
+            classes: n.hub ? "hub" : "card",
+            data: {
+              id: n.id,
+              label: n.hub ? n.label : shortLabel(n.label),
+              full: n.full,
+              color,
+              fill: tint(color, sheet, n.hub ? 0.5 : 0.3),
+              topic: n.topicId,
+              size: n.size,
+            },
+          };
+        }),
+        ...model.edges.map((e) => ({ data: { id: e.id, source: e.from, target: e.to } })),
       ],
-      style: [...multiStylesheet(ink, line, css.getPropertyValue("--sheet").trim() || "#ffffff"), ...v4Highlights(ink, hong, now)],
+      style: [...multiStylesheet(ink, line, sheet, soft, display), ...v4Highlights(ink, hong, now)],
       minZoom: 0.2,
       maxZoom: 3,
       wheelSensitivity: 0.3,
@@ -132,7 +139,7 @@ export function KnowledgeGraph({
     // Labels appear once the reader is zoomed in far enough to read them; a hovered node always shows its own.
     // Like the subject graph, the labels are always on (they are cut at 24 characters).
     cy.nodes().addClass("labelled");
-    cy.on("tap", "node", (ev) => setPickedId(ev.target.id()));
+    cy.on("tap", "node.card", (ev) => setPickedId(ev.target.id()));
     // Hover lights a node and its neighbours; the rest dims (Obsidian-style).
     const showTip = (ev: cytoscape.EventObject) => {
       const p = ev.target.renderedPosition();
@@ -178,7 +185,7 @@ export function KnowledgeGraph({
       if (reduced) return;
       const list = cy.nodes().toArray();
       const index = new Map(list.map((n, i) => [n.id(), i] as const));
-      const sim: SimNode[] = list.map((n) => ({ id: n.id(), x: n.position("x"), y: n.position("y"), vx: 0, vy: 0, pinned: false, group: String(n.data("subject")) }));
+      const sim: SimNode[] = list.map((n) => ({ id: n.id(), x: n.position("x"), y: n.position("y"), vx: 0, vy: 0, pinned: false, group: String(n.data("topic")) }));
       const links: SimEdge[] = cy
         .edges()
         .toArray()
@@ -265,7 +272,7 @@ export function KnowledgeGraph({
       cy.destroy();
       cyRef.current = null;
     };
-  }, [merged, bySubject]);
+  }, [model, byTopic, merged.cards.length]);
 
   // The card being read stands out in the graph.
   useEffect(() => {
@@ -281,11 +288,10 @@ export function KnowledgeGraph({
     if (!cy) return;
     cy.batch(() => {
       cy.nodes().forEach((n) => {
-        const card = merged.cards.find((c) => c.id === n.id());
-        n.style("display", card && hidden.has(card.subjectId) ? "none" : "element");
+        n.style("display", hidden.has(String(n.data("topic"))) ? "none" : "element");
       });
     });
-  }, [hidden, merged]);
+  }, [hidden]);
 
   const toggle = (id: string) =>
     setHidden((cur) => {
@@ -312,13 +318,13 @@ export function KnowledgeGraph({
       </div>
     );
   }
-  const subject = picked ? bySubject.get(picked.subjectId) : undefined;
+  const topic = picked ? byTopic.get(model.nodes.find((n) => n.id === picked.id)?.topicId ?? "") : undefined;
   return (
     <div className="flex flex-col gap-3">
       {/* One row on top: the card count, then each subject as a colour chip that also hides / shows it. */}
       <div className="flex items-center gap-2 overflow-x-auto min-[768px]:flex-wrap min-[768px]:overflow-visible">
         <p className="m-0 mr-2 shrink-0 font-display text-lead">{merged.cards.length} thẻ</p>
-        {merged.subjects.map((s) => (
+        {model.topics.map((s) => (
           <button
             key={s.id}
             type="button"
@@ -332,6 +338,17 @@ export function KnowledgeGraph({
           </button>
         ))}
       </div>
+      {/* Legend: what colour and size say (same reading as the landing graph). */}
+      <p className="m-0 flex flex-wrap items-center gap-x-3 text-caption text-ink-soft" data-graph-legend>
+        <span>
+          {model.mode === "chapter" ? "Mỗi màu là một chương" : "Mỗi màu là một môn"}; nút lớn là {model.mode === "chapter" ? "chương" : "môn"}, thẻ nào nhiều liên kết thì to hơn.
+        </span>
+        {model.mode === "chapter" && (
+          <Link href="/graph" className="inline-flex min-h-11 items-center font-semibold text-ink no-underline hover:bg-sunken rounded-full px-3">
+            Xem mọi môn
+          </Link>
+        )}
+      </p>
       <div className="relative">
         <div
           ref={host}
@@ -374,8 +391,9 @@ export function KnowledgeGraph({
       <details className="rounded-tile bg-sheet p-3 inset-ring-1 inset-ring-line" data-card-list>
         <summary className="inline-flex min-h-11 cursor-pointer items-center text-meta font-medium">Danh sách thẻ</summary>
         <ul className="m-0 mt-2 flex list-none flex-col p-0">
-          {merged.cards
-            .filter((c) => !hidden.has(c.subjectId))
+          {model.nodes
+            .filter((n) => n.card && !hidden.has(n.topicId))
+            .map((n) => n.card as MultiCard)
             .map((c) => (
               <li key={c.id}>
                 <button
@@ -383,14 +401,14 @@ export function KnowledgeGraph({
                   onClick={() => setPickedId(c.id)}
                   className="flex min-h-11 w-full items-center gap-2 rounded-control px-2 text-left text-meta hover:bg-sunken"
                 >
-                  <span aria-hidden="true" className="inline-block size-3 shrink-0 rounded-full" style={{ background: bySubject.get(c.subjectId)?.color }} />
+                  <span aria-hidden="true" className="inline-block size-3 shrink-0 rounded-full" style={{ background: byTopic.get(model.nodes.find((n) => n.id === c.id)?.topicId ?? "")?.color }} />
                   <span className="wrap-anywhere">{c.title}</span>
                 </button>
               </li>
             ))}
         </ul>
       </details>
-      {picked && subject && <CardPopup card={picked} subject={subject.name} color={subject.color} onClose={() => setPickedId(null)} />}
+      {picked && topic && <CardPopup card={picked} subject={topic.name} color={topic.color} onClose={() => setPickedId(null)} />}
     </div>
   );
 }
