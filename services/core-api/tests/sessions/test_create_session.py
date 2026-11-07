@@ -15,8 +15,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from accounts import signed_in
-from conftest import FakeAi
 from core_api.db.models import Outbox, SessionRange, StudySession
+from fake_ai_service import FakeAi
 from fake_storage import FakeStorage
 
 SENTENCE = "hôm qua tôi học chương 3 từ trang 2 đến 8"

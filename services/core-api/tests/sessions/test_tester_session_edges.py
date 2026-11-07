@@ -27,9 +27,9 @@ from test_confirm_session import (
 )
 
 from accounts import signed_in
-from conftest import FakeAi
 from core_api.db.models import KnowledgeUnit, NoteFile, Outbox, SessionRange, StudySession
 from core_api.repositories.subject import SubjectRepository
+from fake_ai_service import FakeAi
 from fake_storage import FakeStorage
 from test_event_contracts import validator
 
