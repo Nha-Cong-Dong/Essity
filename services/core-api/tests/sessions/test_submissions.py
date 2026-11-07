@@ -37,7 +37,6 @@ pytestmark = pytest.mark.usefixtures("fake_storage")
 
 @pytest.fixture
 def enabled(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    monkeypatch.setenv("CORE_SUBMISSIONS_ENABLED", "true")
     get_settings.cache_clear()
     yield
     monkeypatch.undo()

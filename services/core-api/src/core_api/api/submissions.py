@@ -10,7 +10,6 @@ typed text written to the store, the context file written to the store, and only
 nothing.
 
 The learner's words never go into the event or a log: they travel in the context file (ADR-0013).
-The route is 404 while `submissions_enabled` is off (ai-service has no handler yet).
 """
 
 import hashlib
@@ -123,11 +122,6 @@ def _error(code: int, detail: str | dict[str, Any]) -> HTTPException:
     return HTTPException(status_code=code, detail=detail)
 
 
-def _enabled() -> None:
-    if not get_settings().submissions_enabled:
-        raise _error(404, "not_found")
-
-
 def _mention_error(error: MentionError) -> HTTPException:
     detail: dict[str, Any] = {
         "code": error.code,
@@ -142,7 +136,6 @@ def _mention_error(error: MentionError) -> HTTPException:
     "/subjects/{subject_id}/submission-drafts",
     response_model=DraftOut,
     status_code=201,
-    dependencies=[Depends(_enabled)],
     responses={
         200: {"description": "the subject's open draft, reopened (US-02 AC1)"},
         404: {"description": "subject_not_found, or the feature is off"},
@@ -284,7 +277,6 @@ def _out(row: Submission, resolved: list[ResolvedMention]) -> SubmissionOut:
     "/submissions",
     response_model=SubmissionOut,
     status_code=201,
-    dependencies=[Depends(_enabled)],
     responses={
         200: {"model": SubmissionOut, "description": "The session was already submitted"},
         404: {"description": "session_not_found or document_not_found (another user's too)"},
