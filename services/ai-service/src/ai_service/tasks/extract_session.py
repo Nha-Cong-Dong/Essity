@@ -502,6 +502,7 @@ def check_output(text: str, docs: list[Doc], today: datetime.date) -> Outcome:
         raise OutputViolation("x1") from None
 
     studied = _studied_on(parsed.studied_day, today)  # x5 first: cheap and independent
+    has_day = parsed.studied_day.days_ago is not None or parsed.studied_day.date is not None
     # x2
     if parsed.status == "proposed":
         if not 1 <= len(parsed.ranges) <= MAX_RANGES:
@@ -514,7 +515,7 @@ def check_output(text: str, docs: list[Doc], today: datetime.date) -> Outcome:
         if parsed.candidates:
             raise OutputViolation("x2")
     else:
-        if parsed.ranges or parsed.question is None or parsed.reason is None:
+        if parsed.ranges or has_day or parsed.question is None or parsed.reason is None:
             raise OutputViolation("x2")
 
     by_label = {doc.label: doc for doc in docs}

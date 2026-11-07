@@ -7,11 +7,11 @@ from fastapi.testclient import TestClient
 from session_helpers import indexed_document, proposed, subject_of
 from sqlalchemy.orm import Session
 from test_create_session import post
-from v2_rows import make_section
 
 from accounts import signed_in
 from fake_ai_service import FakeAi
 from fake_storage import FakeStorage
+from v2_rows import make_section
 
 pytestmark = pytest.mark.usefixtures("fake_storage", "fake_ai")
 
