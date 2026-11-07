@@ -76,13 +76,13 @@ def test_fix_chunk_adapter_sends_the_requests_output_cap() -> None:
     assert api.body()["max_tokens"] == 8192
 
 
-# Red when: a request with no cap of its own stops getting the default 800 (G6).
+# Red when: a request with no cap of its own stops getting the default cap (G6).
 def test_fix_chunk_adapter_default_cap_unchanged() -> None:
     api = answering()
     AnthropicAdapter(api_key=FAKE_KEY, http_client=api.client()).complete(
         make_request(), model=MODEL, timeout=5.0
     )
-    assert api.body()["max_tokens"] == 800
+    assert api.body()["max_tokens"] == MAX_TOKENS == 4096
 
 
 # Red when: the audit row or the quota estimate keep 800 while 8192 was sent: the call can no
@@ -97,9 +97,9 @@ def test_fix_chunk_row_and_estimate_use_the_requests_cap(
     client.call(request_for(run), deadline=FAR)
     with Session(engine) as session:
         rows = list(session.scalars(select(LlmCall).where(LlmCall.user_id == run.user_id)))
-    assert sorted(r.input["params"]["max_tokens"] for r in rows) == [800, 8192]
+    assert sorted(r.input["params"]["max_tokens"] for r in rows) == [MAX_TOKENS, 8192]
     big, small = quota.estimates
-    assert big - small == Decimal(8192 - 800) * Decimal("0.50") / 1_000_000
+    assert big - small == Decimal(8192 - MAX_TOKENS) * Decimal("0.50") / 1_000_000
 
 
 # Red when: the task cannot see that the output was cut (stop_reason lost on the way back).

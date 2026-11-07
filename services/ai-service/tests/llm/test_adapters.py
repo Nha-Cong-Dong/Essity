@@ -72,12 +72,12 @@ def test_g6_anthropic_caps_the_output_tokens() -> None:
     # Red when: max_tokens grows, and one call can cost more than the plan's ceiling (G6).
     api = answering()
     adapter_on(api).complete(make_request(), model=MODEL, timeout=5.0)
-    assert api.body()["max_tokens"] == MAX_TOKENS == 800
+    assert api.body()["max_tokens"] == MAX_TOKENS == 4096
 
 
 def test_g6_anthropic_turns_thinking_off() -> None:
     # Red when: Haiku 5.5's default adaptive thinking stays on: thinking tokens count against
-    # the 800-token cap, can cut the JSON short (grade_invalid) and stretch past 8 s (AC3).
+    # the output cap, can cut the JSON short (grade_invalid) and stretch past 8 s (AC3).
     api = answering()
     adapter_on(api).complete(make_request(), model=MODEL, timeout=5.0)
     assert api.body()["thinking"] == {"type": "disabled"}
@@ -369,3 +369,16 @@ def test_t213_cache_counts_come_back_from_usage() -> None:
     result = adapter_on(api).complete(make_request(), model=MODEL, timeout=5.0)
     assert result.cache_read_tokens == 5200
     assert result.cache_write_tokens == 0
+
+
+def test_review53_default_cap_does_not_block_a_normal_call() -> None:
+    # Red when: the default cap grows so far that the worst-case estimate of one call passes
+    # the daily quota (default $0.20), refusing ordinary requests (review #53/#153).
+    from decimal import Decimal
+
+    from ai_service.llm.pricing import price_for
+    from ai_service.llm.quota import estimate_cost
+
+    adapter = AnthropicAdapter(api_key="k")
+    estimate = estimate_cost(price_for(MODEL), make_request(), adapter.params)
+    assert estimate < Decimal("0.01")

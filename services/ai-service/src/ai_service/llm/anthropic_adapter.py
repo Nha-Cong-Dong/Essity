@@ -7,7 +7,8 @@
   constrained by structured outputs (`output_config.format`), then checked again by the task.
 - Thinking is off and output capped at `MAX_TOKENS` (G6): thinking tokens would count against
   the cap and the latency budget. Revisit with the eval when the model is approved (T2.12 #7).
-  A task whose answer is a list (draft_units) sets its own `request.max_output_tokens`.
+  Raised from 800 (review #53, #153): list answers were cut short. draft_units still
+  sets its own larger `request.max_output_tokens`.
 - Errors become `ProviderError` with a stable code. Exception messages, which can quote the
   request, are never passed on.
 - The instructions are a cache breakpoint (T2.13): every call of a task sends the same `system`
@@ -27,7 +28,7 @@ from ai_service.llm.types import AdapterResult, LlmRequest, ProviderError, Provi
 
 _log = logging.getLogger(__name__)
 
-MAX_TOKENS = 800
+MAX_TOKENS = 4096
 
 # Structured outputs refuse these JSON Schema keywords with a 400 (T7.16: the `provider_rejected`
 # of chunk_units). The sizes stay in the task's own checks, which run on every reply.

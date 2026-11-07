@@ -152,7 +152,7 @@ def test_t210_row_keeps_the_provider_params_and_stop_reason(
         request_for(run), deadline=deadline()
     )
     [row] = rows_of(engine, run)
-    assert row.input["params"] == {"max_tokens": 800, "thinking": {"type": "disabled"}}
+    assert row.input["params"] == {"max_tokens": 4096, "thinking": {"type": "disabled"}}
     assert row.stop_reason == "end_turn"
 
 
