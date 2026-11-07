@@ -43,7 +43,7 @@ export function AuthLayout({
         </a>
 
         {greeting && (
-          <p className="relative z-[1] m-0 mt-1 max-w-[11ch] font-display text-[26px] leading-[1.1] min-[1024px]:text-[32px] min-[1024px]:leading-[1.05]">
+          <p className="relative z-[1] m-0 mt-1 max-w-[11ch] font-display text-title">
             {greeting}
           </p>
         )}
@@ -53,7 +53,7 @@ export function AuthLayout({
           <div className="relative">
             <Mascot kind="sun" pose="chao" size="lg" className="size-60 drop-shadow-[0_10px_18px_rgba(0,0,0,0.3)]" />
             {bubble && (
-              <div className="absolute -top-2 left-[calc(100%-36px)] z-[2] whitespace-nowrap rounded-[18px_18px_18px_4px] bg-white px-4.5 py-3 font-display text-[17px] font-semibold leading-[1.2] text-rose-900 shadow-md">
+              <div className="absolute -top-2 left-[calc(100%-36px)] z-[2] whitespace-nowrap rounded-slip bg-sheet px-4 py-3 font-display text-body font-semibold text-rose-900">
                 {bubble}
               </div>
             )}
@@ -64,7 +64,7 @@ export function AuthLayout({
         <div className="pointer-events-none absolute inset-0 z-[1] min-[1024px]:hidden" aria-hidden="true">
           <div className="absolute -bottom-[30px] right-2 flex items-end">
             {bubble && (
-              <div className="mb-14 -mr-5 whitespace-nowrap rounded-[16px_16px_4px_16px] bg-white px-3.5 py-2 font-display text-[15px] font-semibold leading-[1.2] text-rose-900 shadow-md">
+              <div className="mb-14 -mr-5 whitespace-nowrap rounded-slip bg-sheet px-3.5 py-2 font-display text-meta font-semibold text-rose-900">
                 {bubble}
               </div>
             )}
@@ -85,7 +85,7 @@ export function AuthLayout({
           }}
         />
 
-        <div className="relative z-[1] w-full max-w-[440px] rounded-[28px] border border-line bg-sheet px-6 py-10 shadow-[0_1px_2px_rgb(102_23_56_/_0.05),0_10px_24px_-14px_rgb(102_23_56_/_0.14)] min-[641px]:px-9.5">
+        <div className="relative z-[1] w-full max-w-[440px] rounded-sheet border border-line bg-sheet px-6 py-10 min-[641px]:px-9">
           <h1 className="m-0 font-display text-verdict text-balance">{title}</h1>
           <div className="mt-6 flex flex-col gap-5">{children}</div>
         </div>
