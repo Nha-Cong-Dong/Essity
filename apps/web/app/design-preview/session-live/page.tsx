@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { AccountMenu } from "@/components/account-menu";
 import { SessionLive } from "@/components/session-study/session-live";
 import { DOCS, SUBJECT_NAME } from "@/lib/fixtures/session-study";
 import { sectionParam } from "@/lib/session-study/entry";
@@ -32,6 +33,7 @@ async function Preview({ searchParams }: { searchParams: Promise<{ section?: str
       stayOnComplete
       subject={SUBJECT_NAME}
       stopHref="/design-preview"
+      account={<AccountMenu email="xem-thu@example.com" />}
       docs={DOCS}
       suggestion={section ? FOR_SECTION : undefined}
       sectionId={section ?? undefined}

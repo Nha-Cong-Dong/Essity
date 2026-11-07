@@ -74,11 +74,11 @@ test.describe("study session on the real screen", () => {
     await page.setViewportSize({ width: 390, height: 900 });
     expect((await page.goto(`${PAGE}?section=${SECTION}`))?.status()).toBe(200);
     await settled(page);
-    await expect(page.getByText("Nội dung học tập: 3.2 TCP flow control")).toBeVisible();
-    await expect(page.getByText("Buổi học tự do")).toHaveCount(0);
+    await expect(page.getByText("Nội dung học tập: 3.2 TCP flow control").first()).toBeVisible();
+    await expect(page.getByText(/^(Buổi học|Học) tự do/)).toHaveCount(0);
     await page.goto(PAGE);
     await settled(page);
-    await expect(page.getByText("Buổi học tự do")).toBeVisible();
+    await expect(page.getByText(/^(Buổi học|Học) tự do/).first()).toBeVisible();
   });
 
   // US-02 AC1, AC14; CARDS-V3. Red when: the sentence does not reach /pieces, the confirmation does

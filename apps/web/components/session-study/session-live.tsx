@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import { createSessionApi } from "@/lib/session-study/api";
 import type { Suggestion } from "@/lib/fixtures/session-study";
 import type { DocRef } from "@/lib/session-study/mention";
 
-import { UnitsBySection } from "./units-by-section";
 import { SessionScreen, type SessionInitial } from "./session-screen";
 
 // T7.12 (US-02, US-02b): the study session on core-api. A session opened from a suggestion shows
@@ -24,9 +23,10 @@ export function SessionLive({
   suggestion = FREE,
   sectionId,
   stayOnComplete,
+  account,
 }: {
   sessionId: string;
-  /** T7.12d: without it (the preview) the cards by section are not shown. */
+  /** The subject the session belongs to (the way back; the "đã vào Kho" toast). */
   subjectId?: string;
   stayOnComplete?: boolean;
   subject: string;
@@ -36,12 +36,14 @@ export function SessionLive({
   /** T7.19 F2: the section a suggestion opened this session for; none is the free session. */
   suggestion?: Suggestion;
   sectionId?: string;
+  /** The account button of the app shell. */
+  account?: ReactNode;
 }) {
   const api = useMemo(() => createSessionApi(sessionId, docs, undefined, sectionId), [sessionId, docs, sectionId]);
   return (
     <SessionScreen
       api={api}
-      footer={subjectId ? <UnitsBySection subjectId={subjectId} /> : undefined}
+      account={account}
       subject={subject}
       subjectId={subjectId}
       stayOnComplete={stayOnComplete}

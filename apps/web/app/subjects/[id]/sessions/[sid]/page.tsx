@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { AccountSlot } from "@/components/account-slot";
 import { SessionLive } from "@/components/session-study/session-live";
 import { subjectForUpload } from "@/components/subjects/subjects-loader";
 import { requireVerifiedSession } from "@/lib/session";
@@ -46,6 +47,7 @@ async function Study({ params, searchParams }: Props) {
       subjectId={subject.id}
       subject={subject.name}
       stopHref="/today"
+      account={<AccountSlot />}
       docs={loaded.docs}
       initial={loaded.initial}
       suggestion={suggestion ?? free?.suggestion}

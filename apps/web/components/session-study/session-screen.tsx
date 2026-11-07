@@ -5,8 +5,8 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
 
 import { FieldHint } from "@/components/field-error";
-import { Block } from "@/components/screen-kit";
-import { FocusShell } from "@/components/shells";
+import { BackLink, Block } from "@/components/screen-kit";
+import { AppShell, FocusShell } from "@/components/shells";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { FileRow, Suggestion } from "@/lib/fixtures/session-study";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ import { DoneLine, Region } from "./session-parts";
 import { ProcessingArea } from "./session-processing";
 import { SessionEndDialog } from "./session-end-dialog";
 import { DoneArea } from "./session-saved";
+import { PieceTimeline } from "./session-timeline";
 
 // T7.12a (US-02, US-02b; DESIGN.md §6.7; docs in .work/T7.12a/design-decisions.md): the whole study
 // session on one screen: suggestion, submission, reading, result, "Học tiếp hay dừng?". CARDS-V3:
@@ -57,6 +58,8 @@ export type SessionScreenProps = {
   api?: SessionApi;
   /** T7.12d: shown under the areas of the round (the subject's cards by section). */
   footer?: ReactNode;
+  /** The account button of the app shell (the piece-mode screen is an app screen, not a focus one). */
+  account?: ReactNode;
 };
 
 const subscribeNever = () => () => undefined;
@@ -134,7 +137,7 @@ function Suggest({ suggestion, id, tuck = false }: { suggestion: Suggestion; id:
 }
 
 export function SessionScreen(props: SessionScreenProps) {
-  const { subject, subjectId, stopHref, initial, api, footer } = props;
+  const { subject, subjectId, stopHref, initial, api, footer, account } = props;
   // V11: a PDF, Word or PowerPoint file picked here goes to the subject's shared document store, so
   // it can be @-mentioned at once, even before the session is finished. The list grows with them.
   const [docs, setDocs] = useState(props.docs);
@@ -425,9 +428,23 @@ export function SessionScreen(props: SessionScreenProps) {
       </Link>
     );
 
+  // A plain function, not a component: a component defined here would remount (and lose focus) every render.
+  const wrap = (children: ReactNode) =>
+    wide ? (
+      <AppShell current="/subjects" account={account}>
+        {children}
+      </AppShell>
+    ) : (
+      <FocusShell position={0} total={0} exit={exit} title={<span title={subject}>{subject}</span>}>
+        {children}
+      </FocusShell>
+    );
+  const sectionLine = suggestion.kind === "section" ? suggestion.text : "Học tự do";
+
   return (
-    <FocusShell position={0} total={0} exit={exit} title={<span title={subject}>{subject}</span>}>
-      <div className={cn("mx-auto flex w-full flex-col gap-10", wide ? "max-w-5xl" : "max-w-170")}>
+    wrap(
+    <>
+      <div className={cn("mx-auto flex w-full flex-col gap-8", wide ? "max-w-5xl" : "max-w-170")}>
         <p className="sr-only" role="status" aria-live="polite">
           {note || round.announce}
         </p>
@@ -437,7 +454,17 @@ export function SessionScreen(props: SessionScreenProps) {
 
         {round.phase === "compose" ? (
           <>
-            <h1 className="m-0 font-display text-title">Buổi học mới</h1>
+            {pieceMode ? (
+              <header className="flex flex-col gap-2">
+                {subjectId && <BackLink href={`/subjects/${subjectId}/documents`}>Quay lại</BackLink>}
+                <h1 className="m-0 font-display text-title wrap-anywhere">Buổi học: {subject}</h1>
+                <p className="m-0 text-body text-ink-soft" data-testid="session-section">
+                  {sectionLine}
+                </p>
+              </header>
+            ) : (
+              <h1 className="m-0 font-display text-title">Buổi học mới</h1>
+            )}
             <div className={cn(pieceMode && "grid gap-5 min-[1024px]:grid-cols-[minmax(0,1fr)_320px] min-[1024px]:items-start")}>
               {pieceMode && (
                 // The one "Kết thúc buổi học": a strip above the work on a phone, the right column from 1024.
@@ -449,7 +476,7 @@ export function SessionScreen(props: SessionScreenProps) {
                 >
                   <div className="flex min-w-0 flex-col gap-1.5">
                     <p className="m-0 text-meta text-on-plum-soft">Đang học</p>
-                    <p className="m-0 font-display text-lead wrap-anywhere">{subject}</p>
+                    <p className="m-0 font-display text-lead wrap-anywhere">{pieceMode ? sectionLine : subject}</p>
                     <p className="m-0 text-meta text-on-plum-soft" data-testid="session-started" suppressHydrationWarning>
                       {startedAt ? `Bắt đầu lúc ${startedAt}` : "Vừa bắt đầu"}
                     </p>
@@ -467,7 +494,7 @@ export function SessionScreen(props: SessionScreenProps) {
                 </Block>
               )}
               <div className="flex min-w-0 flex-col gap-8">
-                <Suggest tuck={!pieceMode} suggestion={isFree ? { kind: "free", text: "Buổi học tự do. Bài nộp không gắn phần đề cương." } : suggestion} id="suggest" />
+                {!pieceMode && <Suggest tuck suggestion={isFree ? { kind: "free", text: "Buổi học tự do. Bài nộp không gắn phần đề cương." } : suggestion} id="suggest" />}
                 <Region
                   phase="compose"
                   title="Bạn đã học gì?"
@@ -544,35 +571,7 @@ export function SessionScreen(props: SessionScreenProps) {
                     )}
                   </div>
                 </Region>
-                {pieceMode && pieces.length > 0 && (
-                  <section aria-label="Đã học trong buổi" className="flex flex-col gap-3">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <h3 className="m-0 font-display text-lead">Đã học trong buổi</h3>
-                      <span className="text-meta text-ink-soft">{pieces.length} lần ghi</span>
-                    </div>
-                    <ol className="m-0 flex list-none flex-col gap-3 p-0">
-                      {pieces.map((p, index) => (
-                        <li key={p.id} className="rounded-tile border border-line bg-sheet p-4 text-body wrap-anywhere">
-                          <span className="flex items-center justify-between gap-2">
-                            <span className="text-meta text-ink-soft">Phần {index + 1}</span>
-                            <button
-                              type="button"
-                              aria-label={`Bỏ phần ${index + 1}`}
-                              onClick={() => void dropPiece(p.id)}
-                              className="inline-flex min-h-11 items-center justify-center rounded-full bg-sheet px-4 text-meta font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken"
-                            >
-                              Bỏ phần này
-                            </button>
-                          </span>
-                          <p className="m-0 whitespace-pre-line">
-                            {p.text || `${p.fileCount} file`}
-                            {p.text && p.fileCount > 0 ? ` (+${p.fileCount} file)` : ""}
-                          </p>
-                        </li>
-                      ))}
-                    </ol>
-                  </section>
-                )}
+                {pieceMode && <PieceTimeline pieces={pieces} busy={completing} onDrop={(id) => void dropPiece(id)} />}
               </div>
             </div>
           </>
@@ -623,9 +622,18 @@ export function SessionScreen(props: SessionScreenProps) {
           empty={emptyEnd}
           recorded={pieces.length}
           onHome={() => window.location.assign(new URL("/today", window.location.origin).href)}
-          onMore={() => window.location.assign(new URL(`/subjects/${subjectId}/sessions/study`, window.location.origin).href)}
+          onMore={() => {
+            // The empty variant's "Ghi lại ngay" just goes back to writing; the other opens another session.
+            if (emptyEnd) {
+              setEnded(false);
+              setEmptyEnd(false);
+              return;
+            }
+            window.location.assign(new URL(`/subjects/${subjectId}/sessions/study`, window.location.origin).href);
+          }}
         />
       )}
-    </FocusShell>
+    </>,
+    )
   );
 }

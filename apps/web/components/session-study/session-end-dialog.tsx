@@ -18,7 +18,8 @@ export const END_COPY = {
   /** `n` pieces were kept in this session. */
   recorded: (n: number) => `Bạn đã ghi lại ${n} lần, thẻ đang được chuẩn bị. Xong sẽ báo bạn.`,
   emptyTitle: "Buổi này chưa có ghi chép",
-  emptyText: "Bạn chưa ghi lại phần nào nên chưa có thẻ nào được tạo. Lần sau cứ ghi vài dòng là đủ.",
+  emptyText: "Chưa có gì được ghi lại nên chưa có thẻ nào. Bạn có thể quay lại ghi một đoạn trước khi nghỉ.",
+  recordNow: "Ghi lại ngay",
   home: "Về trang chủ",
   more: "Học tiếp môn này",
 } as const;
@@ -80,7 +81,7 @@ export function SessionEndDialog({
                 {END_COPY.home}
               </Button>
               <Button type="button" variant="secondary" onClick={onMore}>
-                {END_COPY.more}
+                {empty ? END_COPY.recordNow : END_COPY.more}
               </Button>
             </div>
           </div>

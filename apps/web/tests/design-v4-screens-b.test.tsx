@@ -65,7 +65,7 @@ describe("session screen (mockup session)", () => {
     render(
       <SessionScreen api={api as unknown as SessionApi} subject="Mạng máy tính" subjectId="SUBJ" stopHref="/today" docs={[]} suggestion={FREE} nextSuggestion={FREE} initial={initial} />,
     );
-    await screen.findByText("Phần 1");
+    await screen.findByText("học TCP");
     expect(screen.getAllByRole("button", { name: "Kết thúc buổi học" })).toHaveLength(1);
     const column = document.querySelector('aside[data-tier="field"]');
     expect(column).not.toBeNull();
