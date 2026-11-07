@@ -114,3 +114,11 @@ describe("UI-NITS-0811: charts always render", () => {
     expect(container.querySelectorAll("[data-empty-chart]").length).toBe(0);
   });
 });
+
+describe("STATS-TREND-HEIGHT: trend bars get a definite box", () => {
+  it("STATS-TREND-HEIGHT: the plot area has a fixed height so %-height bars are not 0px", () => {
+    const { container } = render(<StatsScreen state="full-year" />);
+    const plot = container.querySelector("[data-trend]") as HTMLElement;
+    expect(plot.className).toMatch(/(^|\s)h-\d+(\s|$)/);
+  });
+});
