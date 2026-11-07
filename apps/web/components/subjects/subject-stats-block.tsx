@@ -7,7 +7,7 @@ function StatRow({ label, value, unit, hint }: { label: string; value: string | 
   return (
     <li className="border-t border-line py-3.5 first:border-t-0">
       <dl className="m-0 grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4">
-        <dd className="m-0 order-first flex items-baseline gap-x-1.5 whitespace-nowrap">
+        <dd className="m-0 order-first flex flex-wrap items-baseline gap-x-1.5">
           {value === null ? (
             <span className="text-body text-ink-soft">—</span>
           ) : (

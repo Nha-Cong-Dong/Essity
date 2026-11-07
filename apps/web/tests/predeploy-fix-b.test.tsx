@@ -42,7 +42,7 @@ describe("E-05 no horizontal overflow at 390 px", () => {
   });
   it("stats and graph grids have a shrinkable single column below their breakpoint", () => {
     const stats = src("components/stats/stats-screen.tsx");
-    expect(stats.match(/grid grid-cols-\[minmax\(0,1fr\)\]/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(stats.match(/grid grid-cols-\[minmax\(0,1fr\)\]/g)?.length).toBeGreaterThanOrEqual(2) // SCREENS-V4-B: the "Môn đang học" card is gone;
     expect(src("components/graph/graph-screen.tsx")).toContain("grid grid-cols-[minmax(0,1fr)] items-start");
   });
 });
@@ -52,7 +52,7 @@ describe("E-09 subject stat tile and outline card", () => {
     const stats = { syllabus: { studied: 14, leaves: 83 }, bank: null, retention: null } as never;
     const { container } = render(<SubjectStatsBlock stats={stats} />);
     const dl = container.querySelector("dl")!;
-    expect(dl.className).toContain("grid-cols-[minmax(7.5rem,auto)_minmax(0,1fr)]");
+    expect(dl.className).toContain("grid-cols-[7.5rem_minmax(0,1fr)]");
     const dd = dl.querySelector("dd")!;
     expect(dd.className).toContain("flex-wrap");
     expect(dd.className).toContain("gap-x-1.5");

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
+import { Doodle } from "@/components/icons/doodle";
 import { Button } from "@/components/ui/button";
 import { Mascot } from "@/components/mascot";
 import { Sheet } from "@/components/ui/sheet";
@@ -195,6 +196,7 @@ export function StatsScreen({
         </h2>
         {hasDays ? null : (
           <div className="mb-4 flex flex-col items-start gap-3" data-empty-doodle>
+              <Doodle name="dong-ho-cat" size={48} className="text-hong-text" />
             <p className="m-0">Chưa có ngày nào học. Ô sẽ đậm lên khi bạn lưu thẻ hoặc làm câu hỏi.</p>
             <Button render={<a href="/today" />} nativeButton={false}>
               Vào buổi học
