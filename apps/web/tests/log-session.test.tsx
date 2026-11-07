@@ -157,8 +157,74 @@ describe("Ghi buổi học", () => {
     await tell();
     expect(screen.getByText("Chương 4 của tài liệu nào?")).toBeTruthy();
     expect(confirm).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "giáo trình" }));
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "giáo trình" })),
+    );
     expect(screen.getByLabelText("Tài liệu")).toBeTruthy();
+  });
+
+  // Red when: the "could not read" sentence shows although the range was read (E-22).
+  it("E-22: editing a read proposal shows a neutral heading, not 'Chưa đọc được'", async () => {
+    describe_.mockResolvedValue({
+      ok: true,
+      data: card({ card: "proposed", ranges: [RANGE] as Card["ranges"] }),
+    });
+    await tell();
+    fireEvent.click(screen.getByRole("button", { name: "Chỉnh khoảng trang" }));
+    expect(screen.queryByText(/Chưa đọc được khoảng trang/)).toBeNull();
+    expect(screen.getByText("sửa lại khoảng trang")).toBeTruthy();
+  });
+
+  it("E-22: manual copy follows the fallback reason", async () => {
+    describe_.mockResolvedValue({
+      ok: true,
+      data: card({ card: "manual", manual_reason: "failed" }),
+    });
+    await tell();
+    expect(screen.getByText(/Chưa đọc được khoảng trang/)).toBeTruthy();
+    cleanup();
+    describe_.mockResolvedValue({
+      ok: true,
+      data: card({ card: "manual", manual_reason: "quota" }),
+    });
+    await tell();
+    expect(screen.queryByText(/Chưa đọc được khoảng trang/)).toBeNull();
+    expect(screen.getByText(/hết lượt/)).toBeTruthy();
+  });
+
+  // Red when: picking a document chip only opens the manual form (no second pass).
+  it("E-24: choosing a document chip re-reads the sentence with that document", async () => {
+    describe_.mockResolvedValueOnce({
+      ok: true,
+      data: card({ card: "clarify", question: "Tài liệu nào?" }),
+    });
+    await tell("học phần Bayes");
+    describe_.mockResolvedValueOnce({
+      ok: true,
+      data: card({ card: "proposed", ranges: [RANGE] as Card["ranges"] }),
+    });
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "giáo trình" })),
+    );
+    expect(describe_).toHaveBeenCalledTimes(2);
+    expect(describe_.mock.calls[1][1]).toContain("học phần Bayes");
+    expect(describe_.mock.calls[1][1]).toContain("giáo trình");
+    expect(screen.getByRole("button", { name: "Lưu" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Chỉnh khoảng trang" })).toBeTruthy();
+  });
+
+  it("E-24: a second pass that fails or asks again falls back to the form on that document", async () => {
+    describe_.mockResolvedValueOnce({
+      ok: true,
+      data: card({ card: "clarify", question: "Tài liệu nào?" }),
+    });
+    await tell("học phần Bayes");
+    describe_.mockResolvedValueOnce({ ok: false, code: "unavailable" });
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "giáo trình" })),
+    );
+    expect(screen.getByLabelText("Tài liệu")).toBeTruthy();
+    expect((screen.getByLabelText("Tài liệu") as HTMLSelectElement).value).toBe(DOC);
   });
 
   // Red when: a failed call drops the sentence the learner wrote.
