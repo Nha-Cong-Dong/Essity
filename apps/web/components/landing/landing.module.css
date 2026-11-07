@@ -278,9 +278,9 @@
 .lp :global(.hero-text){grid-column:1/-1}
 .lp :global(.hero-pic){grid-column:1/-1;min-height:0;margin-top:20px}
 .lp :global(.hero-pic){flex-direction:column;gap:8px}
-.lp :global(.bubble){position:relative;left:auto;top:auto;max-width:min(100%,320px);order:-1;margin-bottom:26px}
+.lp :global(.bubble){position:absolute;left:6%;top:auto;bottom:68%;max-width:62%}
 .lp :global(.mascot-wrap){width:min(60vw,240px)}
-.lp :global(.note-chip){position:relative;right:auto;bottom:auto;margin:8px auto 0}
+.lp :global(.note-chip){position:relative;right:auto;bottom:auto;margin:-44px auto 0}
 .lp :global(.panel){min-height:0}
 }
 @media (max-width:700px){
@@ -492,7 +492,7 @@
 .lp :global(.bubble){left:2%;top:11%;max-width:46%}
 }
 @media (max-width:1000px){
-.lp :global(.bubble::after){right:auto;left:50%;bottom:-18px;width:26px;height:20px;clip-path:polygon(0 0,100% 0,50% 100%);-webkit-clip-path:polygon(0 0,100% 0,50% 100%)}
+.lp :global(.bubble::after){display:none}
 }
 
 /* LANDING-V62-FIX: a light film grain over the hero (static, so reduced motion needs nothing); text keeps its contrast because the grain is a faint overlay below the content layer */
@@ -523,9 +523,9 @@
 
 /* LANDING-V63-FIX: hero bubble beside the mascot body, flush with its white rim; sticker in the empty middle; FSRS chart lower */
 @media (min-width:1001px){
-.lp :global(.bubble){left:auto;right:calc(100% - var(--u)*84);top:70%;width:max-content;max-width:calc(var(--u)*250);border-radius:calc(var(--u)*22) calc(var(--u)*6) calc(var(--u)*6) calc(var(--u)*22);box-shadow:none}
+.lp :global(.bubble){left:auto;right:84.6%;top:70%;width:max-content;max-width:calc(var(--u)*250);border-radius:calc(var(--u)*22) calc(var(--u)*6) calc(var(--u)*6) calc(var(--u)*22);box-shadow:none}
 .lp :global(.bubble::after){display:none}
-.lp :global(.note-chip){bottom:calc(var(--u)*-92)}
+.lp :global(.note-chip){bottom:calc(var(--u)*-22)}
 .lp :global(.m-sticker){position:absolute;left:40%;top:80%;translate:-50% -50%;z-index:2}
 }
 @media (max-width:1000px){
