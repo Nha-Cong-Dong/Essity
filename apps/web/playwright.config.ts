@@ -7,6 +7,9 @@ import { defineConfig } from "@playwright/test";
 // a server already listening is never reused, so a dev server or an old build cannot answer.
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
+// EMAIL-E2E: with E2E_STACK_URL set, tests run against that running stack (web + core-api + Mailpit)
+// and no standalone server is started.
+const STACK = process.env.E2E_STACK_URL;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -15,8 +18,8 @@ export default defineConfig({
   // A flaky layout test is a bug to find, not to retry past (risk register R43).
   retries: 0,
   reporter: "list",
-  use: { baseURL: ORIGIN, browserName: "chromium", screenshot: "only-on-failure" },
-  webServer: {
+  use: { baseURL: STACK ?? ORIGIN, browserName: "chromium", screenshot: "only-on-failure" },
+  webServer: STACK ? undefined : {
     command: "node .next/standalone/apps/web/server.js",
     url: `${ORIGIN}/design-preview/subjects`,
     reuseExistingServer: false,
