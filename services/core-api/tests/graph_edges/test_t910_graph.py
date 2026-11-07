@@ -197,3 +197,22 @@ def test_ac3_section_of_another_user_or_unknown_is_404(client: TestClient, db_se
     db_session.commit()
     assert _get(client, headers_a, sub_a, section_id=str(foreign.id)).status_code == 404
     assert _get(client, headers_a, sub_a, section_id=str(uuid.uuid4())).status_code == 404
+
+
+def test_e15_card_without_link_row_uses_its_own_section(client: TestClient, db_session: Session):
+    # E-15: a card whose `section_id` is set but has no unit_sections row still sits in its chapter.
+    user, headers = signed_in(db_session)
+    subject = make_subject(db_session, user)
+    doc = make_document(db_session, user, subject)
+    s1 = make_section(db_session, user, doc, ord=0, title="Chương 1")
+    s11 = make_section(db_session, user, doc, ord=1, title="1.1", parent_id=s1.id)
+    a = _card(db_session, user, subject, "A", section_id=s11.id)
+    b = _card(db_session, user, subject, "B")
+    _link(db_session, user, b, s11)
+    db_session.commit()
+    body = _get(client, headers, subject).json()
+    cards = {c["title"]: c for c in body["cards"]}
+    assert cards["A"]["section_id"] == str(s11.id) and cards["B"]["section_id"] == str(s11.id)
+    assert str(a.id) in {
+        c["id"] for c in _get(client, headers, subject, section_id=str(s1.id)).json()["cards"]
+    }

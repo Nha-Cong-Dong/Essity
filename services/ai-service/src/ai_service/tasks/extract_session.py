@@ -472,31 +472,29 @@ _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _studied_on(day: _LlmDay, today: datetime.date) -> datetime.date | None:
-    if day.days_ago is not None and day.date is not None:
-        raise OutputViolation("x5")
-    if day.days_ago is not None:
-        if not 0 <= day.days_ago <= MAX_STUDIED_DAYS_AGO:
-            raise OutputViolation("x5")
+    """The day the learner studied, or None. E-21: a slip in the day ("hôm nay" given as both
+    days_ago and date, a date out of range) never refuses the output: the day is a side detail
+    and a retry spends a second LLM call for nothing."""
+    oldest = today - datetime.timedelta(days=MAX_STUDIED_DAYS_AGO)
+    if day.date is not None and _ISO_DATE.match(day.date):
+        try:
+            value = datetime.date.fromisoformat(day.date)
+        except ValueError:
+            value = None
+        if value is not None and oldest <= value <= today:
+            return value
+    if day.days_ago is not None and 0 <= day.days_ago <= MAX_STUDIED_DAYS_AGO:
         return today - datetime.timedelta(days=day.days_ago)
-    if day.date is None:
-        return None
-    if not _ISO_DATE.match(day.date):
-        raise OutputViolation("x5")
-    try:
-        value = datetime.date.fromisoformat(day.date)
-    except ValueError:
-        raise OutputViolation("x5") from None
-    if not today - datetime.timedelta(days=MAX_STUDIED_DAYS_AGO) <= value <= today:
-        raise OutputViolation("x5")
-    return value
+    return None
 
 
 def check_output(text: str, docs: list[Doc], today: datetime.date) -> Outcome:
     """The rules, in order; the first broken one raises `OutputViolation`.
 
     x1 schema; x2 the fields fit the status; x3 document labels exist; x4 section labels exist
-    in their own document; x5 the day; x6 no range twice; x7 pages inside the document;
-    x8 "continue" is workable; x9 the question is one short line.
+    in their own document; x5 the day (lenient: a slip is ignored, never refused); x6 no range
+    twice; x7 pages inside the document; x8 "continue" is workable; x9 the question is one
+    short line.
     """
     try:
         parsed = _LlmOutput.model_validate_json(text)

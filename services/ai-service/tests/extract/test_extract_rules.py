@@ -111,7 +111,6 @@ def test_x4_section_whose_toc_entry_has_no_page_is_dropped() -> None:
 @pytest.mark.parametrize(
     "day",
     [
-        {"days_ago": 1, "date": "2026-10-27"},  # both
         {"days_ago": -1, "date": None},
         {"days_ago": 367, "date": None},
         {"days_ago": None, "date": "2026-10-29"},  # tomorrow
@@ -121,8 +120,16 @@ def test_x4_section_whose_toc_entry_has_no_page_is_dropped() -> None:
         {"days_ago": None, "date": "2026-02-30"},
     ],
 )
-def test_x5_bad_day(day: dict[str, Any]) -> None:
-    assert violation(output(studied_day=day)) == "x5"
+def test_e21_bad_day_is_ignored_not_refused(day: dict[str, Any]) -> None:
+    assert ok(output(studied_day=day)).studied_on is None
+
+
+def test_e21_hom_nay_with_days_ago_and_date_is_not_refused() -> None:
+    both = {"days_ago": 0, "date": TODAY.isoformat()}
+    assert ok(output(studied_day=both)).studied_on == TODAY
+    assert ok(output(studied_day={"days_ago": 1, "date": "2026-10-27"})).studied_on == (
+        datetime.date(2026, 10, 27)
+    )
 
 
 def test_x5_days_ago_and_date_are_worked_out_by_code() -> None:
@@ -252,3 +259,11 @@ def test_total_sections_stay_under_800() -> None:
         )
     )
     assert sum(len(doc.sections) for doc in docs) <= 800
+
+
+def test_e23_prompt_sends_off_topic_notes_to_note_only() -> None:
+    from ai_service.tasks.extract_session import load_prompt
+
+    text = load_prompt().text
+    assert "matches no document's name and no section title" in text
+    assert "it is `note_only`; do not ask which document held it" in text
