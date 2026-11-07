@@ -266,5 +266,6 @@ def test_date_bounds_follow_the_learner_today() -> None:
     assert check_output(output(studied_day=day), docs, today).studied_on == datetime.date(
         2023, 3, 1
     )
-    with pytest.raises(OutputViolation):
-        check_output(output(studied_day={"days_ago": None, "date": "2023-02-28"}), docs, today)
+    # E-21: out of the window is ignored, not refused.
+    late = {"days_ago": None, "date": "2023-02-28"}
+    assert check_output(output(studied_day=late), docs, today).studied_on is None
