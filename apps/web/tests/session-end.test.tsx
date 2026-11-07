@@ -47,7 +47,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 const end = async () => {
-  await screen.findByText("Phần 1");
+  await screen.findByText("học TCP");
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: "Kết thúc buổi học" }));
   });
@@ -57,7 +57,7 @@ describe("session end", () => {
   // Red when: the "Học tự do" button is back in the session screen.
   it("has no Học tự do button and no Hoàn thành button, only Kết thúc buổi học", async () => {
     show(api());
-    await screen.findByText("Phần 1");
+    await screen.findByText("học TCP");
     expect(screen.queryByRole("button", { name: /Học tự do/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Hoàn thành" })).toBeNull();
     expect(screen.getByRole("button", { name: "Kết thúc buổi học" })).toBeTruthy();
@@ -145,7 +145,7 @@ describe("session end, typed text and empty session", () => {
   it("keeps the typed words as one more piece before it ends", async () => {
     const fake = api({ addPiece: vi.fn(() => ok({ id: "p2", position: 1, text: "mới gõ", fileCount: 0 })) });
     show(fake);
-    await screen.findByText("Phần 1");
+    await screen.findByText("học TCP");
     typeIn("mới gõ");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Kết thúc buổi học" }));
@@ -159,7 +159,7 @@ describe("session end, typed text and empty session", () => {
   it("does not end when the typed words cannot be kept", async () => {
     const fake = api({ addPiece: vi.fn(() => Promise.resolve({ ok: false, status: 0, error: "network" })) });
     show(fake);
-    await screen.findByText("Phần 1");
+    await screen.findByText("học TCP");
     typeIn("mới gõ");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Kết thúc buổi học" }));
@@ -181,7 +181,19 @@ describe("session end, typed text and empty session", () => {
     expect(dialog.textContent).not.toContain(END_COPY.title);
     expect(fake.complete).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: END_COPY.home })).toBeTruthy();
-    expect(screen.getByRole("button", { name: END_COPY.more })).toBeTruthy();
+    expect(screen.getByRole("button", { name: END_COPY.recordNow })).toBeTruthy();
+  });
+
+  // Red when: "Ghi lại ngay" in the empty pop-up leaves the screen instead of going back to writing.
+  it("Ghi lại ngay closes the empty pop-up and stays on the screen", async () => {
+    const fake = api({ pieces: vi.fn(() => ok({ pieces: [], submitted: false })) });
+    show(fake);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Kết thúc buổi học" }));
+    });
+    fireEvent.click(await screen.findByRole("button", { name: END_COPY.recordNow }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(assign).not.toHaveBeenCalled();
   });
 
   // Red when: a press outside the pop-up closes it or leaves the page.

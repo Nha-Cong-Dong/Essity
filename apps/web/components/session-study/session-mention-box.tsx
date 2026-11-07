@@ -32,7 +32,7 @@ export type MentionBoxProps = {
   problem: ReactNode;
 };
 
-const PLACEHOLDER = "Tối nay mình học @Giáo trình phần 3.2 và xem lại @slide chương 3.";
+const PLACEHOLDER = "Ví dụ: mục 1.4 trong @Giáo trình, trang 20–25 @slide chương 3";
 
 /** E-02: core-api's DESCRIPTION_MAX (db/models/study_session.py); the counter shows from NOTE_WARN on. */
 export const NOTE_MAX = 2000;

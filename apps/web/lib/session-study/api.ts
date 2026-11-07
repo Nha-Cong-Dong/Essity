@@ -28,7 +28,7 @@ export function readStatus(status: string | null): Phase {
 }
 
 /** F2: one piece the learner wrote down ("Ghi lại"), kept at once. */
-export type Piece = { id: string; position: number; text: string; fileCount: number };
+export type Piece = { id: string; position: number; text: string; fileCount: number; createdAt?: string };
 
 export type SessionApi = {
   sessionId: string;
@@ -69,8 +69,8 @@ export function createSessionApi(sessionId: string, _docs: readonly DocRef[], fe
     return { ok: false, status, error: typeof json.error === "string" ? json.error : "unavailable" };
   }
 
-  type CorePiece = { id: string; position: number; text: string; file_count: number };
-  const piece = (p: CorePiece): Piece => ({ id: p.id, position: p.position, text: p.text, fileCount: p.file_count });
+  type CorePiece = { id: string; position: number; text: string; file_count: number; created_at?: string };
+  const piece = (p: CorePiece): Piece => ({ id: p.id, position: p.position, text: p.text, fileCount: p.file_count, createdAt: p.created_at });
 
   return {
     sessionId,
