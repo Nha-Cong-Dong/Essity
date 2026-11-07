@@ -31,7 +31,7 @@ describe.each(PALETTES)("graph tokens, %s", (_name, tokens) => {
 });
 
 describe("graphStylesheet", () => {
-  const p: Palette = { ink: "#000", line: "#888", sheet: "#fff", focus: "#a00", soft: "#555" };
+  const p: Palette = { ink: "#000", line: "#888", sheet: "#fff", focus: "#a00", soft: "#555", hong: "#d1347a", now: "#891b4c", bg: "#fde6ed" };
   const rule = (sheet: ReturnType<typeof graphStylesheet>, selector: string) =>
     (sheet.find((r) => r.selector === selector) as unknown as { style: Record<string, unknown> }).style;
 

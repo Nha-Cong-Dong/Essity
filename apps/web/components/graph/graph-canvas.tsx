@@ -5,6 +5,7 @@ import fcose from "cytoscape-fcose";
 import { useEffect, useRef } from "react";
 
 import { neighbourhood, shortLabel, type GraphSection, type GraphView } from "@/lib/graph";
+import { createFitLock } from "@/lib/graph-fit-lock";
 import { graphStylesheet, type Palette } from "@/lib/graph-style";
 
 // T9.10a (DESIGN §6.15, .work/T9.10a/design-decisions.md): the Cytoscape.js frame. Loaded only by
@@ -27,6 +28,9 @@ function readPalette(): Palette {
     sheet: get("--sheet", "#ffffff"),
     focus: get("--focus", "#c2185b"),
     soft: get("--ink-soft", "#6a4f5c"),
+    hong: get("--hong", "#d1347a"),
+    now: get("--now", "#891b4c"),
+    bg: get("--hong-tint", "#fde6ed"),
   };
 }
 
@@ -57,6 +61,8 @@ export type GraphCanvasProps = {
 export default function GraphCanvas({ view, sections, selectedId, reducedMotion, onSelectCard, onSelectEdge }: GraphCanvasProps) {
   const host = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
+  // True once the reader has panned or zoomed by hand: a resize of the box then keeps the view.
+  const lockRef = useRef(createFitLock());
   const handlers = useRef({ onSelectCard, onSelectEdge });
   const selectedRef = useRef(selectedId);
   useEffect(() => {
@@ -115,11 +121,15 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
     refresh();
     // Fit-to-view: after the layout settles, and again when the box changes size (the frame can
     // be sized after the first paint), until the reader pans or zooms by hand.
-    let touched = false;
+    // Zoom is locked from the input events (wheel, two-finger touch, the +/- buttons) and not from
+    // cytoscape's "zoom" event, because fit() itself zooms.
+    const fitLock = lockRef.current;
+    fitLock.reset();
     const fit = () => {
-      if (!touched && !cy.destroyed()) cy.fit(undefined, 24);
+      if (!fitLock.touched && !cy.destroyed()) cy.fit(undefined, 24);
     };
-    cy.on("dragpan", () => (touched = true));
+    const detach = fitLock.attach(host.current);
+    cy.on("dragpan", fitLock.lock);
     cy.on("layoutstop", fit);
     cy.layout({
       name: "fcose",
@@ -150,6 +160,7 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
       theme.disconnect();
       scheme.removeEventListener("change", refresh);
       resize.disconnect();
+      detach();
       cy.destroy();
       cyRef.current = null;
     };
@@ -164,6 +175,7 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
 
   const zoomBy = (factor: number) => {
     const cy = cyRef.current;
+    lockRef.current.lock();
     if (cy) cy.zoom({ level: cy.zoom() * factor, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
   };
 
@@ -174,7 +186,7 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
         aria-hidden="true"
         data-graph-canvas
         data-foreign-dom
-        className="h-[clamp(18rem,calc(100dvh-240px),34rem)] w-full touch-none overflow-hidden rounded-tile border border-line bg-hong-tint"
+        className="h-[clamp(18rem,calc(100dvh-240px),42rem)] w-full touch-none overflow-hidden rounded-tile border border-line bg-hong-tint"
       />
       <div className="absolute right-2 bottom-2 flex gap-2">
         <button type="button" aria-label="Phóng to" className={ZOOM_BUTTON + " w-11"} onClick={() => zoomBy(1.3)}>
@@ -183,7 +195,10 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
         <button type="button" aria-label="Thu nhỏ" className={ZOOM_BUTTON + " w-11"} onClick={() => zoomBy(1 / 1.3)}>
           −
         </button>
-        <button type="button" aria-label="Đặt lại khung nhìn" className={ZOOM_BUTTON + " px-3"} onClick={() => cyRef.current?.fit(undefined, 24)}>
+        <button type="button" aria-label="Đặt lại khung nhìn" className={ZOOM_BUTTON + " px-3"} onClick={() => {
+            lockRef.current.reset();
+            cyRef.current?.fit(undefined, 24);
+          }}>
           Đặt lại
         </button>
       </div>

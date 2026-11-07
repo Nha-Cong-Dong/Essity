@@ -196,6 +196,15 @@ describe("the tray", () => {
     expect(within(tray).getByRole("heading", { level: 2 }).textContent).toBe("Bắt tay ba bước");
     expect(within(tray).getByRole("status").textContent).toBe("Đã chọn: Bắt tay ba bước");
   });
+  // Red when: the tray of a card has no way into the Kho (C4C, mockups/graph.html "Mở trong Kho").
+  it("C4C: a chosen card's tray has one Mở trong Kho link; an edge's tray has none", () => {
+    show("selected");
+    const open = screen.getAllByRole("link", { name: "Mở trong Kho" });
+    expect(open).toHaveLength(1);
+    expect(open[0].getAttribute("href")).toBe("/kho-kien-thuc");
+    fireEvent.click(within(document.body).getByRole("button", { name: "Đóng" }));
+    expect(screen.queryByRole("link", { name: "Mở trong Kho" })).toBeNull();
+  });
   it("US-19 AC4: a link in the tray moves to the other card; two steps away sits under Xa hơn", () => {
     show("selected");
     const tray = document.querySelector("[data-tray]") as HTMLElement;

@@ -419,10 +419,10 @@ export function SessionScreen(props: SessionScreenProps) {
                   </div>
                   <Button
                     type="button"
-                    variant="primary-inverse"
+                    variant="secondary"
                     aria-disabled={completing || uploading > 0 || undefined}
                     onClick={() => void complete()}
-                    className="min-[1024px]:w-full"
+                    className="min-[1024px]:w-full bg-transparent text-on-plum inset-ring-on-plum-soft hover:bg-on-plum/10"
                   >
                     {completing ? "Đang kết thúc…" : "Kết thúc buổi học"}
                   </Button>
