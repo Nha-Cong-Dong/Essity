@@ -325,6 +325,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
             switchRef.current?.focus();
           }}
           onClose={() => setSelection(null)}
+          vaultHref={live ? `/kho-kien-thuc?subject=${live.subjectId}` : undefined}
           onRemoveEdge={live ? undefined : (id) => {
             // Static preview: the unlink works on the fixture only; T9.10 calls the T9.2 command.
             setRemoved((prev) => new Set(prev).add(id));

@@ -419,10 +419,10 @@ export function SessionScreen(props: SessionScreenProps) {
                   </div>
                   <Button
                     type="button"
-                    variant="primary-inverse"
+                    variant="secondary"
                     aria-disabled={completing || uploading > 0 || undefined}
                     onClick={() => void complete()}
-                    className="min-[1024px]:w-full"
+                    className="min-[1024px]:w-full bg-transparent text-on-plum inset-ring-on-plum-soft hover:bg-on-plum/10"
                   >
                     {completing ? "Đang kết thúc…" : "Kết thúc buổi học"}
                   </Button>
@@ -467,7 +467,7 @@ export function SessionScreen(props: SessionScreenProps) {
                       else patchRow(id, { state: "done" });
                     }}
                   />
-                  <div className="sticky bottom-0 z-10 flex flex-col items-start gap-2 bg-bg py-3 max-[640px]:[&>button]:w-full min-[641px]:static min-[641px]:bg-transparent min-[641px]:py-0">
+                  <div className="flex flex-col items-start gap-2 max-[640px]:[&>button]:w-full">
                     <Button
                       type="button"
                       className="max-[480px]:w-full"

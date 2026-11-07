@@ -144,7 +144,7 @@ export function MentionBox({ value, mentions, docs, onChange, say, rejectedDoc, 
             setCaret(event.currentTarget.selectionStart);
             setDismissed(null);
           }}
-          className="block field-sizing-content max-h-112 min-h-40 w-full resize-none rounded-tile bg-sunken p-4 scroll-mb-24 text-answer text-hong-text outline-none placeholder:text-ink-soft focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus aria-invalid:rounded-control aria-invalid:outline-2 aria-invalid:outline-offset-8 aria-invalid:outline-partial aria-invalid:outline-dashed"
+          className="block field-sizing-content max-h-112 min-h-40 w-full resize-none rounded-tile bg-sunken inset-ring-1 inset-ring-line p-4 scroll-mb-24 text-answer text-hong-text outline-none placeholder:text-ink-soft focus-visible:rounded-control focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-focus aria-invalid:rounded-control aria-invalid:outline-2 aria-invalid:outline-offset-8 aria-invalid:outline-partial aria-invalid:outline-dashed"
         />
         {open && (
           <ul

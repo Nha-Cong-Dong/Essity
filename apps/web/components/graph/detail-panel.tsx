@@ -4,7 +4,9 @@ import { Markdown } from "@/components/markdown/markdown";
 import type { Ref } from "react";
 
 import { Marker } from "@/components/notebook";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
+import { Button, buttonVariants } from "@/components/ui/button";
 import { EDGE_KINDS, EDGE_STYLE, neighbourhood, type GraphCard, type GraphEdge, type GraphView } from "@/lib/graph";
 
 // T9.10a (US-19 AC4; DESIGN §6.15 item 5): the tray. An in-flow panel, not a modal and not a
@@ -25,6 +27,8 @@ type Props = {
   onClose: () => void;
   /** Undefined hides the unlink button (the live screen: edge commands are the command bar's, T9.2). */
   onRemoveEdge: ((id: string) => void) | undefined;
+  /** Where "Mở trong Kho" goes (the subject's vault); the preview points at the vault root. */
+  vaultHref?: string;
 };
 
 const QUIET =
@@ -46,7 +50,17 @@ function SourceButton({ label }: { label: string }) {
   );
 }
 
-function CardDetail({ card, view, onSelectCard }: { card: GraphCard; view: GraphView; onSelectCard: (id: string) => void }) {
+function CardDetail({
+  card,
+  view,
+  onSelectCard,
+  vaultHref,
+}: {
+  card: GraphCard;
+  view: GraphView;
+  onSelectCard: (id: string) => void;
+  vaultHref: string;
+}) {
   const byId = new Map(view.cards.map((c) => [c.id, c] as const));
   const links = view.edges.filter((e) => e.from === card.id || e.to === card.id);
   const two = [...neighbourhood(view.edges, card.id, 2)].filter(([, d]) => d === 2).map(([id]) => byId.get(id)).filter((c): c is GraphCard => c !== undefined);
@@ -130,6 +144,9 @@ function CardDetail({ card, view, onSelectCard }: { card: GraphCard; view: Graph
           </ul>
         </details>
       )}
+      <Link href={vaultHref} data-open-vault className={buttonVariants({ variant: "primary", className: "mt-1 self-stretch" })}>
+        Mở trong Kho
+      </Link>
     </>
   );
 }
@@ -175,7 +192,7 @@ function EdgeDetail({
   );
 }
 
-export function DetailPanel({ view, selection, headingRef, unlink, onSelectCard, onBackToGraph, onClose, onRemoveEdge }: Props) {
+export function DetailPanel({ view, selection, headingRef, unlink, onSelectCard, onBackToGraph, onClose, onRemoveEdge, vaultHref = "/kho-kien-thuc" }: Props) {
   const card = selection?.kind === "card" ? view.cards.find((c) => c.id === selection.id) : undefined;
   const edge = selection?.kind === "edge" ? view.edges.find((e) => e.id === selection.id) : undefined;
   const heading = card?.title ?? (edge ? `Liên kết: ${EDGE_STYLE[edge.kind].label}` : null);
@@ -212,7 +229,7 @@ export function DetailPanel({ view, selection, headingRef, unlink, onSelectCard,
           <Button type="button" variant="quiet" className="self-start lg:hidden" onClick={onBackToGraph}>
             Về đồ thị
           </Button>
-          {card && <CardDetail card={card} view={view} onSelectCard={onSelectCard} />}
+          {card && <CardDetail card={card} view={view} onSelectCard={onSelectCard} vaultHref={vaultHref} />}
           {edge && <EdgeDetail edge={edge} view={view} unlink={unlink} onRemoveEdge={onRemoveEdge} />}
         </>
       )}

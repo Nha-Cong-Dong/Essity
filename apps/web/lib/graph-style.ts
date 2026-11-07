@@ -13,14 +13,16 @@ import { EDGE_KINDS, EDGE_STYLE } from "@/lib/graph";
 //   nothing else changes; labels are never faded.
 
 export const HIT = 44;
-export const DOT = 20;
+export const DOT = 44;
 
-export type Palette = { ink: string; line: string; sheet: string; focus: string; soft: string };
+// hong = the card fill, now = the picked card fill, bg = the halo that keeps labels and dots
+// readable over lines (graph.html: solid dots, a ground-coloured rim, labels with a ground halo).
+export type Palette = { ink: string; line: string; sheet: string; focus: string; soft: string; hong: string; now: string; bg: string };
 
 export function dotImage(p: Palette, selected: boolean): string {
   const shapes = selected
-    ? `<circle cx='22' cy='22' r='20' fill='none' stroke='${p.focus}' stroke-width='3'/><circle cx='22' cy='22' r='9.5' fill='${p.sheet}' stroke='${p.ink}' stroke-width='4'/>`
-    : `<circle cx='22' cy='22' r='9' fill='${p.sheet}' stroke='${p.ink}' stroke-width='2.5'/>`;
+    ? `<circle cx='22' cy='22' r='20' fill='none' stroke='${p.focus}' stroke-width='3'/><circle cx='22' cy='22' r='13' fill='${p.now}' stroke='${p.ink}' stroke-width='2.5'/>`
+    : `<circle cx='22' cy='22' r='11' fill='${p.hong}' stroke='${p.bg}' stroke-width='2'/>`;
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${HIT}' height='${HIT}' viewBox='0 0 ${HIT} ${HIT}'>${shapes}</svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
@@ -41,17 +43,23 @@ export function graphStylesheet(p: Palette, zoom: number): StylesheetJson {
         "background-width": dot,
         "background-height": dot,
         "background-clip": "none",
-        label: (n: cytoscape.NodeSingular) =>
-          zoom >= 1 || n.hasClass("near") || n.hasClass("picked") ? String(n.data("label")) : "",
+        // Every card carries its label at any zoom; a long one wraps (never "…").
+        label: "data(label)",
         color: p.ink,
         "font-size": 13 / zoom,
+        "font-weight": 600,
+        "text-outline-color": p.bg,
+        "text-outline-width": 3 / zoom,
         "text-valign": "bottom",
         "text-margin-y": 2 / zoom,
-        "text-wrap": "ellipsis",
-        "text-max-width": `${130 / zoom}px`,
+        "text-wrap": "wrap",
+        "text-max-width": `${150 / zoom}px`,
       },
     },
-    { selector: "node.card.picked", style: { "background-image": dotImage(p, true) } },
+    {
+      selector: "node.card.picked",
+      style: { "background-image": dotImage(p, true), "font-weight": 700 },
+    },
     {
       selector: "node[?isSection]",
       style: {
