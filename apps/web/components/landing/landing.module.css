@@ -25,7 +25,7 @@
 .lp :global(.hero-dots){position:absolute;z-index:0;right:calc(var(--u)*-60);top:calc(var(--u)*90);width:calc(var(--u)*560);height:calc(var(--u)*420);pointer-events:none;background-image:radial-gradient(circle,var(--poster-dots) 0 4px,transparent 4.5px);background-size:34px 34px;-webkit-mask-image:radial-gradient(closest-side,#000 30%,transparent);mask-image:radial-gradient(closest-side,#000 30%,transparent)}
 .lp :global(.hero-disc){position:absolute;z-index:0;left:calc(var(--u)*-140);bottom:calc(var(--u)*-180);width:calc(var(--u)*520);height:calc(var(--u)*520);border-radius:50%;background:var(--glow-b);opacity:.55;pointer-events:none}
 .lp :global(.bar){position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;height:max(64px,calc(var(--u)*88))}
-.lp :global(.wm){font:700 max(22px,calc(var(--u)*26))/1 var(--font-display);letter-spacing:-.03em;text-decoration:none}
+.lp :global(.wm){display:inline-flex;align-items:center;gap:.35em;color:var(--logo-ink);font:700 max(22px,calc(var(--u)*26))/1 var(--font-display);letter-spacing:-.02em;text-decoration:none}
 .lp :global(.bar-r){display:flex;align-items:center;gap:12px}
 .lp :global(.login){min-height:44px;display:inline-flex;align-items:center;padding:0 22px;border:1.5px solid #fff;border-radius:999px;font-weight:600;text-decoration:none;transition:background .16s,color .16s}
 .lp :global(.login:hover){background:#fff;color:#8e1e50}
