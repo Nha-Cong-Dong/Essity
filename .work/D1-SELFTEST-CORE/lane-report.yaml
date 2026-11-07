@@ -1,0 +1,8 @@
+task: D1-SELFTEST-CORE
+lane: L2
+status: done
+head_sha: see git log (pushed d1-selftest-core)
+step: stack up, demo account seeded, review session e2e smoke, 2 fixes
+tests: {cmd: "pytest test_cli_review_account (8); vitest mascot (18); pnpm lint+typecheck", passed: 26, failed: 0}
+blockers: []
+next: "open bugs B-03..B-06 in bugs.md"

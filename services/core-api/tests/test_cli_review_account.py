@@ -15,6 +15,8 @@ from core_api.cli_review_account import (
     EDGES,
     PRACTICE,
     REVIEW_SUBJECT,
+    REVIEW_USERNAME,
+    parse_args,
     seed_account,
 )
 from core_api.db.models import Grade, Question, UnitEdge, User
@@ -165,3 +167,9 @@ def test_password_is_never_in_what_the_cli_prints(
     _, _, password = _seed(db_session)
     assert password is not None
     assert password not in capsys.readouterr().out
+
+
+def test_cli_takes_a_username_for_a_second_account() -> None:
+    args = parse_args(["--outline", "o.json", "--email", "b@essity.test", "--username", "second"])
+    assert args.username == "second" and args.email == "b@essity.test"
+    assert parse_args(["--outline", "o.json"]).username == REVIEW_USERNAME
