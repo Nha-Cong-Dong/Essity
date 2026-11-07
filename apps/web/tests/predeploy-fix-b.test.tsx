@@ -79,3 +79,43 @@ describe("E-10 graph is stable and quiet", () => {
     expect(src("components/graph/graph-canvas.tsx")).not.toMatch(/i < 12 && cy\.width\(\) < 480/);
   });
 });
+
+describe("E-10 knowledge graph (the real /graph) is deterministic and collision-free", () => {
+  const kg = src("components/graph/knowledge-graph.tsx");
+  it("settles a fixed number of steps up front and has no idle drift loop or timed refit", () => {
+    expect(kg).toContain("SETTLE_STEPS");
+    expect(kg).toContain("settleLabels(cy)");
+    expect(kg).not.toContain("fitTimer");
+    expect(kg).not.toMatch(/running = true;\s*frame = requestAnimationFrame\(tick\);\s*cy\.on/);
+    expect(kg).not.toContain('"grab mouseover"');
+  });
+  it("stepSim with seeded noise gives identical positions on every run", async () => {
+    const { seededRandom, stepSim, spiralStart, optionsFor } = await import("@/lib/graph-sim");
+    const run = () => {
+      const nodes = Array.from({ length: 12 }, (_, i) => ({ id: `n${i}`, ...spiralStart(i), vx: 0, vy: 0, pinned: false, group: i % 2 ? "a" : "b" }));
+      const links = [{ a: 0, b: 1 }, { a: 1, b: 2 }, { a: 5, b: 9 }];
+      const noise = seededRandom(1);
+      for (let s = 0; s < 220; s++) stepSim(nodes, links, Math.max(0.1, 0.5 * 0.995 ** s), noise, optionsFor(12));
+      return nodes.map((n) => [n.x, n.y]);
+    };
+    expect(run()).toEqual(run());
+  });
+  it("separateLabelBoxes moves two overlapping label boxes apart and is a no-op afterwards", async () => {
+    const { separateLabelBoxes } = await import("@/lib/graph-labels");
+    const pos = [{ x: 0, y: 0 }, { x: 0, y: 4 }];
+    const mk = (i: number) => ({
+      style: () => "element",
+      position: (k?: string | { x: number; y: number }) => {
+        if (typeof k === "string") return pos[i][k as "x" | "y"];
+        if (k) pos[i] = k;
+        return pos[i];
+      },
+      boundingBox: () => ({ x1: pos[i].x - 20, x2: pos[i].x + 20, y1: pos[i].y - 5, y2: pos[i].y + 15 }),
+    });
+    const nodes = [mk(0), mk(1)];
+    const cy = { nodes: () => ({ filter: () => ({ toArray: () => nodes }) }) } as never;
+    expect(separateLabelBoxes(cy)).toBe(true);
+    expect(separateLabelBoxes(cy)).toBe(false);
+    expect(pos[1].y - pos[0].y).toBeGreaterThanOrEqual(20);
+  });
+});
