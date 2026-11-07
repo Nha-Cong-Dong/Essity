@@ -1,0 +1,13 @@
+task: C4C-GRAPH-SESSION-V4
+lane: L3
+status: done
+head_sha: 2561890d
+step: graph v4 nodes + Mo trong Kho + fit-lock; session end ghost button, field border; shots+inspect
+tests: {cmd: "vitest run (web) + playwright graph/session spec", passed: 2087, failed: 0}
+blockers: []
+decisions:
+  - "Dot size: DOT=HIT=44 (svg drawn 1:1, r=11/13) -> readable solid nodes, 44px hit kept (Coder, 07/11)"
+  - "Fit lock via input events (wheel/2-finger touch/zoom buttons/dragpan), not cy zoom, since fit() zooms (Coder, 07/11)"
+  - "Mo trong Kho -> /kho-kien-thuc?subject=<id> in live, plain in preview (Coder, 07/11)"
+  - "End button: secondary ghost on plum; textarea inset-ring-line (Coder, 07/11)"
+next: "vault-session.html page and icon-only zoom buttons not redone (yellow)"
