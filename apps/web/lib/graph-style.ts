@@ -27,7 +27,8 @@ export function dotImage(p: Palette, selected: boolean): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-export function graphStylesheet(p: Palette, zoom: number): StylesheetJson {
+// narrow = a phone-width frame: labels wrap at 88 px (not 150) so they fit between cards.
+export function graphStylesheet(p: Palette, zoom: number, narrow = false): StylesheetJson {
   const dot = `${(DOT / HIT) * 100}%`;
   const sheet: StylesheetJson = [
     {
@@ -53,7 +54,7 @@ export function graphStylesheet(p: Palette, zoom: number): StylesheetJson {
         "text-valign": "bottom",
         "text-margin-y": 2 / zoom,
         "text-wrap": "wrap",
-        "text-max-width": `${150 / zoom}px`,
+        "text-max-width": `${(narrow ? 88 : 150) / zoom}px`,
       },
     },
     {
