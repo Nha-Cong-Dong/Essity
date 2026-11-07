@@ -13,7 +13,7 @@ import type { GraphCard, GraphData, GraphEdge } from "@/lib/graph";
 // that differed only in lightness merged into one another on the dark canvas. A tone that is dark
 // on white is light on #22151a and the other way round, so no tone may go past either end.
 // Held by tests/graph-multi-contrast.test.ts.
-export const SUBJECT_COLORS = ["#d1347a", "#7b57c4", "#a05a3c", "#7c6d72"] as const;
+export const SUBJECT_COLORS = ["#d1347a", "#7b57c4", "#a05a3c", "#7c6d72", "#2f6fb5", "#3d8a55"] as const;
 
 export type SubjectGraph = { id: string; name: string; data: GraphData };
 export type MultiCard = GraphCard & { subjectId: string };
