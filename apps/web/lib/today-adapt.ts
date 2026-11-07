@@ -74,7 +74,8 @@ export function toTodayV2(today: TodayApi): TodayV2 {
     });
   }
 
-  const items = today.review.items;
+  // TODAY-REVIEW-ONLY: cards only; practice questions have their own block.
+  const items = today.review.items.filter((i) => (i.item_kind ?? "card") === "card");
   const review: TodayV2["review"] =
     items.length > 0
       ? {

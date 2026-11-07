@@ -13,6 +13,7 @@ import { errorName, logError } from "@/lib/log";
 import { CoreStatusError } from "@/lib/subjects";
 import { loadOutline } from "@/lib/outline";
 import { loadQuestionList } from "@/lib/question-list";
+import { reviewCards } from "@/lib/review-cards";
 import { getStats } from "@/lib/stats-api";
 import { outlineView } from "@/lib/syllabus/api";
 import { entryRow } from "@/lib/subject-entries";
@@ -40,11 +41,7 @@ async function Subject({ params }: { params: Promise<{ id: string }> }) {
   // Each source stands alone: one that fails drops its own entry, never the page (DESIGN §6.5 item 4).
   // T7.19 F3: "Ôn riêng môn này" is a dead end when today's review holds nothing of this subject.
   const dueCards = await getToday()
-    .then((today) =>
-      today.review.items
-        .filter((item) => item.subject_id === subject.id)
-        .map((item) => ({ id: item.question_id, why: item.why, kind: item.item_kind, front: item.front, back: item.back })),
-    )
+    .then((today) => reviewCards(today.review.items, subject.id))
     .catch(() => [] as StackCard[]);
   const nothingDue = dueCards.length === 0;
   const [outline, questions] = await Promise.all([
