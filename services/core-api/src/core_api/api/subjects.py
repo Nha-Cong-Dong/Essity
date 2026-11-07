@@ -162,8 +162,8 @@ def change_subject(
     if found is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="subject_not_found")
     exam_moved = body.exam_date is not None and body.exam_date != found[1].exam_date
-    if exam_moved:
-        _check_exam_date(body.exam_date, user, now)  # type: ignore[arg-type]
+    if exam_moved and body.exam_date is not None:
+        _check_exam_date(body.exam_date, user, now)
     updated = subjects.update(subject_id, name=body.name, exam_date=body.exam_date)
     if updated is None:  # cannot happen while the lock above is held; 404 rather than 500
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="subject_not_found")

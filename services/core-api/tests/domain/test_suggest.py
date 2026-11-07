@@ -235,7 +235,7 @@ def test_reason_lines_and_empty_texts_have_no_banned_words() -> None:
     s_free = suggest_for_subject(subject([]), TODAY)
     texts = [reason_line(s) for s in (s_open, s_partial, s_none, s_done, s_free)]
     for reason in ("no_subjects", "nothing_open", "no_syllabus", "all_studied"):
-        texts.append(empty_text(reason))  # pyright: ignore[reportArgumentType]
+        texts.append(empty_text(reason))
     assert all(texts)
     assert not [t for t in texts for w in BANNED if w in t.lower()]
     assert empty_state(0, [], []) == "no_subjects"

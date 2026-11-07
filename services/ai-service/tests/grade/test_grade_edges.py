@@ -162,7 +162,7 @@ def test_b3_run_that_cannot_be_closed_is_503_not_a_grade(
         session = sessions()
         opened["n"] += 1
         if opened["n"] == 3:
-            session.commit = _database_down  # type: ignore[method-assign]
+            session.commit = _database_down
         return session
 
     body = grade_body()

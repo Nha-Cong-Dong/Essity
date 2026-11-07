@@ -116,8 +116,8 @@ def test_outage_backs_off_and_logs_once(caplog: pytest.LogCaptureFixture) -> Non
         return 0
 
     original = relay.relay_once
-    relay.relay_once = fake_once  # type: ignore[assignment]
-    stop.wait = lambda timeout=None: waits.append(float(timeout or 0)) or False  # type: ignore[method-assign]
+    relay.relay_once = fake_once
+    stop.wait = lambda timeout=None: waits.append(float(timeout or 0)) or False
     try:
         with caplog.at_level("INFO", logger="core_api.messaging"):
             relay.run(None, None, stop)  # type: ignore[arg-type]

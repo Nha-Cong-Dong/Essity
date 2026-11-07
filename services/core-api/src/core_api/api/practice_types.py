@@ -48,7 +48,7 @@ def list_practice_types(
                 mastery=s.mastery,
                 attempts_counted=s.attempts_counted,
                 mastery_line=s.mastery_line,
-                sensitivity=s.sensitivity.value,  # pyright: ignore[reportArgumentType]
+                sensitivity=s.sensitivity.value,
                 sensitivity_line=s.sensitivity_line,
                 reference_seconds=s.reference_seconds,
                 ref_origin=s.ref_origin,

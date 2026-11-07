@@ -26,12 +26,12 @@ class StudyFilterRepository(UserScopedRepository[StudyFilter]):  # pyright: igno
     """Scoped like every repository (the structural rule). The key is (user, subject), not an
     `id`, so the inherited by-id methods do not apply: `state(subject_id)` is the read."""
 
-    model = StudyFilter  # pyright: ignore[reportAssignmentType]
+    model = StudyFilter
 
-    def get(self, id: uuid.UUID) -> StudyFilter | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def get(self, id: uuid.UUID) -> StudyFilter | None:
         raise NotImplementedError("a filter is read by subject: use `state`")
 
-    def delete(self, id: uuid.UUID) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def delete(self, id: uuid.UUID) -> bool:
         raise NotImplementedError("a filter is cleared, never deleted (ABA): use `clear`")
 
     def _row(self, subject_id: uuid.UUID, *, lock: bool = False) -> StudyFilter | None:

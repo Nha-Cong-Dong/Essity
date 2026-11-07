@@ -88,7 +88,7 @@ def test_t43_run_backs_off_on_round_errors_and_recovers(
     consumer, stop = scripted(
         redis_client, session_factory, [down, down, down, ["processed"], down]
     )
-    run(consumer, stop)  # pyright: ignore[reportArgumentType]
+    run(consumer, stop)
     assert stop.waits == [1.0, 2.0, 4.0, 1.0]  # grows while failing, starts over after a success
 
 
@@ -99,7 +99,7 @@ def test_t43_run_backs_off_while_infrastructure_is_unavailable(
     # would fail the same way, so the loop slows down too.
     rounds = [["unavailable"], ["unavailable", "processed"], ["processed"], []]
     consumer, stop = scripted(redis_client, session_factory, rounds)
-    run(consumer, stop)  # pyright: ignore[reportArgumentType]
+    run(consumer, stop)
     assert stop.waits == [1.0, 2.0]
 
 
@@ -115,7 +115,7 @@ def test_t43_failed_round_is_logged_without_the_exception_message(
     try:
         secret = OperationalError("SELECT", {"password": "hunter2"}, Exception("password=hunter2"))
         consumer, stop = scripted(redis_client, session_factory, [secret])
-        run(consumer, stop)  # pyright: ignore[reportArgumentType]
+        run(consumer, stop)
     finally:
         root.handlers, root.level, logging.getLogger("uvicorn.access").disabled = saved
     [line] = [json.loads(text) for text in buffer.getvalue().splitlines()]
@@ -128,7 +128,7 @@ def test_t43_run_backoff_is_capped(
 ) -> None:
     down = RedisConnectionError("Connection refused")
     consumer, stop = scripted(redis_client, session_factory, [down] * 10)
-    run(consumer, stop)  # pyright: ignore[reportArgumentType]
+    run(consumer, stop)
     assert max(stop.waits) == consumer_module.MAX_PAUSE_S
 
 
@@ -139,7 +139,7 @@ def test_t43_run_retries_creating_the_group(
     # the group is created again every round.
     consumer, stop = scripted(redis_client, session_factory, [["processed"], ["processed"]])
     consumer.group_failures = 1
-    run(consumer, stop)  # pyright: ignore[reportArgumentType]
+    run(consumer, stop)
     assert consumer.groups == 2
     assert stop.waits == [1.0]
 

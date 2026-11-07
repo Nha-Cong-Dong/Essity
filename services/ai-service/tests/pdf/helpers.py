@@ -108,7 +108,7 @@ def flate_bomb_pdf(decoded_mb: int = 200) -> bytes:
     page = writer.add_blank_page(width=595, height=842)
     raw = zlib.compress(b" " * (decoded_mb * 1024 * 1024), 9)
     stream = StreamObject()
-    stream._data = raw  # pyright: ignore[reportPrivateUsage, reportAttributeAccessIssue]
+    stream._data = raw  # pyright: ignore[reportPrivateUsage]
     stream[NameObject("/Filter")] = NameObject("/FlateDecode")
     page[NameObject("/Contents")] = writer._add_object(stream)  # pyright: ignore[reportPrivateUsage]
     page[NameObject("/Resources")] = DictionaryObject()

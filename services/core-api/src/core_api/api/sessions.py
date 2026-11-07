@@ -343,16 +343,25 @@ def create_session(
     return built[1]
 
 
+ProgressState = Literal["waiting", "processing", "done", "failed"]
+ProgressStep = Literal["reading_notes", "splitting_units", "anchoring", "writing_questions"]
+ProgressReason = Literal["unreadable", "llm_unavailable", "internal_error"]
+
+
 class ProgressOut(BaseModel):
     session_id: uuid.UUID
     # waiting: confirmed, ai-service has not reported yet; processing; done; failed.
-    state: Literal["waiting", "processing", "done", "failed"]
-    step: Literal["reading_notes", "splitting_units", "anchoring", "writing_questions"] | None
+    state: ProgressState
+    step: ProgressStep | None
     percent: int | None
-    reason: Literal["unreadable", "llm_unavailable", "internal_error"] | None
+    reason: ProgressReason | None
 
 
-_STATES = {"processing": "processing", "processed": "done", "failed": "failed"}
+_STATES: dict[str, ProgressState] = {
+    "processing": "processing",
+    "processed": "done",
+    "failed": "failed",
+}
 
 
 @router.get(
@@ -374,8 +383,8 @@ def session_progress(
         raise _error(404, "session_not_found")
     return ProgressOut(
         session_id=study.id,
-        state=_STATES.get(study.processing_state or "", "waiting"),  # type: ignore[arg-type]
-        step=study.processing_step,  # type: ignore[arg-type]
+        state=_STATES.get(study.processing_state or "", "waiting"),
+        step=cast(ProgressStep | None, study.processing_step),  # DB column is plain text
         percent=study.processing_percent,
-        reason=study.processing_reason,  # type: ignore[arg-type]
+        reason=cast(ProgressReason | None, study.processing_reason),
     )

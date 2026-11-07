@@ -70,9 +70,9 @@ def _submit(session: Session, storage: FakeStorage, ready: Ready, file: FileIn) 
     response.status_code = 201
     submit(
         SubmitRequest(session_id=ready.draft_id, files=[file]),
-        user,  # pyright: ignore[reportArgumentType]
+        user,
         session,
-        storage,  # pyright: ignore[reportArgumentType]
+        storage,
         NoLimit(),  # pyright: ignore[reportArgumentType]
         FROZEN_NOW,
         response,

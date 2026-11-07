@@ -682,4 +682,4 @@ class MemoryStateRepository(UserScopedRepository[MemoryState]):
             query = query.where(KnowledgeUnit.subject_id == subject_id)
         if unit_ids is not None:
             query = query.where(ReviewLog.unit_id.in_(unit_ids))
-        return [tuple(row) for row in self.session.execute(query)]  # type: ignore[misc]
+        return [tuple(row) for row in self.session.execute(query)]

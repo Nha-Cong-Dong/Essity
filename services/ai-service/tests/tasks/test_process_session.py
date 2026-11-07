@@ -362,7 +362,7 @@ def test_t416b_a_crash_inside_the_model_call_is_failed_not_raised(
 
     storage = FakeStorage()
     index(storage)
-    adapter = FakeAdapter({"chunk_units": boom, "generate_questions": fake_questions})  # pyright: ignore[reportArgumentType]
+    adapter = FakeAdapter({"chunk_units": boom, "generate_questions": fake_questions})
     run(handler(storage, redis_client, stream, sessions, adapter), confirmed())
     out = sent(redis_client, stream)
     assert isinstance(out[-1], SessionFailedEvent) and out[-1].payload.reason == "internal_error"
@@ -514,7 +514,7 @@ def test_t416b_redelivery_after_audit_down_keeps_the_chunk_result(
             raise AuditUnavailableError
         return real(ev, task, prompt)
 
-    h._start_run = flaky  # type: ignore[method-assign]  # pyright: ignore[reportPrivateUsage]
+    h._start_run = flaky  # type: ignore[method-assign]
     with pytest.raises(Deferred):
         run(h, event)
     paid = llm_calls(sessions)

@@ -107,7 +107,7 @@ def test_an_old_section_with_a_card_is_kept_and_excluded(
 ) -> None:
     user, _, document, before = worked(db_session)
     garbage = before[")"]
-    unit = make_unit(db_session, user, subject_of_id(garbage), status="canonical")  # pyright: ignore[reportArgumentType]
+    unit = make_unit(db_session, user, subject_of_id(garbage), status="canonical")
     link = UnitSection(subject_id=garbage.subject_id, unit_id=unit.id, section_id=garbage.id)
     link.user_id = user.id
     db_session.add(link)
@@ -284,7 +284,7 @@ def test_a_card_stays_under_its_chapter_when_a_section_is_added_above_it(
     ]
     by_title = with_outline(db_session, user, document, old)
     exercise = by_title["1. Bài tập"]
-    unit = make_unit(db_session, user, subject_of_id(exercise), status="canonical")  # pyright: ignore[reportArgumentType]
+    unit = make_unit(db_session, user, subject_of_id(exercise), status="canonical")
     link = UnitSection(subject_id=exercise.subject_id, unit_id=unit.id, section_id=exercise.id)
     link.user_id = user.id
     db_session.add(link)
@@ -323,7 +323,7 @@ def test_a_section_under_a_vanished_garbage_parent_moves_to_its_new_parent(
     ]
     by_title = with_outline(db_session, user, document, old)
     limit = by_title["2.4.7. Các định lí giới hạn"]
-    unit = make_unit(db_session, user, subject_of_id(limit), status="canonical")  # pyright: ignore[reportArgumentType]
+    unit = make_unit(db_session, user, subject_of_id(limit), status="canonical")
     link = UnitSection(subject_id=limit.subject_id, unit_id=unit.id, section_id=limit.id)
     link.user_id = user.id
     db_session.add(link)

@@ -42,7 +42,7 @@ def make_consumer(
 
 
 def pending(redis: Redis, names: Names) -> int:
-    return int(redis.xpending(names.stream, names.group)["pending"])  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+    return int(redis.xpending(names.stream, names.group)["pending"])
 
 
 def claimed(session_factory: sessionmaker[Session], group: str, event_id: str) -> bool:

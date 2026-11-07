@@ -94,10 +94,10 @@ def test_t43_failed_entry_is_not_reclaimed_before_its_backoff(
     )
     consumer.ensure_group()
     assert consumer.run_once() == ["retry"]
-    [row] = redis_client.xpending_range(names.stream, names.group, "-", "+", 1)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+    [row] = redis_client.xpending_range(names.stream, names.group, "-", "+", 1)
     # Counted as idle for min_idle - backoff already: due again in 5 s, not in 60 s.
-    assert 55_000 <= int(row["time_since_delivered"]) < 60_000  # pyright: ignore[reportUnknownArgumentType]
-    assert int(row["times_delivered"]) == 1  # pyright: ignore[reportUnknownArgumentType]
+    assert 55_000 <= int(row["time_since_delivered"]) < 60_000
+    assert int(row["times_delivered"]) == 1
     assert consumer.run_once() == []
 
 

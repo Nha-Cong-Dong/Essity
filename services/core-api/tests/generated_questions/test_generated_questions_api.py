@@ -479,7 +479,7 @@ def test_reject_retires_it_and_it_is_never_suggested_again(world: World, ai: Fak
         ]
     )
     body = world.on_type().json()
-    assert rejected["prompt"] in ai.payloads[-1]["existing_prompts"]  # type: ignore[operator]
+    assert rejected["prompt"] in ai.payloads[-1]["existing_prompts"]
     assert [c["prompt"] for c in body["candidates"]] == [
         "Câu mới hoàn toàn khác biệt về nội dung số 9?"
     ]

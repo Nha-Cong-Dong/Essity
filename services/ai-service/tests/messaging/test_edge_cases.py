@@ -200,7 +200,7 @@ def test_t43_dead_letter_copy_and_ack_go_in_one_transaction(redis_client: Redis)
 
     tag = uuid.uuid4()
     dead = f"test.events.dead.{tag}"
-    redis_client.pipeline = spy  # pyright: ignore[reportAttributeAccessIssue]
+    redis_client.pipeline = spy
     try:
         send_to_dead(
             redis_client,
@@ -213,6 +213,6 @@ def test_t43_dead_letter_copy_and_ack_go_in_one_transaction(redis_client: Redis)
             deliveries=1,
         )
     finally:
-        del redis_client.pipeline  # pyright: ignore[reportAttributeAccessIssue]
+        del redis_client.pipeline
         redis_client.delete(dead)
     assert seen == [(True, ["XADD", "XACK"])]

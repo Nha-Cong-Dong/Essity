@@ -233,7 +233,7 @@ class QuestionUnitRepository(UserScopedRepository[QuestionUnit]):
 
     def units_of(self, question_id: uuid.UUID) -> Sequence[KnowledgeUnit]:
         units = KnowledgeUnitRepository(self.session, self.user_id)
-        query = units._select().where(  # pyright: ignore[reportPrivateUsage]
+        query = units._select().where(
             KnowledgeUnit.id.in_(
                 self._select()
                 .with_only_columns(QuestionUnit.unit_id)

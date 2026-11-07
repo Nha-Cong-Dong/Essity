@@ -212,7 +212,7 @@ def check_edges(text: str, labels: dict[str, QuestionUnit]) -> tuple[list[Propos
         seen.add(key)
         edges.append(
             ProposedEdge(
-                kind=item.kind,  # pyright: ignore[reportArgumentType]
+                kind=item.kind,
                 source_id=source.unit_id,
                 target_id=target.unit_id,
                 evidence=evidence,

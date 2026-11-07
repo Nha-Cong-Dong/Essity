@@ -22,8 +22,8 @@ from tests.messaging.test_failures import dead_entries
 
 
 def times_delivered(redis: Redis, names: Names) -> int:
-    [row] = redis.xpending_range(names.stream, names.group, "-", "+", 1)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
-    return int(row["times_delivered"])  # pyright: ignore[reportUnknownArgumentType]
+    [row] = redis.xpending_range(names.stream, names.group, "-", "+", 1)
+    return int(row["times_delivered"])
 
 
 def test_t43_deferred_task_never_dead_lettered(

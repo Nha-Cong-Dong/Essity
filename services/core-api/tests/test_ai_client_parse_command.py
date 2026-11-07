@@ -40,7 +40,7 @@ def test_parse_command_reads_the_reply_once_with_an_8_second_cut() -> None:
     assert isinstance(reply, ParseCommandReply) and reply.result["kind"] == "section_exclude"
     assert len(seen) == 1 and PARSE_COMMAND_SECONDS == 8.0
     path, timeout = seen[0]  # type: ignore[misc]
-    assert path == "/v1/parse-command" and timeout["read"] == 8.0  # type: ignore[index]
+    assert path == "/v1/parse-command" and timeout["read"] == 8.0
 
 
 @pytest.mark.parametrize(

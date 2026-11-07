@@ -440,7 +440,7 @@ def submit(  # noqa: PLR0913, PLR0915
                 study_session_id=draft.id,
                 subject_id=draft.subject_id,
                 file_keys=[
-                    SubmissionFile(object_key=keys[sha], mime=item.mime)  # pyright: ignore[reportArgumentType]
+                    SubmissionFile(object_key=keys[sha], mime=item.mime)
                     for sha, item in files.items()
                 ],
                 context_key=context_key,
