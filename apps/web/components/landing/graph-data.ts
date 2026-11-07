@@ -39,7 +39,7 @@ const MORE_RELATIONS: Array<[number, number]> = [
 ];
 export const GRAPH_RELATIONS: Array<[number, number]> = [...BASE_RELATIONS, ...MORE_RELATIONS];
 
-export type GraphNode = { id: string; name: string; tip?: string; hub: boolean; hubOf?: number; degree: number; r: number; accent: "" | "teal" | "rose" | "gold" };
+export type GraphNode = { id: string; name: string; tip?: string; hub: boolean; hubOf?: number; degree: number; r: number; accent: string };
 export type GraphLink = { a: number; b: number; own: boolean };
 
 /** Ring-node radius: a hub is the biggest, the rest grow with their number of links (centrality), capped so the cluster stays calm. */
