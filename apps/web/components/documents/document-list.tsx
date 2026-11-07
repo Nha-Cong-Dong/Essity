@@ -58,11 +58,10 @@ function Status({ doc }: { doc: ListedDocument }) {
   return (
     <span
       data-doc-state={state}
-      {...(state === "failed" ? { "data-copy": "tam" } : {})}
       className="inline-flex items-start gap-1.5 font-medium text-partial"
     >
       <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-      {text}
+      {state === "failed" ? <span data-copy="tam">{failureText(doc.failure_reason)}</span> : text}
     </span>
   );
 }
