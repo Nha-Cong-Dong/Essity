@@ -116,6 +116,8 @@ test("US-13 AC9: provisional at 360x640 shows the first tree row without scrolli
   await page.setViewportSize({ width: 360, height: 640 });
   expect((await page.goto("/design-preview/syllabus?state=provisional"))?.status()).toBe(200);
   await page.evaluate(() => document.fonts.ready);
+  // boundingBox() does not wait: the tree streams in behind Suspense, so wait for the row first.
+  await page.locator("[role=treeitem]").first().waitFor();
   const first = await box(page.locator("[role=treeitem]").first());
   expect(first.y + first.height).toBeLessThanOrEqual(640);
 });
