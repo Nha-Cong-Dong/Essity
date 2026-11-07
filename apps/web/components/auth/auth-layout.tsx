@@ -65,7 +65,7 @@ export function AuthLayout({
         data-arrow=""
         viewBox="0 0 270 110"
         aria-hidden="true"
-        className="pointer-events-none absolute left-[32%] top-[42%] z-[3] hidden h-[163px] w-[400px] fill-none stroke-accent-bright stroke-[3.4] [stroke-linecap:round] [stroke-linejoin:round] min-[1024px]:block"
+        className="pointer-events-none absolute left-[calc(25%+130px)] top-[50%] z-[3] hidden h-auto w-[calc(25%-146px)] fill-none stroke-accent-bright stroke-[3.4] [stroke-linecap:round] [stroke-linejoin:round] min-[1024px]:block"
       >
         <path d="M6 96 C 50 40, 110 20, 160 60 S 220 84, 252 34" />
         <path d="M232 30 L252 34 L248 54" />
