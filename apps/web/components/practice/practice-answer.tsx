@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { PrereqBox } from "@/components/practice/prereq-box";
 import { Pen, PracticeResultExtras } from "@/components/practice/practice-extras";
 import { AnswerBox, clock, type SaveState } from "@/components/review/answer-box";
 import { GradeResult } from "@/components/review/grade-result";
@@ -9,6 +10,7 @@ import { Block } from "@/components/screen-kit";
 import { Button } from "@/components/ui/button";
 import { clearDraft, pickDraft, readDraft, writeDraft } from "@/lib/draft";
 import { type PracticeApi, practiceApi, type PracticeView } from "@/lib/practice-client";
+import type { PrereqCard } from "@/lib/question-list-types";
 import type { Result } from "@/lib/review-client";
 
 // T8.7 (US-16 AC2, AC3, AC5; DESIGN §6.12, D26-D27): answer one practice question. Used by the
@@ -56,7 +58,12 @@ export function PracticeAnswer({
   nextLabel = "Câu tiếp",
   api = practiceApi,
   promptPreview,
+  prerequisites = [],
+  vaultHref,
 }: {
+  /** The cards that unlocked this question, for the "Kiến thức nền" box (hidden when empty). */
+  prerequisites?: PrereqCard[];
+  vaultHref?: string;
   questionId: string;
   /** B-03: the question text the caller already has, drawn while the attempt opens (2-5 s when
    *  core-api drafts the reference answer first). */
@@ -373,6 +380,7 @@ export function PracticeAnswer({
           </>
         )}
       </Block>
+      <PrereqBox cards={prerequisites} vaultHref={vaultHref} />
       {phase.kind !== "writing" && (
         <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7" aria-live="polite">
           {view === null || (waiting && !late) ? (

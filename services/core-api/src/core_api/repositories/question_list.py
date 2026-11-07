@@ -34,6 +34,14 @@ from core_api.domain.readiness import (
 from core_api.repositories.base import UserScopedRepository
 
 _BANK_SOURCES = ("bank", "generated")
+PREREQ_CARD_CAP = 8  # prerequisite cards shown for one question
+
+
+@dataclass(frozen=True)
+class PrereqCard:
+    id: uuid.UUID
+    title: str
+    summary: str
 
 
 @dataclass(frozen=True)
@@ -48,6 +56,7 @@ class ListedQuestion:
     waiting_titles: dict[uuid.UUID, str]  # section id -> title, for the waiting sections
     unlocked_at: datetime | None = None  # when its last section got its first card (ready only)
     due: bool = False  # ready, and never practised or due now (V19, V20)
+    prerequisite_cards: tuple[PrereqCard, ...] = ()  # ready only: the first card of each section
 
 
 class QuestionListRepository(UserScopedRepository[Question]):
@@ -138,6 +147,30 @@ class QuestionListRepository(UserScopedRepository[Question]):
                 .group_by(UnitSection.section_id)
             )
         }
+        # The earliest canonical card of each section, in outline order (the prerequisite box).
+        section_ord = {
+            sid: ordinal
+            for sid, ordinal in self.session.execute(
+                select(DocSection.id, DocSection.ord).where(
+                    DocSection.user_id == self.user_id, DocSection.subject_id == subject_id
+                )
+            )
+        }
+        first_unit: dict[uuid.UUID, PrereqCard] = {}
+        for sid, uid, title, summary in self.session.execute(
+            select(
+                UnitSection.section_id, KnowledgeUnit.id, KnowledgeUnit.title, KnowledgeUnit.summary
+            )
+            .join(KnowledgeUnit, KnowledgeUnit.id == UnitSection.unit_id)
+            .where(
+                UnitSection.user_id == self.user_id,
+                UnitSection.subject_id == subject_id,
+                KnowledgeUnit.user_id == self.user_id,
+                KnowledgeUnit.status == "canonical",
+            )
+            .order_by(KnowledgeUnit.created_at.desc(), KnowledgeUnit.id.desc())
+        ):
+            first_unit[sid] = PrereqCard(uid, title, summary)  # the last write is the earliest
         practice_due: dict[uuid.UUID, datetime] = {
             qid: due
             for qid, due in self.session.execute(
@@ -169,6 +202,12 @@ class QuestionListRepository(UserScopedRepository[Question]):
             state = readiness(links.get(question.id, []), sections, cards)
             ready = isinstance(state, Ready)
             unlocked = [first_card[sid] for sid in links.get(question.id, []) if sid in first_card]
+            prereq: list[PrereqCard] = []
+            if ready:
+                for sid in sorted(links.get(question.id, []), key=lambda x: section_ord.get(x, 0)):
+                    card = first_unit.get(sid)
+                    if card is not None and card not in prereq:
+                        prereq.append(card)
             out.append(
                 ListedQuestion(
                     id=question.id,
@@ -182,6 +221,7 @@ class QuestionListRepository(UserScopedRepository[Question]):
                     if not isinstance(state, Waiting)
                     else {s.id: titles.get(s.id, "") for s in state.sections},
                     unlocked_at=max(unlocked) if ready and unlocked else None,
+                    prerequisite_cards=tuple(prereq[:PREREQ_CARD_CAP]),
                     due=ready
                     and now is not None
                     and (question.id not in practice_due or practice_due[question.id] <= now),

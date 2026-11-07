@@ -179,7 +179,15 @@ export function PracticeLive({
   }, [focus, removed]);
 
   if (doing !== null) {
-    return <PracticeAnswer questionId={doing} api={api} onNext={() => go(listPath)} />;
+    return (
+      <PracticeAnswer
+        questionId={doing}
+        api={api}
+        onNext={() => go(listPath)}
+        prerequisites={list.questions.find((q) => q.id === doing)?.prerequisite_cards ?? []}
+        vaultHref={`/kho-kien-thuc?subject=${subjectId}`}
+      />
+    );
   }
 
   async function remove(id: string) {

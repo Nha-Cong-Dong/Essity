@@ -226,6 +226,14 @@
             "title": "Origin",
             "type": "string"
           },
+          "prerequisite_cards": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PrerequisiteCardOut"
+            },
+            "title": "Prerequisite Cards",
+            "type": "array"
+          },
           "prompt": {
             "title": "Prompt",
             "type": "string"
@@ -2622,6 +2630,30 @@
           "question"
         ],
         "title": "PracticeView",
+        "type": "object"
+      },
+      "PrerequisiteCardOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary"
+        ],
+        "title": "PrerequisiteCardOut",
         "type": "object"
       },
       "ProgressOut": {

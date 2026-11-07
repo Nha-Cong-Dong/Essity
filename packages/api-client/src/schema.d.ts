@@ -1548,6 +1548,11 @@ export interface components {
              * @enum {string}
              */
             origin: "bank" | "generated";
+            /**
+             * Prerequisite Cards
+             * @default []
+             */
+            prerequisite_cards: components["schemas"]["PrerequisiteCardOut"][];
             /** Prompt */
             prompt: string;
             /**
@@ -2447,6 +2452,18 @@ export interface components {
             submitted_at: string | null;
             /** Timing Ok */
             timing_ok: boolean | null;
+        };
+        /** PrerequisiteCardOut */
+        PrerequisiteCardOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
         };
         /** ProgressOut */
         ProgressOut: {
