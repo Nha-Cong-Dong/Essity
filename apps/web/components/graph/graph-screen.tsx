@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
+import { Doodle } from "@/components/icons/doodle";
 import { Button } from "@/components/ui/button";
 import { FilterChip } from "@/components/ui/filter-chip";
 import { Select } from "@/components/ui/select";
@@ -241,6 +242,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
           {view.hidden > 0 && <Notice>{COPY.truncated}</Notice>}
           {noLinks ? (
             <div className="rounded-tile bg-hong-tint p-6" data-empty>
+              <Doodle name="do-thi" size={48} className="mb-2 text-hong-text" />
               <p className="m-0 text-read">{COPY.empty}</p>
               {view.cards.length === 0 && live && (
                 <a
