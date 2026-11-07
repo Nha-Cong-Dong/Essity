@@ -23,10 +23,13 @@ const EXAMPLE = "phần 3.4 kết thúc ở trang 80";
 // Module-level so React does not resubscribe (a new function identity each render) on every commit.
 const watchBody = (notify: () => void) => {
   const watch = new MutationObserver(notify);
-  watch.observe(document.body, { childList: true, subtree: true });
+  // `data-pending` going away (CommandSlot hydrated) is a change too.
+  watch.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-pending"] });
   return () => watch.disconnect();
 };
-const readSlot = () => document.querySelector(BOTTOM) ?? document.querySelector(SLOT);
+// E-03: a slot still marked `data-pending` has not hydrated yet; filling it would break its hydration.
+const ready = (selector: string) => document.querySelector(`${selector}:not([data-pending])`);
+const readSlot = () => ready(BOTTOM) ?? ready(SLOT);
 const noSlot = () => null;
 
 export function CommandLive({ subjectId }: { subjectId: string }) {
