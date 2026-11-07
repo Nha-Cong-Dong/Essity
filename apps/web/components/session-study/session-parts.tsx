@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type DragEventHandler, type ReactNode, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -13,15 +13,19 @@ export function Region({
   title,
   children,
   className,
+  onDragOver,
+  onDrop,
 }: {
   phase: string;
   title: ReactNode;
   children: ReactNode;
   className?: string;
+  onDragOver?: DragEventHandler<HTMLElement>;
+  onDrop?: DragEventHandler<HTMLElement>;
 }) {
   const heading = `session-h-${phase}`;
   return (
-    <section aria-labelledby={heading} className={cn("flex flex-col gap-5 motion-safe:animate-rise", className)}>
+    <section aria-labelledby={heading} onDragOver={onDragOver} onDrop={onDrop} className={cn("flex flex-col gap-5 motion-safe:animate-rise", className)}>
       <h2 id={heading} tabIndex={-1} className="m-0 font-display text-lead outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus">
         {title}
       </h2>
