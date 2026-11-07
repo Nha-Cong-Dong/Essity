@@ -4,10 +4,12 @@ import cytoscape, { type Core } from "cytoscape";
 import fcose from "cytoscape-fcose";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
+import { Button, buttonVariants } from "@/components/ui/button";
 import { shortLabel } from "@/lib/graph";
 import { multiStylesheet } from "@/lib/graph-multi-style";
-import { optionsFor, type SimEdge, type SimNode, stepSim } from "@/lib/graph-sim";
+import { optionsFor, seededRandom, type SimEdge, type SimNode, spiralStart, stepSim } from "@/lib/graph-sim";
 import { hiddenExcept, mergeGraphs, type MultiCard, type SubjectGraph, v4Highlights } from "@/lib/graph-multi";
 
 // V16/V17: the knowledge graph of one or several subjects. Nodes are cards coloured by subject,
@@ -53,7 +55,10 @@ function CardPopup({ card, subject, color, onClose }: { card: MultiCard; subject
           ))}
         </ul>
       )}
-      <div className="mt-5 flex justify-end">
+      <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <Link href={`/kho-kien-thuc?subject=${card.subjectId}`} data-open-vault className={buttonVariants({ variant: "primary" })}>
+          Mở trong Kho
+        </Link>
         <Button type="button" variant="secondary" onClick={onClose}>
           Đóng
         </Button>
@@ -100,7 +105,8 @@ export function KnowledgeGraph({
     const cy = cytoscape({
       container: host.current,
       elements: [
-        ...merged.cards.map((c) => ({
+        ...merged.cards.map((c, i) => ({
+          position: spiralStart(i),
           data: {
             id: c.id,
             label: shortLabel(c.title),
@@ -124,9 +130,8 @@ export function KnowledgeGraph({
       (host.current as HTMLDivElement & { __cy?: cytoscape.Core }).__cy = cy;
     }
     // Labels appear once the reader is zoomed in far enough to read them; a hovered node always shows its own.
-    const labelByZoom = () => cy.nodes().toggleClass("labelled", cy.zoom() >= 0.9);
-    cy.on("zoom", labelByZoom);
-    labelByZoom();
+    // Like the subject graph, the labels are always on (they are cut at 24 characters).
+    cy.nodes().addClass("labelled");
     cy.on("tap", "node", (ev) => setPickedId(ev.target.id()));
     // Hover lights a node and its neighbours; the rest dims (Obsidian-style).
     const showTip = (ev: cytoscape.EventObject) => {
@@ -149,7 +154,7 @@ export function KnowledgeGraph({
     const layout = cy.layout({
       name: "fcose",
       animate: false,
-      randomize: true,
+      randomize: false, // start from the fixed spiral above: the same cards give the same picture on every load
       fit: true,
       padding: 56,
       nodeDimensionsIncludeLabels: false,
@@ -198,6 +203,7 @@ export function KnowledgeGraph({
         if (i !== undefined) sim[i].pinned = false;
       });
       const opts = optionsFor(list.length);
+      const noise = seededRandom(1);
       let alpha = 0.5;
       let calm = 0; // frames spent at the floor; the loop stops after ~10 s and wakes on touch or hover
       let running = false;
@@ -215,7 +221,7 @@ export function KnowledgeGraph({
           running = false;
           return;
         }
-        stepSim(sim, links, alpha, Math.random, opts);
+        stepSim(sim, links, alpha, noise, opts);
         cy.batch(() => {
           list.forEach((n, i) => {
             if (!sim[i].pinned) n.position({ x: sim[i].x, y: sim[i].y });

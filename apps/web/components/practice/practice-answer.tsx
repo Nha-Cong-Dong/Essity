@@ -376,8 +376,17 @@ export function PracticeAnswer({
       {phase.kind !== "writing" && (
         <Block as="section" tier="sheet" className="p-5 min-[641px]:p-7" aria-live="polite">
           {view === null || (waiting && !late) ? (
-            <div aria-busy="true">
-              <p className="m-0 text-ink-soft">Đang chấm dựa trên tài liệu của bạn…</p>
+            <div aria-busy="true" data-grading-wait>
+              <p role="status" className="m-0 flex items-center gap-3 text-read font-semibold text-ink">
+                <span aria-hidden="true" className="inline-block size-4 shrink-0 rounded-full border-2 border-line-strong border-t-transparent motion-safe:animate-spin" />
+                Đang chấm…
+              </p>
+              <p className="m-0 mt-1 text-meta text-ink-soft">Đang đối chiếu với tài liệu của bạn, thường mất vài giây.</p>
+              <div aria-hidden="true" className="mt-5 flex flex-col gap-3">
+                <div className="h-6 w-1/3 rounded-control bg-sunken motion-safe:animate-pulse" />
+                <div className="h-4 w-full rounded-control bg-sunken motion-safe:animate-pulse" />
+                <div className="h-4 w-4/5 rounded-control bg-sunken motion-safe:animate-pulse" />
+              </div>
             </div>
           ) : result && view ? (
             <>

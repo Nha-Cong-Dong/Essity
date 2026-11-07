@@ -125,7 +125,7 @@ function Row({
         ) : (
           <span className="text-meta text-ink-soft">{q.line}</span>
         )}
-        {q.unlocked_at && <span className="text-meta text-ink-soft">Mở khóa {unlockedOn(q.unlocked_at)}</span>}
+        {q.unlocked_at && <span suppressHydrationWarning className="text-meta text-ink-soft">Mở khóa {unlockedOn(q.unlocked_at)}</span>}
       </div>
       <p id={`sum-${q.id}`} data-user className="m-0 line-clamp-3 wrap-anywhere">
         {q.prompt}
