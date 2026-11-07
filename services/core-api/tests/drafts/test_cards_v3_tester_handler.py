@@ -55,3 +55,20 @@ def test_card_learning_day_is_the_learners_not_utc(world: World) -> None:
     OnSubmissionProcessed(world.storage)(world.db, world.processed(key, at=at))
     unit = world.db.scalars(select(KnowledgeUnit)).one()
     assert unit.status == "canonical" and unit.saved_learning_day == learner
+
+
+def test_e16_card_without_a_section_is_linked_by_its_quoted_page(world: World) -> None:
+    # Red when: a card whose draft names no section gets no unit_sections row, so it shows under
+    # "Chưa gắn phần" and its section never counts as learned (practice stays locked).
+    from core_api.db.models import UnitSection
+
+    world.section.first_page, world.section.last_page = 1, 10
+    world.section2.first_page, world.section2.last_page = 3, 4
+    world.db.flush()
+    key = world.put([world.draft(1, section_id=None)])
+    OnSubmissionProcessed(world.storage)(world.db, world.processed(key))
+    unit = world.db.scalars(select(KnowledgeUnit)).one()
+    links = world.db.scalars(
+        select(UnitSection.section_id).where(UnitSection.unit_id == unit.id)
+    ).all()
+    assert links == [world.section2.id] and unit.section_id == world.section2.id

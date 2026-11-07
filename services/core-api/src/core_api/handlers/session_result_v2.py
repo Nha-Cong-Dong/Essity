@@ -22,6 +22,8 @@ Logs hold ids and counts, never a title, a quote or a key (ADR-0013).
 
 import logging
 import uuid
+from collections.abc import Sequence
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
@@ -132,6 +134,15 @@ def _write(
             )
         )
     )
+    spans = session.execute(
+        select(
+            DocSection.id, DocSection.document_id, DocSection.first_page, DocSection.last_page
+        ).where(
+            DocSection.user_id == user_id,
+            DocSection.subject_id == subject_id,
+            DocSection.first_page.is_not(None),
+        )
+    ).all()
     added = skipped = dropped = 0
     made: list[uuid.UUID] = []
     pages: dict[uuid.UUID, tuple[int, int]] = {}
@@ -142,6 +153,9 @@ def _write(
             continue
         wanted = draft.section_ids if draft.section_ids is not None else _single(draft)
         linked = [s for s in wanted if s in sections]
+        if not linked:
+            # E-15/E-16: the AI named no section: the tightest section holding a page it quoted.
+            linked = _by_pages(anchors, spans)
         unit_id = drafts.insert_draft(
             subject_id=subject_id,
             session_id=study_session_id,
@@ -179,6 +193,19 @@ def _write(
             ranges=[NewRange(d, lo, hi) for d, (lo, hi) in pages.items()],
         )
     return {"drafts": added, "already_there": skipped, "dropped_drafts": dropped}
+
+
+def _by_pages(anchors: list[Anchor], spans: Sequence[Any]) -> list[uuid.UUID]:
+    best: tuple[int, uuid.UUID] | None = None
+    for found in anchors:
+        if found.document_id is None or found.page_no is None:
+            continue
+        for sid, doc, first, last in spans:
+            if doc == found.document_id and first <= found.page_no <= last:
+                width = last - first
+                if best is None or width < best[0]:
+                    best = (width, sid)
+    return [best[1]] if best else []
 
 
 def _single(draft: Draft) -> list[uuid.UUID]:

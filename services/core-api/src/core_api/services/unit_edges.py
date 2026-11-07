@@ -255,6 +255,10 @@ def subject_graph(
                     grew = True
     units = repo.graph_units(subject_id)
     placed = repo.graph_unit_sections([u.id for u in units])
+    for u in units:
+        # E-15: a card with no link row still sits in its own section.
+        if u.id not in placed and u.section_id in by_id:
+            placed[u.id] = [u.section_id]
     order = {s.id: i for i, s in enumerate(sections)}
     chosen = [u for u in units if scope is None or scope.intersection(placed.get(u.id, ()))]
     # Outline order, the cards in no section last; then the order the cards were made.
