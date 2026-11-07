@@ -53,7 +53,7 @@ export function AuthLayout({
           <div className="relative">
             <Mascot kind="sun" pose="chao" size="lg" className="size-60 drop-shadow-[0_10px_18px_rgba(0,0,0,0.3)]" />
             {bubble && (
-              <div className="absolute -top-2 left-[calc(100%-36px)] z-[2] whitespace-nowrap rounded-slip bg-sheet px-4 py-3 font-display text-body font-semibold text-rose-900">
+              <div className="absolute -top-2 left-[calc(100%-36px)] z-[2] whitespace-nowrap rounded-slip bg-sheet px-4 py-3 font-display text-body font-semibold text-ink">
                 {bubble}
               </div>
             )}
@@ -64,7 +64,7 @@ export function AuthLayout({
         <div className="pointer-events-none absolute inset-0 z-[1] min-[1024px]:hidden" aria-hidden="true">
           <div className="absolute -bottom-[30px] right-2 flex items-end">
             {bubble && (
-              <div className="mb-14 -mr-5 whitespace-nowrap rounded-slip bg-sheet px-3.5 py-2 font-display text-meta font-semibold text-rose-900">
+              <div className="mb-14 -mr-5 whitespace-nowrap rounded-slip bg-sheet px-3.5 py-2 font-display text-meta font-semibold text-ink">
                 {bubble}
               </div>
             )}

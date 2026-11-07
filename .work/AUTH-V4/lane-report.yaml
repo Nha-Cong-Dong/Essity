@@ -5,7 +5,7 @@ status: done
 head_sha: b6e89b3d
 step: rebased on origin/main (draft mascot commits dropped: main #267 already has kind/art), fixes + tests pushed
 tests: {cmd: "vitest tests/mascot* session-end empty-state stats", passed: 96, failed: 0}
-verify: "login/register 390+1440 light/dark screenshots in .work/AUTH-V4/shots; eslint 0 errors; tsc no output; pnpm broken NVM4306 -> node direct; full vitest + verify-screens.mjs not confirmed (see report)"
+verify: "corepack pnpm OK; vitest 4 token/edge/mascot-kind files 72/72 (full suite earlier fixed 5 token fails); pnpm build ok; verify-screens 82/84 (2 fails = stale / expects redirect, app/page.tsx untouched); inspect --app on /login,/register 390+1440: 0 FAIL; Hom nay + popup only via /design-preview (no backend/session): Hom nay 1 FAIL heavy-shadow = 1px ring on 3 panels in today-v2, pre-existing, not in diff; look-and-fix: dark-mode bubble text rose-900 -> text-ink"
 blockers: []
 decisions: ["Vệt nâu ở kính = khe giữa các khối mây -> vá tròn #ffe5ed (Coder)", "bỏ chuỗi sao sticker ở auth, mascot giữa field, bubble cạnh vai (Coder)"]
 next: "orchestrator mở PR"
