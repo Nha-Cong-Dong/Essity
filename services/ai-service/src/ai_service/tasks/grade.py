@@ -56,6 +56,8 @@ PROMPT_VERSION = "v1"
 # services/ai-service/prompts, wherever the process runs from (the image copies it to /app).
 _PROMPTS = Path(__file__).resolve().parents[3] / "prompts"
 
+OFF_TOPIC_MISSING = "Câu trả lời lạc đề, không nói về khái niệm câu hỏi."
+
 UNIT_LABELS = [f"U{u}" for u in range(1, MAX_UNITS + 1)]
 ANCHOR_LABELS = [f"{unit}.A{a}" for unit in UNIT_LABELS for a in range(1, MAX_ANCHORS_PER_UNIT + 1)]
 
@@ -79,8 +81,10 @@ OUTPUT_SCHEMA: dict[str, Any] = {
         "missing": {"type": "array", "items": {"type": "string"}},
         "anchors_used": {"type": "array", "items": {"type": "string", "enum": ANCHOR_LABELS}},
         "understanding": {"anyOf": [{"type": "integer", "enum": [1, 2, 3]}, {"type": "null"}]},
+        # E-18: true when the answer is about another concept than the question.
+        "off_topic": {"type": "boolean"},
     },
-    "required": ["units", "missing", "anchors_used", "understanding"],
+    "required": ["units", "missing", "anchors_used", "understanding", "off_topic"],
     "additionalProperties": False,
 }
 
@@ -232,6 +236,7 @@ class _LlmGrade(BaseModel):
     missing: list[str]
     anchors_used: list[str]
     understanding: int | None
+    off_topic: bool = False
 
 
 @dataclass(frozen=True)
@@ -270,6 +275,16 @@ def check_output(text: str, labels: Labels) -> GradeOutcome:
         raise OutputViolation("anchors_used")
 
     verdicts: dict[str, Verdict] = {unit.unit: unit.verdict for unit in parsed.units}
+    if parsed.off_topic:
+        # E-18: an off-topic answer is incorrect whatever the units say, with no sources cited.
+        verdicts = dict.fromkeys(verdicts, "incorrect")
+        anchors = []
+        parsed = parsed.model_copy(
+            update={
+                "understanding": None,
+                "missing": [m for m in parsed.missing if m.strip()][:1] or [OFF_TOPIC_MISSING],
+            }
+        )
     ordered: list[Verdict] = [verdicts[label] for label in labels.units]
     overall = derive_overall(ordered)
 

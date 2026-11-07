@@ -21,6 +21,9 @@ type FieldProps = Omit<ComponentProps<"input">, "id"> & {
   adornment?: ReactNode;
 };
 
+/** Fields sit tinted on the white card (mockup: --hong-tint fill). */
+const TINT = "bg-hong-tint";
+
 export function AuthField({ id, label, describedBy, invalid, className, children, adornment, ...props }: FieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -33,7 +36,7 @@ export function AuthField({ id, label, describedBy, invalid, className, children
             id={id}
             aria-describedby={describedBy}
             aria-invalid={invalid || undefined}
-            className={cn("pr-13", className)}
+            className={cn(TINT, "pr-13", className)}
             {...props}
           />
           {adornment}
@@ -43,7 +46,7 @@ export function AuthField({ id, label, describedBy, invalid, className, children
           id={id}
           aria-describedby={describedBy}
           aria-invalid={invalid || undefined}
-          className={className}
+          className={cn(TINT, className)}
           {...props}
         />
       )}
@@ -72,7 +75,7 @@ export function PasswordField({ id, label, describedBy, invalid, className, chil
           type={shown ? "text" : "password"}
           aria-describedby={describedBy}
           aria-invalid={invalid || undefined}
-          className={cn("pr-13", className)}
+          className={cn(TINT, "pr-13", className)}
           {...props}
         />
         <button
@@ -115,3 +118,6 @@ export const AUTH_PILL =
 /** A text link of the account screens (inside a sentence only) ("Quên mật khẩu?", "Đăng ký"). */
 export const AUTH_LINK =
   "font-medium text-ink underline decoration-ink-soft decoration-[1.5px] underline-offset-4 hover:decoration-ink";
+
+/** "Quên mật khẩu?": a pink text link under the password field, 44px tall. */
+export const AUTH_FORGOT = "inline-flex min-h-11 items-center self-end text-small font-semibold text-hong-text no-underline hover:underline";

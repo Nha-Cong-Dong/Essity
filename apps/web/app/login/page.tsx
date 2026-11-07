@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AuthLayout } from "@/components/auth/auth-layout";
+import { AuthLayout, Underlined } from "@/components/auth/auth-layout";
 import { LoginForm } from "@/components/auth/login-form";
 import { RedirectIfSignedIn } from "@/components/auth/redirect-if-signed-in";
 
@@ -13,7 +13,9 @@ export default function LoginPage() {
       title="Đăng nhập"
       greeting={
         <>
-          <span>Thật vui khi</span> <span>được gặp bạn</span>
+          <span>Thật vui khi</span> <span>
+            được <Underlined>gặp bạn</Underlined>
+          </span>
         </>
       }
       bubble="Vào ôn thôi!"
