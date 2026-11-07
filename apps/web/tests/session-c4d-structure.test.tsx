@@ -12,6 +12,8 @@ describe("C4D attachment chip", () => {
     render(<FileDrop chips rows={rows} onAdd={noop} onRemove={noop} onRetry={noop} />);
     expect(screen.getByTestId("attach-chips").textContent).toContain("Bai-tap-chuong-1.pdf");
     expect(screen.queryByText("Chọn file")).toBeNull();
+    // The e2e specs (and screen readers) read the file state from text.
+    expect(screen.getByText("Đã tải", { exact: true })).toBeTruthy();
   });
   it("default mode keeps the drop box", () => {
     render(<FileDrop rows={rows} onAdd={noop} onRemove={noop} onRetry={noop} />);

@@ -87,6 +87,7 @@ export function FileDrop({
               <span className="min-w-0">
                 <MidTruncate text={row.name} />
               </span>
+              <span className="sr-only">{STATE_TEXT.done}</span>
               <button
                 type="button"
                 aria-label={`Gỡ ${row.name}`}
