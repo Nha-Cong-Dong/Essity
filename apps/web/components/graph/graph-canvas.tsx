@@ -113,6 +113,14 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
     cy.on("tap", "edge", (ev) => handlers.current.onSelectEdge(ev.target.id()));
     cy.on("zoom", refresh);
     refresh();
+    // Fit-to-view: after the layout settles, and again when the box changes size (the frame can
+    // be sized after the first paint), until the reader pans or zooms by hand.
+    let touched = false;
+    const fit = () => {
+      if (!touched && !cy.destroyed()) cy.fit(undefined, 24);
+    };
+    cy.on("dragpan", () => (touched = true));
+    cy.on("layoutstop", fit);
     cy.layout({
       name: "fcose",
       animate: !reducedMotion,
@@ -129,7 +137,10 @@ export default function GraphCanvas({ view, sections, selectedId, reducedMotion,
     theme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     const scheme = window.matchMedia("(prefers-color-scheme: dark)");
     scheme.addEventListener("change", refresh);
-    const resize = new ResizeObserver(() => cy.resize());
+    const resize = new ResizeObserver(() => {
+      cy.resize();
+      fit();
+    });
     if (host.current) resize.observe(host.current);
 
     return () => {

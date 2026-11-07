@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { AccountSlot } from "@/components/account-slot";
 import { NewSessionEntry } from "@/components/session-study/new-entry";
+import { Block } from "@/components/screen-kit";
 import { AppShell, PageColumn } from "@/components/shells";
 import { requireVerifiedSession } from "@/lib/session";
 
@@ -25,7 +26,9 @@ export default function NewSessionPage({
 }) {
   return (
     <AppShell current="/subjects" account={<AccountSlot />}>
-      <Suspense fallback={<PageColumn width="full" aria-busy="true" className="h-80 rounded-tile bg-sunken motion-safe:animate-pulse" />}>
+      <Suspense fallback={<PageColumn width="full" aria-busy="true" aria-label="Đang tải">
+          <Block tier="sheet" aria-hidden="true" className="h-80 motion-safe:animate-pulse" />
+        </PageColumn>}>
         <Guarded params={params} searchParams={searchParams} />
       </Suspense>
     </AppShell>

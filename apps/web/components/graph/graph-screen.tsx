@@ -126,7 +126,9 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
     } else {
       const r = h.getBoundingClientRect();
       if (r.top < 0 || r.bottom > window.innerHeight) {
-        h.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" });
+        // Under 1024 px the tray sits below the canvas: bring it to the top so "Chi tiết" shows.
+        const below = window.innerWidth < 1024;
+        h.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: below ? "start" : "nearest" });
       }
     }
   }, [picked, reduced]);
@@ -146,6 +148,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
   if (fixture.status === "loading") {
     return (
       <div className="flex flex-col gap-4">
+        <BackLink href={subjectHref}>Về môn {subjectName}</BackLink>
         <h1 className="m-0 text-title">Đồ thị</h1>
         <Skeleton />
       </div>
@@ -154,6 +157,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
   if (fixture.status === "error" || !data || !view || !everyKind) {
     return (
       <div className="flex flex-col gap-4">
+        <BackLink href={subjectHref}>Về môn {subjectName}</BackLink>
         <h1 className="m-0 text-title">Đồ thị</h1>
         <Block tier="sheet" role="alert" className="flex flex-col items-start gap-4">
           <p className="m-0 text-read">{COPY.error}</p>
@@ -247,9 +251,9 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
                   Ghi buổi học
                 </a>
               )}
-              <a href={subjectHref} className="mt-3 inline-flex min-h-11 items-center text-meta rounded-full bg-sheet px-4 font-medium text-ink no-underline inset-ring-1 inset-ring-line-strong hover:bg-sunken">
+              <BackLink href={subjectHref} className="mt-3">
                 Về môn
-              </a>
+              </BackLink>
             </Block>
           ) : (
             <>

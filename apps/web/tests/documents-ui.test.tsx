@@ -36,6 +36,31 @@ describe("DocumentList", () => {
     expect(out).not.toContain("/documents/d4");
   });
 
+  // R77. Red when: the reading row has no sign of work in progress, or the failure / partial rows
+  // are plain text without their state mark.
+  it("marks the reading state with a spinner and the failure states with a chip", () => {
+    const out = html([
+      doc({ id: "p", status: "pending", page_count: null }),
+      doc({ id: "u", unreadable_pages: [1, 2] }),
+      doc({ id: "f", status: "failed", failure_reason: "encrypted" }),
+      doc({ id: "r" }),
+    ]);
+    const span = (state: string) => {
+      const from = out.indexOf(`data-doc-state="${state}"`);
+      return from < 0 ? "" : out.slice(from, out.indexOf("</li>", from));
+    };
+    expect(span("reading")).toContain("animate-spin");
+    expect(span("reading")).toContain("Đang đọc tài liệu…");
+    for (const state of ["partial", "failed"]) {
+      expect(span(state)).toContain("<svg");
+      expect(span(state)).toContain("text-partial");
+    }
+    expect(span("failed")).toContain("có mật khẩu");
+    expect(span("partial")).toContain("Không đọc được 2 trang");
+    expect(span("ready").split("</span>")[0]).not.toContain("<svg");
+    expect(span("ready")).not.toContain("animate-spin");
+  });
+
   it("falls back for an unknown failure reason and says so when empty", () => {
     expect(html([doc({ status: "rejected", failure_reason: "x" })])).toContain("Chưa đọc được tài liệu này.");
     expect(html([])).toContain("Chưa có tài liệu.");
