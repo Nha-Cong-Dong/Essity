@@ -58,3 +58,5 @@ Thumbs.db
 
 # verify-screens output (apps/web)
 .verify/
+
+apps/web/e2e-qa/

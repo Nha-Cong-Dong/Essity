@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Đăng ký · Essity" };
 
 export default function RegisterPage() {
   return (
-    <AuthLayout title="Tạo tài khoản">
+    <AuthLayout title="Tạo tài khoản" greeting="Chào mừng bạn mới!" bubble="Bắt đầu nhé">
       <Suspense fallback={null}>
         <RedirectIfSignedIn />
       </Suspense>

@@ -129,9 +129,11 @@ describe("account fields: edges", () => {
 describe("account screen layout: edges (T1.24)", () => {
   const markup = () => html(h(AuthLayout, { title: "Đăng nhập", children: "form" }));
 
-  // Red when: a picture or decoration comes back to the account screens (V22: one plain card).
-  it("has no poster, picture or aria-hidden decoration", () => {
-    expect(markup()).not.toMatch(/poster|aria-hidden="true"/);
+  // Red when: a poster or raster picture comes back to the account screens (AUTH-V4: the field
+  // carries only the sun mascot, drawn inline and aria-hidden).
+  it("has no poster or raster picture; the sun mascot is the only decoration", () => {
+    expect(markup()).not.toMatch(/poster|<img/);
+    expect(markup()).toContain('data-mascot-kind="sun"');
   });
 
   // Red when: the form's own title is not the one h1.
@@ -139,9 +141,9 @@ describe("account screen layout: edges (T1.24)", () => {
     expect(markup().match(/<h1/g)).toHaveLength(1);
   });
 
-  // Red when: the card grows past 420px.
-  it("the card is at most 420px wide", () => {
-    expect(markup()).toMatch(/w-full max-w-\[420px\]/);
+  // Red when: the card grows past 440px.
+  it("the card is at most 440px wide", () => {
+    expect(markup()).toMatch(/w-full max-w-\[440px\]/);
   });
 });
 
