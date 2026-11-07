@@ -321,10 +321,15 @@ export function ReviewScreen({
     return shell(
       last.position,
       last.total,
-      <div aria-busy="true">
+      <div aria-busy="true" data-question-loading>
         <p className="sr-only" role="status">
           Đang tải câu hỏi.
         </p>
+        <div aria-hidden="true" className="flex flex-col gap-4">
+          <div className="h-5 w-24 animate-pulse rounded-control bg-sunken" />
+          <div className="h-8 w-4/5 animate-pulse rounded-control bg-sunken" />
+          <div className="h-40 w-full animate-pulse rounded-control bg-sunken" />
+        </div>
       </div>,
     );
   }
