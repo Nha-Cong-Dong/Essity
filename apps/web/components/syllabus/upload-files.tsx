@@ -191,7 +191,7 @@ export function UploadScreen({ state }: { state: UploadState }) {
       )}
 
       {files.length === 0 ? (
-        <div className="mt-6 rounded-sheet bg-rose-50 p-6">
+        <div className="mt-6 rounded-sheet border border-line bg-sheet p-6">
           <p className="m-0 text-body">{COPY.empty}</p>
           <div className="mt-4">{tray(true)}</div>
         </div>

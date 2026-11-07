@@ -5,7 +5,6 @@ import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState 
 import { FieldError } from "@/components/field-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { NX_CAM } from "@/components/ui/nx-list";
 import {
   applyMark,
   applyRange,
@@ -70,6 +69,11 @@ const splitTitle = (title: string): [string | null, string] => {
 // The visible mark is 28 px; its touch area is 44 px (after:) without widening the indent step.
 // Panel buttons wrap their label (a long one such as "Đánh dấu 12 phần chưa học là đã học" must fit 320 px).
 const WRAP = "h-auto min-h-11 max-w-full shrink whitespace-normal py-2 text-left";
+
+// C5 (one accent): the pink primary ("Vào buổi học") is the only accent here; the suggested row is
+// marked by weight, an ink outline and the words "Tiếp theo", not by a second colour.
+const NEXT_ROW = "inset-ring-[1.5px] inset-ring-ink";
+const NEXT_TEXT = "font-semibold text-ink";
 
 function Tick() {
   return (
@@ -556,7 +560,7 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
             data-row
             style={{ ["--lvl" as string]: level - 1 }}
             onClick={() => (branch ? fold(node.id, !isOpen) : openPanel(node.id))}
-            className={`${INDENT_M} mb-1.5 flex min-h-12 cursor-pointer items-start gap-2 max-sm:gap-1 rounded-row bg-bg px-3 max-sm:px-2 py-2 sm:min-h-11.5 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus ${isNext ? `${NX_CAM.row} font-semibold` : ""}`}
+            className={`${INDENT_M} mb-1.5 flex min-h-12 cursor-pointer items-start gap-2 max-sm:gap-1 rounded-row bg-bg px-3 max-sm:px-2 py-2 sm:min-h-11.5 [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-offset-2 [li:focus-visible>&]:outline-focus ${isNext ? `${NEXT_ROW} font-semibold` : ""}`}
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center">
               {branch && (
@@ -590,14 +594,14 @@ export function SyllabusTree({ label, nodes, unit, total, onNodes, say, onEditin
                 {visible && (!showState || status === "partial") ? ` · ${visible}` : ""}
               </span>
               {isNext && (
-                <span className={`mt-0.5 text-meta sm:hidden ${NX_CAM.text}`}>
+                <span className={`mt-0.5 text-meta sm:hidden ${NEXT_TEXT}`}>
                   <span aria-hidden="true">→ </span>Tiếp theo
                 </span>
               )}
-              {isNext && why && <span className={`mt-0.5 text-meta ${NX_CAM.text}`}>{why}</span>}
+              {isNext && why && <span className={`mt-0.5 text-meta ${NEXT_TEXT}`}>{why}</span>}
             </span>
             <span
-              className={`flex h-7 shrink-0 items-center gap-1 whitespace-nowrap text-meta ${isNext ? `${NX_CAM.text} max-sm:hidden` : "text-ink-soft"}`}
+              className={`flex h-7 shrink-0 items-center gap-1 whitespace-nowrap text-meta ${isNext ? `${NEXT_TEXT} max-sm:hidden` : "text-ink-soft"}`}
               data-state-cell
             >
               {isNext ? (

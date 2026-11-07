@@ -113,7 +113,7 @@ export function FocusShell({
 }) {
   const percent = total > 0 ? Math.round((position / total) * 100) : 0;
   return (
-    <div className="flex min-h-full flex-1 flex-col">
+    <div className="flex min-h-full flex-1 flex-col [--sunken:var(--sheet)]">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-(--z-header) focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-full focus:bg-sheet focus:px-4 focus:font-medium focus:text-ink focus:inset-ring-2 focus:inset-ring-focus"

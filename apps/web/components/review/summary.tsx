@@ -51,7 +51,7 @@ export function Summary({
               câu đã làm
             </p>
           </div>
-          <Mascot pose="khen" size="sm" tone="solid" className="absolute right-3 bottom-0" />
+          <Mascot kind="sun" pose="khen" size="sm" tone="solid" className="absolute right-3 bottom-0" />
         </Block>
         <Block tier="sheet" className="p-6 min-[641px]:p-8">
           <p className="m-0 font-display text-mega" data-testid="correct">
