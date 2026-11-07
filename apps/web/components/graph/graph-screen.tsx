@@ -242,7 +242,7 @@ export function GraphScreen({ state = "few", live }: { state?: GraphState; live?
           {view.hidden > 0 && <Notice>{COPY.truncated}</Notice>}
           {noLinks ? (
             <div className="rounded-tile bg-hong-tint p-6" data-empty>
-              <Doodle name="may" size={48} className="mb-2 text-hong-text" />
+              <Doodle name="do-thi" size={48} className="mb-2 text-hong-text" />
               <p className="m-0 text-read">{COPY.empty}</p>
               {view.cards.length === 0 && live && (
                 <a

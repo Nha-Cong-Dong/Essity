@@ -9,8 +9,8 @@ export const NAV = [
   { href: "/today", label: "Hôm nay", doodle: "lich" },
   { href: "/subjects", label: "Môn học", doodle: "sach-mo" },
   { href: "/kho-kien-thuc", label: "Kho kiến thức", doodle: "the" },
-  { href: "/graph", label: "Đồ thị", doodle: "may" },
-  { href: "/stats", label: "Thống kê", doodle: "do-thi" },
+  { href: "/graph", label: "Đồ thị", doodle: "do-thi" },
+  { href: "/stats", label: "Thống kê", doodle: "dau-tich" },
 ] as const satisfies readonly { href: string; label: string; doodle: DoodleName }[];
 
 export type NavItem = (typeof NAV)[number]["href"];

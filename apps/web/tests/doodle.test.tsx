@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 // DOODLE-ICONS: <Doodle> draws the hand-drawn set inline, in currentColor, decorative by default.
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {}, push: () => {}, replace: () => {} }) }));
 
 import { Doodle, DOODLE_NAMES } from "@/components/icons/doodle";
 import { NAV } from "@/components/main-nav";
@@ -55,5 +57,26 @@ describe("Doodle", () => {
 
   it("main nav items name a doodle each", () => {
     for (const item of NAV) expect(DOODLE_NAMES).toContain(item.doodle);
+  });
+});
+
+describe("empty states carry one decorative doodle", () => {
+  it("Kho: a session with no cards shows sach-mo, hidden from readers", async () => {
+    const { CardList } = await import("@/components/vault/card-list");
+    const { container } = render(<CardList cards={[]} />);
+    expect(container.querySelectorAll("[data-doodle]")).toHaveLength(1);
+    expect(container.querySelector("[data-doodle='sach-mo']")?.getAttribute("aria-hidden")).toBe("true");
+  });
+});
+
+describe("Thống kê with subjects but no study days", () => {
+  it("shows one dong-ho-cat doodle", async () => {
+    const { StatsScreen } = await import("@/components/stats/stats-screen");
+    const { statsFixture } = await import("@/lib/fixtures/stats");
+    const { buildGrid } = await import("@/lib/stats");
+    const d = statsFixture("few-days");
+    const view = { today: d.today, subjects: d.subjects, cells: buildGrid(d.subjects, [], d.today, undefined) };
+    const { container } = render(<StatsScreen view={view} subject="" mode="ready" />);
+    expect(container.querySelectorAll("[data-empty-doodle] [data-doodle='dong-ho-cat']")).toHaveLength(1);
   });
 });
