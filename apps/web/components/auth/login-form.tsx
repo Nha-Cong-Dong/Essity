@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
-import { AUTH_LINK, AUTH_PILL, AuthField, AuthNote, PasswordField } from "@/components/auth/fields";
+import { AUTH_FORGOT, AUTH_LINK, AuthField, AuthNote, PasswordField } from "@/components/auth/fields";
 import { GoogleSection } from "@/components/auth/google-button";
 import { Button } from "@/components/ui/button";
 import { authMessage, postJson, rateLimitMessage } from "@/lib/auth-errors";
@@ -99,7 +99,7 @@ export function LoginForm() {
             invalid={wrong}
             describedBy={wrong ? "login-error" : undefined}
           />
-          <a href="/forgot-password" className={`${AUTH_PILL} self-end`}>
+          <a href="/forgot-password" className={AUTH_FORGOT}>
             Quên mật khẩu?
           </a>
         </div>

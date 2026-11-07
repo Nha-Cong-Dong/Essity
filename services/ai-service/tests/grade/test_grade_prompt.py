@@ -265,7 +265,13 @@ def schema_nodes(node: Any) -> list[dict[str, Any]]:
 
 def test_t212_output_schema_is_strict_and_has_no_overall() -> None:
     # Red when: the model may answer `overall` (R03.4: code derives it) or extra fields.
-    assert set(OUTPUT_SCHEMA["properties"]) == {"units", "missing", "anchors_used", "understanding"}
+    assert set(OUTPUT_SCHEMA["properties"]) == {
+        "units",
+        "missing",
+        "anchors_used",
+        "understanding",
+        "off_topic",
+    }
     for node in schema_nodes(OUTPUT_SCHEMA):
         if node.get("type") == "object":
             assert node.get("additionalProperties") is False
