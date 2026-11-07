@@ -13,10 +13,12 @@ for (const path of ["/login", "/register", "/forgot-password"]) {
     await page.setViewportSize(DESKTOP);
     await page.goto(path);
     await settled(page);
-    const card = await page.locator("main > div").boundingBox();
+    const card = await page.locator('main > div:last-child').boundingBox();
+    const field = await page.locator("main").boundingBox();
     expect(card).not.toBeNull();
-    expect(card!.width).toBeLessThanOrEqual(420.5);
-    expect(Math.abs(card!.x + card!.width / 2 - DESKTOP.width / 2)).toBeLessThan(2);
+    expect(card!.width).toBeLessThanOrEqual(440.5);
+    // AUTH-V4: split layout, the card is centred in the form column, not the viewport.
+    expect(Math.abs(card!.x + card!.width / 2 - (field!.x + field!.width / 2))).toBeLessThan(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
@@ -24,8 +26,8 @@ for (const path of ["/login", "/register", "/forgot-password"]) {
     await page.setViewportSize(PHONE);
     await page.goto(path);
     await settled(page);
-    await expect(page.locator('[data-auth="top"] a')).toHaveText("Essity");
-    const card = await page.locator("main > div").boundingBox();
+    await expect(page.locator('aside[data-tier="field"] a')).toHaveText("Essity");
+    const card = await page.locator('main > div:last-child').boundingBox();
     expect(card!.width).toBeGreaterThan(PHONE.width - 40);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
