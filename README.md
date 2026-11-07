@@ -12,6 +12,10 @@ AI-graded spaced repetition. Answer a daily set of questions drawn from your own
 - **Source-anchored.** Every question and grade links back to the exact page it came from.
 - **Reproducible.** Raw data is immutable; every AI output is versioned by prompt and model and can be re-run.
 
+## Documentation
+
+See [documentation/](documentation/README.md): [product](documentation/PRODUCT.md), [architecture](documentation/ARCHITECTURE.md), [AI](documentation/AI.md), [development](documentation/DEVELOPMENT.md), [deployment](documentation/DEPLOY.md).
+
 ## Architecture
 
 | Service | Stack | Responsibility |
