@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
@@ -103,6 +103,15 @@ function SourcePanel({ cardId }: { cardId: string }) {
   );
 }
 
+// A card is the mockup's .vcard size (screens-b.css: 380 wide, 360 tall); long content scrolls inside,
+// the title and the buttons stay (user 08/11).
+const SCROLL = {
+  role: "region",
+  tabIndex: 0,
+  className:
+    "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+} as const;
+
 function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void }) {
   const [saved, setSaved] = useState({ title: card.title, content: card.content });
   const [draft, setDraft] = useState<{ title: string; content: string } | null>(null);
@@ -141,9 +150,10 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
   }
 
   return (
-    <article className="flex min-w-0 flex-col gap-3 rounded-tile bg-sheet p-6 text-ink" data-slot="vault-card">
+    <article className="flex h-[360px] min-w-0 flex-col gap-3 overflow-hidden rounded-tile bg-sheet p-6 text-ink" data-slot="vault-card">
       {draft ? (
         <>
+          <div {...SCROLL} aria-label="Nội dung thẻ đang sửa">
           <input
             aria-label="Tiêu đề thẻ"
             className="h-11 rounded-control bg-bg px-3 text-body font-semibold inset-ring-[1.5px] inset-ring-line-strong"
@@ -168,6 +178,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
               <Markdown className="text-body" text={draft.content} />
             </section>
           ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="primary"
@@ -201,9 +212,12 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
         </>
       ) : (
         <>
-          <h3 className="m-0 text-lead font-semibold">{saved.title}</h3>
-          <Markdown className="text-body" text={saved.content} />
-          <div className="flex flex-wrap gap-2">
+          <h3 className="m-0 shrink-0 text-lead font-semibold">{saved.title}</h3>
+          <div {...SCROLL} aria-label={`Nội dung thẻ: ${saved.title}`}>
+            <Markdown className="text-body" text={saved.content} />
+            {showSource ? <SourcePanel cardId={card.id} /> : null}
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
             <Button variant="secondary" size="md" onClick={() => setDraft(saved)}>
               Sửa thẻ
             </Button>
@@ -226,7 +240,6 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
           </Link>
         </p>
       ) : null}
-      {showSource && !draft ? <SourcePanel cardId={card.id} /> : null}
     </article>
   );
 }
@@ -234,7 +247,7 @@ function Card({ card, onGone }: { card: VaultCard; onGone: (id: string) => void 
 // V4-SCREENS-B: a white sheet per card on one plum stage, side by side in a horizontal band (ui/carousel).
 // The two round buttons are re-coloured for the plum ground (--on-plum-action, never --hong on plum).
 const STAGE_BUTTONS =
-  "[&_[data-slot=carousel-track]>div]:w-[min(380px,calc(100vw-96px))] [&_[data-slot=carousel-meta]]:text-on-plum [&_button[aria-label^=Th]]:bg-on-plum-action [&_button[aria-label^=Th]]:text-on-plum-action-fg [&_button[aria-label^=Th]]:inset-ring-0 [&_button[aria-label^=Th]:hover]:bg-on-plum-action [&_button[aria-label^=Th]:disabled]:bg-on-plum/15 [&_button[aria-label^=Th]:disabled]:text-on-plum-soft";
+  "[&_[data-slot=carousel-track]>div]:w-[min(380px,86vw)] [&_[data-slot=carousel-meta]]:text-on-plum [&_button[aria-label^=Th]]:bg-on-plum-action [&_button[aria-label^=Th]]:text-on-plum-action-fg [&_button[aria-label^=Th]]:inset-ring-0 [&_button[aria-label^=Th]:hover]:bg-on-plum-action [&_button[aria-label^=Th]:disabled]:bg-on-plum/15 [&_button[aria-label^=Th]:disabled]:text-on-plum-soft";
 
 export function CardList({ cards, subjectName }: { cards: VaultCard[]; subjectName?: string }) {
   const [gone, setGone] = useState<string[]>([]);
