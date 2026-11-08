@@ -166,6 +166,7 @@ test("signed out: protected pages go to /login, APIs answer 401", async ({ page 
 });
 
 test("unverified account: check-email, sign-in, duplicates, wrong email", async ({ page }) => {
+  test.setTimeout(120_000); // waits out the 1-minute per-address mail cooldown
   const a = account("un");
   await fillRegister(page, a);
   await page.getByRole("button", { name: "Tạo tài khoản" }).click();
@@ -257,7 +258,11 @@ test("full life of an account: verify, reuse link, sign in, CSV, sign out, forgo
   await page.getByRole("button", { name: "Lưu mật khẩu" }).click();
   await expect(page.getByText("Đã đặt mật khẩu mới.")).toBeVisible();
 
+  // The token is only checked on submit (reset-password.tsx): a used link fails when sent.
   await page.goto(link);
+  await settled(page);
+  await page.locator("#password").fill(`${next}-again`);
+  await page.getByRole("button", { name: "Lưu mật khẩu" }).click();
   await expect(page.getByText("Link này đã hết hạn hoặc đã được dùng.")).toBeVisible();
 
   await signIn(page, a.username, a.password);
