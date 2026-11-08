@@ -35,26 +35,20 @@ function noProblems(allowed: RegExp[] = []) {
   expect(real, "console errors / 4xx-5xx responses").toEqual([]);
 }
 
-// Registration and mail run in their own context, outside the serial chain: when the mail server is
-// down this test fails by itself and the rest of the flow still runs with E2E_USER / E2E_PASSWORD
-// (an account made earlier by this spec, never an existing person's account).
-test.describe("registration", () => {
-  test("fresh account: register, verify by mail, sign in lands on 'Tạo môn'", async ({ browser, baseURL }) => {
-    test.setTimeout(90_000);
-    test.skip(!(await mailpitUp()), "Mailpit not reachable");
-    const fresh = await browser.newContext({ baseURL: process.env.E2E_STACK_URL });
-    const own = await fresh.newPage();
-    await registerAndSignIn(own, account, baseURL ?? process.env.E2E_STACK_URL!);
-    await expect(own.getByText("Tạo môn").first()).toBeVisible();
-    await fresh.close();
-  });
-});
-
 test.describe("flow", () => {
   test.describe.configure({ mode: "serial" });
-  test("sign in", async () => {
-    const user = process.env.E2E_USER ?? account.username;
-    const password = process.env.E2E_PASSWORD ?? account.password;
+  test("fresh account: register, verify by mail, sign in", async ({ baseURL }) => {
+    test.setTimeout(90_000);
+    test.skip(!(await mailpitUp()), "Mailpit not reachable");
+    await registerAndSignIn(page, account, baseURL ?? process.env.E2E_STACK_URL!);
+    await expect(page.getByText("Tạo môn").first()).toBeVisible();
+    noProblems();
+  });
+
+  test("sign out and sign in again", async () => {
+    const user = account.username;
+    const password = account.password;
+    await page.context().clearCookies();
     await page.goto("/login");
     await settled(page);
     await page.getByLabel("Tên đăng nhập hoặc email").fill(user);
@@ -91,13 +85,17 @@ test.describe("flow", () => {
   });
 
   test("upload a PDF: it is stored, read, and the syllabus appears", async () => {
-    test.setTimeout(180_000);
+    test.setTimeout(400_000);
     await page.goto(`/subjects/${subjectId}/upload`);
     await settled(page);
     await page.locator("input[type=file]").first().setInputFiles(PDF);
     await expect(page.getByText("biology.pdf")).toBeVisible();
-    await page.goto(`/subjects/${subjectId}/syllabus`);
-    await expect(page.getByText("Chapter 1: Photosynthesis").first()).toBeVisible({ timeout: 120_000 });
+    // Leaving before the file is stored would lose it: wait for the tab's count first.
+    await expect(page.getByRole("tab", { name: /Giáo trình chính \(1\)/ })).toBeVisible({ timeout: 90_000 });
+    await expect(async () => {
+      await page.goto(`/subjects/${subjectId}/syllabus`);
+      await expect(page.getByText("Chapter 1: Photosynthesis").first()).toBeVisible({ timeout: 4_000 });
+    }).toPass({ timeout: 240_000, intervals: [5_000] });
     await expect(page.getByText("Chapter 3: Cell division").first()).toBeVisible();
     await page.goto(`/subjects/${subjectId}/documents`);
     await expect(page.getByText("biology").first()).toBeVisible();
